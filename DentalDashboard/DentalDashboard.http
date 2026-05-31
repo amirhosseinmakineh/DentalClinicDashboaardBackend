@@ -1,0 +1,6 @@
+@DentalDashboard_HostAddress = http://localhost:5231
+
+GET {{DentalDashboard_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

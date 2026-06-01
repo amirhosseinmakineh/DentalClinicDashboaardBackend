@@ -1,10 +1,9 @@
-﻿namespace DentalDashboard.ApplicationService.Contract.Requests.User.Commands.DeleteUser
+﻿using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+namespace DentalDashboard.ApplicationService.Contract.Requests.User.Commands.DeleteUser
 {
-    public class DeleteUserCommand
+    public class DeleteUserCommand : ICommand<object>
     {
-    }
-    public class DeleteUserValidator
-    {
+        public Guid UserId { get; set; }
     }
 
 }

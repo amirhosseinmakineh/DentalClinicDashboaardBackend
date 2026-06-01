@@ -1,4 +1,5 @@
-﻿using DentalDashboard.Framwork.Domain;
+﻿using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
+using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.Framwork.Cqrs.Abstraction.Wrire
 {

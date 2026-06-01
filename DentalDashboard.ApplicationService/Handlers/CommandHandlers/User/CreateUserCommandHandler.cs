@@ -56,10 +56,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 await userRepository.AddAsync(user);
 
-                foreach (var role in command.Roles)
-                {
-                    await roleService.AddRoleToUser(user.Id, role.RoleName);
-                }
+                    await roleService.AddRoleToUser(user.Id, command.RoleName);
 
                 await unitOfWork.CommitAsync();
 

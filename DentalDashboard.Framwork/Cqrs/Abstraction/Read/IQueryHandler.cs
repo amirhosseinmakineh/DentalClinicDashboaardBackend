@@ -1,9 +1,6 @@
-﻿using DentalDashboard.Framwork.Domain;
+﻿using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 
-namespace DentalDashboard.Framwork.Cqrs.Abstraction.Read
+public interface IQueryHandler<TQuery, TResponse> where TQuery : IQuery<TResponse>
 {
-    public interface IQueryHandler<TQuery, TResponse> where TQuery : IQuery<TResponse>
-    {
-        Task<Result<TResponse>> HandleQueryAsync(TQuery query);
-    }
+    Task<TResponse> HandleAsync(TQuery query, CancellationToken cancellationToken = default);
 }

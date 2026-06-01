@@ -22,6 +22,6 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.User.Commands.Cre
         public Gender Gender { get; set; }
 
         public DateTime BirthDate { get; set; }
-        public List<Role> Roles { get; set; }
+        public string RoleName { get; set; } = default!;
     }
 }

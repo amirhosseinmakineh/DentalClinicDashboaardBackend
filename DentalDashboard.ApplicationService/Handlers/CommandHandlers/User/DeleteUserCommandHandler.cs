@@ -1,11 +1,12 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.CreateUser;
+using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.DeleteUser;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 {
-    public class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand, object>
+    public class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand,object>
     {
         private readonly IUserRepository userRepository;
         private readonly IUserRoleRepository userRoleRepository;
@@ -25,7 +26,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
         {
             await unitOfWork.BeginTransactionAsync();
 
-            var user = await userRepository.GetByIdAsync(command.Id);
+            var user = await userRepository.GetByIdAsync(command.UserId);
 
             if (user == null)
             {

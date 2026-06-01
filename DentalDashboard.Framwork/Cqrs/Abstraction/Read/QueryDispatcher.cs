@@ -1,5 +1,4 @@
-﻿using DentalDashboard.Framwork.Domain;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace DentalDashboard.Framwork.Cqrs.Abstraction.Read
 {
@@ -12,7 +11,9 @@ namespace DentalDashboard.Framwork.Cqrs.Abstraction.Read
             this.serviceProvider = serviceProvider;
         }
 
-        public async Task<Result<TResponse>> DispatchAsync<TResponse>(IQuery<TResponse> query)
+        public async Task<TResponse> DispatchAsync<TResponse>(
+            IQuery<TResponse> query,
+            CancellationToken cancellationToken = default)
         {
             var queryType = query.GetType();
 
@@ -21,7 +22,9 @@ namespace DentalDashboard.Framwork.Cqrs.Abstraction.Read
 
             dynamic handler = serviceProvider.GetRequiredService(handlerType);
 
-            return await handler.HandleQueryAsync((dynamic)query);
+            return await handler.HandleAsync(
+                (dynamic)query,
+                cancellationToken);
         }
     }
 }

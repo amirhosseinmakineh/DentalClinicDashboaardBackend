@@ -5,5 +5,6 @@ namespace DentalDashboard.Domain.IRepositories
 {
     public interface IRoleRepository : IBaseRepository<long, Role>
     {
+        
     }
 }

@@ -1,5 +1,4 @@
-﻿using DentalDashboard.ApplicationService.Contract.Responses.RoleResponses;
-using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+﻿using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Role

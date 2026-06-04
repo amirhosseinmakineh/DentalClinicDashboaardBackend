@@ -5,5 +5,6 @@ namespace DentalDashboard.Domain.IRepositories
 {
     public interface IConsultantProfileRepository : IBaseRepository<long, ConsultantProfile>
     {
+        Task<List<ConsultantProfile>> GetAvailableConsultantsAsync();
     }
 }

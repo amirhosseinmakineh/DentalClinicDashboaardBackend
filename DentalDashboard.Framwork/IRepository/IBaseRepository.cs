@@ -26,5 +26,6 @@ namespace DentalDashboard.Framwork.IRepositories
 
         Task<int> CountAsync();
         Task SaveChange();
+        IQueryable<TEntity> GetAll();
     }
 }

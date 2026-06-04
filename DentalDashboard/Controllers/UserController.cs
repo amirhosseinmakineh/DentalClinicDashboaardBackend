@@ -22,9 +22,9 @@ public class UserController : ControllerBase
         this.queryDispatcher = queryDispatcher;
     }
     [HttpPost]
-    public IActionResult CreateUser(CreateUserCommand command)
+    public async Task<IActionResult> CreateUser(CreateUserCommand command)
     {
-        var result = dispatcher.DispatchAsync(command);
+        var result = await dispatcher.DispatchAsync(command);
         return Ok(result);
     }
     [HttpGet]
@@ -34,16 +34,16 @@ public class UserController : ControllerBase
 
         return Ok(result);
     }
-    [HttpPatch]
-    public IActionResult UpdateUser(UpdateUserCommand command) 
+    [HttpPut]
+    public async Task<IActionResult> UpdateUser(UpdateUserCommand command) 
     {
-        var result = dispatcher.DispatchAsync(command);
+        var result = await dispatcher.DispatchAsync(command);
         return Ok(result);
     }
     [HttpDelete]
-    public IActionResult DeleteUser(DeleteUserCommand command)
+    public async Task<IActionResult> DeleteUser(DeleteUserCommand command)
     {
-        var result = dispatcher.DispatchAsync(command);
+        var result = await dispatcher.DispatchAsync(command);
         return Ok(result);
     }
 }

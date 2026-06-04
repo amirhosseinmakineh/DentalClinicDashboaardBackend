@@ -1,4 +1,7 @@
-﻿using DentalDashboard.ApplicationService.Contract.IServices;
+﻿using DentalDashboard.ApplicationService.Contract.Dtos.LeadAssignment;
+using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 
@@ -39,7 +42,7 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var userRole = new UserRole
+            var userRole = new Domain.Models.UserRole
             {
                 UserId = userId,
                 RoleId = role.Id

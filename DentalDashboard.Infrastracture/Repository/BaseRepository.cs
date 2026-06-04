@@ -28,6 +28,10 @@ namespace DentalDashboard.Infrastracture.Repository
         {
             return await DbSet.ToListAsync();
         }
+        public IQueryable<TEntity> GetAll()
+        {
+            return DbSet.AsQueryable();
+        }
 
         public async Task<PaginatedResult<TEntity>> GetPagedAsync(
             int pageNumber,

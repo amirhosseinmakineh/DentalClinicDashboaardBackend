@@ -1,15 +1,23 @@
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Auth;
+using DentalDashboard.ApplicationService.Contract.Requests.Role;
+using DentalDashboard.ApplicationService.Contract.Requests.Role.Queries;
 using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.CreateUser;
 using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.DeleteUser;
 using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.UpddateUser;
 using DentalDashboard.ApplicationService.Contract.Requests.User.Queries.User;
 using DentalDashboard.ApplicationService.Contract.Responses;
+using DentalDashboard.ApplicationService.Contract.Responses.RoleResponse;
 using DentalDashboard.ApplicationService.Contract.Responses.Users;
 using DentalDashboard.ApplicationService.Handlers.CommandHandlers.Auth;
+using DentalDashboard.ApplicationService.Handlers.CommandHandlers.Role;
 using DentalDashboard.ApplicationService.Handlers.CommandHandlers.User;
+using DentalDashboard.ApplicationService.Handlers.QueryHandlers.Role;
 using DentalDashboard.ApplicationService.Handlers.QueryHandlers.User;
 using DentalDashboard.ApplicationService.Services;
+using DentalDashboard.BackgroundServices;
+using DentalDashboard.Domain.DomainServices;
+using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
@@ -45,9 +53,18 @@ builder.Services.AddTransient<ICommandHandler<LoginCommand,object>,LoginCommandH
 builder.Services.AddTransient<ICommandHandler<CreateUserCommand,object>,CreateUserCommandHandler>();
 builder.Services.AddTransient<ICommandHandler<UpdateUserCommand>,UpdateUserCommandHandler>();
 builder.Services.AddTransient<ICommandHandler<DeleteUserCommand,object>,DeleteUserCommandHandler>();
+builder.Services.AddTransient<ICommandHandler<CreateRoleCommand>,CreateRoleCommandHandler>();
+builder.Services.AddTransient<ICommandHandler<UpdateRoleCommaand>,UpdateRoleCommandHandler>();
+builder.Services.AddTransient<ICommandHandler<DeleteRoleCommaand>,DeleteRoleCommandHnadler>();
 builder.Services.AddTransient<IQueryHandler<GetUsersQuery, PaginatedResult<UserItemResponse>>,GetUsersQueryHandler>();
+builder.Services.AddTransient<IQueryHandler<GetRolesQuery, PaginatedResult<RoleItemsResponse>>,GetRolesQueryHandler>();
 builder.Services.AddTransient<ITokenGenerator,TokenGenerator>();
 builder.Services.AddScoped<IQueryDispatcher, QueryDispatcher>();
+builder.Services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>();
+builder.Services.AddScoped<ILeadAssignmentStrategy,ScoreBasedRoundRobinLeadAssignmentStrategy>();
+builder.Services.AddScoped<IOfflineLeadAssignmentStrategy,OfflineLeadAssignmentStrategy>();
+builder.Services.AddScoped<IConsultantProfileService,ConsultantProfileService>();
+builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
 
 builder.Services.AddInfrastructure(
     builder.Configuration);

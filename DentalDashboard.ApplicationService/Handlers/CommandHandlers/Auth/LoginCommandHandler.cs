@@ -25,9 +25,7 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, object>
         this.roleRepository = roleRepository;
     }
 
-    public async Task<Result<object>> HandleAsync(
-        LoginCommand command,
-        CancellationToken cancellationToken = default)
+    public async Task<Result<object>> HandleAsync(LoginCommand command, CancellationToken cancellationToken = default)
     {
         var users = await userRepository.GetAllAsync();
 

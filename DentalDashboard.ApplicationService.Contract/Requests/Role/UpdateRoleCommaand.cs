@@ -7,3 +7,4 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Role
         public long RoleId { get; set; }
         public string RoleName { get; set; } = default!;
     }
+}

@@ -1,39 +1,57 @@
 ﻿using DentalDashboard.Domain.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace DentalDashboard.Domain.DomainServices
 {
     public class OfflineLeadAssignmentStrategy : IOfflineLeadAssignmentStrategy
     {
-        public void Assign(IList<LeadAssignment> leads,IList<ConsultantProfile> consultants)
+        private const int DefaultBatchSize = 5; 
+        public void Assign(IList<LeadAssignment> leads, IList<ConsultantProfile> consultants)
         {
             if (leads == null || !leads.Any())
                 return;
 
             if (consultants == null || !consultants.Any())
-                throw new InvalidOperationException("هیچ مشاور آنلاینی برای تخصیص صف آفلاین وجود ندارد.");
+                throw new InvalidOperationException("هیچ مشاوری برای تخصیص صف آفلاین وجود ندارد.");
 
             var availableConsultants = consultants
-                .Where(x =>
-                    !x.IsDeleted &&
-                    x.IsCompleteProfile &&
-                    x.IsAvailable &&
-                    x.IsOnline)
+                .Where(x => !x.IsDeleted && x.IsCompleteProfile && x.IsAvailable)
                 .OrderBy(x => x.Id)
                 .ToList();
 
             if (!availableConsultants.Any())
-                throw new InvalidOperationException("هیچ مشاور آنلاینی برای تخصیص صف آفلاین وجود ندارد.");
+                throw new InvalidOperationException("هیچ مشاوری برای تخصیص صف آفلاین وجود ندارد.");
 
-            for (int i = 0; i < leads.Count; i++)
+            var unassignedLeads = leads
+                .Where(l => l.ConsultantProfileId == null)
+                .ToList();
+
+            if (!unassignedLeads.Any())
+                return;
+
+            int leadIndex = 0;
+
+            foreach (var consultant in availableConsultants)
             {
-                var consultant = availableConsultants[i % availableConsultants.Count];
+                int assignCount = Math.Min(DefaultBatchSize, unassignedLeads.Count - leadIndex);
 
-                leads[i].ConsultantProfileId = consultant.Id;
-                leads[i].AssignedAt = DateTime.Now;
-                leads[i].LeadAssignmentState = LeadAssignmentState.Assigned;
+                for (int i = 0; i < assignCount; i++)
+                {
+                    var lead = unassignedLeads[leadIndex];
 
-                leads[i].RequiresThreeMinuteCall = false;
-                leads[i].CallDeadlineAt = null;
+                    lead.ConsultantProfileId = consultant.Id;
+                    lead.AssignedAt = DateTime.Now;
+                    lead.LeadAssignmentState = LeadAssignmentState.Assigned;
+                    lead.RequiresThreeMinuteCall = false;
+                    lead.CallDeadlineAt = null;
+
+                    leadIndex++;
+                }
+
+                if (leadIndex >= unassignedLeads.Count)
+                    break;
             }
         }
     }

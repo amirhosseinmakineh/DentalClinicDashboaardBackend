@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="Requests\Consultant\CompleteConsultantProfileCommand.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DentalDashboard.Domain\DentalDashboard.Domain.csproj" />
   </ItemGroup>
 

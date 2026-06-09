@@ -1,9 +1,10 @@
-﻿using DentalDashboard.Domain.Enums;
+﻿using DentalDashboard.ApplicationService.Contract.Responses.User;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.User.Commands.UpddateUser
 {
-    public class UpdateUserCommand : ICommand
+    public class UpdateUserCommand : ICommand<UpdateUserResponse>
     {
         public Guid Id { get; set; }
         public string FirstName { get; set; } = default!;

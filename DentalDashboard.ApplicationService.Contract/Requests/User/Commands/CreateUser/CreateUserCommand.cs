@@ -1,11 +1,12 @@
-﻿using DentalDashboard.Domain.Enums;
+﻿using DentalDashboard.ApplicationService.Contract.Responses.User;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.User.Commands.CreateUser
 {
-    public class CreateUserCommand : ICommand<object>
+    public class CreateUserCommand : ICommand<CreateUserResponse>
     {
         public string FirstName { get; set; } = default!;
 

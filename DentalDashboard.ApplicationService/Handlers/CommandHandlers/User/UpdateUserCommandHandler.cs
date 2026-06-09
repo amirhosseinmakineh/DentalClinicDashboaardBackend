@@ -1,12 +1,13 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.UpddateUser;
+using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 {
-    public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand>
+    public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand,UpdateUserResponse>
     {
         private readonly IUserRepository userRepository;
         private readonly IUnitOfWork unitOfWork;
@@ -22,7 +23,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
             this.roleService = roleService;
         }
 
-        public async Task<Result> HandleAsync(
+        public async Task<Result<UpdateUserResponse>> HandleAsync(
             UpdateUserCommand command,
             CancellationToken cancellationToken = default)
         {
@@ -35,7 +36,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 if (user == null)
                 {
                     await unitOfWork.RollbackAsync();
-                    return Result.Failure("کاربر یافت نشد");
+                    return Result<UpdateUserResponse>.Failure("کاربر یافت نشد");
                 }
 
                 user.FirstName = command.FirstName;
@@ -52,8 +53,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 await userRepository.SaveChange();
                 await unitOfWork.CommitAsync();
-
-                return Result.Success("ویرایش کاربر با موفقیت انجام شد");
+                var response = new UpdateUserResponse()
+                {
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    IsActive = user.IsActive,
+                    RoleName = command.RoleName
+                };
+                return Result<UpdateUserResponse>.Success(response,"ویرایش کاربر با موفقیت انجام شد");
             }
             catch
             {

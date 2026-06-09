@@ -24,6 +24,7 @@ namespace DentalDashboard.Security.Generator
 
             var claims = new List<Claim>()
             {
+                new Claim("Id",user.Id.ToString()),
                 new Claim("FirstName", user.FirstName),
                 new Claim("LastName", user.LastName),
                 new Claim("PhoneNumber",user.PhoneNumber),

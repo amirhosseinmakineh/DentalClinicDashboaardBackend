@@ -13,17 +13,17 @@ namespace DentalDashboard.BackgroundServices
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            //while (!stoppingToken.IsCancellationRequested)
-            //{
-            //    using var scope = scopeFactory.CreateScope();
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                using var scope = scopeFactory.CreateScope();
 
-            //    var leadAssignmentService =
-            //        scope.ServiceProvider.GetRequiredService<ILeadAssignmentService>();
+                var leadAssignmentService =
+                    scope.ServiceProvider.GetRequiredService<ILeadAssignmentService>();
 
-            //    await leadAssignmentService.AddLeadsAsync();
+                await leadAssignmentService.AddLeadsAsync();
 
-            //    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-            //}
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            }
         }
     }
 }

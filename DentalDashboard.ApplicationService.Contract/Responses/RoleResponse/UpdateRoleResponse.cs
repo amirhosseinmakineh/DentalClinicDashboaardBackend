@@ -1,6 +1,6 @@
 ﻿namespace DentalDashboard.ApplicationService.Contract.Responses.RoleResponse
 {
-    public record RoleItemsResponse : BaseResponse<long>
+    public record UpdateRoleResponse : BaseResponse<long>
     {
         public string RoleName { get; set; } = default!;
     }

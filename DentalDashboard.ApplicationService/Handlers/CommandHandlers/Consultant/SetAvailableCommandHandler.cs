@@ -1,5 +1,5 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
+using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;

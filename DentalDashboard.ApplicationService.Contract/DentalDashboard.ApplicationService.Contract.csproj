@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="Requests\Consultant\CompleteConsultantProfileCommand.cs" />
+    <None Include="Requests\Consultant\Commands\CompleteConsultantProfileCommand.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Requests.User.Queries.User;
 using DentalDashboard.ApplicationService.Contract.Responses;
-using DentalDashboard.ApplicationService.Contract.Responses.Users;
+using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 

@@ -1,4 +1,4 @@
-﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
+﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
 using DentalDashboard.Domain.Enums;

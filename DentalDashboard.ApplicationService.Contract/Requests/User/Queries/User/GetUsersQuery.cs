@@ -1,5 +1,5 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Responses;
-using DentalDashboard.ApplicationService.Contract.Responses.Users;
+using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 

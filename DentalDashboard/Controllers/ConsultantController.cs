@@ -1,4 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
+using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
+using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Http;

@@ -1,6 +1,6 @@
 ﻿using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
-namespace DentalDashboard.ApplicationService.Contract.Requests.Consultant
+namespace DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands
 {
     public class SetOnlineOfflineCommand : ICommand
     {

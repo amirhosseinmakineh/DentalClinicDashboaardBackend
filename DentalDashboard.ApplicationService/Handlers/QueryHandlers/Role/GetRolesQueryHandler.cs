@@ -1,7 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Requests.Role.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.RoleResponse;
-using DentalDashboard.ApplicationService.Contract.Responses.Users;
 using DentalDashboard.Domain.IRepositories;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Role
@@ -23,7 +22,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Role
             var roles = await roleRepository.GetAllAsync();
             if (!string.IsNullOrWhiteSpace(query.RoleName))
                 roles = roles.Where(x => x.RoleName == query.RoleName).ToList();
+
             var totalCount = roles.Count();
+
             var items = roles
                 .OrderByDescending(x => x.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
@@ -32,6 +33,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Role
                 {
                     RoleName = x.RoleName,
                 }).ToList();
+
             return new PaginatedResult<RoleItemsResponse>
             {
                 Items = items,

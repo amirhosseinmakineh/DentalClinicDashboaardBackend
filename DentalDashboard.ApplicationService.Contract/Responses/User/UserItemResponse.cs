@@ -1,4 +1,4 @@
-﻿namespace DentalDashboard.ApplicationService.Contract.Responses.Users
+﻿namespace DentalDashboard.ApplicationService.Contract.Responses.User
 {
     public class UserItemResponse
     {

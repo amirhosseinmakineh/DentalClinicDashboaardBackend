@@ -90,10 +90,8 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 var eligibleOnlineConsultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
                 var unassignedRealTimeLeads = await leadAssignmentRepository.CountUnassignedRealTimeLeadsAsync();
-                var activeAssignedRealTimeLeads = await leadAssignmentRepository.CountActiveAssignedRealTimeLeadsAsync();
-
                 realTimeCapacity = Math.Max(
-                    eligibleOnlineConsultants.Count - unassignedRealTimeLeads - activeAssignedRealTimeLeads,
+                    eligibleOnlineConsultants.Count - unassignedRealTimeLeads,
                     0);
             }
 

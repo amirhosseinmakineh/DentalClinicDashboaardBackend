@@ -74,14 +74,6 @@ namespace DentalDashboard.Infrastracture.Repository
                                  x.ConsultantProfileId == null);
         }
 
-        public Task<int> CountActiveAssignedRealTimeLeadsAsync()
-        {
-            return GetAll()
-                .CountAsync(x => x.AssignmentType == LeadAssignmentType.RealTime &&
-                                 x.LeadAssignmentState == LeadAssignmentState.Assigned &&
-                                 x.ReportSubmittedAt == null);
-        }
-
         public async Task<HashSet<long>> GetConsultantIdsWithPendingOfflineLeadsAsync(IEnumerable<long> consultantProfileIds)
         {
             var ids = consultantProfileIds.ToHashSet();

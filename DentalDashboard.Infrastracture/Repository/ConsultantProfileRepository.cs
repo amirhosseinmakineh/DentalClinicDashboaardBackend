@@ -45,21 +45,5 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ThenBy(x => x.Id)
                 .ToListAsync();
         }
-
-        public Task<List<Attendance>> GetConsultantAttendance(long profileId)
-        {
-            return GetAll()
-                .SelectMany(x=> x.Attendances)
-                .Where(x=> x.ConsultantProfileId == profileId)
-                .ToListAsync();
-        }
-
-        public Task<List<ScoreLog>> GetConsultantScoreLog(long profileId)
-        {
-            return GetAll()
-                .SelectMany (x=> x.ScoreLogs)
-                .Where(x=> x.ConsultantProfileId == profileId)
-                .ToListAsync();
-        }
     }
 }

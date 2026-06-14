@@ -4,6 +4,7 @@ using DentalDashboard.Infrastracture.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DentalDashboard.Infrastracture.Migrations
 {
     [DbContext(typeof(DentalContext))]
-    partial class DentalContextModelSnapshot : ModelSnapshot
+    [Migration("20260612085036_UpdateTableScoreLog")]
+    partial class UpdateTableScoreLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -81,9 +84,6 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<int>("CurrentScore")
-                        .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
@@ -322,14 +322,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("CallDeadlineAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("CallResult")
-                        .HasColumnType("int");
-
                     b.Property<long?>("ConsultantProfileId")
                         .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("ContactedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -352,12 +346,6 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Property<bool>("RequiresThreeMinuteCall")
                         .HasColumnType("bit");
-
-                    b.Property<string>("ReportDescription")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("ReportSubmittedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<bool>("SmsSent")
                         .HasColumnType("bit");

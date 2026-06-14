@@ -20,28 +20,28 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
             var pageNumber = query.PageNumber <= 0 ? 1 : query.PageNumber;
             var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
 
-            var users = await userRepository.GetAllAsync();
+            var users =  userRepository.GetAll();
 
             if (!string.IsNullOrWhiteSpace(query.FirstName))
-                users = users.Where(x => x.FirstName.Contains(query.FirstName)).ToList();
+                users = users.Where(x => x.FirstName.Contains(query.FirstName));
 
             if (!string.IsNullOrWhiteSpace(query.LastName))
-                users = users.Where(x => x.LastName.Contains(query.LastName)).ToList();
+                users = users.Where(x => x.LastName.Contains(query.LastName));
 
             if (!string.IsNullOrWhiteSpace(query.PhoneNumber))
-                users = users.Where(x => x.PhoneNumber.Contains(query.PhoneNumber)).ToList();
+                users = users.Where(x => x.PhoneNumber.Contains(query.PhoneNumber));
 
             if (!string.IsNullOrWhiteSpace(query.RoleName))
-                users = users.Where(x => x.UserRoles.Any(ur => ur.Role.RoleName.Contains(query.RoleName))).ToList();
+                users = users.Where(x => x.UserRoles.Any(ur => ur.Role.RoleName.Contains(query.RoleName)));
 
             if (query.Gender.HasValue)
-                users = users.Where(x => x.Gender == query.Gender.Value).ToList();
+                users = users.Where(x => x.Gender == query.Gender.Value);
 
             if (query.IsActive.HasValue)
-                users = users.Where(x => x.IsActive == query.IsActive.Value).ToList();
+                users = users.Where(x => x.IsActive == query.IsActive.Value);
 
             if (query.IsCompleteName.HasValue)
-                users = users.Where(x => x.IsCompleteProfile == query.IsCompleteName.Value).ToList();
+                users = users.Where(x => x.IsCompleteProfile == query.IsCompleteName.Value);
 
             var totalCount = users.Count();
 

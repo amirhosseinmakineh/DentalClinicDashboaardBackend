@@ -34,6 +34,8 @@ namespace DentalDashboard.Domain.Models
         public ConsultantProfile? ConsultantProfile { get; set; }
 
         public ICollection<UserRole> UserRoles { get; set; }
+        public ICollection<ScoreLog> ScoreLogs { get; set; }
+
 
         #endregion
     }

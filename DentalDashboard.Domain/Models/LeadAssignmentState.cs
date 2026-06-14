@@ -1,19 +1,16 @@
-﻿namespace DentalDashboard.Domain.Enums
+﻿public enum LeadAssignmentState
 {
-    public enum LeadAssignmentState
-    {
-        New = 1,
+    New = 1,
 
-        Assigned = 2,
+    Assigned = 2,
 
-        Contacted = 3,
+    Contacted = 3,
 
-        Pending = 4,
+    Pending = 4,
 
-        Converted = 5,
+    Converted = 5,
 
-        Expired = 6,
+    Expired = 6,
 
-        Rejected = 7
-    }
+    Rejected = 7
 }

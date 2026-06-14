@@ -43,5 +43,17 @@ namespace DentalDashboard.Utilities.Convertor
             int d = _pc.GetDayOfMonth(dt);
             return $"{y:0000}/{m:00}/{d:00}";
         }
+        public static string ToPersianDate(this DateOnly date)
+        {
+            var pc = new PersianCalendar();
+
+            return $"{pc.GetYear(date.ToDateTime(TimeOnly.MinValue)):0000}/" +
+                   $"{pc.GetMonth(date.ToDateTime(TimeOnly.MinValue)):00}/" +
+                   $"{pc.GetDayOfMonth(date.ToDateTime(TimeOnly.MinValue)):00}";
+        }
+        public static string ToPersianTime(this TimeOnly time)
+        {
+            return time.ToString("HH:mm");
+        }
     }
 }

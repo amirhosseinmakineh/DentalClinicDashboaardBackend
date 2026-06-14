@@ -41,7 +41,7 @@ public class UserController : ControllerBase
         return Ok(result);
     }
     [HttpDelete]
-    public async Task<IActionResult> DeleteUser(DeleteUserCommand command)
+    public async Task<IActionResult> DeleteUser([FromQuery]DeleteUserCommand command)
     {
         var result = await dispatcher.DispatchAsync(command);
         return Ok(result);

@@ -6,7 +6,14 @@ namespace DentalDashboard.Domain.IRepositories
 {
     public interface ILeadAssignmentRepository : IBaseRepository<long, LeadAssignment>
     {
-        public Task<List<LeadAssignment>> GetPendingOfflineQueueAsync();
+        Task<List<LeadAssignment>> GetPendingOfflineQueueAsync();
         Task<bool> HasPendingOfflineLeadsAsync(long consultantProfileId);
+        Task<List<LeadAssignment>> GetPendingOfflineLeadsAsync(int take);
+        Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take);
+        Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now);
+        Task<int> CountUnassignedRealTimeLeadsAsync();
+        Task<HashSet<long>> GetConsultantIdsWithPendingOfflineLeadsAsync(IEnumerable<long> consultantProfileIds);
+        Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers);
+        Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId);
     }
 }

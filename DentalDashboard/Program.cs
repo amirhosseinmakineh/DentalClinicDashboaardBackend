@@ -65,6 +65,7 @@ builder.Services.AddTransient<ICommandHandler<DeleteRoleCommaand>,DeleteRoleComm
 builder.Services.AddTransient<IQueryHandler<GetUsersQuery, PaginatedResult<UserItemResponse>>,GetUsersQueryHandler>();
 builder.Services.AddTransient<ICommandHandler<SetOnlineOfflineCommand>,SetOnlineOfflineCommandHandler>();
 builder.Services.AddTransient<ICommandHandler<SetAvailableCommand>,SetAvailableCommandHandler>();
+builder.Services.AddTransient<ICommandHandler<SubmitLeadCallReportCommand>, SubmitLeadCallReportCommandHandler>();
 builder.Services.AddTransient<IQueryHandler<GetRolesQuery, PaginatedResult<RoleItemsResponse>>,GetRolesQueryHandler>();
 builder.Services.AddTransient<ITokenGenerator,TokenGenerator>();
 builder.Services.AddScoped<IQueryDispatcher, QueryDispatcher>();
@@ -76,6 +77,7 @@ builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
 builder.Services.AddTransient<ICommandHandler<CompleteConsultantProfileCommand,long>, CompleteConsaltantProfileHandler>();
 builder.Services.AddTransient<IQueryHandler<GetLeadsQuery, PaginatedResult<LeadsAssignmentItemsResponse>>,GetLeadsAssignmentQueryHandler>();
 builder.Services.AddScoped<ILeadDomainService, LeadDomainService>();
+builder.Services.AddScoped<ILeadReportDomainService, LeadReportDomainService>();
 builder.Services.AddInfrastructure(
     builder.Configuration);
 

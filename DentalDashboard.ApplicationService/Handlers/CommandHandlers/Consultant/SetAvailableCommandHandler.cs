@@ -1,6 +1,4 @@
-﻿using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
-using DentalDashboard.Domain.IDomainService;
+﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -11,14 +9,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
     public class SetAvailableCommandHandler : ICommandHandler<SetAvailableCommand>
     {
         private readonly IConsultantProfileRepository consultantProfileRepository;
-        private readonly ILeadAssignmentService leadAssignmentService;
-
         public SetAvailableCommandHandler(
-            IConsultantProfileRepository consultantProfileRepository,
-            ILeadAssignmentService leadAssignmentService)
+            IConsultantProfileRepository consultantProfileRepository)
         {
             this.consultantProfileRepository = consultantProfileRepository;
-            this.leadAssignmentService = leadAssignmentService;
         }
 
         public async Task<Result> HandleAsync(SetAvailableCommand command,CancellationToken cancellationToken = default)

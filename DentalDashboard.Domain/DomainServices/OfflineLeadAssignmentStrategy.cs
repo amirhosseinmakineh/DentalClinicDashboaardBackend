@@ -18,7 +18,8 @@ namespace DentalDashboard.Domain.DomainServices
 
             var availableConsultants = consultants
                 .Where(x => !x.IsDeleted && x.IsCompleteProfile && x.IsAvailable)
-                .OrderBy(x => x.Id)
+                .OrderByDescending(x => x.CurrentScore)
+                .ThenBy(x => x.Id)
                 .ToList();
 
             if (!availableConsultants.Any())
@@ -44,6 +45,7 @@ namespace DentalDashboard.Domain.DomainServices
                     lead.ConsultantProfileId = consultant.Id;
                     lead.AssignedAt = DateTime.Now;
                     lead.LeadAssignmentState = LeadAssignmentState.Assigned;
+                    lead.AssignmentType = LeadAssignmentType.OfflineQueue;
                     lead.RequiresThreeMinuteCall = false;
                     lead.CallDeadlineAt = null;
 

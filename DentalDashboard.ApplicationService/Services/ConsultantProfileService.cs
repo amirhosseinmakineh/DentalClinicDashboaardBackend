@@ -1,6 +1,4 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.Domain.DomainServices;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 
@@ -10,13 +8,15 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly IConsultantProfileRepository repository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
-        private readonly ILeadAssignmentStrategy leadAssignmentStrategy;
         private readonly IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy;
-        public ConsultantProfileService(IConsultantProfileRepository repository, ILeadAssignmentRepository leadAssignmentRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy)
+
+        public ConsultantProfileService(
+            IConsultantProfileRepository repository,
+            ILeadAssignmentRepository leadAssignmentRepository,
+            IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy)
         {
             this.repository = repository;
             this.leadAssignmentRepository = leadAssignmentRepository;
-            this.leadAssignmentStrategy = leadAssignmentStrategy;
             this.offlineLeadAssignmentStrategy = offlineLeadAssignmentStrategy;
         }
 
@@ -56,38 +56,18 @@ namespace DentalDashboard.ApplicationService.Services
 
             await repository.SaveChange();
         }
+
         public async Task AssignOfflineQueueAsync()
         {
-            var offlineLeads = await leadAssignmentRepository
-                .GetPendingOfflineQueueAsync();
+            var consultants = await repository.GetAvailableConsultantsForOfflineAssignmentAsync();
+            if (!consultants.Any())
+                return;
 
-            var leads = offlineLeads.ToList();
-
+            var leads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(consultants.Count * 5);
             if (!leads.Any())
                 return;
 
-            var consultants = await repository.GetAvailableConsultantsAsync();
-
-            var presentConsultants = consultants
-                .Where(x => x.IsAvailable)
-                .ToList();
-
-            if (!presentConsultants.Any())
-                return;
-
-            offlineLeadAssignmentStrategy.Assign(
-                leads,
-                presentConsultants
-            );
-
-            foreach (var lead in leads)
-            {
-                lead.LeadAssignmentState = LeadAssignmentState.Assigned;
-                lead.AssignedAt = DateTime.Now;
-                lead.RequiresThreeMinuteCall = false;
-                lead.CallDeadlineAt = null;
-            }
-
+            offlineLeadAssignmentStrategy.Assign(leads, consultants);
             await leadAssignmentRepository.SaveChange();
         }
 
@@ -104,28 +84,20 @@ namespace DentalDashboard.ApplicationService.Services
             if (!consultant.IsCompleteProfile)
                 throw new InvalidOperationException("پروفایل مشاور کامل نیست.");
 
-            if (!consultant.IsAvailable)
-                throw new InvalidOperationException("مشاور فعال نیست.");
-
             if (isPresent)
             {
                 consultant.IsAvailable = true;
-                consultant.LastOnlineAt = DateTime.Now;
-
-                await repository.SaveChange();
-
-                await AssignOfflineQueueAsync();
+                consultant.WorkStartTime = DateTime.Now.TimeOfDay;
             }
             else
             {
                 consultant.IsAvailable = false;
-                consultant.LastOfflineAt = DateTime.Now;
-
                 consultant.IsOnline = false;
+                consultant.WorkEndTime = DateTime.Now.TimeOfDay;
                 consultant.LastOfflineAt = DateTime.Now;
-
-                await repository.SaveChange();
             }
+
+            await repository.SaveChange();
         }
     }
 }

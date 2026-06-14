@@ -1,5 +1,4 @@
-﻿using DentalDashboard.ApplicationService.Contract.Dtos.LeadAssignment;
-using DentalDashboard.Domain.Models;
+﻿using DentalDashboard.Domain.Models;
 
 namespace DentalDashboard.ApplicationService.Contract.IServices
 {
@@ -7,7 +6,8 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
     {
         Task<LeadAssignment[]> LeadsListAsync();
         Task AddLeadsAsync();
-
-
+        Task AssignPendingOfflineLeadsAsync();
+        Task AssignRealTimeLeadsAsync();
+        Task ExpireOverdueRealTimeLeadsAsync();
     }
 }

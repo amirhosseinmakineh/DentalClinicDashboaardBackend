@@ -14,7 +14,8 @@ namespace DentalDashboard.Domain.DomainServices
                 throw new InvalidOperationException("هیچ مشاور فعالی برای تخصیص لید وجود ندارد.");
 
             var sortedConsultants = consultants
-                .OrderByDescending(x => x.ScoreLogs.Sum(s => s.ScoreValue))
+                .OrderByDescending(x => x.CurrentScore)
+                .ThenBy(x => x.Id)
                 .ToList();
 
             for (int i = 0; i < leads.Count; i++)
@@ -24,6 +25,9 @@ namespace DentalDashboard.Domain.DomainServices
                 leads[i].ConsultantProfileId = consultant.Id;
                 leads[i].AssignedAt = DateTime.Now;
                 leads[i].LeadAssignmentState = LeadAssignmentState.Assigned;
+                leads[i].AssignmentType = LeadAssignmentType.RealTime;
+                leads[i].RequiresThreeMinuteCall = true;
+                leads[i].CallDeadlineAt = leads[i].AssignedAt.Value.AddMinutes(3);
             }
         }
     }

@@ -2,34 +2,115 @@
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Infrastracture.Repository
 {
-    public class LeadAssignmentRepository : BaseRepository<long, LeadAssignment> , ILeadAssignmentRepository
+    public class LeadAssignmentRepository : BaseRepository<long, LeadAssignment>, ILeadAssignmentRepository
     {
         public LeadAssignmentRepository(DentalContext context) : base(context)
         {
         }
 
-        public async Task<List<LeadAssignment>> GetPendingOfflineQueueAsync()
+        public Task<List<LeadAssignment>> GetPendingOfflineQueueAsync()
         {
-            return  GetAll()
-                .Where(x =>
-                 x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                 x.LeadAssignmentState == LeadAssignmentState.Pending)
-                    .ToList();
+            return GetPendingOfflineLeadsAsync(100);
         }
 
-        public async Task<bool> HasPendingOfflineLeadsAsync(long consultantProfileId)
+        public Task<List<LeadAssignment>> GetPendingOfflineLeadsAsync(int take)
         {
-            {
-                return  GetAll()
-                    .Any(x =>
-                        x.ConsultantProfileId == consultantProfileId &&
-                        x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                        x.LeadAssignmentState == LeadAssignmentState.Assigned);
-            }
+            return GetAll()
+                .Where(x => x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                            x.LeadAssignmentState == LeadAssignmentState.Pending &&
+                            x.ConsultantProfileId == null)
+                .OrderBy(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .Take(take)
+                .ToListAsync();
+        }
+
+        public Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take)
+        {
+            return GetAll()
+                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime &&
+                            x.LeadAssignmentState == LeadAssignmentState.New &&
+                            x.ConsultantProfileId == null)
+                .OrderBy(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .Take(take)
+                .ToListAsync();
+        }
+
+        public Task<bool> HasPendingOfflineLeadsAsync(long consultantProfileId)
+        {
+            return GetAll()
+                .AnyAsync(x => x.ConsultantProfileId == consultantProfileId &&
+                               x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                               x.ReportSubmittedAt == null &&
+                               x.LeadAssignmentState != LeadAssignmentState.Converted &&
+                               x.LeadAssignmentState != LeadAssignmentState.Rejected &&
+                               x.LeadAssignmentState != LeadAssignmentState.Expired);
+        }
+
+        public Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now)
+        {
+            return GetAll()
+                .Include(x => x.ConsultantProfile)
+                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime &&
+                            x.RequiresThreeMinuteCall &&
+                            x.LeadAssignmentState == LeadAssignmentState.Assigned &&
+                            x.ReportSubmittedAt == null &&
+                            x.CallDeadlineAt != null &&
+                            x.CallDeadlineAt < now)
+                .ToListAsync();
+        }
+
+
+        public Task<int> CountUnassignedRealTimeLeadsAsync()
+        {
+            return GetAll()
+                .CountAsync(x => x.AssignmentType == LeadAssignmentType.RealTime &&
+                                 x.LeadAssignmentState == LeadAssignmentState.New &&
+                                 x.ConsultantProfileId == null);
+        }
+
+        public async Task<HashSet<long>> GetConsultantIdsWithPendingOfflineLeadsAsync(IEnumerable<long> consultantProfileIds)
+        {
+            var ids = consultantProfileIds.ToHashSet();
+            if (!ids.Any())
+                return new HashSet<long>();
+
+            return (await GetAll()
+                    .Where(x => x.ConsultantProfileId.HasValue &&
+                                ids.Contains(x.ConsultantProfileId.Value) &&
+                                x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                                x.ReportSubmittedAt == null &&
+                                x.LeadAssignmentState != LeadAssignmentState.Converted &&
+                                x.LeadAssignmentState != LeadAssignmentState.Rejected &&
+                                x.LeadAssignmentState != LeadAssignmentState.Expired)
+                    .Select(x => x.ConsultantProfileId!.Value)
+                    .Distinct()
+                    .ToListAsync())
+                .ToHashSet();
+        }
+
+        public async Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers)
+        {
+            var phones = phoneNumbers.Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet();
+            if (!phones.Any())
+                return new HashSet<string>();
+
+            return (await GetAll()
+                    .Where(x => phones.Contains(x.PhoneNumber))
+                    .Select(x => x.PhoneNumber)
+                    .ToListAsync())
+                .ToHashSet();
+        }
+
+        public Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId)
+        {
+            return GetAll()
+                .FirstOrDefaultAsync(x => x.Id == leadAssignmentId && x.ConsultantProfileId == consultantProfileId);
         }
     }
-
 }

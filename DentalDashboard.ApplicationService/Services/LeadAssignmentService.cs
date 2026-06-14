@@ -1,9 +1,7 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.Domain.DomainServices;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
-using DentalDashboard.Utilities.Convertor;
 using HtmlAgilityPack;
 using System.Net;
 
@@ -54,20 +52,11 @@ namespace DentalDashboard.ApplicationService.Services
                 string userName = Clean(cells[2].InnerText);
                 string phoneNumber = Clean(cells[3].InnerText);
 
-                var now = DateTime.Now.TimeOfDay;
-
-                bool isNightTime = now >= TimeSpan.FromHours(21) || now < TimeSpan.FromHours(9);
-
-
                 leads.Add(new LeadAssignment
                 {
                     UserName = userName,
                     PhoneNumber = phoneNumber,
-                    CreatedAt = DateTime.Now,
-
-                    LeadAssignmentState = isNightTime
-                    ? LeadAssignmentState.Pending
-                    : LeadAssignmentState.New
+                    CreatedAt = DateTime.Now
                 });
             }
 
@@ -85,64 +74,135 @@ namespace DentalDashboard.ApplicationService.Services
         public async Task AddLeadsAsync()
         {
             var now = DateTime.Now;
-
-            var oldLeads = await leadAssignmentRepository.GetAllAsync();
             var updatedLeads = await LeadsListAsync();
-            var newLeads = leadDomainService.GetNewLeads(oldLeads, updatedLeads).ToList();
-            var consultants = await consultantProfileRepository.GetAvailableConsultantsAsync();
-            var presentConsultants = consultants
-                .Where(x => !x.IsDeleted &&
-                            x.IsCompleteProfile &&
-                            x.IsAvailable)
-                .OrderBy(x => x.Id)
+            var existingPhoneNumbers = await leadAssignmentRepository.GetExistingPhoneNumbersAsync(
+                updatedLeads.Select(x => x.PhoneNumber));
+
+            var newLeads = updatedLeads
+                .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
                 .ToList();
 
-            // 3️⃣ لیدهای OfflineQueue که از شب قبل تا الان اومدن
-            var pendingOfflineLeads = (await leadAssignmentRepository.GetAllAsync())
-                .Where(x => x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                            x.LeadAssignmentState == LeadAssignmentState.Pending &&
-                            x.CreatedAt >= DateTime.Today.AddHours(-12)) 
-                .ToList();
+            if (!newLeads.Any())
+                return;
 
-            // 4️⃣ تقسیم OfflineQueue بین مشاوران حاضر
-            if (pendingOfflineLeads.Any() && presentConsultants.Any())
+            var realTimeCapacity = 0;
+            if (leadDomainService.IsWorkingTime(now))
             {
-                offlineLeadAssignmentStrategy.Assign(pendingOfflineLeads, presentConsultants);
-                await leadAssignmentRepository.SaveChange();
+                var eligibleOnlineConsultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
+                var unassignedRealTimeLeads = await leadAssignmentRepository.CountUnassignedRealTimeLeadsAsync();
+                realTimeCapacity = Math.Max(
+                    eligibleOnlineConsultants.Count - unassignedRealTimeLeads,
+                    0);
             }
 
-            // 5️⃣ پیدا کردن مشاوران آنلاین که تکلیف OfflineQueueهاشون مشخص شده
-            var onlineConsultants = consultants
-                .Where(x => x.IsOnline && !pendingOfflineLeads.Any(l => l.ConsultantProfileId == x.Id && l.LeadAssignmentState == LeadAssignmentState.Pending))
-                .ToList();
-
-            // 6️⃣ تعیین AssignmentType برای لیدهای جدید
-            var assignmentType = leadDomainService.DetermineAssignmentType(now, onlineConsultants.Any());
-
-            // ست کردن فیلدهای عمومی لیدهای جدید
-            foreach (var lead in newLeads)
+            for (var i = 0; i < newLeads.Count; i++)
             {
+                var lead = newLeads[i];
                 lead.CreatedAt = now;
-                lead.AssignmentType = assignmentType;
-                lead.LeadAssignmentState = LeadAssignmentState.Pending;
-                lead.RequiresThreeMinuteCall = assignmentType == LeadAssignmentType.RealTime;
-                lead.CallDeadlineAt = assignmentType == LeadAssignmentType.RealTime ? now.AddMinutes(3) : null;
-            }
 
-            // 7️⃣ تقسیم RealTime به مشاوران آنلاین آماده
-            if (assignmentType == LeadAssignmentType.RealTime && onlineConsultants.Any())
-            {
-                leadAssignmentStrategy.Assign(newLeads, onlineConsultants);
-                foreach (var lead in newLeads)
+                if (i < realTimeCapacity)
                 {
-                    lead.LeadAssignmentState = LeadAssignmentState.Assigned;
-                    lead.AssignedAt = now;
+                    lead.AssignmentType = LeadAssignmentType.RealTime;
+                    lead.LeadAssignmentState = LeadAssignmentState.New;
+                    lead.RequiresThreeMinuteCall = true;
+                    lead.CallDeadlineAt = null;
+                }
+                else
+                {
+                    lead.AssignmentType = LeadAssignmentType.OfflineQueue;
+                    lead.LeadAssignmentState = LeadAssignmentState.Pending;
+                    lead.RequiresThreeMinuteCall = false;
+                    lead.CallDeadlineAt = null;
                 }
             }
 
-            // 8️⃣ ذخیره همه لیدها
             await leadAssignmentRepository.AddRangeAsync(newLeads);
             await leadAssignmentRepository.SaveChange();
+        }
+
+        public async Task AssignPendingOfflineLeadsAsync()
+        {
+            var consultants = await consultantProfileRepository.GetAvailableConsultantsForOfflineAssignmentAsync();
+            if (!consultants.Any())
+                return;
+
+            var pendingLeads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(consultants.Count * 5);
+            if (!pendingLeads.Any())
+                return;
+
+            offlineLeadAssignmentStrategy.Assign(pendingLeads, consultants);
+            await leadAssignmentRepository.SaveChange();
+        }
+
+        public async Task AssignRealTimeLeadsAsync()
+        {
+            var consultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
+            if (!consultants.Any())
+                return;
+
+            var leads = await leadAssignmentRepository.GetUnassignedRealTimeLeadsAsync(consultants.Count);
+            if (!leads.Any())
+                return;
+
+            leadAssignmentStrategy.Assign(leads, consultants);
+
+            var assignedLeadTimes = leads
+                .Where(l => l.ConsultantProfileId.HasValue)
+                .GroupBy(l => l.ConsultantProfileId!.Value)
+                .ToDictionary(g => g.Key, g => g.First().AssignedAt ?? DateTime.Now);
+
+            foreach (var consultant in consultants.Where(x => assignedLeadTimes.ContainsKey(x.Id)))
+            {
+                consultant.IsOnline = false;
+                consultant.LastOfflineAt = assignedLeadTimes[consultant.Id];
+            }
+
+            await leadAssignmentRepository.SaveChange();
+        }
+
+        public async Task ExpireOverdueRealTimeLeadsAsync()
+        {
+            var now = DateTime.Now;
+            var expiredLeads = await leadAssignmentRepository.GetExpiredRealTimeLeadsAsync(now);
+
+            var consultantIds = expiredLeads
+                .Where(x => x.ConsultantProfileId.HasValue)
+                .Select(x => x.ConsultantProfileId!.Value);
+            var consultantIdsWithPendingOfflineLeads =
+                await leadAssignmentRepository.GetConsultantIdsWithPendingOfflineLeadsAsync(consultantIds);
+            var isWorkingTime = leadDomainService.IsWorkingTime(now);
+
+            foreach (var lead in expiredLeads)
+            {
+                lead.LeadAssignmentState = LeadAssignmentState.Expired;
+
+                if (lead.ConsultantProfile != null)
+                {
+                    lead.ConsultantProfile.ScoreLogs.Add(new ScoreLog
+                    {
+                        ConsultantProfileId = lead.ConsultantProfile.Id,
+                        ScoreType = ScoreType.CallNotCompleted,
+                        ScoreValue = -10,
+                        Description = "عدم تماس در بازه سه دقیقه‌ای"
+                    });
+                    lead.ConsultantProfile.CurrentScore += -10;
+
+                    var hasPendingOfflineLeads = consultantIdsWithPendingOfflineLeads.Contains(lead.ConsultantProfile.Id);
+                    if (hasPendingOfflineLeads || !isWorkingTime)
+                    {
+                        lead.ConsultantProfile.IsOnline = false;
+                        lead.ConsultantProfile.LastOfflineAt = now;
+                    }
+                    else
+                    {
+                        lead.ConsultantProfile.IsOnline = true;
+                        lead.ConsultantProfile.LastOnlineAt = now;
+                    }
+                }
+            }
+
+            if (expiredLeads.Any())
+                await leadAssignmentRepository.SaveChange();
         }
 
     }

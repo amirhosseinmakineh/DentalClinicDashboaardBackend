@@ -20,5 +20,9 @@ public class LeadAssignment : BaseAuditableEntity<long>
     public bool RequiresThreeMinuteCall { get; set; }
     public bool NotificationSent { get; set; }
     public bool SmsSent { get; set; }
+    public string? ReportDescription { get; set; }
+    public DateTime? ReportSubmittedAt { get; set; }
+    public DateTime? ContactedAt { get; set; }
+    public LeadCallResult? CallResult { get; set; }
 
 }

@@ -18,13 +18,19 @@ namespace DentalDashboard.Domain.DomainServices
         }
         public LeadAssignmentType DetermineAssignmentType(DateTime now, bool hasOnlineConsultant)
         {
-            var isWorkingTime =
-                now.TimeOfDay >= TimeSpan.FromHours(9) &&
-                now.TimeOfDay < TimeSpan.FromHours(21);
-
-            return isWorkingTime && hasOnlineConsultant
+            return IsWorkingTime(now) && hasOnlineConsultant
                 ? LeadAssignmentType.RealTime
                 : LeadAssignmentType.OfflineQueue;
+        }
+        public bool IsWorkingTime(DateTime now)
+        {
+            return now.TimeOfDay >= TimeSpan.FromHours(9) &&
+                   now.TimeOfDay < TimeSpan.FromHours(21);
+        }
+
+        public bool IsNightTime(DateTime now)
+        {
+            return !IsWorkingTime(now);
         }
     }
 }

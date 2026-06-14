@@ -7,6 +7,8 @@ namespace DentalDashboard.Domain.IDomainService
     {
         IEnumerable<LeadAssignment> GetNewLeads(IEnumerable<LeadAssignment> oldNumbers, IEnumerable<LeadAssignment> newNumbers);
         LeadAssignmentType DetermineAssignmentType(DateTime now, bool hasOnlineConsultant);
+        bool IsWorkingTime(DateTime now);
+        bool IsNightTime(DateTime now);
     }
 
 }

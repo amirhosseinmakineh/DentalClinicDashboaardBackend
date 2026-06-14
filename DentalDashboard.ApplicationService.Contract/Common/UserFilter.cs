@@ -3,7 +3,7 @@ using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Contract.Common
 {
-    public class UserFilter : PaginatedRequest
+    public class UserFilter 
     {
         public string? Search { get; set; }
 

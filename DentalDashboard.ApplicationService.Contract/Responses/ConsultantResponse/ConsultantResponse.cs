@@ -1,4 +1,5 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Responses.Attendance;
+using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 
 namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse
 {

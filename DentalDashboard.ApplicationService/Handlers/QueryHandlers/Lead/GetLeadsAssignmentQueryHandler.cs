@@ -1,11 +1,11 @@
-﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
+﻿using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.ApplicationService.Contract.Responses;
-using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
+using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
-namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
+namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
 {
     public class GetLeadsAssignmentQueryHandler : IQueryHandler<GetLeadsQuery, PaginatedResult<LeadsAssignmentItemsResponse>>
     {

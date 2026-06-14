@@ -16,4 +16,8 @@
     <ProjectReference Include="..\DentalDashboard.Utilities\DentalDashboard.Utilities.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Handlers\QueryHandlers\ScoreLog\" />
+  </ItemGroup>
+
 </Project>

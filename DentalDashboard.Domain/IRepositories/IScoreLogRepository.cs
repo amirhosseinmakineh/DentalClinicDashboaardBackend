@@ -1,0 +1,9 @@
+﻿using DentalDashboard.Framwork.IRepositories;
+
+namespace DentalDashboard.Domain.IRepositories
+{
+    public interface IScoreLogRepository : IBaseRepository<long, ScoreLog>
+    {
+
+    }
+}

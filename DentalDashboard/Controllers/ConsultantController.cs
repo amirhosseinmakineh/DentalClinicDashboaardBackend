@@ -1,6 +1,7 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
+using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Http;
@@ -18,6 +19,12 @@ namespace DentalDashboard.Controllers
         {
             dispatcher = commandDispatcher;
             this.queryDispatcher = queryDispatcher;
+        }
+        [HttpGet("GetConsultants")]
+        public async Task<IActionResult> GetConsultants([FromQuery]GetConsultantQuery query)
+        {
+            var result = await queryDispatcher.DispatchAsync(query);
+            return Ok(result);
         }
 
         [HttpPost]

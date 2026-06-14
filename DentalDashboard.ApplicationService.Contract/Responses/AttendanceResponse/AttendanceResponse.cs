@@ -3,14 +3,11 @@
     public record AttendanceResponse : BaseResponse<long>
     {
 
-        public DateOnly AttendanceDate { get; set; }
-
-        public TimeOnly? CheckInTime { get; set; }
-
-        public TimeOnly? CheckOutTime { get; set; }
-
-        public AttendanceStatus Status { get; set; }
-        public string? Description { get; set; }
+        public string AttendanceDate { get; set; } = default!;
+        public string CheckInTime { get; set; } = default!;
+        public string CheckOutTime { get; set; } = default!;
+        public AttendanceStatus Status { get; set; } = default!;
+        public string? Description { get; set; } = default!;
 
     }
 }

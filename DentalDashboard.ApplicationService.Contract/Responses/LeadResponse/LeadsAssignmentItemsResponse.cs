@@ -1,6 +1,6 @@
 ﻿using DentalDashboard.Domain.Enums;
 
-namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse
+namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
 {
     public record LeadsAssignmentItemsResponse : BaseResponse<long>
     {

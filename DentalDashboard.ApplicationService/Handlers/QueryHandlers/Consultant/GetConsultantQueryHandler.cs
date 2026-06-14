@@ -86,7 +86,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             }
 
             consultants = consultants.OrderByDescending(x =>
-                x.ConsultantProfile.ScoreLogs.Sum(s => s.ScoreValue));
+                x.ConsultantProfile.CurrentScore);
             var totalCount = await consultants.CountAsync(cancellationToken);
 
             var result = await consultants

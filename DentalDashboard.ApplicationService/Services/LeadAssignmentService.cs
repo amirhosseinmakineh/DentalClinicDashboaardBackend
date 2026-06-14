@@ -85,10 +85,17 @@ namespace DentalDashboard.ApplicationService.Services
             if (!newLeads.Any())
                 return;
 
-            var eligibleOnlineConsultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
-            var realTimeCapacity = leadDomainService.IsWorkingTime(now)
-                ? eligibleOnlineConsultants.Count
-                : 0;
+            var realTimeCapacity = 0;
+            if (leadDomainService.IsWorkingTime(now))
+            {
+                var eligibleOnlineConsultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
+                var unassignedRealTimeLeads = await leadAssignmentRepository.CountUnassignedRealTimeLeadsAsync();
+                var activeAssignedRealTimeLeads = await leadAssignmentRepository.CountActiveAssignedRealTimeLeadsAsync();
+
+                realTimeCapacity = Math.Max(
+                    eligibleOnlineConsultants.Count - unassignedRealTimeLeads - activeAssignedRealTimeLeads,
+                    0);
+            }
 
             for (var i = 0; i < newLeads.Count; i++)
             {
@@ -141,13 +148,15 @@ namespace DentalDashboard.ApplicationService.Services
 
             leadAssignmentStrategy.Assign(leads, consultants);
 
-            foreach (var consultant in consultants.Where(x => leads.Any(l => l.ConsultantProfileId == x.Id)))
+            var assignedLeadTimes = leads
+                .Where(l => l.ConsultantProfileId.HasValue)
+                .GroupBy(l => l.ConsultantProfileId!.Value)
+                .ToDictionary(g => g.Key, g => g.First().AssignedAt ?? DateTime.Now);
+
+            foreach (var consultant in consultants.Where(x => assignedLeadTimes.ContainsKey(x.Id)))
             {
                 consultant.IsOnline = false;
-                consultant.LastOfflineAt = leads
-                    .Where(l => l.ConsultantProfileId == consultant.Id)
-                    .Select(l => l.AssignedAt)
-                    .FirstOrDefault() ?? DateTime.Now;
+                consultant.LastOfflineAt = assignedLeadTimes[consultant.Id];
             }
 
             await leadAssignmentRepository.SaveChange();
@@ -157,6 +166,13 @@ namespace DentalDashboard.ApplicationService.Services
         {
             var now = DateTime.Now;
             var expiredLeads = await leadAssignmentRepository.GetExpiredRealTimeLeadsAsync(now);
+
+            var consultantIds = expiredLeads
+                .Where(x => x.ConsultantProfileId.HasValue)
+                .Select(x => x.ConsultantProfileId!.Value);
+            var consultantIdsWithPendingOfflineLeads =
+                await leadAssignmentRepository.GetConsultantIdsWithPendingOfflineLeadsAsync(consultantIds);
+            var isWorkingTime = leadDomainService.IsWorkingTime(now);
 
             foreach (var lead in expiredLeads)
             {
@@ -173,8 +189,8 @@ namespace DentalDashboard.ApplicationService.Services
                     });
                     lead.ConsultantProfile.CurrentScore += -10;
 
-                    var hasPendingOfflineLeads = await leadAssignmentRepository.HasPendingOfflineLeadsAsync(lead.ConsultantProfile.Id);
-                    if (hasPendingOfflineLeads || !leadDomainService.IsWorkingTime(now))
+                    var hasPendingOfflineLeads = consultantIdsWithPendingOfflineLeads.Contains(lead.ConsultantProfile.Id);
+                    if (hasPendingOfflineLeads || !isWorkingTime)
                     {
                         lead.ConsultantProfile.IsOnline = false;
                         lead.ConsultantProfile.LastOfflineAt = now;

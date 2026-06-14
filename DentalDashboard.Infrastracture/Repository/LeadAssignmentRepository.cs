@@ -65,9 +65,49 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ToListAsync();
         }
 
+
+        public Task<int> CountUnassignedRealTimeLeadsAsync()
+        {
+            return GetAll()
+                .CountAsync(x => x.AssignmentType == LeadAssignmentType.RealTime &&
+                                 x.LeadAssignmentState == LeadAssignmentState.New &&
+                                 x.ConsultantProfileId == null);
+        }
+
+        public Task<int> CountActiveAssignedRealTimeLeadsAsync()
+        {
+            return GetAll()
+                .CountAsync(x => x.AssignmentType == LeadAssignmentType.RealTime &&
+                                 x.LeadAssignmentState == LeadAssignmentState.Assigned &&
+                                 x.ReportSubmittedAt == null);
+        }
+
+        public async Task<HashSet<long>> GetConsultantIdsWithPendingOfflineLeadsAsync(IEnumerable<long> consultantProfileIds)
+        {
+            var ids = consultantProfileIds.ToHashSet();
+            if (!ids.Any())
+                return new HashSet<long>();
+
+            return (await GetAll()
+                    .Where(x => x.ConsultantProfileId.HasValue &&
+                                ids.Contains(x.ConsultantProfileId.Value) &&
+                                x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                                x.ReportSubmittedAt == null &&
+                                x.LeadAssignmentState != LeadAssignmentState.Converted &&
+                                x.LeadAssignmentState != LeadAssignmentState.Rejected &&
+                                x.LeadAssignmentState != LeadAssignmentState.Expired)
+                    .Select(x => x.ConsultantProfileId!.Value)
+                    .Distinct()
+                    .ToListAsync())
+                .ToHashSet();
+        }
+
         public async Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers)
         {
             var phones = phoneNumbers.Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet();
+            if (!phones.Any())
+                return new HashSet<string>();
+
             return (await GetAll()
                     .Where(x => phones.Contains(x.PhoneNumber))
                     .Select(x => x.PhoneNumber)

@@ -37,7 +37,10 @@ namespace DentalDashboard.Infrastracture.Repository
                                                         l.ReportSubmittedAt == null &&
                                                         l.LeadAssignmentState != LeadAssignmentState.Converted &&
                                                         l.LeadAssignmentState != LeadAssignmentState.Rejected &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Expired))
+                                                        l.LeadAssignmentState != LeadAssignmentState.Expired) &&
+                            !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.RealTime &&
+                                                        l.LeadAssignmentState == LeadAssignmentState.Assigned &&
+                                                        l.ReportSubmittedAt == null))
                 .OrderByDescending(x => x.CurrentScore)
                 .ThenBy(x => x.Id)
                 .ToListAsync();

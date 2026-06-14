@@ -41,8 +41,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             if (!string.IsNullOrWhiteSpace(query.LastName))
                 baseQuery = baseQuery.Where(x => x.LastName.Contains(query.LastName));
 
-            baseQuery = baseQuery.OrderByDescending(x =>
-                x.ConsultantProfile.ScoreLogs.Sum(s => s.ScoreValue));
+            consultants = consultants.OrderByDescending(x =>
+                x.ConsultantProfile.CurrentScore);
+            var totalCount = await consultants.CountAsync(cancellationToken);
 
             var totalCount = await baseQuery.CountAsync(cancellationToken);
 

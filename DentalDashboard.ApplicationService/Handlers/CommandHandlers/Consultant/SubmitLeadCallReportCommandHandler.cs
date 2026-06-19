@@ -1,4 +1,5 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
+using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
@@ -7,7 +8,7 @@ using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 {
-    public class SubmitLeadCallReportCommandHandler : ICommandHandler<SubmitLeadCallReportCommand>
+    public class SubmitLeadCallReportCommandHandler : ICommandHandler<SubmitLeadCallReportCommand, SubmitLeadCallReportResponse>
     {
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly IConsultantProfileRepository consultantProfileRepository;
@@ -26,27 +27,27 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             this.leadDomainService = leadDomainService;
         }
 
-        public async Task<Result> HandleAsync(SubmitLeadCallReportCommand command, CancellationToken cancellationToken = default)
+        public async Task<Result<SubmitLeadCallReportResponse>> HandleAsync(SubmitLeadCallReportCommand command, CancellationToken cancellationToken = default)
         {
             var lead = await leadAssignmentRepository.GetByIdAndConsultantAsync(command.LeadAssignmentId, command.ConsultantProfileId);
             if (lead == null)
-                return Result.Failure("لید یافت نشد");
+                return Result<SubmitLeadCallReportResponse>.Failure("لید یافت نشد");
 
             var profile = await consultantProfileRepository.GetByIdAsync(command.ConsultantProfileId);
             if (profile == null)
-                return Result.Failure("مشاوری یافت نشد");
+                return Result<SubmitLeadCallReportResponse>.Failure("مشاوری یافت نشد");
 
             if (profile.IsDeleted)
-                return Result.Failure("پروفایل مشاور حذف شده است");
+                return Result<SubmitLeadCallReportResponse>.Failure("پروفایل مشاور حذف شده است");
 
             if (!profile.IsCompleteProfile)
-                return Result.Failure("پروفایل مشاور کامل نیست");
+                return Result<SubmitLeadCallReportResponse>.Failure("پروفایل مشاور کامل نیست");
 
             if (lead.LeadAssignmentState == LeadAssignmentState.Expired)
-                return Result.Failure("مهلت ثبت گزارش این لید به پایان رسیده است");
+                return Result<SubmitLeadCallReportResponse>.Failure("مهلت ثبت گزارش این لید به پایان رسیده است");
 
             if (lead.ReportSubmittedAt.HasValue)
-                return Result.Failure("گزارش این لید قبلا ثبت شده است");
+                return Result<SubmitLeadCallReportResponse>.Failure("گزارش این لید قبلا ثبت شده است");
 
             var now = DateTime.Now;
             lead.CallResult = command.CallResult;
@@ -63,7 +64,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 leadAssignmentRepository.Update(lead);
                 await leadAssignmentRepository.SaveChange();
-                return Result.Success("گزارش ثبت شد، اما هنوز لید آفلاین تعیین‌تکلیف‌نشده دارید");
+                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد، اما هنوز لید آفلاین تعیین‌تکلیف‌نشده دارید");
             }
 
             if (!leadDomainService.IsWorkingTime(now))
@@ -73,7 +74,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 leadAssignmentRepository.Update(lead);
                 await leadAssignmentRepository.SaveChange();
-                return Result.Success("گزارش ثبت شد، اما خارج از ساعت کاری هستید");
+                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد، اما خارج از ساعت کاری هستید");
             }
 
             profile.IsOnline = true;
@@ -82,7 +83,21 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             leadAssignmentRepository.Update(lead);
             await leadAssignmentRepository.SaveChange();
 
-            return Result.Success("گزارش ثبت شد و شما به صورت خودکار آنلاین شدید");
+            return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد و شما به صورت خودکار آنلاین شدید");
+        }
+
+        private static SubmitLeadCallReportResponse CreateResponse(LeadAssignment lead, ConsultantProfile profile)
+        {
+            return new SubmitLeadCallReportResponse
+            {
+                LeadAssignmentId = lead.Id,
+                ConsultantProfileId = profile.Id,
+                IsReportSubmitted = lead.ReportSubmittedAt.HasValue,
+                ReportSubmittedAt = lead.ReportSubmittedAt ?? DateTime.Now,
+                LeadAssignmentState = lead.LeadAssignmentState,
+                CallResult = lead.CallResult!.Value,
+                IsConsultantOnline = profile.IsOnline
+            };
         }
     }
 }

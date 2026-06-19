@@ -63,11 +63,19 @@ namespace DentalDashboard.ApplicationService.Services
             if (!consultants.Any())
                 return;
 
-            var leads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(consultants.Count * 5);
+            var dailyAssignedCounts = await leadAssignmentRepository.GetDailyAssignedOfflineLeadCountsAsync(
+                consultants.Select(x => x.Id),
+                DateTime.Now);
+            var totalRemainingDailyCapacity = consultants
+                .Sum(x => Math.Max(5 - dailyAssignedCounts.GetValueOrDefault(x.Id), 0));
+            if (totalRemainingDailyCapacity <= 0)
+                return;
+
+            var leads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(totalRemainingDailyCapacity);
             if (!leads.Any())
                 return;
 
-            offlineLeadAssignmentStrategy.Assign(leads, consultants);
+            offlineLeadAssignmentStrategy.Assign(leads, consultants, dailyAssignedCounts);
             await leadAssignmentRepository.SaveChange();
         }
 

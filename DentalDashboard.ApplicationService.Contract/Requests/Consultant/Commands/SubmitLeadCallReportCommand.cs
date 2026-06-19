@@ -1,9 +1,10 @@
+using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands
 {
-    public class SubmitLeadCallReportCommand : ICommand
+    public class SubmitLeadCallReportCommand : ICommand<SubmitLeadCallReportResponse>
     {
         public long LeadAssignmentId { get; set; }
         public long ConsultantProfileId { get; set; }

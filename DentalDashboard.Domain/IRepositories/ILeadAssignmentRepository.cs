@@ -15,5 +15,6 @@ namespace DentalDashboard.Domain.IRepositories
         Task<HashSet<long>> GetConsultantIdsWithPendingOfflineLeadsAsync(IEnumerable<long> consultantProfileIds);
         Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers);
         Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId);
+        Task<Dictionary<long, int>> GetDailyAssignedOfflineLeadCountsAsync(IEnumerable<long> consultantProfileIds, DateTime day);
     }
 }

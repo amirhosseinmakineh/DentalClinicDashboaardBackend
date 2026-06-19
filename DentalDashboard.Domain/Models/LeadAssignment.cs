@@ -1,4 +1,4 @@
-﻿using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
 
 public class LeadAssignment : BaseAuditableEntity<long>
@@ -19,9 +19,5 @@ public class LeadAssignment : BaseAuditableEntity<long>
     public DateTime? ContactedAt { get; set; }
     public LeadCallResult? CallResult { get; set; }
     public bool SmsSent { get; set; }
-    public string? ReportDescription { get; set; }
-    public DateTime? ReportSubmittedAt { get; set; }
-    public DateTime? ContactedAt { get; set; }
-    public LeadCallResult? CallResult { get; set; }
 
 }

@@ -63,7 +63,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 leadAssignmentRepository.Update(lead);
                 await leadAssignmentRepository.SaveChange();
-                return Result.Success("گزارش ثبت شد، اما به دلیل داشتن لید آفلاین، ابتدا باید آن‌ها را تعیین تکلیف کنید");
+                return Result.Success("گزارش ثبت شد، اما هنوز لید آفلاین تعیین‌تکلیف‌نشده دارید");
             }
 
             if (!leadDomainService.IsWorkingTime(now))

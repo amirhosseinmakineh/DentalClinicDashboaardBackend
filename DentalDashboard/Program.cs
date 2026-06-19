@@ -74,6 +74,7 @@ builder.Services.AddTransient<IQueryHandler<GetUsersQuery, PaginatedResult<UserI
 builder.Services.AddTransient<ICommandHandler<SetOnlineOfflineCommand>,SetOnlineOfflineCommandHandler>();
 builder.Services.AddTransient<ICommandHandler<SetAvailableCommand>,SetAvailableCommandHandler>();
 builder.Services.AddTransient<ICommandHandler<SubmitLeadCallReportCommand>, SubmitLeadCallReportCommandHandler>();
+builder.Services.AddTransient<ICommandHandler<ScoreLogCommand>, AdminScoreLogCommandHandler>();
 builder.Services.AddTransient<IQueryHandler<GetRolesQuery, PaginatedResult<RoleItemsResponse>>,GetRolesQueryHandler>();
 builder.Services.AddTransient<IQueryHandler<GetConsultantQuery, PaginatedResult<ConsultantResponse>>,GetConsultantQueryHandler>();
 builder.Services.AddTransient<IQueryHandler<GetAttendancesQuery, PaginatedResult<AttendanceResponse>>,GetConsultantAttendanceCommandHandler>();

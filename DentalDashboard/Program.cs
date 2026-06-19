@@ -106,7 +106,7 @@ builder.Services.AddTransient<ICommandHandler<DeleteRoleCommaand>,DeleteRoleComm
 builder.Services.AddTransient<IQueryHandler<GetUsersQuery, PaginatedResult<UserItemResponse>>,GetUsersQueryHandler>();
 builder.Services.AddTransient<ICommandHandler<SetOnlineOfflineCommand>,SetOnlineOfflineCommandHandler>();
 builder.Services.AddTransient<ICommandHandler<SetAvailableCommand>,SetAvailableCommandHandler>();
-builder.Services.AddTransient<ICommandHandler<SubmitLeadCallReportCommand>, SubmitLeadCallReportCommandHandler>();
+builder.Services.AddTransient<ICommandHandler<SubmitLeadCallReportCommand, SubmitLeadCallReportResponse>, SubmitLeadCallReportCommandHandler>();
 builder.Services.AddTransient<ICommandHandler<ScoreLogCommand>, AdminScoreLogCommandHandler>();
 builder.Services.AddTransient<IQueryHandler<GetRolesQuery, PaginatedResult<RoleItemsResponse>>,GetRolesQueryHandler>();
 builder.Services.AddTransient<IQueryHandler<GetConsultantQuery, PaginatedResult<ConsultantResponse>>,GetConsultantQueryHandler>();

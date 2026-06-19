@@ -112,5 +112,27 @@ namespace DentalDashboard.Infrastracture.Repository
             return GetAll()
                 .FirstOrDefaultAsync(x => x.Id == leadAssignmentId && x.ConsultantProfileId == consultantProfileId);
         }
+
+        public async Task<Dictionary<long, int>> GetDailyAssignedOfflineLeadCountsAsync(IEnumerable<long> consultantProfileIds, DateTime day)
+        {
+            var ids = consultantProfileIds.ToHashSet();
+            if (!ids.Any())
+                return new Dictionary<long, int>();
+
+            var startOfDay = day.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            return await GetAll()
+                .Where(x => x.ConsultantProfileId.HasValue &&
+                            ids.Contains(x.ConsultantProfileId.Value) &&
+                            x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                            x.AssignedAt.HasValue &&
+                            x.AssignedAt.Value >= startOfDay &&
+                            x.AssignedAt.Value < endOfDay)
+                .GroupBy(x => x.ConsultantProfileId!.Value)
+                .Select(g => new { ConsultantProfileId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ConsultantProfileId, x => x.Count);
+        }
+
     }
 }

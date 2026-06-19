@@ -11,7 +11,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
         private readonly IUserRepository userRepository;
         private readonly IConsultantProfileRepository consultantProfileRepository;
 
-        public GetConsultantQueryHandler(IUserRepository userRepository, IConsultantProfileRepository consultantProfileRepository)
+        public GetConsultantQueryHandler(
+            IUserRepository userRepository,
+            IConsultantProfileRepository consultantProfileRepository)
         {
             this.userRepository = userRepository;
             this.consultantProfileRepository = consultantProfileRepository;
@@ -25,42 +27,43 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
 
             var baseQuery = userRepository.GetAll()
-                .Include(c => c.ConsultantProfile)
-                .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-                .Where(x => x.IsActive &&
-                            x.ConsultantProfile.IsCompleteProfile == true &&
-                            x.ConsultantProfile != null &&
-                            x.UserRoles.Any(ur => ur.Role.RoleName == "Consultant"));
+                .Include(u => u.ConsultantProfile)
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .Where(u =>
+                    u.IsActive &&
+                    u.ConsultantProfile != null &&
+                    u.ConsultantProfile.IsCompleteProfile &&
+                    u.UserRoles.Any(ur => ur.Role.RoleName == "Consultant"));
 
             if (!string.IsNullOrWhiteSpace(query.PhoneNumber))
-                baseQuery = baseQuery.Where(x => x.PhoneNumber == query.PhoneNumber);
+                baseQuery = baseQuery.Where(u => u.PhoneNumber == query.PhoneNumber);
 
             if (!string.IsNullOrWhiteSpace(query.FirstName))
-                baseQuery = baseQuery.Where(x => x.FirstName.Contains(query.FirstName));
+                baseQuery = baseQuery.Where(u => u.FirstName.Contains(query.FirstName));
 
             if (!string.IsNullOrWhiteSpace(query.LastName))
-                baseQuery = baseQuery.Where(x => x.LastName.Contains(query.LastName));
-
-            consultants = consultants.OrderByDescending(x =>
-                x.ConsultantProfile.CurrentScore);
-            var totalCount = await consultants.CountAsync(cancellationToken);
+                baseQuery = baseQuery.Where(u => u.LastName.Contains(query.LastName));
 
             var totalCount = await baseQuery.CountAsync(cancellationToken);
 
             var consultants = await baseQuery
+                .OrderByDescending(u => u.ConsultantProfile.CurrentScore)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
+                .Select(u => new ConsultantResponse
+                {
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    PhoneNumber = u.PhoneNumber,
+                    ProfileId = u.ConsultantProfile.Id,
+                    Id = u.Id
+                })
                 .ToListAsync(cancellationToken);
+
             return new PaginatedResult<ConsultantResponse>
             {
-                Items = baseQuery.Select(x => new ConsultantResponse()
-                {
-                    FirstName = x.FirstName,
-                    LastName = x.LastName,
-                    PhoneNumber = x.PhoneNumber,
-                    ProfileId = x.ConsultantProfile.Id,
-                    Id = x.Id
-                }).ToList(),
+                Items = consultants,
                 TotalCount = totalCount
             };
         }

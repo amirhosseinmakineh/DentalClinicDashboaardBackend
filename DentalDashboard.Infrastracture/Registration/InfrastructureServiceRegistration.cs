@@ -28,6 +28,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<ILeadAssignmentRepository, LeadAssignmentRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<IScoreLogRepository, ScoreLogRepository>();
+        services.AddScoped<IReservationRepository, ReservationRepository>();
 
 
         return services;

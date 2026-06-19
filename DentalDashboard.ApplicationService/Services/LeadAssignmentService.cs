@@ -1,4 +1,4 @@
-﻿using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
@@ -181,9 +181,13 @@ namespace DentalDashboard.ApplicationService.Services
                     lead.ConsultantProfile.ScoreLogs.Add(new ScoreLog
                     {
                         ConsultantProfileId = lead.ConsultantProfile.Id,
-                        ScoreType = ScoreType.CallNotCompleted,
+                        Source = ScoreSource.System,
+                        Reason = ScoreReason.LateCall,
                         ScoreValue = -10,
-                        Description = "عدم تماس در بازه سه دقیقه‌ای"
+                        Description = "عدم تماس در بازه سه دقیقه‌ای",
+                        LeadAssignmentId = lead.Id,
+                        UserId = lead.ConsultantProfile.UserId,
+                        CreatedAt = now
                     });
                     lead.ConsultantProfile.CurrentScore += -10;
 

@@ -1,4 +1,4 @@
-﻿using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
+using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
@@ -22,6 +22,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 .Where(x=> x.ConsultantProfileId == query.ProfileId)
                 .Select(x => new LeadsAssignmentItemsResponse()
                 {
+                    Id = x.Id,
                     LeadAssignmentState = x.LeadAssignmentState,
                     leadAssignmentType = x.AssignmentType,
                     PhoneNumber = x.PhoneNumber,

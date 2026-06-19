@@ -1,4 +1,4 @@
-﻿using DentalDashboard.Domain.Models;
+using DentalDashboard.Domain.Models;
 
 public class ConsultantProfile : BaseAuditableEntity<long>
 {
@@ -12,7 +12,6 @@ public class ConsultantProfile : BaseAuditableEntity<long>
     public string NationalCode { get; set; } = default!;
     public string Address { get; set; } = default!;
     public bool IsAvailable { get; set; } = false;
-    public int CurrentScore { get; set; }
     public TimeSpan WorkStartTime { get; set; }
     public TimeSpan WorkEndTime { get; set; }
     public string? Notes { get; set; }

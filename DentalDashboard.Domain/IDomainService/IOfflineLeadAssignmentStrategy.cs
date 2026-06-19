@@ -1,4 +1,9 @@
-﻿public interface IOfflineLeadAssignmentStrategy
+﻿using DentalDashboard.Domain.Models;
+
+public interface IOfflineLeadAssignmentStrategy
 {
-    void Assign(IList<LeadAssignment> leads,IList<ConsultantProfile> consultants);
+    void Assign(
+        IList<LeadAssignment> leads,
+        IList<ConsultantProfile> consultants,
+        IReadOnlyDictionary<long, int>? dailyAssignedOfflineLeadCounts = null);
 }

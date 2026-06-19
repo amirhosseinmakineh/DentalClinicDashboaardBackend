@@ -8,7 +8,10 @@ namespace DentalDashboard.Domain.DomainServices
     public class OfflineLeadAssignmentStrategy : IOfflineLeadAssignmentStrategy
     {
         private const int DefaultBatchSize = 5; 
-        public void Assign(IList<LeadAssignment> leads, IList<ConsultantProfile> consultants)
+        public void Assign(
+            IList<LeadAssignment> leads,
+            IList<ConsultantProfile> consultants,
+            IReadOnlyDictionary<long, int>? dailyAssignedOfflineLeadCounts = null)
         {
             if (leads == null || !leads.Any())
                 return;
@@ -34,16 +37,23 @@ namespace DentalDashboard.Domain.DomainServices
 
             int leadIndex = 0;
 
+            var now = DateTime.Now;
+
             foreach (var consultant in availableConsultants)
             {
-                int assignCount = Math.Min(DefaultBatchSize, unassignedLeads.Count - leadIndex);
+                dailyAssignedOfflineLeadCounts?.TryGetValue(consultant.Id, out var alreadyAssignedToday);
+                var remainingDailyCapacity = DefaultBatchSize - alreadyAssignedToday;
+                if (remainingDailyCapacity <= 0)
+                    continue;
+
+                int assignCount = Math.Min(remainingDailyCapacity, unassignedLeads.Count - leadIndex);
 
                 for (int i = 0; i < assignCount; i++)
                 {
                     var lead = unassignedLeads[leadIndex];
 
                     lead.ConsultantProfileId = consultant.Id;
-                    lead.AssignedAt = DateTime.Now;
+                    lead.AssignedAt = now;
                     lead.LeadAssignmentState = LeadAssignmentState.Assigned;
                     lead.AssignmentType = LeadAssignmentType.OfflineQueue;
                     lead.RequiresThreeMinuteCall = false;

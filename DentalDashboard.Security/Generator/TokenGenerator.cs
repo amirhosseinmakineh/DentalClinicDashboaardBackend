@@ -21,18 +21,33 @@ namespace DentalDashboard.Security.Generator
             var secretKey = Encoding.UTF8.GetBytes(jwtSetting["SecretKey"]);
             var audience = jwtSetting["Audience"];
             var issuer = jwtSetting["Issuer"];
+            var fullName = $"{user.FirstName} {user.LastName}".Trim();
 
             var claims = new List<Claim>()
             {
-                new Claim("Id",user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, fullName),
+                new Claim(ClaimTypes.GivenName, user.FirstName),
+                new Claim(ClaimTypes.Surname, user.LastName),
+                new Claim("Id", user.Id.ToString()),
+                new Claim("userId", user.Id.ToString()),
                 new Claim("FirstName", user.FirstName),
+                new Claim("firstName", user.FirstName),
                 new Claim("LastName", user.LastName),
-                new Claim("PhoneNumber",user.PhoneNumber),
+                new Claim("lastName", user.LastName),
+                new Claim("FullName", fullName),
+                new Claim("fullName", fullName),
+                new Claim("PhoneNumber", user.PhoneNumber),
+                new Claim("phoneNumber", user.PhoneNumber),
             };
 
-            foreach (var role in roles)
+            foreach (var role in roles.Select(x => x.RoleName).Distinct())
             {
-                claims.Add(new Claim(ClaimTypes.Role, role.RoleName));
+                claims.Add(new Claim(ClaimTypes.Role, role));
+                claims.Add(new Claim("role", role));
+                claims.Add(new Claim("roles", role));
             }
 
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -73,7 +88,9 @@ namespace DentalDashboard.Security.Generator
                 ValidIssuer = issuer,
                 ValidAudience = audience,
 
-                IssuerSigningKey = new SymmetricSecurityKey(secretKey)
+                IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+                NameClaimType = ClaimTypes.Name,
+                RoleClaimType = ClaimTypes.Role
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();

@@ -37,6 +37,9 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Infrastracture.Registration;
 using DentalDashboard.Security.Generator;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // ====================================
@@ -48,6 +51,36 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
+
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var jwtSecretKey = jwtSettings["SecretKey"];
+if (string.IsNullOrWhiteSpace(jwtSecretKey))
+{
+    throw new InvalidOperationException("JwtSettings:SecretKey is not configured.");
+}
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
+        NameClaimType = System.Security.Claims.ClaimTypes.Name,
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role
+    };
+});
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {

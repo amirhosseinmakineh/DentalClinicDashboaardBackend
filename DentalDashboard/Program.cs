@@ -111,6 +111,7 @@ builder.Services.AddTransient<ICommandHandler<ScoreLogCommand>, AdminScoreLogCom
 builder.Services.AddTransient<IQueryHandler<GetRolesQuery, PaginatedResult<RoleItemsResponse>>,GetRolesQueryHandler>();
 builder.Services.AddTransient<IQueryHandler<GetConsultantQuery, PaginatedResult<ConsultantResponse>>,GetConsultantQueryHandler>();
 builder.Services.AddTransient<IQueryHandler<GetAttendancesQuery, PaginatedResult<AttendanceResponse>>,GetConsultantAttendanceCommandHandler>();
+builder.Services.AddTransient<IQueryHandler<GetAllLeadsQuery, PaginatedResult<LeadsAssignmentItemsResponse>>,GetAllLeadsAssignmentQueryHandler>();
 builder.Services.AddTransient<ITokenGenerator,TokenGenerator>();
 builder.Services.AddScoped<IQueryDispatcher, QueryDispatcher>();
 builder.Services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>();

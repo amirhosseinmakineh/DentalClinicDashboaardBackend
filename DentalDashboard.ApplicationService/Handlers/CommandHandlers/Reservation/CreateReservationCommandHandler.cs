@@ -1,8 +1,10 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
@@ -12,12 +14,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly IConsultantProfileRepository consultantProfileRepository;
+        private readonly IUserRepository userRepository;
 
-        public CreateReservationCommandHandler(IReservationRepository reservationRepository, ILeadAssignmentRepository leadAssignmentRepository, IConsultantProfileRepository consultantProfileRepository)
+        public CreateReservationCommandHandler(IReservationRepository reservationRepository, ILeadAssignmentRepository leadAssignmentRepository, IConsultantProfileRepository consultantProfileRepository, IUserRepository userRepository)
         {
             this.reservationRepository = reservationRepository;
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
+            this.userRepository = userRepository;
         }
 
         public async Task<Result<CreateReservationResponse>> HandleAsync(CreateReservationCommand command, CancellationToken cancellationToken = default)
@@ -43,6 +47,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (sameTimeCount >= MaxReservationsPerConsultantAtSameTime)
                 return Result<CreateReservationResponse>.Failure("ظرفیت این بازه زمانی برای مشاور تکمیل است");
 
+            var patientUser = await userRepository.GetAll()
+                .Include(x => x.PatientProfile)
+                .FirstOrDefaultAsync(x => x.PhoneNumber == lead.PhoneNumber && !x.IsDeleted, cancellationToken);
+
             var reservation = new Domain.Models.Reservation
             {
                 LeadAssignmentId = lead.Id,
@@ -62,7 +70,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 ConsultantProfileId = reservation.ConsultantProfileId,
                 ReservationAt = reservation.ReservationAt,
                 PatientName = lead.UserName,
-                PatientPhoneNumber = lead.PhoneNumber
+                PatientPhoneNumber = lead.PhoneNumber,
+                PatientUserId = patientUser?.Id,
+                ShouldOpenPatientProfileDialog = patientUser?.PatientProfile == null
             }, "رزرو با موفقیت ثبت شد");
         }
     }

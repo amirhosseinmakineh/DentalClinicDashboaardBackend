@@ -97,7 +97,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 ReportSubmittedAt = lead.ReportSubmittedAt ?? DateTime.Now,
                 LeadAssignmentState = lead.LeadAssignmentState,
                 CallResult = lead.CallResult!.Value,
-                IsConsultantOnline = profile.IsOnline
+                IsConsultantOnline = profile.IsOnline,
+                ShouldOpenReservation = lead.CallResult == LeadCallResult.Contacted || lead.CallResult == LeadCallResult.Converted
             };
         }
     }

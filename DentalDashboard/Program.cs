@@ -59,6 +59,13 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
+
+builder.Services.AddApplicationServices();
+
+builder.Services.AddDomainServices();
+
+builder.Services.AddSecurityServices();
+
 builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
 
 builder.Services.AddInfrastructure(

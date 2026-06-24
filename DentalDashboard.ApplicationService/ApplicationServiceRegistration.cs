@@ -2,6 +2,7 @@
 using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DentalDashboard.ApplicationService;
@@ -20,6 +21,7 @@ public static class ApplicationServiceRegistration
         services.RegisterHandlers(typeof(ApplicationServiceRegistration).Assembly, typeof(ICommandHandler<>));
         services.RegisterHandlers(typeof(ApplicationServiceRegistration).Assembly, typeof(ICommandHandler<,>));
         services.RegisterHandlers(typeof(ApplicationServiceRegistration).Assembly, typeof(IQueryHandler<,>));
+        services.RegisterHandlers(typeof(ApplicationServiceRegistration).Assembly, typeof(IValidator<>));
 
         return services;
     }

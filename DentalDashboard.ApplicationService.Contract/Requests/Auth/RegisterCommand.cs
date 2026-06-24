@@ -1,10 +1,10 @@
-﻿using DentalDashboard.Domain.Enums;
+﻿using DentalDashboard.ApplicationService.Contract.Responses.AuthResponse;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
-using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Auth
 {
-    public class RegisterCommand : ICommand<object>
+    public class RegisterCommand : ICommand<RegisterResponse>
     {
         public string FirstName { get; set; } = default!;
 

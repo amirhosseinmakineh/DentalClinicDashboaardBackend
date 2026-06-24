@@ -1,10 +1,10 @@
-﻿using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+﻿using DentalDashboard.ApplicationService.Contract.Responses.AuthResponse;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Auth
 {
-    public class LoginCommand : ICommand<object>
+    public class LoginCommand : ICommand<LoginResponse>
     {
-        public Guid UserId { get; set; }
         public string PhoneNumber { get; set; } = default!;
 
         public string PasswordHash { get; set; } = default!;

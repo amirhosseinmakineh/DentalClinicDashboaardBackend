@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Contract.Requests.Patient.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
@@ -21,6 +22,13 @@ namespace DentalDashboard.Controllers
 
         [HttpPost]
         public async Task<IActionResult> CreateReservation(CreateReservationCommand command)
+        {
+            var result = await commandDispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
+        [HttpPost("CompletePatientProfile")]
+        public async Task<IActionResult> CompletePatientProfile(CompletePatientProfileFromReservationCommand command)
         {
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);

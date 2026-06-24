@@ -376,6 +376,54 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.ToTable("LeadAssignments");
                 });
 
+            modelBuilder.Entity("Reservation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("CanceledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("ConsultantProfileId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsCanceled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("LeadAssignmentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("ReservationAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConsultantProfileId", "ReservationAt", "IsCanceled");
+
+                    b.HasIndex("LeadAssignmentId", "IsCanceled");
+
+                    b.ToTable("Reservations");
+                });
+
             modelBuilder.Entity("ScoreLog", b =>
                 {
                     b.Property<long>("Id")
@@ -490,6 +538,25 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasForeignKey("ConsultantProfileId");
 
                     b.Navigation("ConsultantProfile");
+                });
+
+            modelBuilder.Entity("Reservation", b =>
+                {
+                    b.HasOne("ConsultantProfile", "ConsultantProfile")
+                        .WithMany()
+                        .HasForeignKey("ConsultantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LeadAssignment", "LeadAssignment")
+                        .WithMany()
+                        .HasForeignKey("LeadAssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConsultantProfile");
+
+                    b.Navigation("LeadAssignment");
                 });
 
             modelBuilder.Entity("ScoreLog", b =>

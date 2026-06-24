@@ -7,7 +7,8 @@ namespace DentalDashboard.Domain.DomainServices
 {
     public class OfflineLeadAssignmentStrategy : IOfflineLeadAssignmentStrategy
     {
-        private const int DefaultBatchSize = 5; 
+        private const int DefaultBatchSize = 5;
+
         public void Assign(
             IList<LeadAssignment> leads,
             IList<ConsultantProfile> consultants,
@@ -20,9 +21,9 @@ namespace DentalDashboard.Domain.DomainServices
                 throw new InvalidOperationException("هیچ مشاوری برای تخصیص صف آفلاین وجود ندارد.");
 
             var availableConsultants = consultants
-                .Where(x => !x.IsDeleted && x.IsCompleteProfile && x.IsAvailable)
-                .OrderByDescending(x => x.CurrentScore)
-                .ThenBy(x => x.Id)
+                .Where(c => !c.IsDeleted && c.IsCompleteProfile && c.IsAvailable)
+                .OrderByDescending(c => c.CurrentScore)
+                .ThenBy(c => c.Id)
                 .ToList();
 
             if (!availableConsultants.Any())
@@ -35,36 +36,62 @@ namespace DentalDashboard.Domain.DomainServices
             if (!unassignedLeads.Any())
                 return;
 
-            int leadIndex = 0;
-
             var now = DateTime.Now;
+            var leadIndex = 0;
 
             foreach (var consultant in availableConsultants)
             {
-                dailyAssignedOfflineLeadCounts?.TryGetValue(consultant.Id, out var alreadyAssignedToday);
-                var remainingDailyCapacity = DefaultBatchSize - alreadyAssignedToday;
-                if (remainingDailyCapacity <= 0)
+                if (leadIndex >= unassignedLeads.Count)
+                    break;
+
+                var alreadyAssignedToday = GetAlreadyAssignedToday(
+                    dailyAssignedOfflineLeadCounts,
+                    consultant.Id);
+
+                var remainingCapacity = DefaultBatchSize - alreadyAssignedToday;
+
+                if (remainingCapacity <= 0)
                     continue;
 
-                int assignCount = Math.Min(remainingDailyCapacity, unassignedLeads.Count - leadIndex);
+                var assignCount = Math.Min(
+                    remainingCapacity,
+                    unassignedLeads.Count - leadIndex);
 
-                for (int i = 0; i < assignCount; i++)
+                for (var i = 0; i < assignCount; i++)
                 {
-                    var lead = unassignedLeads[leadIndex];
-
-                    lead.ConsultantProfileId = consultant.Id;
-                    lead.AssignedAt = now;
-                    lead.LeadAssignmentState = LeadAssignmentState.Assigned;
-                    lead.AssignmentType = LeadAssignmentType.OfflineQueue;
-                    lead.RequiresThreeMinuteCall = false;
-                    lead.CallDeadlineAt = null;
+                    AssignLeadToConsultant(
+                        unassignedLeads[leadIndex],
+                        consultant.Id,
+                        now);
 
                     leadIndex++;
                 }
-
-                if (leadIndex >= unassignedLeads.Count)
-                    break;
             }
+        }
+
+        private static int GetAlreadyAssignedToday(
+            IReadOnlyDictionary<long, int>? dailyAssignedOfflineLeadCounts,
+            long consultantId)
+        {
+            if (dailyAssignedOfflineLeadCounts == null)
+                return 0;
+
+            return dailyAssignedOfflineLeadCounts.TryGetValue(consultantId, out var count)
+                ? count
+                : 0;
+        }
+
+        private static void AssignLeadToConsultant(
+            LeadAssignment lead,
+            long consultantId,
+            DateTime assignedAt)
+        {
+            lead.ConsultantProfileId = consultantId;
+            lead.AssignedAt = assignedAt;
+            lead.LeadAssignmentState = LeadAssignmentState.Assigned;
+            lead.AssignmentType = LeadAssignmentType.OfflineQueue;
+            lead.RequiresThreeMinuteCall = false;
+            lead.CallDeadlineAt = null;
         }
     }
 }

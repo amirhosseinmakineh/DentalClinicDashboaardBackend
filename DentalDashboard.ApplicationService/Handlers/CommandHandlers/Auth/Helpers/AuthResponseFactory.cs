@@ -1,11 +1,12 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Responses.AuthResponse;
-using DentalDashboard.Domain.Models;
+using DomainRole = DentalDashboard.Domain.Models.Role;
+using DomainUser = DentalDashboard.Domain.Models.User;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Auth.Helpers;
 
 public static class AuthResponseFactory
 {
-    public static LoginResponse CreateLoginResponse(User user, IReadOnlyCollection<Role> roles, string token)
+    public static LoginResponse CreateLoginResponse(DomainUser user, IReadOnlyCollection<DomainRole> roles, string token)
     {
         var roleNames = roles
             .Select(role => role.RoleName)

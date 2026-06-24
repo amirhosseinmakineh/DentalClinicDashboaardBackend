@@ -64,7 +64,7 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
 
         var userRoles = user.UserRoles
             .Where(x => !x.IsDeleted && x.Role != null && !x.Role.IsDeleted)
-            .Select(x => x.Role)
+            .Select(x => x.Role!)
             .DistinctBy(x => x.Id)
             .ToList();
 

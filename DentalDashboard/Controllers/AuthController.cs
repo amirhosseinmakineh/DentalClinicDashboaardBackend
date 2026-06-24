@@ -1,9 +1,11 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Auth;
+using DentalDashboard.ApplicationService.Contract.Responses.AuthResponse;
+using DentalDashboard.ApplicationService.Handlers.CommandHandlers.Auth.Helpers;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using DentalDashboard.Framwork.Domain;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace DentalDashboard.Controllers
 {
@@ -19,94 +21,50 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Register(RegisterCommand command)
+        public async Task<IActionResult> Register(RegisterCommand command, CancellationToken cancellationToken)
         {
-            var result = await dispatcher.DispatchAsync(command);
+            var result = await dispatcher.DispatchAsync(command, cancellationToken);
             return Ok(result);
         }
+
         [HttpPost("Login")]
-        public async Task<IActionResult> Login(LoginCommand command)
+        public async Task<IActionResult> Login(LoginCommand command, CancellationToken cancellationToken)
         {
-            var result = await dispatcher.DispatchAsync(command);
+            var result = await dispatcher.DispatchAsync(command, cancellationToken);
             return Ok(result);
         }
+
         [Authorize]
         [HttpGet("Me")]
         public IActionResult Me()
         {
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return Ok(Result<AuthenticatedUserResponse>.Failure("کاربر احراز هویت نشده است"));
+            }
+
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                              User.FindFirstValue("userId") ??
+                              User.FindFirstValue("Id");
+
+            if (!Guid.TryParse(userIdValue, out var userId))
+            {
+                return Ok(Result<AuthenticatedUserResponse>.Failure("شناسه کاربر در توکن معتبر نیست"));
+            }
+
             var roles = User.FindAll(ClaimTypes.Role)
                 .Select(x => x.Value)
                 .Distinct()
                 .ToList();
 
-            var primaryRole = ResolvePrimaryRole(roles);
+            var response = AuthResponseFactory.CreateAuthenticatedUserResponse(
+                userId,
+                User.FindFirstValue(ClaimTypes.GivenName) ?? User.FindFirstValue("firstName") ?? User.FindFirstValue("FirstName") ?? string.Empty,
+                User.FindFirstValue(ClaimTypes.Surname) ?? User.FindFirstValue("lastName") ?? User.FindFirstValue("LastName") ?? string.Empty,
+                User.FindFirstValue("phoneNumber") ?? User.FindFirstValue("PhoneNumber") ?? string.Empty,
+                roles);
 
-            return Ok(new
-            {
-                IsAuthenticated = User.Identity?.IsAuthenticated == true,
-                UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id"),
-                FirstName = User.FindFirstValue(ClaimTypes.GivenName) ?? User.FindFirstValue("firstName") ?? User.FindFirstValue("FirstName"),
-                LastName = User.FindFirstValue(ClaimTypes.Surname) ?? User.FindFirstValue("lastName") ?? User.FindFirstValue("LastName"),
-                FullName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("fullName") ?? User.FindFirstValue("FullName"),
-                PhoneNumber = User.FindFirstValue("phoneNumber") ?? User.FindFirstValue("PhoneNumber"),
-                Role = primaryRole,
-                Roles = roles,
-                DefaultDashboard = ResolveDashboardKey(primaryRole),
-                DefaultDashboardRoute = ResolveDashboardRoute(primaryRole),
-                DashboardAccess = roles.Select(role => new
-                {
-                    Role = role,
-                    Dashboard = ResolveDashboardKey(role),
-                    Route = ResolveDashboardRoute(role)
-                }).ToList()
-            });
+            return Ok(Result<AuthenticatedUserResponse>.Success(response));
         }
-
-        private static string ResolvePrimaryRole(IReadOnlyCollection<string> roles)
-        {
-            if (roles.Contains("Admin"))
-                return "Admin";
-
-            if (roles.Contains("Consultant"))
-                return "Consultant";
-
-            if (roles.Contains("Patient"))
-                return "Patient";
-
-            if (roles.Contains("NormalUser"))
-                return "NormalUser";
-
-            if (roles.Contains("User"))
-                return "User";
-
-            return roles.FirstOrDefault() ?? string.Empty;
-        }
-
-        private static string ResolveDashboardKey(string role)
-        {
-            return role switch
-            {
-                "Admin" => "AdminDashboard",
-                "Consultant" => "ConsultantDashboard",
-                "Patient" => "PatientDashboard",
-                "NormalUser" => "UserDashboard",
-                "User" => "UserDashboard",
-                _ => "UserDashboard"
-            };
-        }
-
-        private static string ResolveDashboardRoute(string role)
-        {
-            return role switch
-            {
-                "Admin" => "/admin/dashboard",
-                "Consultant" => "/consultant/dashboard",
-                "Patient" => "/patient/dashboard",
-                "NormalUser" => "/dashboard",
-                "User" => "/dashboard",
-                _ => "/dashboard"
-            };
-        }
-
     }
 }

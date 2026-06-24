@@ -17,10 +17,21 @@ namespace DentalDashboard.Security.Generator
         public string GenerateToken(User user, List<Role> roles)
         {
             var jwtSetting = configuration.GetSection("JwtSettings");
-            var expiryMinutes = Convert.ToDouble(jwtSetting["ExpiryMinutes"]);
-            var secretKey = Encoding.UTF8.GetBytes(jwtSetting["SecretKey"]);
+            var expiryMinutes = Convert.ToDouble(jwtSetting["ExpiryMinutes"] ?? "60");
+            var secret = jwtSetting["SecretKey"];
             var audience = jwtSetting["Audience"];
             var issuer = jwtSetting["Issuer"];
+
+            if (string.IsNullOrWhiteSpace(secret))
+                throw new InvalidOperationException("JwtSettings:SecretKey is not configured.");
+
+            if (string.IsNullOrWhiteSpace(audience))
+                throw new InvalidOperationException("JwtSettings:Audience is not configured.");
+
+            if (string.IsNullOrWhiteSpace(issuer))
+                throw new InvalidOperationException("JwtSettings:Issuer is not configured.");
+
+            var secretKey = Encoding.UTF8.GetBytes(secret);
             var fullName = $"{user.FirstName} {user.LastName}".Trim();
 
             var claims = new List<Claim>()
@@ -74,9 +85,14 @@ namespace DentalDashboard.Security.Generator
         {
             var jwtSetting = configuration.GetSection("JwtSettings");
 
-            var secretKey = Encoding.UTF8.GetBytes(jwtSetting["SecretKey"]);
+            var secret = jwtSetting["SecretKey"];
             var issuer = jwtSetting["Issuer"];
             var audience = jwtSetting["Audience"];
+
+            if (string.IsNullOrWhiteSpace(secret))
+                throw new InvalidOperationException("JwtSettings:SecretKey is not configured.");
+
+            var secretKey = Encoding.UTF8.GetBytes(secret);
 
             var parameters = new TokenValidationParameters()
             {

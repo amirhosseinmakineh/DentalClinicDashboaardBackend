@@ -5,12 +5,18 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace DentalDashboard.Infrastracture.Migrations
 {
-    /// <inheritdoc />
-    public partial class AddReservationsTable : Migration
+    public partial class ChangeSomeTables : Migration
     {
-        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterColumn<string>(
+                name: "PhoneNumber",
+                table: "LeadAssignments",
+                type: "nvarchar(450)",
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "nvarchar(max)");
+
             migrationBuilder.CreateTable(
                 name: "Reservations",
                 columns: table => new
@@ -20,7 +26,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     LeadAssignmentId = table.Column<long>(type: "bigint", nullable: false),
                     ConsultantProfileId = table.Column<long>(type: "bigint", nullable: false),
                     ReservationAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    Description = table.Column<string>(
+                        type: "nvarchar(1000)",
+                        maxLength: 1000,
+                        nullable: true),
                     IsCanceled = table.Column<bool>(type: "bit", nullable: false),
                     CanceledAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -31,12 +40,14 @@ namespace DentalDashboard.Infrastracture.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Reservations", x => x.Id);
+
                     table.ForeignKey(
                         name: "FK_Reservations_ConsultantProfiles_ConsultantProfileId",
                         column: x => x.ConsultantProfileId,
                         principalTable: "ConsultantProfiles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+
                     table.ForeignKey(
                         name: "FK_Reservations_LeadAssignments_LeadAssignmentId",
                         column: x => x.LeadAssignmentId,
@@ -48,19 +59,35 @@ namespace DentalDashboard.Infrastracture.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Reservations_ConsultantProfileId_ReservationAt_IsCanceled",
                 table: "Reservations",
-                columns: new[] { "ConsultantProfileId", "ReservationAt", "IsCanceled" });
+                columns: new[]
+                {
+                    "ConsultantProfileId",
+                    "ReservationAt",
+                    "IsCanceled"
+                });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Reservations_LeadAssignmentId_IsCanceled",
                 table: "Reservations",
-                columns: new[] { "LeadAssignmentId", "IsCanceled" });
+                columns: new[]
+                {
+                    "LeadAssignmentId",
+                    "IsCanceled"
+                });
         }
 
-        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
                 name: "Reservations");
+
+            migrationBuilder.AlterColumn<string>(
+                name: "PhoneNumber",
+                table: "LeadAssignments",
+                type: "nvarchar(max)",
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "nvarchar(450)");
         }
     }
 }

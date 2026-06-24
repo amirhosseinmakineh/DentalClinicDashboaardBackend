@@ -1,4 +1,4 @@
-using DentalDashboard.Domain.Models;
+namespace DentalDashboard.Domain.Models;
 
 public class Reservation : BaseAuditableEntity<long>
 {

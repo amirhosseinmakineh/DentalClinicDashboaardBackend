@@ -1,3 +1,4 @@
+using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.IRepositories;
 
 namespace DentalDashboard.Domain.IRepositories

@@ -3,6 +3,7 @@ using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 

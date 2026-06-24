@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
+using DentalDashboard.Domain.Models;
 
 namespace DentalDashboard.Domain.DomainServices
 {

@@ -78,7 +78,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 profile.LastOnlineAt = now;
             }
 
-            await scoreLogRepository.AddAsync(new ScoreLog
+            await scoreLogRepository.AddAsync(new Domain.Models.ScoreLog
             {
                 ConsultantProfileId = profile.Id,
                 Source = ScoreSource.System,

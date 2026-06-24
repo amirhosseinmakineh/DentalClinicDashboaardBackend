@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;

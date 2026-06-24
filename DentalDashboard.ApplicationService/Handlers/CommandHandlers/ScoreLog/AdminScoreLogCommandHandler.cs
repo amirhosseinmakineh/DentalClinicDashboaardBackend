@@ -42,7 +42,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.ScoreLog
             if (!profile.IsCompleteProfile)
                 return Result.Failure("پروفایل مشاور کامل نیست");
 
-            var score = new global::ScoreLog()
+            var score = new Domain.Models.ScoreLog()
             {
                 ConsultantProfileId = command.ConsultantProfileId,
                 CreatedAt = DateTime.UtcNow,

@@ -43,7 +43,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (sameTimeCount >= MaxReservationsPerConsultantAtSameTime)
                 return Result<CreateReservationResponse>.Failure("ظرفیت این بازه زمانی برای مشاور تکمیل است");
 
-            var reservation = new global::Reservation
+            var reservation = new Domain.Models.Reservation
             {
                 LeadAssignmentId = lead.Id,
                 ConsultantProfileId = command.ConsultantProfileId,

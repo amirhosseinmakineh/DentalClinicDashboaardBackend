@@ -2,6 +2,7 @@ using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.Models;
 using HtmlAgilityPack;
 using System.Net;
 

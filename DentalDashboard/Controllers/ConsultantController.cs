@@ -52,6 +52,13 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpPost("ExpireLeadNoCall")]
+        public async Task<IActionResult> ExpireLeadNoCall(ExpireLeadNoCallCommand command)
+        {
+            var result = await dispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
         [HttpGet("GetLeads")]
         public async Task<IActionResult> GetLeads([FromQuery]GetLeadsQuery query)
         {

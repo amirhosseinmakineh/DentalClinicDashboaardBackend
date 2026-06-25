@@ -44,6 +44,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     Id = x.Id,
                     LeadAssignmentId = x.LeadAssignmentId,
                     ConsultantProfileId = x.ConsultantProfileId,
+                    PatientUserId = x.PatientUserId,
+                    RequiresPatientProfile = !x.PatientUserId.HasValue,
                     ReservationAt = x.ReservationAt,
                     PatientName = x.LeadAssignment.UserName,
                     PatientPhoneNumber = x.LeadAssignment.PhoneNumber,

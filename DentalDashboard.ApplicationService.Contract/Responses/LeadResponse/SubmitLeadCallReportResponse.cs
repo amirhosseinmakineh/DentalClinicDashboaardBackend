@@ -11,5 +11,6 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
         public LeadAssignmentState LeadAssignmentState { get; init; }
         public LeadCallResult CallResult { get; init; }
         public bool IsConsultantOnline { get; init; }
+        public bool ShouldOpenReservationPage { get; init; }
     }
 }

@@ -26,6 +26,13 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpPost("CompletePatientProfile")]
+        public async Task<IActionResult> CompletePatientProfile(CompleteReservationPatientProfileCommand command)
+        {
+            var result = await commandDispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
         [HttpGet("GetConsultantReservations")]
         public async Task<IActionResult> GetConsultantReservations([FromQuery] GetConsultantReservationsQuery query)
         {

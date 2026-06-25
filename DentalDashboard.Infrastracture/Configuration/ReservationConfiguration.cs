@@ -9,6 +9,7 @@ namespace DentalDashboard.Infrastracture.Configuration
         {
             builder.HasIndex(x => new { x.ConsultantProfileId, x.ReservationAt, x.IsCanceled });
             builder.HasIndex(x => new { x.LeadAssignmentId, x.IsCanceled });
+            builder.HasIndex(x => x.PatientUserId);
 
             builder.Property(x => x.Description)
                 .HasMaxLength(1000);
@@ -21,6 +22,11 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.HasOne(x => x.LeadAssignment)
                 .WithMany()
                 .HasForeignKey(x => x.LeadAssignmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.PatientUser)
+                .WithMany()
+                .HasForeignKey(x => x.PatientUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

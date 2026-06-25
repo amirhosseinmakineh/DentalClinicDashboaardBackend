@@ -60,6 +60,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 Id = reservation.Id,
                 LeadAssignmentId = reservation.LeadAssignmentId,
                 ConsultantProfileId = reservation.ConsultantProfileId,
+                PatientUserId = reservation.PatientUserId,
+                RequiresPatientProfile = !reservation.PatientUserId.HasValue,
                 ReservationAt = reservation.ReservationAt,
                 PatientName = lead.UserName,
                 PatientPhoneNumber = lead.PhoneNumber

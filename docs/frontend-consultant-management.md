@@ -730,3 +730,66 @@ GET /api/Attendance?consultantProfileId=12&pageNumber=1&pageSize=10
 3. اگر تایمر تمام شد و هنوز گزارش ثبت نشده بود، `POST /api/Consultant/ExpireLeadNoCall` را با `leadAssignmentId` و `consultantProfileId` صدا بزنید.
 4. اگر پاسخ موفق بود، لید را در UI با وضعیت `Expired = 6` نمایش دهید و امتیاز/وضعیت آنلاین مشاور را Sync کنید.
 5. اگر پاسخ خطا بود، پیام `message` را نمایش دهید و لیست لیدها را دوباره از `GET /api/Consultant/GetLeads` دریافت کنید.
+
+# 10. وضعیت اولیه داشبورد مشاور
+
+برای اینکه فرانت هنگام باز شدن داشبورد مجبور نباشد وضعیت حضور/آنلاین بودن را حدس بزند یا از کاربر دوباره درخواست «حضور بزن/آنلاین شو» بگیرد، این API باید در ابتدای mount صفحه داشبورد مشاور صدا زده شود.
+
+## API دریافت وضعیت داشبورد
+
+| مورد | مقدار |
+| --- | --- |
+| Method | `GET` |
+| URL | `/api/Consultant/GetDashboardStatus` |
+| Query | `profileId` |
+
+### نمونه درخواست
+
+```http
+GET /api/Consultant/GetDashboardStatus?profileId=12
+```
+
+### نمونه پاسخ موفق
+
+```json
+{
+  "profileId": 12,
+  "isAvailable": true,
+  "isOnline": false,
+  "lastOnlineAt": "2026-06-26T09:20:00",
+  "lastOfflineAt": "2026-06-26T09:23:00",
+  "pendingOfflineLeadCount": 2,
+  "currentScore": 85,
+  "canGoOnline": false,
+  "onlineStatusBlockReason": "ابتدا لیدهای آفلاین خود را تعیین تکلیف کنید"
+}
+```
+
+### معنی فیلدها
+
+| فیلد | نوع | توضیح |
+| --- | --- | --- |
+| `profileId` | `number` | شناسه پروفایل مشاور |
+| `isAvailable` | `boolean` | وضعیت حضور مشاور. اگر `false` باشد یعنی مشاور هنوز حضور نزده یا عدم حضور ثبت کرده است. |
+| `isOnline` | `boolean` | وضعیت آنلاین فعلی مشاور برای دریافت لیدهای لحظه‌ای. |
+| `lastOnlineAt` | `string \| null` | آخرین زمان آنلاین شدن ثبت‌شده در بک‌اند. |
+| `lastOfflineAt` | `string \| null` | آخرین زمان آفلاین شدن ثبت‌شده در بک‌اند. |
+| `pendingOfflineLeadCount` | `number` | تعداد لیدهای صف آفلاین تعیین‌تکلیف‌نشده مشاور. |
+| `currentScore` | `number` | امتیاز فعلی مشاور بعد از اعمال امتیازها/جریمه‌ها. |
+| `canGoOnline` | `boolean` | آیا مشاور از نظر بک‌اند اجازه آنلاین شدن دارد یا نه. |
+| `onlineStatusBlockReason` | `string \| null` | اگر `canGoOnline=false` باشد علت مسدود بودن آنلاین شدن را نشان می‌دهد. |
+
+## رفتار پیشنهادی فرانت
+
+1. بعد از ورود به داشبورد مشاور، قبل از نمایش دکمه‌های حضور/آنلاین، `GET /api/Consultant/GetDashboardStatus?profileId=...` را صدا بزنید.
+2. state سمت فرانت را دقیقاً از `isAvailable` و `isOnline` مقداردهی کنید؛ این دو مقدار را حدس نزنید.
+3. اگر `isAvailable=true` است، پیام «حضور بزن» نمایش داده نشود.
+4. اگر `isOnline=true` است، دکمه/سوییچ آنلاین در حالت روشن نمایش داده شود.
+5. اگر `canGoOnline=false` است، دکمه آنلاین شدن را disable کنید و `onlineStatusBlockReason` را به کاربر نشان دهید.
+6. بعد از هر `SetAvalableConsultant`، `SetOnlineOfflineConsultant`، `SubmitLeadCallReport` یا `ExpireLeadNoCall`، دوباره همین API را صدا بزنید یا state را از پاسخ همان APIها sync کنید.
+
+## نکات مرتبط با لید و امتیاز
+
+- قانون سه دقیقه فقط برای لیدهای `RealTime = 1` که `requiresThreeMinuteCall = true` دارند اعمال می‌شود؛ لیدهای `OfflineQueue = 2` مشمول این deadline نیستند.
+- ثبت گزارش تماس اکنون امتیاز تماس را هم روی `currentScore` اعمال می‌کند و یک `ScoreLog` سیستمی برای همان `leadAssignmentId` می‌سازد.
+- بعد از ثبت گزارش تماس، بک‌اند وضعیت آنلاین مشاور را بر اساس وجود لید آفلاین تعیین‌تکلیف‌نشده و ساعت کاری sync می‌کند.

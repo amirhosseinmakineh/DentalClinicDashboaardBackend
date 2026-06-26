@@ -57,6 +57,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             lead.ContactedAt = now;
             lead.LeadAssignmentState = leadReportDomainService.MapCallResultToState(command.CallResult);
 
+            var scoreLog = CreateScoreLog(lead, profile, command.CallResult, now);
+            profile.CurrentScore += scoreLog.ScoreValue;
+            profile.ScoreLogs.Add(scoreLog);
+
             var hasPendingOfflineLeads = await leadAssignmentRepository.HasPendingOfflineLeadsAsync(profile.Id);
             if (hasPendingOfflineLeads)
             {
@@ -85,6 +89,37 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             await leadAssignmentRepository.SaveChange();
 
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد و شما به صورت خودکار آنلاین شدید");
+        }
+
+        private static ScoreLog CreateScoreLog(
+            LeadAssignment lead,
+            ConsultantProfile profile,
+            LeadCallResult callResult,
+            DateTime now)
+        {
+            var (reason, scoreValue, description) = callResult switch
+            {
+                LeadCallResult.Contacted => (ScoreReason.SuccessfulCall, 5, "تماس موفق با لید"),
+                LeadCallResult.Converted => (ScoreReason.SuccessfulCall, 10, "تبدیل لید پس از تماس"),
+                LeadCallResult.NeedFollowUp => (ScoreReason.SuccessfulCall, 3, "تماس نیازمند پیگیری"),
+                LeadCallResult.NoAnswer => (ScoreReason.NoAnswer, -2, "عدم پاسخگویی لید"),
+                LeadCallResult.Rejected => (ScoreReason.FailedCall, -3, "رد شدن لید پس از تماس"),
+                LeadCallResult.WrongNumber => (ScoreReason.FailedCall, -5, "شماره تماس اشتباه"),
+                _ => (ScoreReason.FailedCall, 0, "ثبت گزارش تماس لید")
+            };
+
+            return new ScoreLog
+            {
+                ConsultantProfileId = profile.Id,
+                Source = ScoreSource.System,
+                Reason = reason,
+                ScoreValue = scoreValue,
+                Description = description,
+                LeadAssignmentId = lead.Id,
+                UserId = profile.UserId,
+                CreatedAt = now,
+                IsDeleted = false
+            };
         }
 
         private static SubmitLeadCallReportResponse CreateResponse(LeadAssignment lead, ConsultantProfile profile)

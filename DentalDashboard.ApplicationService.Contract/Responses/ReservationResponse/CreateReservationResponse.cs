@@ -8,6 +8,10 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public Guid? PatientUserId { get; set; }
         public bool RequiresPatientProfile { get; set; }
         public DateTime ReservationAt { get; set; }
+        public string PatientCity { get; set; } = default!;
+        public int AttendanceProbabilityPercent { get; set; }
+        public string AttendancePrediction { get; set; } = default!;
+        public ReservationAttendanceConfirmationStatus AttendanceConfirmationStatus { get; set; }
         public string PatientName { get; set; } = default!;
         public string PatientPhoneNumber { get; set; } = default!;
     }

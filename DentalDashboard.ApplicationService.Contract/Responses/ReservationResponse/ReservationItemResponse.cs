@@ -10,6 +10,21 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public DateTime ReservationAt { get; set; }
         public string PatientName { get; set; } = default!;
         public string PatientPhoneNumber { get; set; } = default!;
+        public string PatientCity { get; set; } = default!;
+        public int AttendanceProbabilityPercent { get; set; }
+        public string AttendancePrediction { get; set; } = default!;
+        public ReservationAttendanceConfirmationStatus AttendanceConfirmationStatus { get; set; }
+        public DateTime? ConsultantAttendanceConfirmedAt { get; set; }
+        public bool? ConsultantSaysPatientAttended { get; set; }
+        public string? ConsultantAttendanceNote { get; set; }
+        public DateTime? SecretaryReviewedAt { get; set; }
+        public Guid? SecretaryUserId { get; set; }
+        public bool? SecretaryApprovedConsultantConfirmation { get; set; }
+        public string? SecretaryReviewNote { get; set; }
+        public bool IsAttendanceScoreApplied { get; set; }
+        public int? AttendanceScoreValue { get; set; }
+        public DateTime? AttendanceScoreAppliedAt { get; set; }
+        public bool IsDueForConsultantConfirmation { get; set; }
         public string? Description { get; set; }
         public bool IsCanceled { get; set; }
     }

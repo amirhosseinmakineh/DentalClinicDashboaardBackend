@@ -9,14 +9,28 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
     public class GetLeadsAssignmentQueryHandler : IQueryHandler<GetLeadsQuery, PaginatedResult<LeadsAssignmentItemsResponse>>
     {
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
+        private readonly IReservationRepository reservationRepository;
 
-        public GetLeadsAssignmentQueryHandler(ILeadAssignmentRepository leadAssignmentRepository)
+        public GetLeadsAssignmentQueryHandler(ILeadAssignmentRepository leadAssignmentRepository, IReservationRepository reservationRepository)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
+            this.reservationRepository = reservationRepository;
         }
 
         public async Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(GetLeadsQuery query, CancellationToken cancellationToken = default)
         {
+            if (query.LeadAssignmentType == DentalDashboard.Domain.Enums.LeadAssignmentType.RealTime &&
+                await HasRealTimeLeadBlockerAsync(query.ProfileId, cancellationToken))
+            {
+                return new PaginatedResult<LeadsAssignmentItemsResponse>
+                {
+                    Items = new List<LeadsAssignmentItemsResponse>(),
+                    PageNumber = query.PageNumber < 1 ? 1 : query.PageNumber,
+                    PageSize = query.PageSize < 1 ? 10 : query.PageSize,
+                    TotalCount = 0
+                };
+            }
+
             var allLeads = leadAssignmentRepository.GetAll()
                 .Where(x=> x.ConsultantProfileId == query.ProfileId)
                 .Select(x => new LeadsAssignmentItemsResponse()
@@ -38,6 +52,26 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
 
             return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
         }
+        private async Task<bool> HasRealTimeLeadBlockerAsync(long consultantProfileId, CancellationToken cancellationToken)
+        {
+            var hasDueAttendanceWithoutConsultantDecision = await reservationRepository.GetAll()
+                .AnyAsync(x => x.ConsultantProfileId == consultantProfileId &&
+                               !x.IsCanceled &&
+                               x.ReservationAt <= DateTime.Now &&
+                               x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation, cancellationToken);
+
+            if (hasDueAttendanceWithoutConsultantDecision)
+                return true;
+
+            return await leadAssignmentRepository.GetAll()
+                .AnyAsync(x => x.ConsultantProfileId == consultantProfileId &&
+                               x.AssignmentType == DentalDashboard.Domain.Enums.LeadAssignmentType.OfflineQueue &&
+                               x.ReportSubmittedAt == null &&
+                               x.LeadAssignmentState != LeadAssignmentState.Expired &&
+                               x.LeadAssignmentState != LeadAssignmentState.Rejected &&
+                               x.LeadAssignmentState != LeadAssignmentState.Converted, cancellationToken);
+        }
+
     }
 
     internal static class LeadAssignmentPagination

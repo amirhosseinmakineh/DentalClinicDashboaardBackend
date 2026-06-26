@@ -11,5 +11,8 @@
 
     FastCall = 7,
     LateCall = 8,
-    NoAnswer = 9
+    NoAnswer = 9,
+
+    ReservationAttendanceConfirmed = 10,
+    ReservationAttendanceRejected = 11
 }

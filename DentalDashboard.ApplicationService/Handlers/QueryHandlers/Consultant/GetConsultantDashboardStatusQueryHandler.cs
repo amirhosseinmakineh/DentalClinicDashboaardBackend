@@ -1,0 +1,78 @@
+using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
+using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
+using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
+using Microsoft.EntityFrameworkCore;
+
+namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
+{
+    public class GetConsultantDashboardStatusQueryHandler : IQueryHandler<GetConsultantDashboardStatusQuery, ConsultantDashboardStatusResponse>
+    {
+        private readonly IConsultantProfileRepository consultantProfileRepository;
+        private readonly ILeadAssignmentRepository leadAssignmentRepository;
+
+        public GetConsultantDashboardStatusQueryHandler(
+            IConsultantProfileRepository consultantProfileRepository,
+            ILeadAssignmentRepository leadAssignmentRepository)
+        {
+            this.consultantProfileRepository = consultantProfileRepository;
+            this.leadAssignmentRepository = leadAssignmentRepository;
+        }
+
+        public async Task<ConsultantDashboardStatusResponse> HandleAsync(
+            GetConsultantDashboardStatusQuery query,
+            CancellationToken cancellationToken = default)
+        {
+            var profile = await consultantProfileRepository.GetAll()
+                .FirstOrDefaultAsync(x => x.Id == query.ProfileId, cancellationToken);
+
+            if (profile == null)
+                throw new InvalidOperationException("مشاوری یافت نشد");
+
+            if (profile.IsDeleted)
+                throw new InvalidOperationException("پروفایل مشاور حذف شده است");
+
+            var pendingOfflineLeadCount = await leadAssignmentRepository.GetAll()
+                .CountAsync(
+                    x => x.ConsultantProfileId == profile.Id &&
+                         x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                         x.LeadAssignmentState != LeadAssignmentState.Converted &&
+                         x.LeadAssignmentState != LeadAssignmentState.Rejected &&
+                         x.LeadAssignmentState != LeadAssignmentState.Expired,
+                    cancellationToken);
+
+            var canGoOnline = profile.IsCompleteProfile && profile.IsAvailable && pendingOfflineLeadCount == 0;
+
+            return new ConsultantDashboardStatusResponse
+            {
+                ProfileId = profile.Id,
+                IsAvailable = profile.IsAvailable,
+                IsOnline = profile.IsOnline,
+                LastOnlineAt = profile.LastOnlineAt,
+                LastOfflineAt = profile.LastOfflineAt,
+                PendingOfflineLeadCount = pendingOfflineLeadCount,
+                CurrentScore = profile.CurrentScore,
+                CanGoOnline = canGoOnline,
+                OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(profile.IsCompleteProfile, profile.IsAvailable, pendingOfflineLeadCount)
+            };
+        }
+
+        private static string? ResolveOnlineStatusBlockReason(
+            bool isCompleteProfile,
+            bool isAvailable,
+            int pendingOfflineLeadCount)
+        {
+            if (!isCompleteProfile)
+                return "پروفایل مشاور کامل نیست";
+
+            if (!isAvailable)
+                return "ابتدا حضور خود را ثبت کنید";
+
+            if (pendingOfflineLeadCount > 0)
+                return "ابتدا لیدهای آفلاین خود را تعیین تکلیف کنید";
+
+            return null;
+        }
+    }
+}

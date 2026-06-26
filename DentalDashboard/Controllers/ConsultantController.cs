@@ -45,6 +45,13 @@ namespace DentalDashboard.Controllers
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
+
+        [HttpGet("GetDashboardStatus")]
+        public async Task<IActionResult> GetDashboardStatus([FromQuery] GetConsultantDashboardStatusQuery query)
+        {
+            var result = await queryDispatcher.DispatchAsync(query);
+            return Ok(result);
+        }
         [HttpPost("SubmitLeadCallReport")]
         public async Task<IActionResult> SubmitLeadCallReport(SubmitLeadCallReportCommand command)
         {

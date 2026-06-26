@@ -1,7 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,36 +27,46 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     PhoneNumber = x.PhoneNumber,
                     UserName = x.UserName
                 });
-            if(query.leadAssignmentState == LeadAssignmentState.New)
+            if (query.leadAssignmentState.HasValue)
             {
-                allLeads = allLeads.Where(x => x.LeadAssignmentState == LeadAssignmentState.New);
+                allLeads = allLeads.Where(x => x.LeadAssignmentState == query.leadAssignmentState.Value);
             }
-            if(query.LeadAssignmentType == LeadAssignmentType.OfflineQueue)
+            if (query.LeadAssignmentType.HasValue)
             {
-                allLeads = allLeads.Where(x => x.leadAssignmentType == LeadAssignmentType.OfflineQueue);
+                allLeads = allLeads.Where(x => x.leadAssignmentType == query.LeadAssignmentType.Value);
             }
-            if(query.leadAssignmentState == LeadAssignmentState.Pending)
-            {
-                allLeads = allLeads.Where(x => x.LeadAssignmentState == LeadAssignmentState.Pending);
-            }
-            if(query.leadAssignmentState == LeadAssignmentState.Contacted)
-            {
-                allLeads = allLeads.Where(x => x.LeadAssignmentState == LeadAssignmentState.Contacted);
-            }
-            if(query.leadAssignmentState == LeadAssignmentState.Rejected)
-            {
-                allLeads = allLeads.Where(x => x.LeadAssignmentState == LeadAssignmentState.Rejected);
-            }
-            var result = new PaginatedResult<LeadsAssignmentItemsResponse>()
-            {
-                Items = allLeads.ToList(),
-                PageNumber = query.PageNumber,
-                PageSize = query.PageSize,
-                TotalCount = allLeads.Count()
-            };
-            return result;
+
+            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
         }
     }
+
+    internal static class LeadAssignmentPagination
+    {
+        public static async Task<PaginatedResult<LeadsAssignmentItemsResponse>> ToPaginatedResultAsync(
+            IQueryable<LeadsAssignmentItemsResponse> query,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var normalizedPageNumber = pageNumber < 1 ? 1 : pageNumber;
+            var normalizedPageSize = pageSize < 1 ? 10 : pageSize;
+            var totalCount = await query.CountAsync(cancellationToken);
+            var items = await query
+                .OrderByDescending(x => x.Id)
+                .Skip((normalizedPageNumber - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .ToListAsync(cancellationToken);
+
+            return new PaginatedResult<LeadsAssignmentItemsResponse>()
+            {
+                Items = items,
+                PageNumber = normalizedPageNumber,
+                PageSize = normalizedPageSize,
+                TotalCount = totalCount
+            };
+        }
+    }
+
     public class GetAllLeadsAssignmentQueryHandler : IQueryHandler<GetAllLeadsQuery, PaginatedResult<LeadsAssignmentItemsResponse>>
     {
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
@@ -78,34 +87,16 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     PhoneNumber = x.PhoneNumber,
                     UserName = x.UserName
                 });
-            if (query.leadAssignmentState == LeadAssignmentState.New)
+            if (query.leadAssignmentState.HasValue)
             {
-                allLeads = allLeads.Where(x => x.LeadAssignmentState == LeadAssignmentState.New);
+                allLeads = allLeads.Where(x => x.LeadAssignmentState == query.leadAssignmentState.Value);
             }
-            if (query.LeadAssignmentType == LeadAssignmentType.OfflineQueue)
+            if (query.LeadAssignmentType.HasValue)
             {
-                allLeads = allLeads.Where(x => x.leadAssignmentType == LeadAssignmentType.OfflineQueue);
+                allLeads = allLeads.Where(x => x.leadAssignmentType == query.LeadAssignmentType.Value);
             }
-            if (query.leadAssignmentState == LeadAssignmentState.Pending)
-            {
-                allLeads = allLeads.Where(x => x.LeadAssignmentState == LeadAssignmentState.Pending);
-            }
-            if (query.leadAssignmentState == LeadAssignmentState.Contacted)
-            {
-                allLeads = allLeads.Where(x => x.LeadAssignmentState == LeadAssignmentState.Contacted);
-            }
-            if (query.leadAssignmentState == LeadAssignmentState.Rejected)
-            {
-                allLeads = allLeads.Where(x => x.LeadAssignmentState == LeadAssignmentState.Rejected);
-            }
-            var result = new PaginatedResult<LeadsAssignmentItemsResponse>()
-            {
-                Items = allLeads.ToList(),
-                PageNumber = query.PageNumber,
-                PageSize = query.PageSize,
-                TotalCount = allLeads.Count()
-            };
-            return result;
+
+            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
         }
     }
 }

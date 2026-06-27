@@ -42,7 +42,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                          x.LeadAssignmentState != LeadAssignmentState.Expired,
                     cancellationToken);
 
-            var canGoOnline = profile.IsCompleteProfile && profile.IsAvailable && pendingOfflineLeadCount == 0;
+            var hasActiveRealTimeLead = await leadAssignmentRepository.HasActiveRealTimeLeadAsync(profile.Id);
+
+            var canGoOnline = profile.IsCompleteProfile &&
+                              profile.IsAvailable &&
+                              pendingOfflineLeadCount == 0 &&
+                              !hasActiveRealTimeLead;
 
             return new ConsultantDashboardStatusResponse
             {
@@ -54,14 +59,19 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 PendingOfflineLeadCount = pendingOfflineLeadCount,
                 CurrentScore = profile.CurrentScore,
                 CanGoOnline = canGoOnline,
-                OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(profile.IsCompleteProfile, profile.IsAvailable, pendingOfflineLeadCount)
+                OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(
+                    profile.IsCompleteProfile,
+                    profile.IsAvailable,
+                    pendingOfflineLeadCount,
+                    hasActiveRealTimeLead)
             };
         }
 
         private static string? ResolveOnlineStatusBlockReason(
             bool isCompleteProfile,
             bool isAvailable,
-            int pendingOfflineLeadCount)
+            int pendingOfflineLeadCount,
+            bool hasActiveRealTimeLead)
         {
             if (!isCompleteProfile)
                 return "پروفایل مشاور کامل نیست";
@@ -71,6 +81,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
 
             if (pendingOfflineLeadCount > 0)
                 return "ابتدا لیدهای آفلاین خود را تعیین تکلیف کنید";
+
+            if (hasActiveRealTimeLead)
+                return "ابتدا تکلیف لید لحظه‌ای قبلی را مشخص کنید";
 
             return null;
         }

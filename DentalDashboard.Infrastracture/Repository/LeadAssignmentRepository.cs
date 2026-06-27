@@ -52,6 +52,15 @@ namespace DentalDashboard.Infrastracture.Repository
                                x.LeadAssignmentState != LeadAssignmentState.Expired);
         }
 
+        public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
+        {
+            return GetAll()
+                .AnyAsync(x => x.ConsultantProfileId == consultantProfileId &&
+                               x.AssignmentType == LeadAssignmentType.RealTime &&
+                               x.ReportSubmittedAt == null &&
+                               x.LeadAssignmentState == LeadAssignmentState.Assigned);
+        }
+
         public Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now)
         {
             return GetAll()

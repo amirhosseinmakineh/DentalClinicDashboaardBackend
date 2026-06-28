@@ -20,5 +20,9 @@ public class LeadAssignment : BaseAuditableEntity<long>
     public DateTime? ContactedAt { get; set; }
     public LeadCallResult? CallResult { get; set; }
     public bool SmsSent { get; set; }
+    public string? PatientCity { get; set; }
+    public string? PatientRegion { get; set; }
+    public string? BusinessName { get; set; }
+    public int? AttendanceProbabilityPercent { get; set; }
 
 }

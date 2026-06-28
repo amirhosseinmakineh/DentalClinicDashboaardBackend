@@ -50,9 +50,16 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (lead.ReportSubmittedAt.HasValue)
                 return Result<SubmitLeadCallReportResponse>.Failure("گزارش این لید قبلا ثبت شده است");
 
+            if (command.AttendanceProbabilityPercent.HasValue && (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
+                return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
+
             var now = DateTime.Now;
             lead.CallResult = command.CallResult;
             lead.ReportDescription = command.ReportDescription;
+            lead.PatientCity = command.PatientCity?.Trim();
+            lead.PatientRegion = command.PatientRegion?.Trim();
+            lead.BusinessName = command.BusinessName?.Trim();
+            lead.AttendanceProbabilityPercent = command.AttendanceProbabilityPercent;
             lead.ReportSubmittedAt = now;
             lead.ContactedAt = now;
             lead.LeadAssignmentState = leadReportDomainService.MapCallResultToState(command.CallResult);

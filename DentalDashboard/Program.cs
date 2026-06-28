@@ -81,7 +81,10 @@ builder.Services.AddDomainServices();
 
 builder.Services.AddSecurityServices();
 
+builder.Services.AddScoped<DentalDashboard.Services.LeadCallReportExportService>();
+
 builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
+builder.Services.AddHostedService<DailyLeadCallReportBackgroundService>();
 
 builder.Services.AddInfrastructure(
     builder.Configuration);

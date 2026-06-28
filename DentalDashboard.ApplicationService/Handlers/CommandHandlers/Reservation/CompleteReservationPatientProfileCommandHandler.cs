@@ -55,7 +55,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             await unitOfWork.BeginTransactionAsync();
             try
             {
-                var user = new User
+                var user = new Domain.Models.User
                 {
                     Id = Guid.NewGuid(),
                     FirstName = command.FirstName.Trim(),

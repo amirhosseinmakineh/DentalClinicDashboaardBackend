@@ -1,12 +1,13 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="D:/DentalDashboard/DentalDashboard/DentalDashboard.ApplicationService.Contract/DentalDashboard.ApplicationService.Contract.csproj" Id="5cde863d-ef88-488e-9254-34b1b4b9937e" />
-    <Project Path="D:/DentalDashboard/DentalDashboard/DentalDashboard.ApplicationService/DentalDashboard.ApplicationService.csproj" Id="4d192c88-c2d9-4f0a-9245-84d44ca349de" />
-    <Project Path="D:/DentalDashboard/DentalDashboard/DentalDashboard.Domain/DentalDashboard.Domain.csproj" />
-    <Project Path="D:/DentalDashboard/DentalDashboard/DentalDashboard.Framwork/DentalDashboard.Framwork.csproj" />
-    <Project Path="D:/DentalDashboard/DentalDashboard/DentalDashboard.Infrastracture/DentalDashboard.Infrastracture.csproj" />
-    <Project Path="D:/DentalDashboard/DentalDashboard/DentalDashboard.Security/DentalDashboard.Security.csproj" Id="0ebe0938-600a-4e56-9adb-7571610459ca" />
-    <Project Path="D:/DentalDashboard/DentalDashboard/DentalDashboard.Utilities/DentalDashboard.Utilities.csproj" Id="597f326f-d4ff-48aa-aefb-98d823a68869" />
+    <Project Path="DentalDashboard.ApplicationService.Contract/DentalDashboard.ApplicationService.Contract.csproj" Id="5cde863d-ef88-488e-9254-34b1b4b9937e" />
+    <Project Path="DentalDashboard.ApplicationService/DentalDashboard.ApplicationService.csproj" Id="4d192c88-c2d9-4f0a-9245-84d44ca349de" />
+    <Project Path="DentalDashboard.Domain/DentalDashboard.Domain.csproj" />
+    <Project Path="DentalDashboard.Framwork/DentalDashboard.Framwork.csproj" />
+    <Project Path="DentalDashboard.Infrastracture/DentalDashboard.Infrastracture.csproj" />
+    <Project Path="DentalDashboard.Security/DentalDashboard.Security.csproj" Id="0ebe0938-600a-4e56-9adb-7571610459ca" />
+    <Project Path="DentalDashboard.Utilities/DentalDashboard.Utilities.csproj" Id="597f326f-d4ff-48aa-aefb-98d823a68869" />
   </Folder>
-  <Project Path="D:/DentalDashboard/DentalDashboard/DentalDashboard/DentalDashboard.csproj" />
+
+  <Project Path="DentalDashboard/DentalDashboard.csproj" />
 </Solution>

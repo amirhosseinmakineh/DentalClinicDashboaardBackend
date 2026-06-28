@@ -91,7 +91,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد و شما به صورت خودکار آنلاین شدید");
         }
 
-        private static ScoreLog CreateScoreLog(
+        private static DentalDashboard.Domain.Models.ScoreLog CreateScoreLog(
             LeadAssignment lead,
             ConsultantProfile profile,
             LeadCallResult callResult,
@@ -108,7 +108,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 _ => (ScoreReason.FailedCall, 0, "ثبت گزارش تماس لید")
             };
 
-            return new ScoreLog
+            return new DentalDashboard.Domain.Models.ScoreLog
             {
                 ConsultantProfileId = profile.Id,
                 Source = ScoreSource.System,

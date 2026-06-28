@@ -49,17 +49,32 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("CorsPolicy", policy =>
+//    {
+//        policy
+//            .WithOrigins("http://localhost:4200")
+//            .AllowAnyHeader()
+//            .AllowAnyMethod();
+//    });
+//});
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CorsPolicy", policy =>
+    options.AddPolicy("FrontendCors", policy =>
     {
         policy
-            .WithOrigins("http://localhost:4200")
+            .WithOrigins(
+                "https://drsaeedmoghadam.com",
+                "https://www.drsaeedmoghadam.com",
+                "http://localhost:4200",
+                "https://drmoghadam.runflare.run",
+                "http://drsaeedmoghadam.com"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
 });
-
 builder.Services.AddApplicationServices();
 
 builder.Services.AddDomainServices();
@@ -83,7 +98,8 @@ var app = builder.Build();
 
 app.UseHttpsRedirection();
 
-app.UseCors("CorsPolicy");
+//app.UseCors("CorsPolicy");
+app.UseCors("FrontendCors");
 
 app.UseAuthentication();
 

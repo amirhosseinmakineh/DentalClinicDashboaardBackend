@@ -55,7 +55,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             profile.CurrentScore += scoreValue;
 
-            await scoreLogRepository.AddAsync(new ScoreLog
+            await scoreLogRepository.AddAsync(new Domain.Models.ScoreLog
             {
                 ConsultantProfileId = reservation.ConsultantProfileId,
                 Source = ScoreSource.System,

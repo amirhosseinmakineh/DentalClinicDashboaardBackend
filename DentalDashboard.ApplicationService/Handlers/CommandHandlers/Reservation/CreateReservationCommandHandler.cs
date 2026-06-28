@@ -25,15 +25,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (command.ReservationAt <= DateTime.Now)
                 return Result<CreateReservationResponse>.Failure("زمان رزرو باید در آینده باشد");
 
-            if (string.IsNullOrWhiteSpace(command.PatientCity))
-                return Result<CreateReservationResponse>.Failure("شهر بیمار الزامی است");
-
-            if (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100)
-                return Result<CreateReservationResponse>.Failure("احتمال حضور بیمار باید بین ۰ تا ۱۰۰ باشد");
-
-            if (string.IsNullOrWhiteSpace(command.AttendancePrediction))
-                return Result<CreateReservationResponse>.Failure("توضیح پیش‌بینی حضور بیمار الزامی است");
-
             var consultant = await consultantProfileRepository.GetByIdAsync(command.ConsultantProfileId);
             if (consultant == null || consultant.IsDeleted)
                 return Result<CreateReservationResponse>.Failure("مشاور یافت نشد");
@@ -57,9 +48,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 LeadAssignmentId = lead.Id,
                 ConsultantProfileId = command.ConsultantProfileId,
                 ReservationAt = command.ReservationAt,
-                PatientCity = command.PatientCity.Trim(),
-                AttendanceProbabilityPercent = command.AttendanceProbabilityPercent,
-                AttendancePrediction = command.AttendancePrediction.Trim(),
+                SecondaryPhoneNumber = command.SecondaryPhoneNumber?.Trim(),
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                 Description = command.Description,
                 CreatedAt = DateTime.UtcNow
@@ -76,9 +65,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 PatientUserId = reservation.PatientUserId,
                 RequiresPatientProfile = !reservation.PatientUserId.HasValue,
                 ReservationAt = reservation.ReservationAt,
-                PatientCity = reservation.PatientCity,
-                AttendanceProbabilityPercent = reservation.AttendanceProbabilityPercent,
-                AttendancePrediction = reservation.AttendancePrediction,
+                SecondaryPhoneNumber = reservation.SecondaryPhoneNumber,
+                PatientCity = lead.PatientCity ?? string.Empty,
+                PatientRegion = lead.PatientRegion,
+                BusinessName = lead.BusinessName,
+                AttendanceProbabilityPercent = lead.AttendanceProbabilityPercent,
                 AttendanceConfirmationStatus = reservation.AttendanceConfirmationStatus,
                 PatientName = lead.UserName,
                 PatientPhoneNumber = lead.PhoneNumber

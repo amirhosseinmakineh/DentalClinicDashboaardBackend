@@ -18,6 +18,11 @@ namespace DentalDashboard.Infrastracture.Configuration
             });
 
             builder.HasIndex(x => x.CallDeadlineAt);
+            builder.HasIndex(x => x.ReportSubmittedAt);
+
+            builder.Property(x => x.PatientCity).HasMaxLength(100);
+            builder.Property(x => x.PatientRegion).HasMaxLength(100);
+            builder.Property(x => x.BusinessName).HasMaxLength(200);
         }
     }
 }

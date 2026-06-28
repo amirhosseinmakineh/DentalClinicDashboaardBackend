@@ -9,9 +9,7 @@ public class Reservation : BaseAuditableEntity<long>
     public Guid? PatientUserId { get; set; }
     public User? PatientUser { get; set; }
     public DateTime ReservationAt { get; set; }
-    public string PatientCity { get; set; } = default!;
-    public int AttendanceProbabilityPercent { get; set; }
-    public string AttendancePrediction { get; set; } = default!;
+    public string? SecondaryPhoneNumber { get; set; }
     public ReservationAttendanceConfirmationStatus AttendanceConfirmationStatus { get; set; } = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation;
     public DateTime? ConsultantAttendanceConfirmedAt { get; set; }
     public bool? ConsultantSaysPatientAttended { get; set; }

@@ -46,6 +46,17 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 return Result<CompleteReservationPatientProfileResponse>.Failure("برای این رزرو قبلا پرونده بیمار تشکیل شده است");
 
             var phoneNumber = command.PhoneNumber.Trim();
+
+            if (string.IsNullOrWhiteSpace(command.NationalCode))
+                return Result<CompleteReservationPatientProfileResponse>.Failure("کد ملی بیمار الزامی است");
+
+            if (string.IsNullOrWhiteSpace(command.Address))
+                return Result<CompleteReservationPatientProfileResponse>.Failure("آدرس بیمار الزامی است");
+
+            var nationalCode = command.NationalCode.Trim();
+            var address = command.Address.Trim();
+
+
             if (reservation.LeadAssignment.PhoneNumber != phoneNumber)
                 return Result<CompleteReservationPatientProfileResponse>.Failure("شماره موبایل بیمار باید با شماره لید رزرو شده یکسان باشد");
 
@@ -75,8 +86,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 var patientProfile = new PatientProfile
                 {
                     UserId = user.Id,
-                    NationalCode = command.NationalCode.Trim(),
-                    Address = command.Address.Trim(),
+                    NationalCode = nationalCode,
+                    Address = address,
                     EmergencyPhoneNumber = command.EmergencyPhoneNumber,
                     InsuranceName = command.InsuranceName,
                     Notes = command.Notes,

@@ -20,7 +20,8 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<List<LeadAssignment>> GetPendingOfflineLeadsAsync(int take)
         {
             return GetAll()
-                .Where(x => x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.OfflineQueue &&
                             x.LeadAssignmentState == LeadAssignmentState.Pending &&
                             x.ConsultantProfileId == null)
                 .OrderBy(x => x.CreatedAt)
@@ -32,7 +33,8 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take)
         {
             return GetAll()
-                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime &&
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.RealTime &&
                             x.LeadAssignmentState == LeadAssignmentState.New &&
                             x.ConsultantProfileId == null)
                 .OrderBy(x => x.CreatedAt)
@@ -44,7 +46,8 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<bool> HasPendingOfflineLeadsAsync(long consultantProfileId)
         {
             return GetAll()
-                .AnyAsync(x => x.ConsultantProfileId == consultantProfileId &&
+                .AnyAsync(x => !x.IsDeleted &&
+                               x.ConsultantProfileId == consultantProfileId &&
                                x.AssignmentType == LeadAssignmentType.OfflineQueue &&
                                x.ReportSubmittedAt == null &&
                                x.LeadAssignmentState != LeadAssignmentState.Converted &&
@@ -55,7 +58,8 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
         {
             return GetAll()
-                .AnyAsync(x => x.ConsultantProfileId == consultantProfileId &&
+                .AnyAsync(x => !x.IsDeleted &&
+                               x.ConsultantProfileId == consultantProfileId &&
                                x.AssignmentType == LeadAssignmentType.RealTime &&
                                x.ReportSubmittedAt == null &&
                                x.LeadAssignmentState == LeadAssignmentState.Assigned);
@@ -65,7 +69,8 @@ namespace DentalDashboard.Infrastracture.Repository
         {
             return GetAll()
                 .Include(x => x.ConsultantProfile)
-                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime &&
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.RealTime &&
                             x.RequiresThreeMinuteCall &&
                             x.LeadAssignmentState == LeadAssignmentState.Assigned &&
                             x.ReportSubmittedAt == null &&
@@ -78,7 +83,8 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<int> CountUnassignedRealTimeLeadsAsync()
         {
             return GetAll()
-                .CountAsync(x => x.AssignmentType == LeadAssignmentType.RealTime &&
+                .CountAsync(x => !x.IsDeleted &&
+                                 x.AssignmentType == LeadAssignmentType.RealTime &&
                                  x.LeadAssignmentState == LeadAssignmentState.New &&
                                  x.ConsultantProfileId == null);
         }
@@ -90,7 +96,8 @@ namespace DentalDashboard.Infrastracture.Repository
                 return new HashSet<long>();
 
             return (await GetAll()
-                    .Where(x => x.ConsultantProfileId.HasValue &&
+                    .Where(x => !x.IsDeleted &&
+                                x.ConsultantProfileId.HasValue &&
                                 ids.Contains(x.ConsultantProfileId.Value) &&
                                 x.AssignmentType == LeadAssignmentType.OfflineQueue &&
                                 x.ReportSubmittedAt == null &&
@@ -119,7 +126,7 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId)
         {
             return GetAll()
-                .FirstOrDefaultAsync(x => x.Id == leadAssignmentId && x.ConsultantProfileId == consultantProfileId);
+                .FirstOrDefaultAsync(x => !x.IsDeleted && x.Id == leadAssignmentId && x.ConsultantProfileId == consultantProfileId);
         }
 
         public async Task<Dictionary<long, int>> GetDailyAssignedOfflineLeadCountsAsync(IEnumerable<long> consultantProfileIds, DateTime day)
@@ -132,7 +139,8 @@ namespace DentalDashboard.Infrastracture.Repository
             var endOfDay = startOfDay.AddDays(1);
 
             return await GetAll()
-                .Where(x => x.ConsultantProfileId.HasValue &&
+                .Where(x => !x.IsDeleted &&
+                                x.ConsultantProfileId.HasValue &&
                             ids.Contains(x.ConsultantProfileId.Value) &&
                             x.AssignmentType == LeadAssignmentType.OfflineQueue &&
                             x.AssignedAt.HasValue &&
@@ -141,6 +149,20 @@ namespace DentalDashboard.Infrastracture.Repository
                 .GroupBy(x => x.ConsultantProfileId!.Value)
                 .Select(g => new { ConsultantProfileId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.ConsultantProfileId, x => x.Count);
+        }
+
+        public Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync()
+        {
+            return GetAll()
+                .Include(x => x.ConsultantProfile)
+                .ThenInclude(x => x.User)
+                .Where(x => !x.IsDeleted &&
+                                x.ConsultantProfileId.HasValue &&
+                            !x.NotificationSent &&
+                            x.LeadAssignmentState == LeadAssignmentState.Assigned)
+                .OrderBy(x => x.AssignedAt)
+                .ThenBy(x => x.Id)
+                .ToListAsync();
         }
 
     }

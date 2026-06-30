@@ -17,7 +17,8 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadAssignmentStrategy leadAssignmentStrategy;
         private readonly IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy;
-        public LeadAssignmentService(HttpClient httpClient, ILeadAssignmentRepository leadAssignmentRepository, ILeadDomainService leadDomainService, IConsultantProfileRepository consultantProfileRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy)
+        private readonly IPushNotificationService pushNotificationService;
+        public LeadAssignmentService(HttpClient httpClient, ILeadAssignmentRepository leadAssignmentRepository, ILeadDomainService leadDomainService, IConsultantProfileRepository consultantProfileRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy, IPushNotificationService pushNotificationService)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -25,6 +26,7 @@ namespace DentalDashboard.ApplicationService.Services
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadAssignmentStrategy = leadAssignmentStrategy;
             this.offlineLeadAssignmentStrategy = offlineLeadAssignmentStrategy;
+            this.pushNotificationService = pushNotificationService;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync()
@@ -141,6 +143,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             offlineLeadAssignmentStrategy.Assign(pendingLeads, consultants, dailyAssignedCounts);
             await leadAssignmentRepository.SaveChange();
+            await SendAssignedLeadNotificationsAsync();
         }
 
         public async Task AssignRealTimeLeadsAsync()
@@ -167,6 +170,7 @@ namespace DentalDashboard.ApplicationService.Services
             }
 
             await leadAssignmentRepository.SaveChange();
+            await SendAssignedLeadNotificationsAsync();
         }
 
         public async Task ExpireOverdueRealTimeLeadsAsync()
@@ -217,6 +221,52 @@ namespace DentalDashboard.ApplicationService.Services
             if (expiredLeads.Any())
                 await leadAssignmentRepository.SaveChange();
         }
+        private async Task SendAssignedLeadNotificationsAsync()
+        {
+            var assignedLeads = await leadAssignmentRepository.GetAssignedLeadsPendingNotificationAsync();
+            if (!assignedLeads.Any())
+                return;
+
+            foreach (var group in assignedLeads.GroupBy(x => x.ConsultantProfile!))
+            {
+                var consultant = group.Key;
+                var offlineCount = group.Count(x => x.AssignmentType == LeadAssignmentType.OfflineQueue);
+                var realTimeLeads = group.Where(x => x.AssignmentType == LeadAssignmentType.RealTime).ToList();
+
+                if (offlineCount > 0)
+                {
+                    await pushNotificationService.SendAsync(
+                        consultant.UserId,
+                        "لیدهای آفلاین",
+                        $"شما {offlineCount} لید آفلاین دارید.",
+                        new Dictionary<string, string>
+                        {
+                            ["type"] = "offline_leads",
+                            ["count"] = offlineCount.ToString()
+                        });
+                }
+
+                foreach (var lead in realTimeLeads)
+                {
+                    await pushNotificationService.SendAsync(
+                        consultant.UserId,
+                        "لید جدید",
+                        "شما یک لید جدید دارید و 3 دقیقه زمان دارید برای تماس.",
+                        new Dictionary<string, string>
+                        {
+                            ["type"] = "realtime_lead",
+                            ["leadAssignmentId"] = lead.Id.ToString(),
+                            ["callDeadlineAt"] = lead.CallDeadlineAt?.ToString("O") ?? string.Empty
+                        });
+                }
+
+                foreach (var lead in group)
+                    lead.NotificationSent = true;
+            }
+
+            await leadAssignmentRepository.SaveChange();
+        }
+
 
     }
 }

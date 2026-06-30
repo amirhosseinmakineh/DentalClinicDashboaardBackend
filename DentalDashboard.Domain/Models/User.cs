@@ -27,6 +27,8 @@ namespace DentalDashboard.Domain.Models
 
         public bool IsActive { get; set; } = true;
 
+        public string? PushNotificationToken { get; set; }
+
         #region Relations
 
         public PatientProfile? PatientProfile { get; set; }

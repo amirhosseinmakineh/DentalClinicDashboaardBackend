@@ -13,6 +13,7 @@ public static class ApplicationServiceRegistration
     {
         services.AddScoped<IRoleService, RoleService>();
         services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>();
+        services.AddHttpClient<IPushNotificationService, FirebasePushNotificationService>();
         services.AddScoped<IConsultantProfileService, ConsultantProfileService>();
 
         services.AddScoped<IQueryDispatcher, QueryDispatcher>();

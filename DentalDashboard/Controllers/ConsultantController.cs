@@ -46,6 +46,13 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpPost("RegisterPushToken")]
+        public async Task<IActionResult> RegisterPushToken(RegisterPushTokenCommand command)
+        {
+            var result = await dispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
         [HttpGet("GetDashboardStatus")]
         public async Task<IActionResult> GetDashboardStatus([FromQuery] GetConsultantDashboardStatusQuery query)
         {

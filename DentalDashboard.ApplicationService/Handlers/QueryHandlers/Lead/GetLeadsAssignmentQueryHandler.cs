@@ -32,7 +32,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             }
 
             var allLeads = leadAssignmentRepository.GetAll()
-                .Where(x=> x.ConsultantProfileId == query.ProfileId)
+                .Where(x=> !x.IsDeleted && x.ConsultantProfileId == query.ProfileId)
                 .Select(x => new LeadsAssignmentItemsResponse()
                 {
                     Id = x.Id,
@@ -64,7 +64,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 return true;
 
             return await leadAssignmentRepository.GetAll()
-                .AnyAsync(x => x.ConsultantProfileId == consultantProfileId &&
+                .AnyAsync(x => !x.IsDeleted &&
+                               x.ConsultantProfileId == consultantProfileId &&
                                x.AssignmentType == DentalDashboard.Domain.Enums.LeadAssignmentType.OfflineQueue &&
                                x.ReportSubmittedAt == null &&
                                x.LeadAssignmentState != LeadAssignmentState.Expired &&
@@ -113,6 +114,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
         public async Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(GetAllLeadsQuery query, CancellationToken cancellationToken = default)
         {
             var allLeads = leadAssignmentRepository.GetAll()
+                .Where(x => !x.IsDeleted)
                 .Select(x => new LeadsAssignmentItemsResponse()
                 {
                     Id = x.Id,

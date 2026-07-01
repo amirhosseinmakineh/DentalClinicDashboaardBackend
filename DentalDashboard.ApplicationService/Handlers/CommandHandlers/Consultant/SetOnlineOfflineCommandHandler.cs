@@ -1,4 +1,5 @@
-﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
+﻿using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -10,13 +11,16 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
     {
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
+        private readonly ILeadAssignmentService leadAssignmentService;
 
         public SetOnlineOfflineCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
-            ILeadAssignmentRepository leadAssignmentRepository)
+            ILeadAssignmentRepository leadAssignmentRepository,
+            ILeadAssignmentService leadAssignmentService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadAssignmentRepository = leadAssignmentRepository;
+            this.leadAssignmentService = leadAssignmentService;
         }
 
         public async Task<Result> HandleAsync(
@@ -51,6 +55,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
                 consultantProfileRepository.Update(profile);
                 await consultantProfileRepository.SaveChange();
+
+                await leadAssignmentService.AssignRealTimeLeadsAsync();
 
                 return Result.Success("شما آنلاین شدید");
             }

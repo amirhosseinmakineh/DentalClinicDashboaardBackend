@@ -4,38 +4,37 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Services;
 
-public class LeadCallReportExportService
+public class LeadsExportService
 {
     private readonly DentalContext context;
-    public LeadCallReportExportService(DentalContext context) => this.context = context;
 
-    public async Task<byte[]> ExportCsvAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    public LeadsExportService(DentalContext context) => this.context = context;
+
+    public async Task<byte[]> ExportCsvAsync(CancellationToken cancellationToken = default)
     {
         var rows = await context.LeadAssignments.AsNoTracking()
             .Include(x => x.ConsultantProfile)!.ThenInclude(x => x.User)
-            .Where(x => x.ReportSubmittedAt.HasValue && x.ReportSubmittedAt.Value >= from && x.ReportSubmittedAt.Value < to)
-            .OrderBy(x => x.ReportSubmittedAt).ThenBy(x => x.Id)
+            .Where(x => !x.IsDeleted)
+            .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
             .Select(x => new
             {
                 x.Id,
-                LeadName = x.UserName,
-                LeadPhone = x.PhoneNumber,
-                x.PatientCity,
-                x.PatientRegion,
-                x.BusinessName,
-                x.AttendanceProbabilityPercent,
-                x.CallResult,
-                x.ReportDescription,
-                x.ReportSubmittedAt,
-                x.ContactedAt,
+                x.UserName,
+                x.PhoneNumber,
+                x.LeadAssignmentState,
+                x.AssignmentType,
+                x.ConsultantProfileId,
                 ConsultantFullName = x.ConsultantProfile == null
                     ? string.Empty
                     : x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName,
                 ConsultantPhone = x.ConsultantProfile == null
                     ? string.Empty
                     : x.ConsultantProfile.User.PhoneNumber,
-                x.AssignmentType,
-                x.LeadAssignmentState
+                x.AssignedAt,
+                x.CallResult,
+                x.ReportSubmittedAt,
+                x.ContactedAt,
+                x.CreatedAt
             })
             .ToListAsync(cancellationToken);
 
@@ -45,38 +44,38 @@ public class LeadCallReportExportService
                 "شناسه لید",
                 "نام لید",
                 "موبایل لید",
+                "وضعیت لید",
+                "نوع تخصیص",
+                "وضعیت اساین",
                 "نام مشاور",
                 "موبایل مشاور",
+                "تاریخ تخصیص",
+                "وضعیت تماس",
                 "نتیجه تماس",
-                "متن گزارش",
                 "تاریخ ثبت گزارش",
                 "تاریخ تماس",
-                "شهر بیمار",
-                "منطقه بیمار",
-                "نام بیزینس",
-                "احتمال حضور (درصد)",
-                "نوع تخصیص",
-                "وضعیت لید")
+                "تاریخ ایجاد لید")
         };
 
         foreach (var row in rows)
         {
+            var hasCalled = row.ReportSubmittedAt.HasValue || row.ContactedAt.HasValue;
+
             lines.Add(CsvExportHelper.JoinRow(
                 row.Id.ToString(),
-                row.LeadName,
-                row.LeadPhone,
+                row.UserName,
+                row.PhoneNumber,
+                row.LeadAssignmentState.ToPersian(),
+                row.AssignmentType.ToPersian(),
+                AdminReportPersianLabels.ToAssignmentStatus(row.ConsultantProfileId),
                 row.ConsultantFullName,
                 row.ConsultantPhone,
+                row.AssignedAt.HasValue ? DateConvertor.ToPersianDateTimeString(row.AssignedAt.Value) : string.Empty,
+                AdminReportPersianLabels.ToCallStatus(hasCalled),
                 row.CallResult.HasValue ? row.CallResult.Value.ToPersian() : string.Empty,
-                row.ReportDescription,
                 row.ReportSubmittedAt.HasValue ? DateConvertor.ToPersianDateTimeString(row.ReportSubmittedAt.Value) : string.Empty,
                 row.ContactedAt.HasValue ? DateConvertor.ToPersianDateTimeString(row.ContactedAt.Value) : string.Empty,
-                row.PatientCity,
-                row.PatientRegion,
-                row.BusinessName,
-                row.AttendanceProbabilityPercent?.ToString() ?? string.Empty,
-                row.AssignmentType.ToPersian(),
-                row.LeadAssignmentState.ToPersian()));
+                DateConvertor.ToPersianDateTimeString(row.CreatedAt)));
         }
 
         return CsvExportHelper.BuildFile(lines.ToArray());

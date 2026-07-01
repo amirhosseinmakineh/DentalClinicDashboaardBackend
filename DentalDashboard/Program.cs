@@ -82,6 +82,9 @@ builder.Services.AddDomainServices();
 builder.Services.AddSecurityServices();
 
 builder.Services.AddScoped<DentalDashboard.Services.LeadCallReportExportService>();
+builder.Services.AddScoped<DentalDashboard.Services.UsersExportService>();
+builder.Services.AddScoped<DentalDashboard.Services.LeadsExportService>();
+builder.Services.AddScoped<DentalDashboard.Services.ConsultantsExportService>();
 
 builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
 

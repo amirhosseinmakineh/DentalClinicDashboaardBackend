@@ -1,0 +1,61 @@
+using DentalDashboard.Domain.Enums;
+
+namespace DentalDashboard.Services;
+
+public static class AdminReportPersianLabels
+{
+    public static string ToPersian(this Gender gender) => gender switch
+    {
+        Gender.Male => "مرد",
+        Gender.Female => "زن",
+        _ => "نامشخص"
+    };
+
+    public static string ToPersianRole(string? roleName) => roleName switch
+    {
+        "Admin" => "ادمین",
+        "Consultant" => "مشاور",
+        "Patient" => "بیمار",
+        "User" => "کاربر",
+        null or "" => "بدون نقش",
+        _ => roleName
+    };
+
+    public static string ToPersian(this LeadAssignmentState state) => state switch
+    {
+        LeadAssignmentState.New => "جدید",
+        LeadAssignmentState.Assigned => "تخصیص‌یافته",
+        LeadAssignmentState.Contacted => "تماس گرفته شده",
+        LeadAssignmentState.Pending => "در انتظار",
+        LeadAssignmentState.Converted => "تبدیل شده",
+        LeadAssignmentState.Expired => "منقضی شده",
+        LeadAssignmentState.Rejected => "رد شده",
+        _ => "نامشخص"
+    };
+
+    public static string ToPersian(this LeadCallResult result) => result switch
+    {
+        LeadCallResult.Contacted => "تماس برقرار شد",
+        LeadCallResult.Converted => "تبدیل به رزرو",
+        LeadCallResult.Rejected => "رد شد",
+        LeadCallResult.NoAnswer => "پاسخ نداد",
+        LeadCallResult.WrongNumber => "شماره اشتباه",
+        LeadCallResult.NeedFollowUp => "نیاز به پیگیری",
+        _ => "نامشخص"
+    };
+
+    public static string ToPersian(this LeadAssignmentType type) => type switch
+    {
+        LeadAssignmentType.RealTime => "آنی",
+        LeadAssignmentType.OfflineQueue => "صف آفلاین",
+        _ => "نامشخص"
+    };
+
+    public static string ToYesNo(bool value) => value ? "بله" : "خیر";
+
+    public static string ToAssignmentStatus(long? consultantProfileId) =>
+        consultantProfileId.HasValue ? "اساین شده" : "اساین نشده";
+
+    public static string ToCallStatus(bool hasCalled) =>
+        hasCalled ? "تماس گرفته" : "تماس نگرفته";
+}

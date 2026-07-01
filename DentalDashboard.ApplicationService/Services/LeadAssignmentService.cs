@@ -126,6 +126,9 @@ namespace DentalDashboard.ApplicationService.Services
         public async Task AssignPendingOfflineLeadsAsync()
         {
             var consultants = await consultantProfileRepository.GetAvailableConsultantsForOfflineAssignmentAsync();
+            if (leadDomainService.IsWorkingTime(DateTime.Now))
+                consultants = consultants.Where(x => !x.IsOnline).ToList();
+
             if (!consultants.Any())
                 return;
 

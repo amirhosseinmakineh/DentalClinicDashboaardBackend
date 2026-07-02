@@ -96,7 +96,8 @@ public class ConsultantsExportService
             "شهر بیمار",
             "منطقه بیمار",
             "نام بیزینس",
-            "احتمال حضور (درصد)"));
+            "احتمال حضور (درصد)",
+            "شماره دوم بیمار"));
 
         foreach (var consultant in consultants)
         {
@@ -127,7 +128,8 @@ public class ConsultantsExportService
                     lead.PatientCity,
                     lead.PatientRegion,
                     lead.BusinessName,
-                    lead.AttendanceProbabilityPercent?.ToString() ?? string.Empty));
+                    lead.AttendanceProbabilityPercent?.ToString() ?? string.Empty,
+                    lead.SecondaryPhoneNumber));
             }
         }
 

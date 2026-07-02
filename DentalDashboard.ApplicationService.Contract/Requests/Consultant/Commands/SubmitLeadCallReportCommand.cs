@@ -14,5 +14,6 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Consultant.Comman
         public string? PatientRegion { get; set; }
         public string? BusinessName { get; set; }
         public int? AttendanceProbabilityPercent { get; set; }
+        public string? SecondaryPhoneNumber { get; set; }
     }
 }

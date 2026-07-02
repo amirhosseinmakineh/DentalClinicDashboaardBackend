@@ -15,9 +15,6 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.Property(x => x.Description)
                 .HasMaxLength(1000);
 
-            builder.Property(x => x.SecondaryPhoneNumber)
-                .HasMaxLength(20);
-
             builder.Property(x => x.ConsultantAttendanceNote)
                 .HasMaxLength(1000);
 

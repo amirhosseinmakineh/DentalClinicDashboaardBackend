@@ -49,7 +49,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     ReservationAt = x.ReservationAt,
                     PatientName = x.LeadAssignment.UserName,
                     PatientPhoneNumber = x.LeadAssignment.PhoneNumber,
-                    SecondaryPhoneNumber = x.SecondaryPhoneNumber,
+                    SecondaryPhoneNumber = x.LeadAssignment.SecondaryPhoneNumber,
                     PatientCity = x.LeadAssignment.PatientCity ?? string.Empty,
                     PatientRegion = x.LeadAssignment.PatientRegion,
                     BusinessName = x.LeadAssignment.BusinessName,

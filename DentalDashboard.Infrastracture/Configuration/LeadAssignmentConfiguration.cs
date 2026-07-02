@@ -23,6 +23,7 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.Property(x => x.PatientCity).HasMaxLength(100);
             builder.Property(x => x.PatientRegion).HasMaxLength(100);
             builder.Property(x => x.BusinessName).HasMaxLength(200);
+            builder.Property(x => x.SecondaryPhoneNumber).HasMaxLength(20);
         }
     }
 }

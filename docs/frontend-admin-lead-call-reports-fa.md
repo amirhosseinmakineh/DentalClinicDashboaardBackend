@@ -15,25 +15,25 @@
   "patientCity": "تهران",
   "patientRegion": "سعادت‌آباد",
   "businessName": "کلینیک/بیزینس نمونه",
-  "attendanceProbabilityPercent": 80
+  "attendanceProbabilityPercent": 80,
+  "secondaryPhoneNumber": "09120000000"
 }
 ```
 
 - `attendanceProbabilityPercent` اختیاری است، اما اگر ارسال شود باید بین 0 تا 100 باشد.
-- `patientCity`، `patientRegion`، `businessName` از رزرو به گزارش تماس لید منتقل شده‌اند.
+- `patientCity`، `patientRegion`، `businessName`، `secondaryPhoneNumber` از رزرو به گزارش تماس لید منتقل شده‌اند.
 
 ## ثبت رزرو
 
 `POST /api/Reservation`
 
-فیلدهای شهر، منطقه، بیزینس و احتمال حضور دیگر از فرم رزرو ارسال نشوند. فیلد جدید رزرو:
+فیلدهای شهر، منطقه، بیزینس، احتمال حضور و شماره دوم بیمار دیگر از فرم رزرو ارسال نشوند. فرم رزرو:
 
 ```json
 {
   "leadAssignmentId": 1,
   "consultantProfileId": 10,
   "reservationAt": "2026-06-29T12:00:00",
-  "secondaryPhoneNumber": "09120000000",
   "description": "توضیح رزرو"
 }
 ```

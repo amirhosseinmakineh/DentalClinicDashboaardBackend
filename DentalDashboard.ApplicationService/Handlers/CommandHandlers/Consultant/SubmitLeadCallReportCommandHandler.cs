@@ -60,6 +60,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             lead.PatientRegion = command.PatientRegion?.Trim();
             lead.BusinessName = command.BusinessName?.Trim();
             lead.AttendanceProbabilityPercent = command.AttendanceProbabilityPercent;
+            lead.SecondaryPhoneNumber = command.SecondaryPhoneNumber?.Trim();
             lead.ReportSubmittedAt = now;
             lead.ContactedAt = now;
             lead.LeadAssignmentState = leadReportDomainService.MapCallResultToState(command.CallResult);

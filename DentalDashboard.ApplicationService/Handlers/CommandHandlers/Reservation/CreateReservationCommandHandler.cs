@@ -48,7 +48,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 LeadAssignmentId = lead.Id,
                 ConsultantProfileId = command.ConsultantProfileId,
                 ReservationAt = command.ReservationAt,
-                SecondaryPhoneNumber = command.SecondaryPhoneNumber?.Trim(),
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                 Description = command.Description,
                 CreatedAt = DateTime.UtcNow
@@ -65,7 +64,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 PatientUserId = reservation.PatientUserId,
                 RequiresPatientProfile = !reservation.PatientUserId.HasValue,
                 ReservationAt = reservation.ReservationAt,
-                SecondaryPhoneNumber = reservation.SecondaryPhoneNumber,
+                SecondaryPhoneNumber = lead.SecondaryPhoneNumber,
                 PatientCity = lead.PatientCity ?? string.Empty,
                 PatientRegion = lead.PatientRegion,
                 BusinessName = lead.BusinessName,

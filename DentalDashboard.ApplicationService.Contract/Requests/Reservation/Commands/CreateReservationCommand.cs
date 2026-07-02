@@ -8,7 +8,6 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public long LeadAssignmentId { get; set; }
         public long ConsultantProfileId { get; set; }
         public DateTime ReservationAt { get; set; }
-        public string? SecondaryPhoneNumber { get; set; }
         public string? Description { get; set; }
     }
 }

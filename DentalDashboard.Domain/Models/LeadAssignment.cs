@@ -24,5 +24,6 @@ public class LeadAssignment : BaseAuditableEntity<long>
     public string? PatientRegion { get; set; }
     public string? BusinessName { get; set; }
     public int? AttendanceProbabilityPercent { get; set; }
+    public string? SecondaryPhoneNumber { get; set; }
 
 }

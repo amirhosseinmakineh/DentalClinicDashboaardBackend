@@ -24,6 +24,7 @@ public class LeadCallReportExportService
                 x.PatientRegion,
                 x.BusinessName,
                 x.AttendanceProbabilityPercent,
+                x.SecondaryPhoneNumber,
                 x.CallResult,
                 x.ReportDescription,
                 x.ReportSubmittedAt,
@@ -55,6 +56,7 @@ public class LeadCallReportExportService
                 "منطقه بیمار",
                 "نام بیزینس",
                 "احتمال حضور (درصد)",
+                "شماره دوم بیمار",
                 "نوع تخصیص",
                 "وضعیت لید")
         };
@@ -75,6 +77,7 @@ public class LeadCallReportExportService
                 row.PatientRegion,
                 row.BusinessName,
                 row.AttendanceProbabilityPercent?.ToString() ?? string.Empty,
+                row.SecondaryPhoneNumber,
                 row.AssignmentType.ToPersian(),
                 row.LeadAssignmentState.ToPersian()));
         }

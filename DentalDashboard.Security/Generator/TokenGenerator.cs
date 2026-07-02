@@ -61,6 +61,17 @@ namespace DentalDashboard.Security.Generator
                 claims.Add(new Claim("roles", role));
             }
 
+            claims.Add(new Claim("isCompleteProfile", user.IsCompleteProfile.ToString().ToLowerInvariant()));
+            claims.Add(new Claim("IsCompleteProfile", user.IsCompleteProfile.ToString()));
+
+            if (user.ConsultantProfile?.Id is > 0 consultantProfileId)
+            {
+                claims.Add(new Claim("consultantProfileId", consultantProfileId.ToString()));
+                claims.Add(new Claim("ConsultantProfileId", consultantProfileId.ToString()));
+                claims.Add(new Claim("profileId", consultantProfileId.ToString()));
+                claims.Add(new Claim("ProfileId", consultantProfileId.ToString()));
+            }
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),

@@ -15,8 +15,10 @@ public static class AdminReportPersianLabels
     {
         "Admin" => "ادمین",
         "Consultant" => "مشاور",
+        "Secretary" => "منشی",
         "Patient" => "بیمار",
         "User" => "کاربر",
+        "NormalUser" => "کاربر",
         null or "" => "بدون نقش",
         _ => roleName
     };

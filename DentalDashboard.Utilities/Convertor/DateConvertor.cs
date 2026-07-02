@@ -5,9 +5,13 @@ namespace DentalDashboard.Utilities.Convertor
     public static class DateConvertor
     {
         private static readonly PersianCalendar _pc = new PersianCalendar();
+        private static readonly DateTime PersianCalendarMinDate = new(622, 3, 22);
 
         public static string ToPersianDateString(this DateTime dateTime)
-         {
+        {
+            if (!IsSupportedByPersianCalendar(dateTime))
+                return string.Empty;
+
             int year = _pc.GetYear(dateTime);
             int month = _pc.GetMonth(dateTime);
             int day = _pc.GetDayOfMonth(dateTime);
@@ -17,6 +21,9 @@ namespace DentalDashboard.Utilities.Convertor
 
         public static string ToPersianDateTimeString(this DateTime dateTime)
         {
+            if (!IsSupportedByPersianCalendar(dateTime))
+                return string.Empty;
+
             int year = _pc.GetYear(dateTime);
             int month = _pc.GetMonth(dateTime);
             int day = _pc.GetDayOfMonth(dateTime);
@@ -26,6 +33,11 @@ namespace DentalDashboard.Utilities.Convertor
             int second = _pc.GetSecond(dateTime);
 
             return $"{year:0000}/{month:00}/{day:00} {hour:00}:{minute:00}:{second:00}";
+        }
+
+        private static bool IsSupportedByPersianCalendar(DateTime dateTime)
+        {
+            return dateTime >= PersianCalendarMinDate;
         }
         public static DateTime PersianToGregorian(string persian)
         {

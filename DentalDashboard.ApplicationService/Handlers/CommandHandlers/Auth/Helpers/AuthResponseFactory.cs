@@ -26,6 +26,7 @@ public static class AuthResponseFactory
             Role = primaryRole,
             Roles = roleNames,
             ConsultantProfileId = user.ConsultantProfile?.Id,
+            IsCompleteProfile = user.IsCompleteProfile,
             DefaultDashboard = ResolveDashboardKey(primaryRole),
             DefaultDashboardRoute = ResolveDashboardRoute(primaryRole),
             DashboardAccess = CreateDashboardAccess(roleNames),
@@ -86,6 +87,9 @@ public static class AuthResponseFactory
         if (roles.Contains("Consultant"))
             return "Consultant";
 
+        if (roles.Contains("Secretary"))
+            return "Secretary";
+
         if (roles.Contains("Patient"))
             return "Patient";
 
@@ -104,6 +108,7 @@ public static class AuthResponseFactory
         {
             "Admin" => "AdminDashboard",
             "Consultant" => "ConsultantDashboard",
+            "Secretary" => "SecretaryDashboard",
             "Patient" => "PatientDashboard",
             "NormalUser" => "UserDashboard",
             "User" => "UserDashboard",
@@ -117,6 +122,7 @@ public static class AuthResponseFactory
         {
             "Admin" => "/admin/dashboard",
             "Consultant" => "/consultant/dashboard",
+            "Secretary" => "/secretary/dashboard",
             "Patient" => "/patient/dashboard",
             "NormalUser" => "/dashboard",
             "User" => "/dashboard",

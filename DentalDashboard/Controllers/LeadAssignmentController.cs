@@ -17,9 +17,9 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get([FromQuery]GetAllLeadsQuery query)
+        public async Task<IActionResult> Get([FromQuery]GetAllLeadsQuery query)
         {
-            var result = dispatcher.DispatchAsync(query);
+            var result = await dispatcher.DispatchAsync(query);
             return Ok(result);
         }
     }

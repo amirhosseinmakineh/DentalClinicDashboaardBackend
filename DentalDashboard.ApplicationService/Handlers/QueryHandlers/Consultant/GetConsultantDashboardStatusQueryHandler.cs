@@ -1,6 +1,5 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
@@ -33,14 +32,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             if (profile.IsDeleted)
                 throw new InvalidOperationException("پروفایل مشاور حذف شده است");
 
-            var pendingOfflineLeadCount = await leadAssignmentRepository.GetAll()
-                .CountAsync(
-                    x => x.ConsultantProfileId == profile.Id &&
-                         x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                         x.LeadAssignmentState != LeadAssignmentState.Converted &&
-                         x.LeadAssignmentState != LeadAssignmentState.Rejected &&
-                         x.LeadAssignmentState != LeadAssignmentState.Expired,
-                    cancellationToken);
+            var pendingOfflineLeadCount = await leadAssignmentRepository
+                .CountPendingOfflineLeadsAsync(profile.Id);
 
             var hasActiveRealTimeLead = await leadAssignmentRepository.HasActiveRealTimeLeadAsync(profile.Id);
 

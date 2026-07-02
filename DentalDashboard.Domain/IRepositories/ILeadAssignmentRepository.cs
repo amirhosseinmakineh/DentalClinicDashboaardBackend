@@ -8,6 +8,7 @@ namespace DentalDashboard.Domain.IRepositories
     {
         Task<List<LeadAssignment>> GetPendingOfflineQueueAsync();
         Task<bool> HasPendingOfflineLeadsAsync(long consultantProfileId);
+        Task<int> CountPendingOfflineLeadsAsync(long consultantProfileId);
         Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId);
         Task<List<LeadAssignment>> GetPendingOfflineLeadsAsync(int take);
         Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take);

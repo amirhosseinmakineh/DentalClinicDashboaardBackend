@@ -45,14 +45,24 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public Task<bool> HasPendingOfflineLeadsAsync(long consultantProfileId)
         {
+            return PendingOfflineLeadsForConsultant(consultantProfileId).AnyAsync();
+        }
+
+        public Task<int> CountPendingOfflineLeadsAsync(long consultantProfileId)
+        {
+            return PendingOfflineLeadsForConsultant(consultantProfileId).CountAsync();
+        }
+
+        private IQueryable<LeadAssignment> PendingOfflineLeadsForConsultant(long consultantProfileId)
+        {
             return GetAll()
-                .AnyAsync(x => !x.IsDeleted &&
-                               x.ConsultantProfileId == consultantProfileId &&
-                               x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                               x.ReportSubmittedAt == null &&
-                               x.LeadAssignmentState != LeadAssignmentState.Converted &&
-                               x.LeadAssignmentState != LeadAssignmentState.Rejected &&
-                               x.LeadAssignmentState != LeadAssignmentState.Expired);
+                .Where(x => !x.IsDeleted &&
+                            x.ConsultantProfileId == consultantProfileId &&
+                            x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                            x.ReportSubmittedAt == null &&
+                            x.LeadAssignmentState != LeadAssignmentState.Converted &&
+                            x.LeadAssignmentState != LeadAssignmentState.Rejected &&
+                            x.LeadAssignmentState != LeadAssignmentState.Expired);
         }
 
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)

@@ -1,0 +1,145 @@
+<section class="auth-showcase auth-showcase--cream" id="register" aria-labelledby="register-title" dir="rtl">
+  <div class="section-shell auth-shell auth-shell--register">
+    <div class="auth-card auth-card--register">
+      <div class="auth-card__header auth-card__header--right">
+        <h2 id="register-title">ثبت‌نام</h2>
+      </div>
+
+      <form class="auth-form auth-form--register" [formGroup]="registerForm" (ngSubmit)="submit()" aria-label="فرم ثبت‌نام">
+        <div class="form-grid form-grid--two">
+          <div class="form-field">
+            <label for="register-first-name">نام</label>
+            <div class="input-wrap">
+              <input id="register-first-name" type="text" formControlName="firstName" placeholder="مثال: علی" autocomplete="given-name" />
+              <span class="material-symbols-outlined" aria-hidden="true">person</span>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="register-last-name">نام خانوادگی</label>
+            <div class="input-wrap">
+              <input id="register-last-name" type="text" formControlName="lastName" placeholder="مثال: محمدی" autocomplete="family-name" />
+              <span class="material-symbols-outlined" aria-hidden="true">badge</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid form-grid--two">
+          <div class="form-field">
+            <label for="register-phone">شماره موبایل</label>
+            <div class="input-wrap input-wrap--ltr-value">
+              <input id="register-phone" type="tel" formControlName="phoneNumber" placeholder="09123456789" autocomplete="tel" inputmode="tel" />
+              <span class="material-symbols-outlined" aria-hidden="true">phone_iphone</span>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="register-gender">جنسیت</label>
+            <div class="input-wrap input-wrap--select">
+              <select id="register-gender" formControlName="gender">
+                <option *ngFor="let option of genderOptions; trackBy: trackByGenderValue" [ngValue]="option.value">{{ option.label }}</option>
+              </select>
+              <span class="material-symbols-outlined" aria-hidden="true">wc</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid form-grid--two">
+          <div class="form-field">
+            <label for="register-birth-date">تاریخ تولد</label>
+            <div class="date-field" (click)="$event.stopPropagation()">
+              <button
+                id="register-birth-date"
+                class="input-wrap input-wrap--date"
+                type="button"
+                (click)="toggleDatepicker($event)"
+                [attr.aria-expanded]="isDatepickerOpen"
+                aria-haspopup="dialog"
+              >
+                <span class="date-value" [class.date-value--placeholder]="!selectedJalaliDate">
+                  {{ selectedJalaliDate || 'انتخاب تاریخ شمسی' }}
+                </span>
+                <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+              </button>
+              <input type="hidden" formControlName="birthDate" />
+
+              <div *ngIf="isDatepickerOpen" class="jalali-datepicker" role="dialog" aria-label="انتخاب تاریخ تولد شمسی">
+                  <div class="datepicker-header">
+                    <button type="button" (click)="previousMonth()" aria-label="ماه قبل">
+                      <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    </button>
+                    <strong>{{ currentMonthTitle }}</strong>
+                    <button type="button" (click)="nextMonth()" aria-label="ماه بعد">
+                      <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+                    </button>
+                  </div>
+
+                  <div class="weekday-grid" aria-hidden="true">
+                    <span *ngFor="let dayName of weekDays; trackBy: trackByText">{{ dayName }}</span>
+                  </div>
+
+                  <div class="day-grid">
+                    <button
+                        *ngFor="let day of calendarDays; trackBy: trackByCalendarDay"
+                        type="button"
+                        [class.day-cell--empty]="!day"
+                        [class.day-cell--today]="day?.isToday"
+                        [class.day-cell--selected]="day?.isSelected"
+                        [disabled]="!day"
+                        (click)="selectDate(day, $event)"
+                      >
+                        {{ day?.label }}
+                      </button>
+                  </div>
+                </div>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="register-password">رمز عبور</label>
+            <div class="input-wrap input-wrap--password input-wrap--ltr-value">
+              <input
+                id="register-password"
+                formControlName="passwordHash"
+                [type]="isPasswordVisible ? 'text' : 'password'"
+                placeholder="••••••••"
+                autocomplete="new-password"
+              />
+              <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+              <button type="button" (click)="togglePasswordVisibility()" [attr.aria-label]="isPasswordVisible ? 'مخفی کردن رمز عبور' : 'نمایش رمز عبور'">
+                <span class="material-symbols-outlined" aria-hidden="true">{{ isPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-field form-field--full">
+          <label for="register-avatar">تصویر آواتار</label>
+          <label class="avatar-upload" for="register-avatar">
+            <span class="avatar-preview" aria-hidden="true">
+              <img *ngIf="selectedAvatarPreview; else avatarPlaceholder" [src]="selectedAvatarPreview" alt="" />
+              <ng-template #avatarPlaceholder>
+                <span class="material-symbols-outlined">add_a_photo</span>
+              </ng-template>
+            </span>
+            <span class="avatar-upload__text">
+              {{ selectedAvatarName || 'انتخاب تصویر' }}
+            </span>
+          </label>
+          <input id="register-avatar" class="file-input" type="file" accept="image/*" (change)="onAvatarSelected($event)" />
+        </div>
+
+        <div class="check-row check-row--terms">
+          <input id="complete-profile" type="checkbox" formControlName="isCompleteProfile" />
+          <label for="complete-profile">پروفایل کامل است</label>
+        </div>
+
+        <button class="auth-submit" type="submit" [disabled]="registerForm.invalid || isSubmitting">
+          {{ isSubmitting ? 'در حال ارسال...' : 'ثبت‌نام' }}
+        </button>
+      </form>
+
+      <p class="auth-switch"><a routerLink="/login">ورود به حساب کاربری</a></p>
+    </div>
+  </div>
+</section>

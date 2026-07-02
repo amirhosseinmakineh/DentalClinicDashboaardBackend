@@ -1,0 +1,158 @@
+<section class="management-panel" aria-labelledby="roles-title">
+  <div class="panel-heading">
+    <div>
+      <p class="eyebrow">Role Management</p>
+      <h2 id="roles-title">مدیریت نقش ها</h2>
+    </div>
+    <div class="panel-actions">
+      <button type="button" class="ghost-button" (click)="exportRoles('excel')">
+        خروجی اکسل
+      </button>
+      <button type="button" class="ghost-button" (click)="exportRoles('pdf')">
+        خروجی PDF
+      </button>
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="isRolesLoading"
+        (click)="openRoleDialog('create')"
+      >
+        ایجاد نقش
+      </button>
+    </div>
+  </div>
+
+  <p class="status-message" *ngIf="isRolesLoading">
+    در حال دریافت نقش‌ها از API پورت ۵۱۸۲...
+  </p>
+  <p class="status-message" *ngIf="roleLoadError">{{ roleLoadError }}</p>
+
+  <div
+    class="data-table data-table--roles"
+    role="table"
+    aria-label="جدول نقش‌ها"
+  >
+    <div class="table-row table-head" role="row">
+      <span role="columnheader">شناسه</span>
+      <span role="columnheader">نام نقش</span>
+      <span role="columnheader">عملیات</span>
+    </div>
+    <div
+      class="table-row"
+      role="row"
+      *ngFor="let roleItem of rolePage.items; trackBy: trackById"
+    >
+      <span role="cell">{{ roleItem.id }}</span>
+      <span role="cell">{{ roleItem.roleName }}</span>
+      <span role="cell" class="row-actions">
+        <button type="button" (click)="openRoleDialog('edit', roleItem)">
+          ویرایش
+        </button>
+        <button
+          type="button"
+          class="danger-link"
+          (click)="openRoleDialog('delete', roleItem)"
+        >
+          حذف
+        </button>
+      </span>
+    </div>
+  </div>
+
+  <div class="pagination-bar" aria-label="صفحه‌بندی نقش‌ها">
+    <span
+      >نمایش {{ rolePage.items.length }} از {{ rolePage.totalCount }} نقش - صفحه
+      {{ rolePage.pageNumber }} از {{ rolePage.totalPages }}</span
+    >
+    <label>
+      تعداد در صفحه
+      <select [value]="rolePageSize" (change)="changeRolePageSize($event)">
+        <option
+          *ngFor="let size of pageSizeOptions; trackBy: trackByValue"
+          [value]="size"
+        >
+          {{ size }}
+        </option>
+      </select>
+    </label>
+    <div>
+      <button
+        type="button"
+        [disabled]="!rolePage.hasPrevious"
+        (click)="changeRolePage(rolePage.pageNumber - 1)"
+      >
+        قبلی
+      </button>
+      <button
+        type="button"
+        [disabled]="!rolePage.hasNext"
+        (click)="changeRolePage(rolePage.pageNumber + 1)"
+      >
+        بعدی
+      </button>
+    </div>
+  </div>
+</section>
+
+<div
+  class="dialog-backdrop"
+  *ngIf="dialogMode"
+  role="presentation"
+  (click)="closeDialog()"
+>
+  <section
+    class="admin-dialog"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="dialogTitle"
+    (click)="$event.stopPropagation()"
+  >
+    <header>
+      <h2>{{ dialogTitle }}</h2>
+      <button type="button" aria-label="بستن دیالوگ" (click)="closeDialog()">
+        ×
+      </button>
+    </header>
+
+    <form
+      *ngIf="dialogMode !== 'delete'"
+      [formGroup]="roleForm"
+      (ngSubmit)="submitRoleDialog()"
+      class="dialog-form"
+    >
+      <label>نام نقش<input type="text" formControlName="roleName" /></label>
+      <div class="dialog-actions">
+        <button type="button" class="ghost-button" (click)="closeDialog()">
+          انصراف
+        </button>
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="roleForm.invalid || isDialogSubmitting"
+        >
+          {{ isDialogSubmitting ? "در حال ثبت..." : "ثبت" }}
+        </button>
+      </div>
+    </form>
+
+    <div class="delete-confirm" *ngIf="dialogMode === 'delete'">
+      <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+      <p>
+        آیا از حذف نقش «{{ selectedRole?.roleName }}» مطمئن هستید؟ این عملیات در بک‌اند ثبت می‌شود.
+      </p>
+      <div class="dialog-actions">
+        <button type="button" class="ghost-button" (click)="closeDialog()">
+          انصراف
+        </button>
+        <button
+          type="button"
+          class="danger-button"
+          [disabled]="isDialogSubmitting"
+          (click)="submitRoleDialog()"
+        >
+          {{ isDialogSubmitting ? "در حال حذف..." : "حذف قطعی" }}
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

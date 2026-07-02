@@ -1,0 +1,381 @@
+:host {
+  display: block;
+  --color-surface: #ffffff;
+  --color-secondary: #eee0d2;
+  --color-secondary-container: #f6eadf;
+  --color-primary: #77583a;
+  --color-primary-hover: #5c4125;
+  --color-on-secondary: #4e453b;
+  --color-text: #1a1c1a;
+  --color-muted: #4f453c;
+  --color-outline: #81756b;
+  --color-outline-soft: #d3c4b8;
+  --shadow-soft: 0 0.25rem 1.25rem rgba(74, 69, 62, 0.04);
+}
+
+.auth-showcase {
+  min-height: 100vh;
+  padding-block: clamp(2rem, 5vw, 5rem);
+}
+
+.auth-showcase--cream {
+  background:
+    radial-gradient(circle at 88% 18%, rgba(119, 88, 58, 0.08), transparent 24rem),
+    var(--color-secondary);
+}
+
+.auth-shell {
+  display: grid;
+  place-items: center;
+}
+
+.auth-card {
+  width: min(100%, 42rem);
+  border: 1px solid rgba(211, 196, 184, 0.75);
+  border-radius: 1.75rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(0.75rem);
+}
+
+.auth-card__header {
+  margin-bottom: clamp(1.25rem, 3vw, 2rem);
+  text-align: center;
+}
+
+.auth-card__header h2 {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: clamp(1.7rem, 5vw, 2.3rem);
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-field {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.form-field--full {
+  grid-column: 1 / -1;
+}
+
+.form-field label,
+.check-row,
+.auth-switch {
+  color: var(--color-on-secondary);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrap > .material-symbols-outlined,
+.input-wrap--date .material-symbols-outlined {
+  position: absolute;
+  right: 1rem;
+  color: var(--color-outline);
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.input-wrap input,
+.input-wrap select,
+.input-wrap--date,
+.avatar-upload {
+  width: 100%;
+  min-height: 3.35rem;
+  border: 1px solid var(--color-outline-soft);
+  border-radius: 0.85rem;
+  padding: 0.9rem 3.1rem 0.9rem 1rem;
+  background: rgba(238, 224, 210, 0.22);
+  color: var(--color-text);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.input-wrap input::placeholder {
+  color: rgba(129, 117, 107, 0.7);
+}
+
+.input-wrap input:focus,
+.input-wrap select:focus,
+.input-wrap--date:focus,
+.avatar-upload:focus-within,
+.avatar-upload:hover {
+  border-color: var(--color-primary);
+  background: #ffffff;
+  box-shadow: 0 0 0 0.2rem rgba(119, 88, 58, 0.1);
+}
+
+.input-wrap:focus-within > .material-symbols-outlined {
+  color: var(--color-primary);
+}
+
+.input-wrap--ltr-value input {
+  direction: ltr;
+  text-align: right;
+}
+
+.input-wrap--select select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.input-wrap--password input {
+  padding-left: 3.35rem;
+}
+
+.input-wrap button {
+  position: absolute;
+  left: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 999rem;
+  background: transparent;
+  color: var(--color-outline);
+  cursor: pointer;
+}
+
+.input-wrap button:hover {
+  color: var(--color-primary);
+  background: rgba(238, 224, 210, 0.45);
+}
+
+.input-wrap--date {
+  justify-content: flex-start;
+  text-align: right;
+  cursor: pointer;
+}
+
+.date-field {
+  position: relative;
+}
+
+.date-value {
+  font-weight: 700;
+}
+
+.date-value--placeholder {
+  color: rgba(129, 117, 107, 0.7);
+  font-weight: 500;
+}
+
+.jalali-datepicker {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid var(--color-outline-soft);
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 1.25rem 3rem rgba(74, 69, 62, 0.16);
+}
+
+.datepicker-header,
+.weekday-grid,
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.datepicker-header {
+  grid-template-columns: 2.4rem 1fr 2.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.datepicker-header strong {
+  color: var(--color-primary);
+  text-align: center;
+}
+
+.datepicker-header button,
+.day-grid button {
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.datepicker-header button {
+  height: 2.4rem;
+  color: var(--color-primary);
+}
+
+.weekday-grid {
+  margin-bottom: 0.45rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.day-grid button {
+  min-height: 2.35rem;
+  font-weight: 800;
+}
+
+.datepicker-header button:hover,
+.day-grid button:not(:disabled):hover,
+.day-cell--today {
+  background: var(--color-secondary-container);
+  color: var(--color-primary);
+}
+
+.day-grid .day-cell--selected {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.day-grid .day-cell--empty {
+  cursor: default;
+  opacity: 0;
+}
+
+.avatar-upload {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 4.5rem;
+  padding: 0.65rem;
+  cursor: pointer;
+}
+
+.avatar-preview {
+  width: 3.2rem;
+  height: 3.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999rem;
+  background: var(--color-secondary-container);
+  color: var(--color-primary);
+}
+
+.avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-upload__text {
+  overflow: hidden;
+  color: var(--color-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: var(--color-muted);
+  line-height: 1.8;
+}
+
+.check-row input {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0.35rem 0 0;
+  accent-color: var(--color-primary);
+}
+
+.auth-submit {
+  min-height: 3.75rem;
+  border: 0;
+  border-radius: 0.95rem;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  font-weight: 900;
+  box-shadow: 0 1rem 2rem rgba(119, 88, 58, 0.12);
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-submit:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  box-shadow: 0 1.25rem 2.5rem rgba(119, 88, 58, 0.18);
+  transform: translateY(-0.15rem);
+}
+
+.auth-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
+.auth-switch {
+  margin: 1.35rem 0 0;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(211, 196, 184, 0.6);
+  text-align: center;
+}
+
+.auth-switch a {
+  color: var(--color-primary);
+  font-weight: 850;
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .auth-showcase {
+    padding-block: 1rem;
+  }
+
+  .auth-card {
+    border-radius: 1.25rem;
+    padding: 1rem;
+  }
+
+  .form-grid--two {
+    grid-template-columns: 1fr;
+  }
+
+  .jalali-datepicker {
+    right: 50%;
+    transform: translateX(50%);
+  }
+}

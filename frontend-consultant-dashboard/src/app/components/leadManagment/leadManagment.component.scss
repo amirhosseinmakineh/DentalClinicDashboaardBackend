@@ -1,0 +1,327 @@
+:host {
+  --surface: #ffffff;
+  --surface-soft: #f7f1ea;
+  --border: #dfd2c4;
+  --primary: #77583a;
+  --primary-dark: #5c4125;
+  --text: #1f1b15;
+  --muted: #6c6358;
+  --success: #1f7a55;
+  --success-soft: #e8f5ef;
+  --warning: #9a6700;
+  --warning-soft: #fff6df;
+  --danger: #a33a2d;
+  --danger-soft: #fdeeed;
+  --shadow: 0 1rem 2rem rgba(74, 66, 56, 0.08);
+}
+
+.lead-management-table {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.35rem;
+  box-shadow: var(--shadow);
+}
+
+.lead-header,
+.lead-summary,
+.lead-filters,
+.pagination-bar,
+.actions-cell,
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.lead-header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.lead-header h2,
+.dialog-card__header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.lead-summary span,
+.pagination-bar {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.lead-summary span,
+.lead-filters button,
+.pagination-bar select {
+  border: 1px solid var(--border);
+  border-radius: 999rem;
+  background: var(--surface-soft);
+  color: var(--primary-dark);
+}
+
+.lead-summary span {
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.lead-filters button {
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  transition: background-color 0.2s ease, color 0.2s ease;
+
+  &.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+}
+
+.table-shell {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: separate;
+  border-spacing: 0 0.75rem;
+}
+
+thead th {
+  padding: 0.9rem 1rem;
+  background: var(--surface-soft);
+  color: var(--primary-dark);
+  font-weight: 900;
+  text-align: right;
+}
+
+tbody tr {
+  background: #fffdfa;
+  box-shadow: 0 0.5rem 1.25rem rgba(74, 66, 56, 0.05);
+}
+
+tbody td {
+  padding: 1rem;
+  vertical-align: middle;
+  color: var(--text);
+}
+
+.status-badge,
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 6.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.status-success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.status-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.status-pending {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.status-neutral {
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.type-realtime,
+.type-offline {
+  background: var(--surface-soft);
+  color: var(--primary-dark);
+}
+
+.actions-cell {
+  align-items: center;
+}
+
+.call-btn,
+.action-btn,
+.primary-button,
+.ghost-button,
+.dialog-close {
+  border: 1px solid transparent;
+  border-radius: 0.85rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+}
+
+.call-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: var(--surface-soft);
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.action-btn {
+  padding: 0.55rem 0.9rem;
+}
+
+.action-btn--primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.action-btn--secondary {
+  background: var(--surface-soft);
+  border-color: var(--border);
+  color: var(--primary-dark);
+}
+
+.action-btn:disabled,
+.primary-button:disabled,
+.ghost-button:disabled,
+.pagination-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.empty-state {
+  text-align: center !important;
+  color: var(--muted);
+}
+
+.pagination-bar {
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface-soft);
+}
+
+.pagination-bar select,
+.dialog-form input,
+.dialog-form select,
+.dialog-form textarea {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.pagination-actions button,
+.primary-button {
+  background: var(--primary);
+  color: #fff;
+  padding: 0.65rem 1rem;
+}
+
+.ghost-button {
+  background: #fff;
+  border-color: var(--border);
+  color: var(--primary-dark);
+  padding: 0.65rem 1rem;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(31, 27, 21, 0.45);
+}
+
+.dialog-card {
+  width: min(100%, 42rem);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.25rem;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.dialog-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.dialog-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.dialog-form label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.dialog-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .lead-management-table {
+    padding: 1rem;
+  }
+
+  .dialog-grid,
+  .lead-header,
+  .pagination-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dialog-grid {
+    grid-template-columns: 1fr;
+  }
+}

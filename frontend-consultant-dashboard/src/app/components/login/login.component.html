@@ -1,0 +1,59 @@
+<section class="auth-showcase" id="login" aria-labelledby="login-title" dir="rtl">
+  <div class="section-shell auth-shell auth-shell--login">
+    <div class="auth-card auth-card--compact">
+      <div class="auth-card__header">
+        <div class="auth-icon" aria-hidden="true">
+          <span class="material-symbols-outlined">lock</span>
+        </div>
+        <p class="eyebrow">ورود امن</p>
+        <h2 id="login-title">خوش آمدید</h2>
+        <p>لطفاً برای دسترسی به پنل کاربری دل‌خند وارد شوید.</p>
+      </div>
+
+      <form class="auth-form" [formGroup]="loginForm" (ngSubmit)="submit()" aria-label="فرم ورود">
+        <div class="form-field">
+          <label for="login-phone">شماره همراه</label>
+          <div class="input-wrap input-wrap--ltr-value">
+            <input id="login-phone" formControlName="phoneNumber" type="tel" placeholder="09123456789" autocomplete="username" />
+            <span class="material-symbols-outlined" aria-hidden="true">person</span>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <div class="label-row">
+            <label for="login-password">رمز عبور</label>
+            <a routerLink="/register">ثبت‌نام</a>
+          </div>
+          <div class="input-wrap input-wrap--password">
+            <input
+              id="login-password"
+              formControlName="passwordHash"
+              [type]="isPasswordVisible ? 'text' : 'password'"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            />
+            <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+            <button type="button" (click)="togglePasswordVisibility()" [attr.aria-label]="isPasswordVisible ? 'مخفی کردن رمز عبور' : 'نمایش رمز عبور'">
+              <span class="material-symbols-outlined" aria-hidden="true">{{ isPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <button class="auth-submit" type="submit" [disabled]="loginForm.invalid || isSubmitting">
+          {{ isSubmitting ? 'در حال ورود...' : 'ورود به حساب کاربری' }}
+        </button>
+      </form>
+    </div>
+
+    <div class="auth-visual auth-visual--login" aria-hidden="true">
+      <img
+        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtMX538IoglcaslZmjfguwiyX_9LcxtVb6fbBvFaaZ0WWWqVpRZai-tzZJdVgBeOSpUaTEd0mRnbYUoo2reokJdt3P1RpJXh9t0TtK49hFCHekvXrkAyuu64xn_9E5xkRfbpXP1iTOrnR7IJ7p40P152Wgz8Em3XpBMQpHB4fS621W01sG2gnyS6YQuNBSA1fKJSFnCJtbCt6ylPRAqeDL4_9FSn98rSRWWOqKvf0ul90_EqhNwXcJhTVZrFGrb1VRAIk-L9gqYg"
+        alt="فضای آرام و مدرن کلینیک دندانپزشکی"
+      />
+      <div class="auth-floating-note">
+        <span class="material-symbols-outlined">verified_user</span>
+        <strong>ورود امن به پنل</strong>
+      </div>
+    </div>
+  </div>
+</section>

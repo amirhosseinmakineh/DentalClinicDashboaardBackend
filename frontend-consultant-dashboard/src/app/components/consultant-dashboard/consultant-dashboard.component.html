@@ -1,0 +1,85 @@
+<section class="consultant-status-page" dir="rtl" aria-labelledby="consultant-status-title">
+  <header class="status-hero">
+    <div>
+      <p class="eyebrow">داشبورد مشاور</p>
+      <h2 id="consultant-status-title">مدیریت وضعیت کاری</h2>
+      <p class="status-meta">امتیاز فعلی: {{ statusState.currentScore }}</p>
+    </div>
+    <span class="material-symbols-outlined" aria-hidden="true">support_agent</span>
+  </header>
+
+  <p class="status-hint" *ngIf="statusState.isLoading">در حال دریافت آخرین وضعیت...</p>
+
+  <div class="status-grid">
+    <article class="status-card" [class.is-active]="statusState.isAvailable">
+      <div class="status-card__header">
+        <span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span>
+        <div>
+          <h3>وضعیت حضور</h3>
+          <p>{{ statusState.isAvailable ? 'حاضر هستید' : 'حضور ثبت نشده' }}</p>
+        </div>
+      </div>
+
+      <div class="status-badge" [class.status-badge--success]="statusState.isAvailable">
+        {{ statusState.isAvailable ? 'حاضر' : 'غایب' }}
+      </div>
+
+      <div class="status-actions">
+        <button
+          type="button"
+          class="success-button"
+          [disabled]="statusState.isLoading || statusState.isSubmittingAvailable || statusState.isAvailable"
+          (click)="setAvailable(true)"
+        >
+          {{ statusState.isSubmittingAvailable ? 'در حال ثبت...' : 'حضور دارم' }}
+        </button>
+        <button
+          type="button"
+          class="ghost-button"
+          [disabled]="statusState.isLoading || statusState.isSubmittingAvailable || !statusState.isAvailable || statusState.isOnline"
+          (click)="setAvailable(false)"
+        >
+          {{ statusState.isSubmittingAvailable ? 'در حال ثبت...' : 'حضور ندارم' }}
+        </button>
+      </div>
+    </article>
+
+    <article class="status-card" [class.is-active]="statusState.isOnline">
+      <div class="status-card__header">
+        <span class="material-symbols-outlined" aria-hidden="true">wifi_tethering</span>
+        <div>
+          <h3>وضعیت دریافت لید</h3>
+          <p>{{ statusState.isOnline ? 'آنلاین هستید' : 'آفلاین هستید' }}</p>
+        </div>
+      </div>
+
+      <div class="status-badge" [class.status-badge--success]="statusState.isOnline">
+        {{ statusState.isOnline ? 'آنلاین' : 'آفلاین' }}
+      </div>
+
+      <p class="status-hint" *ngIf="onlineHint">{{ onlineHint }}</p>
+      <p class="status-hint status-hint--info" *ngIf="statusState.pendingOfflineLeadCount > 0">
+        {{ statusState.pendingOfflineLeadCount }} لید آفلاین در انتظار تعیین تکلیف دارید.
+      </p>
+
+      <div class="status-actions">
+        <button
+          type="button"
+          class="success-button"
+          [disabled]="statusState.isLoading || statusState.isSubmittingOnline || statusState.isOnline || !statusState.isAvailable || !statusState.canGoOnline"
+          (click)="setOnlineOffline(true)"
+        >
+          {{ statusState.isSubmittingOnline ? 'در حال ثبت...' : 'آنلاین شو' }}
+        </button>
+        <button
+          type="button"
+          class="ghost-button"
+          [disabled]="statusState.isLoading || statusState.isSubmittingOnline || !statusState.isOnline"
+          (click)="setOnlineOffline(false)"
+        >
+          {{ statusState.isSubmittingOnline ? 'در حال ثبت...' : 'آفلاین شو' }}
+        </button>
+      </div>
+    </article>
+  </div>
+</section>

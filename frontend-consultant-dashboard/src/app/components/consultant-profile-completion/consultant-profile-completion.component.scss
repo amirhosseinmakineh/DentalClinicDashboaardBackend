@@ -1,0 +1,117 @@
+:host {
+  display: block;
+  --dashboard-surface: #ffffff;
+  --dashboard-cream: #f6eadf;
+  --dashboard-border: #d3c4b8;
+  --dashboard-primary: #77583a;
+  --dashboard-primary-dark: #5c4125;
+  --dashboard-text: #1a1c1a;
+  --dashboard-muted: #6c6358;
+  --dashboard-shadow: 0 1rem 2.4rem rgba(74, 66, 56, 0.08);
+}
+
+.profile-completion-panel {
+  min-height: calc(100vh - 8rem);
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.profile-completion-card {
+  width: min(100%, 34rem);
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid rgba(211, 196, 184, 0.72);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--dashboard-shadow);
+  text-align: right;
+}
+
+.profile-completion-card > .material-symbols-outlined {
+  width: 4rem;
+  height: 4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999rem;
+  background: var(--dashboard-cream);
+  color: var(--dashboard-primary);
+  font-size: 2.2rem;
+}
+
+.profile-completion-card h2,
+.profile-completion-card p {
+  margin: 0;
+}
+
+.profile-completion-card h2 {
+  color: var(--dashboard-primary);
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  font-weight: 950;
+}
+
+.profile-completion-card p {
+  color: var(--dashboard-muted);
+  line-height: 1.8;
+}
+
+.profile-completion-card form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.profile-completion-card label {
+  color: var(--dashboard-primary-dark);
+  font-weight: 850;
+}
+
+.profile-completion-card input,
+.profile-completion-card textarea {
+  width: 100%;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: var(--dashboard-surface);
+  color: var(--dashboard-text);
+  font: inherit;
+  outline: none;
+  resize: vertical;
+}
+
+.profile-completion-card input:focus,
+.profile-completion-card textarea:focus {
+  border-color: var(--dashboard-primary);
+  box-shadow: 0 0 0 0.2rem rgba(119, 88, 58, 0.1);
+}
+
+.primary-button {
+  min-height: 2.7rem;
+  border: 1px solid transparent;
+  border-radius: 0.9rem;
+  padding: 0.6rem 1rem;
+  background: var(--dashboard-primary);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.primary-button:hover:not(:disabled) {
+  transform: translateY(-0.1rem);
+  box-shadow: 0 0.8rem 1.4rem rgba(74, 66, 56, 0.1);
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
+.field-error {
+  margin: -0.25rem 0 0;
+  color: #b3261e;
+  font-size: 0.85rem;
+  font-weight: 700;
+}

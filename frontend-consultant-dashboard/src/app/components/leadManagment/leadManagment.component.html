@@ -1,0 +1,177 @@
+<section class="lead-management-table" dir="rtl">
+  <div class="lead-header">
+    <div>
+      <p class="eyebrow">مدیریت لیدها</p>
+      <h2>لیست لیدهای اختصاص‌یافته</h2>
+    </div>
+
+    <div class="lead-summary">
+      <span>کل لیدها: {{ totalCount }}</span>
+      <span>نمایش: {{ leads.length }}</span>
+    </div>
+  </div>
+
+  <div class="lead-filters">
+    <button type="button" [class.active]="leadFilter === 'all'" (click)="changeLeadFilter('all')">همه</button>
+    <button type="button" [class.active]="leadFilter === 'new'" (click)="changeLeadFilter('new')">جدید</button>
+    <button type="button" [class.active]="leadFilter === 'offlineQueue'" (click)="changeLeadFilter('offlineQueue')">آفلاین</button>
+    <button type="button" [class.active]="leadFilter === 'pending'" (click)="changeLeadFilter('pending')">در انتظار گزارش</button>
+    <button type="button" [class.active]="leadFilter === 'approved'" (click)="changeLeadFilter('approved')">تماس موفق</button>
+    <button type="button" [class.active]="leadFilter === 'expired'" (click)="changeLeadFilter('expired')">منقضی‌شده</button>
+  </div>
+
+  <div class="table-shell">
+    <table>
+      <thead>
+        <tr>
+          <th>نام بیمار</th>
+          <th>شماره تماس</th>
+          <th>نوع لید</th>
+          <th>وضعیت</th>
+          <th>عملیات</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let lead of leads; trackBy: trackByLead">
+          <td>{{ lead.userName }}</td>
+          <td dir="ltr">{{ lead.phoneNumber }}</td>
+          <td>
+            <span class="type-badge" [ngClass]="getTypeClass(lead)">{{ getTypeLabel(lead) }}</span>
+          </td>
+          <td>
+            <span class="status-badge" [ngClass]="getStatusClass(lead)">{{ getStatusLabel(lead) }}</span>
+          </td>
+          <td class="actions-cell">
+            <a class="call-btn" [href]="'tel:' + lead.phoneNumber" aria-label="تماس با بیمار">
+              <span class="material-symbols-outlined">call</span>
+            </a>
+            <button
+              type="button"
+              class="action-btn action-btn--primary"
+              [disabled]="isReportDisabled(lead)"
+              (click)="openReportDialog(lead)"
+            >
+              {{ lead.isReportSubmitted ? 'گزارش ثبت‌شده' : 'ثبت گزارش' }}
+            </button>
+            <button
+              type="button"
+              class="action-btn action-btn--secondary"
+              *ngIf="canCreateReservation(lead)"
+              (click)="openReservationDialog(lead)"
+            >
+              ثبت رزرو
+            </button>
+          </td>
+        </tr>
+
+        <tr *ngIf="leads.length === 0">
+          <td colspan="5" class="empty-state">
+            {{ isLoading ? 'در حال دریافت لیدها...' : 'لیدی برای این فیلتر یافت نشد.' }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination-bar">
+    <span>نمایش {{ leads.length }} از {{ totalCount }} لید - صفحه {{ pageNumber }} از {{ totalPages }}</span>
+
+    <label>
+      تعداد در صفحه
+      <select [value]="pageSize" (change)="changeLeadPageSize($event)">
+        <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
+      </select>
+    </label>
+
+    <div class="pagination-actions">
+      <button type="button" [disabled]="pageNumber === 1" (click)="changeLeadPage(pageNumber - 1)">قبلی</button>
+      <button type="button" [disabled]="pageNumber === totalPages" (click)="changeLeadPage(pageNumber + 1)">بعدی</button>
+    </div>
+  </div>
+</section>
+
+<div class="dialog-backdrop" *ngIf="isReportDialogOpen" (click)="closeReportDialog()">
+  <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="report-dialog-title" (click)="$event.stopPropagation()">
+    <header class="dialog-card__header">
+      <h3 id="report-dialog-title">ثبت گزارش تماس</h3>
+      <button type="button" class="dialog-close" aria-label="بستن" (click)="closeReportDialog()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <form class="dialog-form" [formGroup]="reportForm" (ngSubmit)="submitReport()">
+      <label>
+        نتیجه تماس
+        <select formControlName="callResult">
+          <option *ngFor="let option of callResultOptions" [ngValue]="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+
+      <label>
+        توضیحات گزارش
+        <textarea rows="4" formControlName="reportDescription" placeholder="خلاصه تماس با بیمار را وارد کنید"></textarea>
+      </label>
+
+      <div class="dialog-grid">
+        <label>
+          شهر بیمار
+          <input type="text" formControlName="patientCity" />
+        </label>
+        <label>
+          منطقه بیمار
+          <input type="text" formControlName="patientRegion" />
+        </label>
+        <label>
+          نام کلینیک/بیزینس
+          <input type="text" formControlName="businessName" />
+        </label>
+        <label>
+          احتمال حضور (۰ تا ۱۰۰)
+          <input type="number" min="0" max="100" formControlName="attendanceProbabilityPercent" />
+        </label>
+        <label>
+          شماره تماس دوم
+          <input type="text" dir="ltr" formControlName="secondaryPhoneNumber" />
+        </label>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="ghost-button" [disabled]="isSubmittingReport" (click)="closeReportDialog()">انصراف</button>
+        <button type="submit" class="primary-button" [disabled]="isSubmittingReport || reportForm.invalid">
+          {{ isSubmittingReport ? 'در حال ثبت...' : 'ثبت گزارش' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="dialog-backdrop" *ngIf="isReservationDialogOpen" (click)="closeReservationDialog()">
+  <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="reservation-dialog-title" (click)="$event.stopPropagation()">
+    <header class="dialog-card__header">
+      <h3 id="reservation-dialog-title">ثبت رزرو بیمار</h3>
+      <button type="button" class="dialog-close" aria-label="بستن" (click)="closeReservationDialog()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <form class="dialog-form" [formGroup]="reservationForm" (ngSubmit)="submitReservation()">
+      <label>
+        تاریخ و ساعت رزرو
+        <input type="datetime-local" formControlName="reservationAt" />
+      </label>
+
+      <label>
+        توضیحات رزرو
+        <textarea rows="3" formControlName="description" placeholder="توضیحات تکمیلی رزرو"></textarea>
+      </label>
+
+      <div class="dialog-actions">
+        <button type="button" class="ghost-button" [disabled]="isSubmittingReservation" (click)="closeReservationDialog()">انصراف</button>
+        <button type="submit" class="primary-button" [disabled]="isSubmittingReservation || reservationForm.invalid">
+          {{ isSubmittingReservation ? 'در حال ثبت...' : 'ثبت رزرو' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

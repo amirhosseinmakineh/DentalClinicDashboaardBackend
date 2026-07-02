@@ -1,0 +1,214 @@
+:host {
+  display: block;
+  --dashboard-surface: #ffffff;
+  --dashboard-cream-soft: #f6eadf;
+  --dashboard-border: #d3c4b8;
+  --dashboard-primary: #77583a;
+  --dashboard-primary-dark: #5c4125;
+  --dashboard-text: #1a1c1a;
+  --dashboard-muted: #6c6358;
+  --dashboard-shadow: 0 1rem 2.4rem rgba(74, 66, 56, 0.08);
+  --success: #0f9f6e;
+  --success-soft: #e6f7ef;
+  --warning: #d17b00;
+  --warning-soft: #fff3df;
+}
+
+.consultant-status-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.status-hero,
+.status-card {
+  border: 1px solid rgba(211, 196, 184, 0.68);
+  border-radius: 1.35rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--dashboard-shadow);
+}
+
+.status-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1rem, 3vw, 1.4rem);
+}
+
+.status-hero h2,
+.status-hero p,
+.status-card h3,
+.status-card p {
+  margin: 0;
+}
+
+.status-hero h2,
+.status-card h3 {
+  color: var(--dashboard-text);
+  font-weight: 950;
+}
+
+.status-hero p,
+.status-card p {
+  color: var(--dashboard-muted);
+  line-height: 1.8;
+}
+
+.status-hero > .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1.25rem;
+  background: var(--dashboard-cream-soft);
+  color: var(--dashboard-primary);
+  font-size: 2.35rem;
+}
+
+.eyebrow {
+  margin-bottom: 0.35rem !important;
+  color: var(--dashboard-primary) !important;
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.status-card {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 3vw, 1.25rem);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.status-card.is-active {
+  border-color: rgba(15, 159, 110, 0.45);
+}
+
+.status-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.status-card__header > .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  flex: 0 0 auto;
+  border-radius: 1rem;
+  background: var(--dashboard-cream-soft);
+  color: var(--dashboard-primary);
+  font-size: 1.9rem;
+}
+
+.status-badge {
+  justify-self: start;
+  border-radius: 999rem;
+  padding: 0.35rem 0.9rem;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-weight: 950;
+}
+
+.status-badge--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.status-hint {
+  border-radius: 0.9rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--warning-soft);
+  color: var(--warning) !important;
+  font-weight: 850;
+}
+
+.status-hint--info {
+  background: var(--dashboard-cream-soft);
+  color: var(--dashboard-primary) !important;
+}
+
+.status-meta {
+  margin-top: 0.35rem !important;
+  color: var(--dashboard-muted) !important;
+  font-weight: 800;
+}
+
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.success-button,
+.ghost-button {
+  min-height: 2.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.9rem;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.success-button:hover:not(:disabled),
+.ghost-button:hover:not(:disabled) {
+  transform: translateY(-0.1rem);
+  box-shadow: 0 0.8rem 1.4rem rgba(74, 66, 56, 0.1);
+}
+
+.success-button:disabled,
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.success-button {
+  background: var(--success);
+  color: #fff;
+}
+
+.ghost-button {
+  border-color: var(--dashboard-border);
+  background: var(--dashboard-surface);
+  color: var(--dashboard-primary-dark);
+}
+
+@media (max-width: 820px) {
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .status-hero,
+  .status-card__header,
+  .status-actions {
+    align-items: stretch;
+  }
+
+  .status-hero,
+  .status-card__header {
+    flex-direction: column;
+  }
+
+  .status-hero > .material-symbols-outlined,
+  .status-card__header > .material-symbols-outlined {
+    align-self: start;
+  }
+
+  .status-actions button {
+    width: 100%;
+  }
+}

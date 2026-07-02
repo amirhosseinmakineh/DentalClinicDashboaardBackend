@@ -1,0 +1,13 @@
+<header class="dashboard-header">
+  <button class="icon-button" type="button" aria-label="باز و بسته کردن سایدبار" (click)="toggleSidebar.emit()">
+    <span class="material-symbols-outlined" aria-hidden="true">menu_open</span>
+  </button>
+  <div class="header-title">
+    <h1>{{ title }}</h1>
+    <p>{{ subtitle }}</p>
+  </div>
+  <button class="logout-button" type="button" (click)="logout.emit()">
+    <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+    خروج
+  </button>
+</header>

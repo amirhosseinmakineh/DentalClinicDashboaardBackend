@@ -1,0 +1,44 @@
+<div class="dashboard-shell" dir="rtl" [class.is-sidebar-closed]="!isSidebarOpen">
+  <!-- Sidebar -->
+  <app-sidebar
+    [items]="sidebarItems"
+    [isOpen]="isSidebarOpen"
+    [activeKey]="activeKey"
+    title="دل‌خند"
+    [subtitle]="roleLabel"
+    (toggleSidebar)="toggleSidebar()"
+    (closeSidebar)="closeSidebar()"
+    (itemSelected)="setActive($event)"
+  />
+
+  <!-- Main content -->
+  <main class="dashboard-main">
+    <app-dashboard-header
+      [title]="activeTitle"
+      [subtitle]="activeSubtitle"
+      (toggleSidebar)="toggleSidebar()"
+      (logout)="logout()"
+    />
+
+    <!-- Router outlet: همه صفحات فرزند اینجا لود میشن -->
+    <router-outlet></router-outlet>
+  </main>
+</div>
+
+<!-- Dialog overlay -->
+<div
+  class="dialog-backdrop"
+  *ngIf="dialogEntity"
+  role="presentation"
+  (click)="closeDialog()"
+>
+  <section
+    class="admin-dialog"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="dialogTitle"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- محتوا و فرم دیالوگ (همان فرم مدیریت کاربران قبلی) -->
+  </section>
+</div>

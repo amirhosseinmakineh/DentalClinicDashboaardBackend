@@ -1,0 +1,28 @@
+<aside class="sidebar" [class.is-closed]="!isOpen" aria-label="منوی داشبورد">
+  <div class="brand">
+    <span class="brand-mark">د</span>
+    <div>
+      <strong>{{ title }}</strong>
+      <small>{{ subtitle }}</small>
+    </div>
+    <button class="collapse-toggle" type="button" aria-label="باز و بسته کردن سایدبار" (click)="toggleSidebar.emit()">
+      <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+    </button>
+    <button class="mobile-close" type="button" aria-label="بستن منو" (click)="closeSidebar.emit()">×</button>
+  </div>
+
+  <nav class="nav-list">
+    <button
+      type="button"
+      class="nav-item"
+      *ngFor="let item of items; trackBy: trackByKey"
+      [class.is-active]="activeKey === item.key"
+      [title]="item.label"
+      [attr.data-component]="item.componentName || null"
+      (click)="itemSelected.emit(item)"
+    >
+      <span class="material-symbols-outlined nav-icon" aria-hidden="true">{{ item.icon }}</span>
+      <span>{{ item.label }}</span>
+    </button>
+  </nav>
+</aside>

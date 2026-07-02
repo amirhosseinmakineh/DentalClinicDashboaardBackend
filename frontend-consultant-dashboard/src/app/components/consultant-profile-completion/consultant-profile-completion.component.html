@@ -1,0 +1,23 @@
+<section class="profile-completion-panel" aria-labelledby="profile-completion-title">
+  <div class="profile-completion-card">
+    <span class="material-symbols-outlined" aria-hidden="true">lock_person</span>
+    <h2 id="profile-completion-title">تکمیل پروفایل مشاور</h2>
+    <p>تا زمانی که کد ملی و آدرس پروفایل مشاور ثبت نشود، هیچ بخشی از داشبورد فعال نخواهد بود.</p>
+
+    <form [formGroup]="profileForm" (ngSubmit)="submitProfile()">
+      <label for="consultant-national-code">کد ملی</label>
+      <input id="consultant-national-code" formControlName="nationalCode" type="text" inputmode="numeric" maxlength="10" placeholder="0012345678" />
+
+      <label for="consultant-address">آدرس</label>
+      <textarea id="consultant-address" formControlName="address" rows="4" placeholder="آدرس کامل"></textarea>
+
+      <p class="field-error" *ngIf="profileForm.controls.nationalCode.touched && profileForm.controls.nationalCode.invalid">
+        کد ملی باید دقیقاً ۱۰ رقم باشد.
+      </p>
+
+      <button class="primary-button" type="submit" [disabled]="profileForm.invalid || isSubmitting">
+        {{ isSubmitting ? 'در حال ثبت...' : 'ثبت و فعال‌سازی داشبورد' }}
+      </button>
+    </form>
+  </div>
+</section>

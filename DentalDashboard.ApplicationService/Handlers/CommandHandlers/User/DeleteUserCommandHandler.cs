@@ -33,13 +33,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 return Result<object>.Failure("کاربر یافت نشد");
             }
 
-            var userRoles = await userRoleRepository.GetAllAsync();
+            var userRoles = await userRoleRepository.FindAsync(x => x.UserId == command.UserId);
 
-            foreach (var role in userRoles)
+            foreach (var userRole in userRoles)
             {
-                 userRoleRepository.Delete(role);
+                userRoleRepository.Delete(userRole);
             }
-             userRepository.Delete(user);
+
+            userRepository.Delete(user);
 
             await unitOfWork.CommitAsync();
 

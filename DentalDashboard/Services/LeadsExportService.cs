@@ -24,10 +24,10 @@ public class LeadsExportService
                 x.LeadAssignmentState,
                 x.AssignmentType,
                 x.ConsultantProfileId,
-                ConsultantFullName = x.ConsultantProfile == null
+                ConsultantFullName = x.ConsultantProfile == null || x.ConsultantProfile.User == null
                     ? string.Empty
                     : x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName,
-                ConsultantPhone = x.ConsultantProfile == null
+                ConsultantPhone = x.ConsultantProfile == null || x.ConsultantProfile.User == null
                     ? string.Empty
                     : x.ConsultantProfile.User.PhoneNumber,
                 x.AssignedAt,

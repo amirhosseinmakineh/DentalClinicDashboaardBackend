@@ -20,7 +20,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             var now = query.Now ?? DateTime.Now;
 
             return await reservationRepository.GetAll()
-                .Include(x => x.LeadAssignment)
                 .Where(x => x.ConsultantProfileId == query.ConsultantProfileId &&
                             !x.IsCanceled &&
                             x.ReservationAt <= now &&
@@ -34,13 +33,13 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     PatientUserId = x.PatientUserId,
                     RequiresPatientProfile = !x.PatientUserId.HasValue,
                     ReservationAt = x.ReservationAt,
-                    PatientName = x.LeadAssignment.UserName,
-                    PatientPhoneNumber = x.LeadAssignment.PhoneNumber,
-                    SecondaryPhoneNumber = x.LeadAssignment.SecondaryPhoneNumber,
-                    PatientCity = x.LeadAssignment.PatientCity ?? string.Empty,
-                    PatientRegion = x.LeadAssignment.PatientRegion,
-                    BusinessName = x.LeadAssignment.BusinessName,
-                    AttendanceProbabilityPercent = x.LeadAssignment.AttendanceProbabilityPercent,
+                    PatientName = x.LeadAssignment != null ? x.LeadAssignment.UserName : string.Empty,
+                    PatientPhoneNumber = x.LeadAssignment != null ? x.LeadAssignment.PhoneNumber : string.Empty,
+                    SecondaryPhoneNumber = x.LeadAssignment != null ? x.LeadAssignment.SecondaryPhoneNumber : null,
+                    PatientCity = x.LeadAssignment != null ? (x.LeadAssignment.PatientCity ?? string.Empty) : string.Empty,
+                    PatientRegion = x.LeadAssignment != null ? x.LeadAssignment.PatientRegion : null,
+                    BusinessName = x.LeadAssignment != null ? x.LeadAssignment.BusinessName : null,
+                    AttendanceProbabilityPercent = x.LeadAssignment != null ? x.LeadAssignment.AttendanceProbabilityPercent : null,
                     AttendanceConfirmationStatus = x.AttendanceConfirmationStatus,
                     IsDueForConsultantConfirmation = true,
                     Description = x.Description,

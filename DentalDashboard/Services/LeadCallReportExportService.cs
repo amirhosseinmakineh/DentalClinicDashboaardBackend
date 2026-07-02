@@ -29,10 +29,10 @@ public class LeadCallReportExportService
                 x.ReportDescription,
                 x.ReportSubmittedAt,
                 x.ContactedAt,
-                ConsultantFullName = x.ConsultantProfile == null
+                ConsultantFullName = x.ConsultantProfile == null || x.ConsultantProfile.User == null
                     ? string.Empty
                     : x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName,
-                ConsultantPhone = x.ConsultantProfile == null
+                ConsultantPhone = x.ConsultantProfile == null || x.ConsultantProfile.User == null
                     ? string.Empty
                     : x.ConsultantProfile.User.PhoneNumber,
                 x.AssignmentType,

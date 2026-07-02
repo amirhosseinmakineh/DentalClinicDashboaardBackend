@@ -19,6 +19,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
         {
             var pageNumber = query.PageNumber <= 0 ? 1 : query.PageNumber;
             var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
+            var now = DateTime.Now;
 
             var reservations = reservationRepository.GetAll()
                 .Where(x => x.ConsultantProfileId == query.ConsultantProfileId);
@@ -32,9 +33,15 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (query.To.HasValue)
                 reservations = reservations.Where(x => x.ReservationAt <= query.To.Value);
 
+            if (query.OnlySecretaryReviewed == true)
+            {
+                reservations = reservations.Where(x =>
+                    x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryApproved ||
+                    x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryRejected);
+            }
+
             var totalCount = await reservations.CountAsync(cancellationToken);
             var items = await reservations
-                .Include(x => x.LeadAssignment)
                 .OrderBy(x => x.ReservationAt)
                 .ThenBy(x => x.Id)
                 .Skip((pageNumber - 1) * pageSize)
@@ -47,13 +54,13 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     PatientUserId = x.PatientUserId,
                     RequiresPatientProfile = !x.PatientUserId.HasValue,
                     ReservationAt = x.ReservationAt,
-                    PatientName = x.LeadAssignment.UserName,
-                    PatientPhoneNumber = x.LeadAssignment.PhoneNumber,
-                    SecondaryPhoneNumber = x.LeadAssignment.SecondaryPhoneNumber,
-                    PatientCity = x.LeadAssignment.PatientCity ?? string.Empty,
-                    PatientRegion = x.LeadAssignment.PatientRegion,
-                    BusinessName = x.LeadAssignment.BusinessName,
-                    AttendanceProbabilityPercent = x.LeadAssignment.AttendanceProbabilityPercent,
+                    PatientName = x.LeadAssignment != null ? x.LeadAssignment.UserName : string.Empty,
+                    PatientPhoneNumber = x.LeadAssignment != null ? x.LeadAssignment.PhoneNumber : string.Empty,
+                    SecondaryPhoneNumber = x.LeadAssignment != null ? x.LeadAssignment.SecondaryPhoneNumber : null,
+                    PatientCity = x.LeadAssignment != null ? (x.LeadAssignment.PatientCity ?? string.Empty) : string.Empty,
+                    PatientRegion = x.LeadAssignment != null ? x.LeadAssignment.PatientRegion : null,
+                    BusinessName = x.LeadAssignment != null ? x.LeadAssignment.BusinessName : null,
+                    AttendanceProbabilityPercent = x.LeadAssignment != null ? x.LeadAssignment.AttendanceProbabilityPercent : null,
                     AttendanceConfirmationStatus = x.AttendanceConfirmationStatus,
                     ConsultantAttendanceConfirmedAt = x.ConsultantAttendanceConfirmedAt,
                     ConsultantSaysPatientAttended = x.ConsultantSaysPatientAttended,
@@ -65,7 +72,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     IsAttendanceScoreApplied = x.IsAttendanceScoreApplied,
                     AttendanceScoreValue = x.AttendanceScoreValue,
                     AttendanceScoreAppliedAt = x.AttendanceScoreAppliedAt,
-                    IsDueForConsultantConfirmation = x.ReservationAt <= DateTime.Now && x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
+                    IsDueForConsultantConfirmation = x.ReservationAt <= now &&
+                        x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                     Description = x.Description,
                     IsCanceled = x.IsCanceled
                 })

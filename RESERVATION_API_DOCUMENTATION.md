@@ -147,5 +147,6 @@
 
 ## Frontend docs
 
-- Consultant: `docs/frontend-consultant-reservation-attendance-fa.md`
-- Secretary: `docs/frontend-secretary-reservation-workflow-fa.md`
+- **مستند کامل پیاده‌سازی (اصلی):** `docs/frontend-reservation-attendance-implementation-fa.md`
+- Consultant (خلاصه): `docs/frontend-consultant-reservation-attendance-fa.md`
+- Secretary (خلاصه): `docs/frontend-secretary-reservation-workflow-fa.md`

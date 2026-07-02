@@ -77,7 +77,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 leadAssignmentRepository.Update(lead);
                 await leadAssignmentRepository.SaveChange();
-                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد، اما هنوز لید آفلاین تعیین‌تکلیف‌نشده دارید");
+                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
             }
 
             if (!leadDomainService.IsWorkingTime(now))
@@ -87,7 +87,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 leadAssignmentRepository.Update(lead);
                 await leadAssignmentRepository.SaveChange();
-                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد، اما خارج از ساعت کاری هستید");
+                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
             }
 
             profile.IsOnline = true;
@@ -96,7 +96,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             leadAssignmentRepository.Update(lead);
             await leadAssignmentRepository.SaveChange();
 
-            return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد و شما به صورت خودکار آنلاین شدید");
+            return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
         }
 
         private static DentalDashboard.Domain.Models.ScoreLog CreateScoreLog(

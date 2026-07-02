@@ -39,7 +39,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     LeadAssignmentState = x.LeadAssignmentState,
                     leadAssignmentType = x.AssignmentType,
                     PhoneNumber = x.PhoneNumber,
-                    UserName = x.UserName
+                    UserName = x.UserName,
+                    HasActiveReservation = reservationRepository.GetAll()
+                        .Any(r => r.LeadAssignmentId == x.Id && !r.IsCanceled)
                 });
             if (query.leadAssignmentState.HasValue)
             {

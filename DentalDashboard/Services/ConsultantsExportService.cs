@@ -15,8 +15,10 @@ public class ConsultantsExportService
     {
         var consultants = await context.ConsultantProfiles.AsNoTracking()
             .Include(x => x.User).ThenInclude(x => x.UserRoles).ThenInclude(x => x.Role)
-            .Where(x => !x.IsDeleted && x.User.UserRoles.Any(ur => ur.Role.RoleName == "Consultant"))
-            .OrderByDescending(x => x.CurrentScore).ThenBy(x => x.User.LastName)
+            .Where(x => !x.IsDeleted &&
+                        x.User != null &&
+                        x.User.UserRoles.Any(ur => ur.Role != null && ur.Role.RoleName == "Consultant"))
+            .OrderByDescending(x => x.CurrentScore).ThenBy(x => x.User!.LastName)
             .ToListAsync(cancellationToken);
 
         var consultantIds = consultants.Select(x => x.Id).ToList();
@@ -61,9 +63,9 @@ public class ConsultantsExportService
 
             lines.Add(CsvExportHelper.JoinRow(
                 consultant.Id.ToString(),
-                consultant.User.FirstName,
-                consultant.User.LastName,
-                consultant.User.PhoneNumber,
+                consultant.User?.FirstName ?? string.Empty,
+                consultant.User?.LastName ?? string.Empty,
+                consultant.User?.PhoneNumber ?? string.Empty,
                 consultant.NationalCode,
                 consultant.CurrentScore.ToString(),
                 AdminReportPersianLabels.ToYesNo(consultant.IsOnline),
@@ -104,7 +106,7 @@ public class ConsultantsExportService
             if (!leadsByConsultant.TryGetValue(consultant.Id, out var leads))
                 continue;
 
-            var consultantFullName = $"{consultant.User.FirstName} {consultant.User.LastName}";
+            var consultantFullName = $"{consultant.User?.FirstName ?? string.Empty} {consultant.User?.LastName ?? string.Empty}".Trim();
 
             foreach (var lead in leads)
             {
@@ -113,7 +115,7 @@ public class ConsultantsExportService
                 lines.Add(CsvExportHelper.JoinRow(
                     consultant.Id.ToString(),
                     consultantFullName,
-                    consultant.User.PhoneNumber,
+                    consultant.User?.PhoneNumber ?? string.Empty,
                     lead.Id.ToString(),
                     lead.UserName,
                     lead.PhoneNumber,

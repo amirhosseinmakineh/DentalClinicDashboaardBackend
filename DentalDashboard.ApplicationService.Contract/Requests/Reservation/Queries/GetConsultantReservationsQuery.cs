@@ -10,6 +10,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queri
         public DateTime? From { get; set; }
         public DateTime? To { get; set; }
         public bool IncludeCanceled { get; set; } = false;
+        public bool? OnlySecretaryReviewed { get; set; }
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

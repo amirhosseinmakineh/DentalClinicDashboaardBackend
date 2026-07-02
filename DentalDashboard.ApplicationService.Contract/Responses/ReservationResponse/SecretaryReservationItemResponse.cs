@@ -24,6 +24,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public bool? ConsultantSaysPatientAttended { get; set; }
         public string? ConsultantAttendanceNote { get; set; }
         public bool IsWaitingForSecretaryReview { get; set; }
+        public bool IsReservationDue { get; set; }
         public DateTime? SecretaryReviewedAt { get; set; }
         public Guid? SecretaryUserId { get; set; }
         public bool? SecretaryApprovedConsultantConfirmation { get; set; }

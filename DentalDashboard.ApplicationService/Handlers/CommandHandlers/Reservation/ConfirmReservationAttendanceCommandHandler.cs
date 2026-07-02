@@ -1,4 +1,5 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -32,6 +33,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (reservation.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryApproved ||
                 reservation.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryRejected)
                 return Result.Failure("این رزرو قبلا توسط منشی بررسی شده است");
+
+            if (reservation.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
+                reservation.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent)
+                return Result.Failure("تایید حضور این رزرو قبلا ثبت شده است");
 
             reservation.ConsultantSaysPatientAttended = command.PatientAttended;
             reservation.ConsultantAttendanceConfirmedAt = DateTime.UtcNow;

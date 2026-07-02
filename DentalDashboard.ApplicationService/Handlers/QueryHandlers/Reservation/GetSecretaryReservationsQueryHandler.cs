@@ -21,6 +21,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
         {
             var pageNumber = query.PageNumber <= 0 ? 1 : query.PageNumber;
             var pageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 100);
+            var now = DateTime.Now;
 
             var reservations = reservationRepository.GetAll().AsNoTracking();
 
@@ -42,6 +43,44 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (query.OnlyWaitingForSecretaryReview)
                 reservations = reservations.Where(x => x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
                                                        x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
+
+            if (query.OnlyDue)
+                reservations = reservations.Where(x => x.ReservationAt <= now);
+
+            if (!string.IsNullOrWhiteSpace(query.PatientName))
+            {
+                var patientName = query.PatientName.Trim();
+                reservations = reservations.Where(x => x.LeadAssignment.UserName.Contains(patientName));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.PatientPhoneNumber))
+            {
+                var patientPhoneNumber = query.PatientPhoneNumber.Trim();
+                reservations = reservations.Where(x => x.LeadAssignment.PhoneNumber.Contains(patientPhoneNumber) ||
+                                                       (x.LeadAssignment.SecondaryPhoneNumber != null &&
+                                                        x.LeadAssignment.SecondaryPhoneNumber.Contains(patientPhoneNumber)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.ConsultantName))
+            {
+                var consultantName = query.ConsultantName.Trim();
+                reservations = reservations.Where(x =>
+                    (x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName).Contains(consultantName) ||
+                    x.ConsultantProfile.User.FirstName.Contains(consultantName) ||
+                    x.ConsultantProfile.User.LastName.Contains(consultantName));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.SearchText))
+            {
+                var searchText = query.SearchText.Trim();
+                reservations = reservations.Where(x =>
+                    x.LeadAssignment.UserName.Contains(searchText) ||
+                    x.LeadAssignment.PhoneNumber.Contains(searchText) ||
+                    (x.LeadAssignment.SecondaryPhoneNumber != null && x.LeadAssignment.SecondaryPhoneNumber.Contains(searchText)) ||
+                    (x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName).Contains(searchText) ||
+                    x.ConsultantProfile.User.FirstName.Contains(searchText) ||
+                    x.ConsultantProfile.User.LastName.Contains(searchText));
+            }
 
             var totalCount = await reservations.CountAsync(cancellationToken);
             var items = await reservations
@@ -72,6 +111,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     ConsultantAttendanceNote = x.ConsultantAttendanceNote,
                     IsWaitingForSecretaryReview = x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
                                                    x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent,
+                    IsReservationDue = x.ReservationAt <= now,
                     SecretaryReviewedAt = x.SecretaryReviewedAt,
                     SecretaryUserId = x.SecretaryUserId,
                     SecretaryApprovedConsultantConfirmation = x.SecretaryApprovedConsultantConfirmation,

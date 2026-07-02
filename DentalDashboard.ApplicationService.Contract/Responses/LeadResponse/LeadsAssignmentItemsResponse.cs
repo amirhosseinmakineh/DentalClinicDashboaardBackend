@@ -8,5 +8,8 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
         public string PhoneNumber { get; set; } = default!;
         public LeadAssignmentState LeadAssignmentState { get; set; }
         public LeadAssignmentType leadAssignmentType { get; set; }
+        public DateTime? ReportSubmittedAt { get; set; }
+        public LeadCallResult? CallResult { get; set; }
+        public bool IsReportSubmitted => ReportSubmittedAt.HasValue;
     }
 }

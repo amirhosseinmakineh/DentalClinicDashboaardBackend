@@ -12,5 +12,8 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
         public LeadCallResult CallResult { get; init; }
         public bool IsConsultantOnline { get; init; }
         public bool ShouldOpenReservationPage { get; init; }
+        public bool CanCreateReservation { get; init; }
+        public bool AutoOnlineApplied { get; init; }
+        public string? AutoOnlineBlockedReason { get; init; }
     }
 }

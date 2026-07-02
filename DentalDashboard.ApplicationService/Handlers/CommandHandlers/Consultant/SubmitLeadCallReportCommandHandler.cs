@@ -77,7 +77,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 leadAssignmentRepository.Update(lead);
                 await leadAssignmentRepository.SaveChange();
-                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد، اما هنوز لید آفلاین تعیین‌تکلیف‌نشده دارید");
+                return Result<SubmitLeadCallReportResponse>.Success(
+                    CreateResponse(lead, profile, autoOnlineApplied: false, "تا زمان تعیین تکلیف لیدهای آفلاین، امکان آنلاین شدن وجود ندارد"),
+                    "گزارش با موفقیت ثبت شد. تا زمان تعیین تکلیف لیدهای آفلاین، امکان آنلاین شدن وجود ندارد");
             }
 
             if (!leadDomainService.IsWorkingTime(now))
@@ -87,7 +89,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 leadAssignmentRepository.Update(lead);
                 await leadAssignmentRepository.SaveChange();
-                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد، اما خارج از ساعت کاری هستید");
+                return Result<SubmitLeadCallReportResponse>.Success(
+                    CreateResponse(lead, profile, autoOnlineApplied: false, "خارج از ساعت کاری امکان آنلاین شدن وجود ندارد"),
+                    "گزارش با موفقیت ثبت شد. خارج از ساعت کاری امکان آنلاین شدن وجود ندارد");
             }
 
             profile.IsOnline = true;
@@ -96,7 +100,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             leadAssignmentRepository.Update(lead);
             await leadAssignmentRepository.SaveChange();
 
-            return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد و شما به صورت خودکار آنلاین شدید");
+            return Result<SubmitLeadCallReportResponse>.Success(
+                CreateResponse(lead, profile, autoOnlineApplied: true),
+                "گزارش با موفقیت ثبت شد و وضعیت شما به آنلاین تغییر کرد");
         }
 
         private static DentalDashboard.Domain.Models.ScoreLog CreateScoreLog(
@@ -130,8 +136,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             };
         }
 
-        private static SubmitLeadCallReportResponse CreateResponse(LeadAssignment lead, ConsultantProfile profile)
+        private static SubmitLeadCallReportResponse CreateResponse(
+            LeadAssignment lead,
+            ConsultantProfile profile,
+            bool autoOnlineApplied,
+            string? autoOnlineBlockedReason = null)
         {
+            var canCreateReservation = lead.CallResult == LeadCallResult.Contacted || lead.CallResult == LeadCallResult.Converted;
+
             return new SubmitLeadCallReportResponse
             {
                 LeadAssignmentId = lead.Id,
@@ -141,7 +153,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 LeadAssignmentState = lead.LeadAssignmentState,
                 CallResult = lead.CallResult!.Value,
                 IsConsultantOnline = profile.IsOnline,
-                ShouldOpenReservationPage = lead.CallResult == LeadCallResult.Contacted || lead.CallResult == LeadCallResult.Converted
+                ShouldOpenReservationPage = canCreateReservation,
+                CanCreateReservation = canCreateReservation,
+                AutoOnlineApplied = autoOnlineApplied,
+                AutoOnlineBlockedReason = autoOnlineBlockedReason
             };
         }
     }

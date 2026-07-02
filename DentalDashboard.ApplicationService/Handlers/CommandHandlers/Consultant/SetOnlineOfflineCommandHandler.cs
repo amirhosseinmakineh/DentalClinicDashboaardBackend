@@ -50,6 +50,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 if (hasPendingOfflineLeads)
                     return Result.Failure("ابتدا لیدهای آفلاین خود را تعیین تکلیف کنید");
 
+                var hasActiveRealTimeLead = await leadAssignmentRepository.HasActiveRealTimeLeadAsync(profile.Id);
+                if (hasActiveRealTimeLead)
+                    return Result.Failure("ابتدا تکلیف لید لحظه‌ای قبلی را مشخص کنید");
+
                 profile.IsOnline = true;
                 profile.LastOnlineAt = DateTime.Now;
 

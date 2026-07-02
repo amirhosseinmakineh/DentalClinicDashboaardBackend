@@ -1,56 +1,88 @@
-﻿using DentalDashboard.ApplicationService.Contract.Dtos.LeadAssignment;
-using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.Domain.Enums;
-using DentalDashboard.Domain.IDomainService;
+﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 
-namespace DentalDashboard.ApplicationService.Services
-{
-    public class RoleService : IRoleService
-    {
-        private readonly IRoleRepository roleRepository;
-        private readonly IUserRoleRepository userRoleRepository;
+namespace DentalDashboard.ApplicationService.Services;
 
-        public RoleService(IRoleRepository roleRepository, IUserRoleRepository userRoleRepository)
+public class RoleService : IRoleService
+{
+    private readonly IRoleRepository roleRepository;
+    private readonly IUserRoleRepository userRoleRepository;
+
+    public RoleService(IRoleRepository roleRepository, IUserRoleRepository userRoleRepository)
+    {
+        this.roleRepository = roleRepository;
+        this.userRoleRepository = userRoleRepository;
+    }
+
+    public async Task AddRoleToUser(Guid userId, string roleName)
+    {
+        var roles = await roleRepository.GetAllAsync();
+
+        var role = roles.FirstOrDefault(
+            x => x.RoleName == roleName);
+
+        if (role is null)
         {
-            this.roleRepository = roleRepository;
-            this.userRoleRepository = userRoleRepository;
+            throw new Exception(
+                $"Role '{roleName}' یافت نشد");
         }
 
-        public async Task AddRoleToUser(Guid userId, string roleName)
+        var userRoles = await userRoleRepository.GetAllAsync();
+
+        var existingUserRole = userRoles.FirstOrDefault(
+            x => x.UserId == userId &&
+                 x.RoleId == role.Id &&
+                 !x.IsDeleted);
+
+        if (existingUserRole is not null)
         {
-            var roles = await roleRepository.GetAllAsync();
+            return;
+        }
 
-            var role = roles.FirstOrDefault(
-                x => x.RoleName == roleName);
+        var userRole = new UserRole
+        {
+            UserId = userId,
+            RoleId = role.Id
+        };
 
-            if (role is null)
-            {
-                throw new Exception(
-                    $"Role '{roleName}' یافت نشد");
-            }
+        await userRoleRepository.AddAsync(userRole);
 
-            var userRoles = await userRoleRepository.GetAllAsync();
+        await userRoleRepository.SaveChange();
+    }
 
-            var existingUserRole = userRoles.FirstOrDefault(
-                x => x.UserId == userId &&
-                     x.RoleId == role.Id);
+    public async Task SetUserRole(Guid userId, string roleName)
+    {
+        var roles = await roleRepository.GetAllAsync();
+        var role = roles.FirstOrDefault(x => x.RoleName == roleName);
 
-            if (existingUserRole is not null)
-            {
-                return;
-            }
+        if (role is null)
+            throw new Exception($"Role '{roleName}' یافت نشد");
 
-            var userRole = new Domain.Models.UserRole
+        var userRoles = await userRoleRepository.FindAsync(x => x.UserId == userId);
+        var now = DateTime.UtcNow;
+
+        foreach (var userRole in userRoles.Where(x => !x.IsDeleted))
+        {
+            if (userRole.RoleId == role.Id)
+                continue;
+
+            userRole.IsDeleted = true;
+            userRole.DeletedAt = now;
+            userRole.UpdatedAt = now;
+            userRoleRepository.Update(userRole);
+        }
+
+        var activeRole = userRoles.FirstOrDefault(x => x.RoleId == role.Id && !x.IsDeleted);
+        if (activeRole is null)
+        {
+            await userRoleRepository.AddAsync(new UserRole
             {
                 UserId = userId,
                 RoleId = role.Id
-            };
-
-            await userRoleRepository.AddAsync(userRole);
-
-            await userRoleRepository.SaveChange();
+            });
         }
+
+        await userRoleRepository.SaveChange();
     }
 }

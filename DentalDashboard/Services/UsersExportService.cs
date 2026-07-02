@@ -23,7 +23,10 @@ public class UsersExportService
                 x.FirstName,
                 x.LastName,
                 x.PhoneNumber,
-                RoleName = x.UserRoles.Select(ur => ur.Role.RoleName).FirstOrDefault(),
+                RoleName = x.UserRoles
+                    .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
+                    .Select(ur => ur.Role!.RoleName)
+                    .FirstOrDefault(),
                 x.Gender,
                 x.BirthDate,
                 x.IsActive,

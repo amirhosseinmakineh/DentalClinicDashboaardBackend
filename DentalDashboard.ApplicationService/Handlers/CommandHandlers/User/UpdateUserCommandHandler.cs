@@ -49,7 +49,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 userRepository.Update(user);
 
-                await roleService.AddRoleToUser(user.Id, command.RoleName);
+                await roleService.SetUserRole(user.Id, command.RoleName);
 
                 await userRepository.SaveChange();
                 await unitOfWork.CommitAsync();

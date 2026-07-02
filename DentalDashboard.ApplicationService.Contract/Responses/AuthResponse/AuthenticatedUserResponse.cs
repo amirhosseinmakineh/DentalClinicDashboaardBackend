@@ -18,6 +18,8 @@ public record AuthenticatedUserResponse
 
     public long? ConsultantProfileId { get; init; }
 
+    public bool IsCompleteProfile { get; init; }
+
     public string DefaultDashboard { get; init; } = string.Empty;
 
     public string DefaultDashboardRoute { get; init; } = string.Empty;

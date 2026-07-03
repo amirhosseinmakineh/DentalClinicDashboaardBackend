@@ -35,7 +35,7 @@ public class CompleteConsaltantProfileHandler : ICommandHandler<CompleteConsulta
             return Result<long>.Failure("آدرس مشاور الزامی است");
 
         ConsultantProfile? profile = null;
-        User? user = null;
+        Domain.Models.User? user = null;
 
         if (command.ProfileId > 0)
         {

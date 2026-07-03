@@ -230,12 +230,51 @@ namespace DentalDashboard.ApplicationService.Services
                     {
                         headers = new Dictionary<string, string>
                         {
-                            ["Urgency"] = "high"
+                            ["Urgency"] = "high",
+                            ["TTL"] = "86400"
                         },
-                        notification = new { title, body }
+                        notification = new
+                        {
+                            title,
+                            body,
+                            icon = "/icons/icon-192x192.png",
+                            badge = "/icons/icon-96x96.png"
+                        },
+                        fcmOptions = new
+                        {
+                            link = ResolveWebPushLink(dataPayload)
+                        }
                     }
                 }
             };
+        }
+
+        private static string ResolveWebPushLink(IReadOnlyDictionary<string, string> dataPayload)
+        {
+            if (dataPayload.TryGetValue("type", out var type))
+            {
+                return type switch
+                {
+                    "password_changed" => "/",
+                    "offline_leads" => "/dashboard/consultant?section=leads&type=offline",
+                    "realtime_lead" => BuildRealtimeLeadLink(dataPayload),
+                    _ => "/dashboard/consultant"
+                };
+            }
+
+            return "/dashboard/consultant";
+        }
+
+        private static string BuildRealtimeLeadLink(IReadOnlyDictionary<string, string> dataPayload)
+        {
+            var baseUrl = "/dashboard/consultant?section=leads&type=realtime";
+            if (dataPayload.TryGetValue("leadAssignmentId", out var leadAssignmentId) &&
+                !string.IsNullOrWhiteSpace(leadAssignmentId))
+            {
+                return $"{baseUrl}&leadAssignmentId={Uri.EscapeDataString(leadAssignmentId)}";
+            }
+
+            return baseUrl;
         }
 
         private async Task<bool> SendViaLegacyAsync(

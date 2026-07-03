@@ -7,6 +7,7 @@ using DentalDashboard.Framwork.Domain;
 using DentalDashboard.Utilities.Hasher;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Auth;
 
@@ -18,15 +19,18 @@ public class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswordComman
     private readonly IUserRepository userRepository;
     private readonly IPushNotificationService pushNotificationService;
     private readonly IValidator<ForgotPasswordCommand> validator;
+    private readonly ILogger<ForgotPasswordCommandHandler> logger;
 
     public ForgotPasswordCommandHandler(
         IUserRepository userRepository,
         IPushNotificationService pushNotificationService,
-        IValidator<ForgotPasswordCommand> validator)
+        IValidator<ForgotPasswordCommand> validator,
+        ILogger<ForgotPasswordCommandHandler> logger)
     {
         this.userRepository = userRepository;
         this.pushNotificationService = pushNotificationService;
         this.validator = validator;
+        this.logger = logger;
     }
 
     public async Task<Result<ForgotPasswordResponse>> HandleAsync(
@@ -57,7 +61,7 @@ public class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswordComman
         userRepository.Update(user);
         await userRepository.SaveChange();
 
-        await pushNotificationService.SendAsync(
+        var pushSent = await pushNotificationService.SendAsync(
             user.Id,
             PasswordChangedNotificationTitle,
             PasswordChangedNotificationBody,
@@ -67,6 +71,13 @@ public class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswordComman
                 ["phoneNumber"] = user.PhoneNumber
             },
             cancellationToken);
+
+        if (!pushSent)
+        {
+            logger.LogWarning(
+                "Password-changed push was not delivered for user {UserId}. Ensure the user logged in on this device, granted notification permission, and Firebase is configured.",
+                user.Id);
+        }
 
         return Result<ForgotPasswordResponse>.Success(
             new ForgotPasswordResponse { UserId = user.Id },

@@ -4,6 +4,7 @@ using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
+using DomainUser = DentalDashboard.Domain.Models.User;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant;
 
@@ -35,7 +36,7 @@ public class CompleteConsaltantProfileHandler : ICommandHandler<CompleteConsulta
             return Result<long>.Failure("آدرس مشاور الزامی است");
 
         ConsultantProfile? profile = null;
-        User? user = null;
+        DomainUser? user = null;
 
         if (command.ProfileId > 0)
         {

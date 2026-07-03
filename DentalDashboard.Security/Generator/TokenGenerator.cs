@@ -64,7 +64,8 @@ namespace DentalDashboard.Security.Generator
             claims.Add(new Claim("isCompleteProfile", user.IsCompleteProfile.ToString().ToLowerInvariant()));
             claims.Add(new Claim("IsCompleteProfile", user.IsCompleteProfile.ToString()));
 
-            if (user.ConsultantProfile?.Id is > 0 consultantProfileId)
+            var consultantProfileId = user.ConsultantProfile?.Id ?? 0;
+            if (consultantProfileId > 0)
             {
                 claims.Add(new Claim("consultantProfileId", consultantProfileId.ToString()));
                 claims.Add(new Claim("ConsultantProfileId", consultantProfileId.ToString()));

@@ -26,7 +26,7 @@ namespace DentalDashboard.Infrastracture.Configuration
                 .IsRequired();
 
             builder.Property(x => x.PushNotificationToken)
-                .HasMaxLength(1000);
+                .HasMaxLength(4000);
 
             builder.HasIndex(x => x.PhoneNumber)
                 .IsUnique();

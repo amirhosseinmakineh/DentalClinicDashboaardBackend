@@ -495,8 +495,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("PushNotificationToken")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");

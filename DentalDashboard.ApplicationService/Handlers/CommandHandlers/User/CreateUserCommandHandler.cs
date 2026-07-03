@@ -16,15 +16,18 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
         private readonly IUserRepository userRepository;
         private readonly IRoleService roleService;
         private readonly IUnitOfWork unitOfWork;
+        private readonly IConsultantProfileService consultantProfileService;
 
         public CreateUserCommandHandler(
             IUserRepository userRepository,
             IRoleService roleService,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IConsultantProfileService consultantProfileService)
         {
             this.userRepository = userRepository;
             this.roleService = roleService;
             this.unitOfWork = unitOfWork;
+            this.consultantProfileService = consultantProfileService;
         }
 
         public async Task<Result<CreateUserResponse>> HandleAsync(CreateUserCommand command,CancellationToken cancellationToken = default)
@@ -58,6 +61,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 await userRepository.AddAsync(user);
 
                 await roleService.AddRoleToUser(user.Id, command.RoleName);
+
+                if (command.RoleName == "Consultant")
+                {
+                    await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                }
 
                 await unitOfWork.CommitAsync();
                 var response = new CreateUserResponse()

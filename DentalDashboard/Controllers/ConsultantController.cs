@@ -4,6 +4,7 @@ using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -46,6 +47,7 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [Authorize]
         [HttpPost("RegisterPushToken")]
         public async Task<IActionResult> RegisterPushToken(RegisterPushTokenCommand command)
         {

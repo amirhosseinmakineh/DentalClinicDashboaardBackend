@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
@@ -16,17 +17,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly IScoreLogRepository scoreLogRepository;
         private readonly ILeadDomainService leadDomainService;
+        private readonly ILeadAssignmentService leadAssignmentService;
 
         public ExpireLeadNoCallCommandHandler(
             ILeadAssignmentRepository leadAssignmentRepository,
             IConsultantProfileRepository consultantProfileRepository,
             IScoreLogRepository scoreLogRepository,
-            ILeadDomainService leadDomainService)
+            ILeadDomainService leadDomainService,
+            ILeadAssignmentService leadAssignmentService)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
             this.scoreLogRepository = scoreLogRepository;
             this.leadDomainService = leadDomainService;
+            this.leadAssignmentService = leadAssignmentService;
         }
 
         public async Task<Result<ExpireLeadNoCallResponse>> HandleAsync(
@@ -94,6 +98,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             leadAssignmentRepository.Update(lead);
             consultantProfileRepository.Update(profile);
             await leadAssignmentRepository.SaveChange();
+
+            if (profile.IsOnline)
+                await leadAssignmentService.AssignRealTimeLeadsAsync();
 
             var response = new ExpireLeadNoCallResponse
             {

@@ -9,5 +9,8 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
         public LeadAssignmentState LeadAssignmentState { get; set; }
         public LeadAssignmentType leadAssignmentType { get; set; }
         public bool HasActiveReservation { get; set; }
+        public DateTime? AssignedAt { get; set; }
+        public DateTime? CallDeadlineAt { get; set; }
+        public bool RequiresThreeMinuteCall { get; set; }
     }
 }

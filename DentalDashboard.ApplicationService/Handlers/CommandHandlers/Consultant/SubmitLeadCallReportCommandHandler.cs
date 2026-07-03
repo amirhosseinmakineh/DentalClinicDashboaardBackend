@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
@@ -15,17 +16,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadReportDomainService leadReportDomainService;
         private readonly ILeadDomainService leadDomainService;
+        private readonly ILeadAssignmentService leadAssignmentService;
 
         public SubmitLeadCallReportCommandHandler(
             ILeadAssignmentRepository leadAssignmentRepository,
             IConsultantProfileRepository consultantProfileRepository,
             ILeadReportDomainService leadReportDomainService,
-            ILeadDomainService leadDomainService)
+            ILeadDomainService leadDomainService,
+            ILeadAssignmentService leadAssignmentService)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadReportDomainService = leadReportDomainService;
             this.leadDomainService = leadDomainService;
+            this.leadAssignmentService = leadAssignmentService;
         }
 
         public async Task<Result<SubmitLeadCallReportResponse>> HandleAsync(SubmitLeadCallReportCommand command, CancellationToken cancellationToken = default)
@@ -95,6 +99,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             consultantProfileRepository.Update(profile);
             leadAssignmentRepository.Update(lead);
             await leadAssignmentRepository.SaveChange();
+
+            await leadAssignmentService.AssignRealTimeLeadsAsync();
 
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
         }

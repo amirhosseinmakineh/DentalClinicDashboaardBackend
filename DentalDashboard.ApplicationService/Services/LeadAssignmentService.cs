@@ -222,7 +222,16 @@ namespace DentalDashboard.ApplicationService.Services
             }
 
             if (expiredLeads.Any())
+            {
                 await leadAssignmentRepository.SaveChange();
+
+                var anyConsultantBackOnline = expiredLeads.Any(x =>
+                    x.ConsultantProfile != null &&
+                    x.ConsultantProfile.IsOnline);
+
+                if (anyConsultantBackOnline)
+                    await AssignRealTimeLeadsAsync();
+            }
         }
         private async Task SendAssignedLeadNotificationsAsync()
         {
@@ -230,28 +239,38 @@ namespace DentalDashboard.ApplicationService.Services
             if (!assignedLeads.Any())
                 return;
 
+            var anyNotificationSent = false;
+
             foreach (var group in assignedLeads.GroupBy(x => x.ConsultantProfile!))
             {
                 var consultant = group.Key;
-                var offlineCount = group.Count(x => x.AssignmentType == LeadAssignmentType.OfflineQueue);
+                var offlineLeads = group.Where(x => x.AssignmentType == LeadAssignmentType.OfflineQueue).ToList();
                 var realTimeLeads = group.Where(x => x.AssignmentType == LeadAssignmentType.RealTime).ToList();
 
-                if (offlineCount > 0)
+                if (offlineLeads.Count > 0)
                 {
-                    await pushNotificationService.SendAsync(
+                    var sent = await pushNotificationService.SendAsync(
                         consultant.UserId,
                         "لیدهای آفلاین",
-                        $"شما {offlineCount} لید آفلاین دارید.",
+                        $"شما {offlineLeads.Count} لید آفلاین دارید.",
                         new Dictionary<string, string>
                         {
                             ["type"] = "offline_leads",
-                            ["count"] = offlineCount.ToString()
+                            ["count"] = offlineLeads.Count.ToString()
                         });
+
+                    if (sent)
+                    {
+                        foreach (var lead in offlineLeads)
+                            lead.NotificationSent = true;
+
+                        anyNotificationSent = true;
+                    }
                 }
 
                 foreach (var lead in realTimeLeads)
                 {
-                    await pushNotificationService.SendAsync(
+                    var sent = await pushNotificationService.SendAsync(
                         consultant.UserId,
                         "لید جدید",
                         "شما یک لید جدید دارید و 3 دقیقه زمان دارید برای تماس.",
@@ -261,13 +280,17 @@ namespace DentalDashboard.ApplicationService.Services
                             ["leadAssignmentId"] = lead.Id.ToString(),
                             ["callDeadlineAt"] = lead.CallDeadlineAt?.ToString("O") ?? string.Empty
                         });
-                }
 
-                foreach (var lead in group)
-                    lead.NotificationSent = true;
+                    if (sent)
+                    {
+                        lead.NotificationSent = true;
+                        anyNotificationSent = true;
+                    }
+                }
             }
 
-            await leadAssignmentRepository.SaveChange();
+            if (anyNotificationSent)
+                await leadAssignmentRepository.SaveChange();
         }
 
 

@@ -20,7 +20,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
             var pageNumber = query.PageNumber <= 0 ? 1 : query.PageNumber;
             var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
 
-            var users =  userRepository.GetAll();
+            var users = userRepository.GetAll()
+                .Where(x => !x.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(query.FirstName))
                 users = users.Where(x => x.FirstName.Contains(query.FirstName));
@@ -32,7 +33,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
                 users = users.Where(x => x.PhoneNumber.Contains(query.PhoneNumber));
 
             if (!string.IsNullOrWhiteSpace(query.RoleName))
-                users = users.Where(x => x.UserRoles.Any(ur => ur.Role.RoleName.Contains(query.RoleName)));
+                users = users.Where(x => x.UserRoles.Any(ur =>
+                    !ur.IsDeleted &&
+                    ur.Role != null &&
+                    !ur.Role.IsDeleted &&
+                    ur.Role.RoleName.Contains(query.RoleName)));
 
             if (query.Gender.HasValue)
                 users = users.Where(x => x.Gender == query.Gender.Value);
@@ -57,7 +62,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
                     IsActive = user.IsActive,
                     PhoneNumber = user.PhoneNumber,
                     RoleName = user.UserRoles
-                        .Select(userRole => userRole.Role.RoleName)
+                        .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
+                        .Select(ur => ur.Role!.RoleName)
                         .FirstOrDefault() ?? string.Empty
                 })
                 .ToList();

@@ -62,10 +62,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 };
                 return Result<UpdateUserResponse>.Success(response,"ویرایش کاربر با موفقیت انجام شد");
             }
-            catch
+            catch (Exception ex)
             {
                 await unitOfWork.RollbackAsync();
-                throw;
+                return Result<UpdateUserResponse>.Failure($"خطا در ویرایش کاربر: {ex.Message}");
             }
         }
     }

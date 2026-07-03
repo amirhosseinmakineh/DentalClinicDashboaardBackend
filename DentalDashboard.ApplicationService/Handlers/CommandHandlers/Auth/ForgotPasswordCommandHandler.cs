@@ -75,7 +75,7 @@ public class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswordComman
         if (!pushSent)
         {
             logger.LogWarning(
-                "Password-changed push was not delivered for user {UserId}. Ensure the user logged in on this device, granted notification permission, and Firebase is configured.",
+                "Password-changed push was not delivered for user {UserId}. Ensure the user logged in on this device, granted notification permission, and Web Push VAPID keys are configured.",
                 user.Id);
         }
 

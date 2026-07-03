@@ -42,6 +42,26 @@ namespace DentalDashboard.Controllers
         }
 
         [Authorize]
+        [HttpPost("RegisterPushToken")]
+        public async Task<IActionResult> RegisterPushToken(
+            RegisterUserPushTokenCommand command,
+            CancellationToken cancellationToken)
+        {
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                              User.FindFirstValue("userId") ??
+                              User.FindFirstValue("Id");
+
+            if (!Guid.TryParse(userIdValue, out var userId))
+            {
+                return Ok(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            }
+
+            command.UserId = userId;
+            var result = await dispatcher.DispatchAsync(command, cancellationToken);
+            return Ok(result);
+        }
+
+        [Authorize]
         [HttpGet("Me")]
         public IActionResult Me()
         {

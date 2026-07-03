@@ -3,6 +3,7 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -20,6 +21,44 @@ namespace DentalDashboard.ApplicationService.Services
             this.repository = repository;
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.offlineLeadAssignmentStrategy = offlineLeadAssignmentStrategy;
+        }
+
+        public async Task<long?> EnsureProfileExistsAsync(Guid userId)
+        {
+            var profile = await repository.GetAll()
+                .FirstOrDefaultAsync(x => x.UserId == userId);
+
+            if (profile is not null)
+            {
+                if (profile.IsDeleted)
+                {
+                    profile.IsDeleted = false;
+                    profile.DeletedAt = null;
+                    profile.UpdatedAt = DateTime.UtcNow;
+                    repository.Update(profile);
+                    await repository.SaveChange();
+                }
+
+                return profile.Id;
+            }
+
+            profile = new ConsultantProfile
+            {
+                UserId = userId,
+                NationalCode = string.Empty,
+                Address = string.Empty,
+                IsCompleteProfile = false,
+                IsAvailable = false,
+                IsOnline = false,
+                CreatedAt = DateTime.UtcNow,
+                WorkStartTime = TimeSpan.Zero,
+                WorkEndTime = TimeSpan.Zero
+            };
+
+            await repository.AddAsync(profile);
+            await repository.SaveChange();
+
+            return profile.Id;
         }
 
         public async Task SetOnlineStatusAsync(long consultantProfileId, bool isOnline)

@@ -12,15 +12,18 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
         private readonly IUserRepository userRepository;
         private readonly IUnitOfWork unitOfWork;
         private readonly IRoleService roleService;
+        private readonly IConsultantProfileService consultantProfileService;
 
         public UpdateUserCommandHandler(
             IUnitOfWork unitOfWork,
             IUserRepository userRepository,
-            IRoleService roleService)
+            IRoleService roleService,
+            IConsultantProfileService consultantProfileService)
         {
             this.unitOfWork = unitOfWork;
             this.userRepository = userRepository;
             this.roleService = roleService;
+            this.consultantProfileService = consultantProfileService;
         }
 
         public async Task<Result<UpdateUserResponse>> HandleAsync(
@@ -50,6 +53,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 userRepository.Update(user);
 
                 await roleService.SetUserRole(user.Id, command.RoleName);
+
+                if (command.RoleName == "Consultant")
+                {
+                    await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                }
 
                 await userRepository.SaveChange();
                 await unitOfWork.CommitAsync();

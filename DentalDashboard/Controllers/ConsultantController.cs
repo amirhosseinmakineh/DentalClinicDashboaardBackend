@@ -4,9 +4,11 @@ using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using DentalDashboard.Framwork.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace DentalDashboard.Controllers
 {
@@ -53,6 +55,29 @@ namespace DentalDashboard.Controllers
         {
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
+        }
+
+        [Authorize]
+        [HttpPost("SendTestPushNotification")]
+        public async Task<IActionResult> SendTestPushNotification(
+            SendTestPushNotificationCommand command)
+        {
+            var result = await dispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
+        [HttpGet("WebPushPublicKey")]
+        public IActionResult WebPushPublicKey([FromServices] IConfiguration configuration)
+        {
+            var publicKey = configuration["WebPush:VapidPublicKey"]
+                            ?? Environment.GetEnvironmentVariable("WEBPUSH_VAPID_PUBLIC_KEY");
+
+            if (string.IsNullOrWhiteSpace(publicKey))
+            {
+                return Ok(Result<string>.Failure("کلید عمومی Web Push پیکربندی نشده است"));
+            }
+
+            return Ok(Result<string>.Success(publicKey.Trim()));
         }
 
         [HttpGet("GetDashboardStatus")]

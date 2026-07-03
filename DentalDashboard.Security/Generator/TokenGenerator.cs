@@ -64,12 +64,14 @@ namespace DentalDashboard.Security.Generator
             claims.Add(new Claim("isCompleteProfile", user.IsCompleteProfile.ToString().ToLowerInvariant()));
             claims.Add(new Claim("IsCompleteProfile", user.IsCompleteProfile.ToString()));
 
-            if (user.ConsultantProfile?.Id is > 0 consultantProfileId)
+            var consultantProfileId = user.ConsultantProfile?.Id;
+            if (consultantProfileId is > 0)
             {
-                claims.Add(new Claim("consultantProfileId", consultantProfileId.ToString()));
-                claims.Add(new Claim("ConsultantProfileId", consultantProfileId.ToString()));
-                claims.Add(new Claim("profileId", consultantProfileId.ToString()));
-                claims.Add(new Claim("ProfileId", consultantProfileId.ToString()));
+                var profileId = consultantProfileId.Value.ToString();
+                claims.Add(new Claim("consultantProfileId", profileId));
+                claims.Add(new Claim("ConsultantProfileId", profileId));
+                claims.Add(new Claim("profileId", profileId));
+                claims.Add(new Claim("ProfileId", profileId));
             }
 
             var tokenDescriptor = new SecurityTokenDescriptor

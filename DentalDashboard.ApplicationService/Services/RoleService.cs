@@ -73,14 +73,25 @@ public class RoleService : IRoleService
             userRoleRepository.Update(userRole);
         }
 
-        var activeRole = userRoles.FirstOrDefault(x => x.RoleId == role.Id && !x.IsDeleted);
-        if (activeRole is null)
+        var inactiveRole = userRoles.FirstOrDefault(x => x.RoleId == role.Id && x.IsDeleted);
+        if (inactiveRole is not null)
         {
-            await userRoleRepository.AddAsync(new UserRole
+            inactiveRole.IsDeleted = false;
+            inactiveRole.DeletedAt = null;
+            inactiveRole.UpdatedAt = now;
+            userRoleRepository.Update(inactiveRole);
+        }
+        else
+        {
+            var activeRole = userRoles.FirstOrDefault(x => x.RoleId == role.Id && !x.IsDeleted);
+            if (activeRole is null)
             {
-                UserId = userId,
-                RoleId = role.Id
-            });
+                await userRoleRepository.AddAsync(new UserRole
+                {
+                    UserId = userId,
+                    RoleId = role.Id
+                });
+            }
         }
 
         await userRoleRepository.SaveChange();

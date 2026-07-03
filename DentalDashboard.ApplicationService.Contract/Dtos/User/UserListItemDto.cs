@@ -1,6 +1,4 @@
-﻿using DentalDashboard.Domain.Enums;
-
-namespace DentalDashboard.ApplicationService.Contract.Dtos.User
+﻿namespace DentalDashboard.ApplicationService.Contract.Dtos.User
 {
     public class UserListItemDto
     {
@@ -10,7 +8,7 @@ namespace DentalDashboard.ApplicationService.Contract.Dtos.User
 
         public string PhoneNumber { get; set; } = default!;
 
-        public UserRole Role { get; set; }
+        public string RoleName { get; set; } = default!;
 
         public bool IsActive { get; set; }
     }

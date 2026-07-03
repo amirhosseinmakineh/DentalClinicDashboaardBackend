@@ -12,11 +12,13 @@ namespace DentalDashboard.ApplicationService.Contract.Dtos.User
 
         public string PhoneNumber { get; set; } = default!;
 
-        public DateTime BirthDate { get; set; }
+        public bool IsCompleteProfile { get; set; }
+
+        public string? AvatarImageName { get; set; }
 
         public Gender Gender { get; set; }
 
-        public UserRole Role { get; set; }
+        public string RoleName { get; set; } = default!;
 
         public bool IsActive { get; set; }
     }

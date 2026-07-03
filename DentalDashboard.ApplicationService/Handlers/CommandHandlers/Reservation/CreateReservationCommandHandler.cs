@@ -36,6 +36,34 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (lead.ReportSubmittedAt == null || (lead.CallResult != LeadCallResult.Contacted && lead.CallResult != LeadCallResult.Converted))
                 return Result<CreateReservationResponse>.Failure("فقط لیدهای تماس موفق قابل رزرو هستند");
 
+            var patientCity = !string.IsNullOrWhiteSpace(command.PatientCity)
+                ? command.PatientCity.Trim()
+                : lead.PatientCity?.Trim();
+            var patientRegion = !string.IsNullOrWhiteSpace(command.PatientRegion)
+                ? command.PatientRegion.Trim()
+                : lead.PatientRegion?.Trim();
+
+            if (string.IsNullOrWhiteSpace(patientCity))
+                return Result<CreateReservationResponse>.Failure("شهر بیمار برای رزرو الزامی است");
+
+            if (string.IsNullOrWhiteSpace(patientRegion))
+                return Result<CreateReservationResponse>.Failure("منطقه بیمار برای رزرو الزامی است");
+
+            if (command.AttendanceProbabilityPercent.HasValue &&
+                (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
+                return Result<CreateReservationResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
+
+            lead.PatientCity = patientCity;
+            lead.PatientRegion = patientRegion;
+
+            if (!string.IsNullOrWhiteSpace(command.SecondaryPhoneNumber))
+                lead.SecondaryPhoneNumber = command.SecondaryPhoneNumber.Trim();
+
+            if (command.AttendanceProbabilityPercent.HasValue)
+                lead.AttendanceProbabilityPercent = command.AttendanceProbabilityPercent;
+
+            leadAssignmentRepository.Update(lead);
+
             if (await reservationRepository.HasActiveReservationForLeadAsync(command.LeadAssignmentId))
                 return Result<CreateReservationResponse>.Failure("برای این بیمار قبلا رزرو فعال ثبت شده است");
 

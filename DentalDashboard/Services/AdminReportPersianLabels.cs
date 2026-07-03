@@ -50,6 +50,7 @@ public static class AdminReportPersianLabels
     {
         LeadAssignmentType.RealTime => "آنی",
         LeadAssignmentType.OfflineQueue => "صف آفلاین",
+        LeadAssignmentType.ConsultantOwned => "مریض مشاور",
         _ => "نامشخص"
     };
 

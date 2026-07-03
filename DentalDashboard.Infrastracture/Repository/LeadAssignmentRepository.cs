@@ -167,7 +167,8 @@ namespace DentalDashboard.Infrastracture.Repository
                 .Include(x => x.ConsultantProfile)
                 .ThenInclude(x => x.User)
                 .Where(x => !x.IsDeleted &&
-                                x.ConsultantProfileId.HasValue &&
+                            x.ConsultantProfileId.HasValue &&
+                            x.AssignmentType != LeadAssignmentType.ConsultantOwned &&
                             !x.NotificationSent &&
                             x.LeadAssignmentState == LeadAssignmentState.Assigned)
                 .OrderBy(x => x.AssignedAt)

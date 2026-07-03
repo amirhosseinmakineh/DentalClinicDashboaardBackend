@@ -57,6 +57,22 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (command.AttendanceProbabilityPercent.HasValue && (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
                 return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
 
+            var isSuccessfulCall = command.CallResult == LeadCallResult.Contacted ||
+                                   command.CallResult == LeadCallResult.Converted;
+
+            if (isSuccessfulCall)
+            {
+                if (string.IsNullOrWhiteSpace(command.PatientCity))
+                    return Result<SubmitLeadCallReportResponse>.Failure("شهر بیمار الزامی است");
+
+                if (string.IsNullOrWhiteSpace(command.PatientRegion))
+                    return Result<SubmitLeadCallReportResponse>.Failure("منطقه بیمار الزامی است");
+            }
+            else if (string.IsNullOrWhiteSpace(command.ReportDescription))
+            {
+                return Result<SubmitLeadCallReportResponse>.Failure("توضیحات گزارش الزامی است");
+            }
+
             var now = DateTime.Now;
             lead.CallResult = command.CallResult;
             lead.ReportDescription = command.ReportDescription;

@@ -34,6 +34,13 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpPost("ForgotPassword")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordCommand command, CancellationToken cancellationToken)
+        {
+            var result = await dispatcher.DispatchAsync(command, cancellationToken);
+            return Ok(result);
+        }
+
         [Authorize]
         [HttpGet("Me")]
         public IActionResult Me()

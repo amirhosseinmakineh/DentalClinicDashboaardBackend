@@ -21,9 +21,15 @@ namespace DentalDashboard.Infrastracture.Repository
         {
             return GetAll()
                 .Where(x => !x.IsDeleted &&
+                            x.ConsultantProfileId == null &&
                             x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                            x.LeadAssignmentState == LeadAssignmentState.Pending &&
-                            x.ConsultantProfileId == null)
+                            x.LeadAssignmentState != LeadAssignmentState.Assigned &&
+                            x.LeadAssignmentState != LeadAssignmentState.Contacted &&
+                            x.LeadAssignmentState != LeadAssignmentState.Converted &&
+                            x.LeadAssignmentState != LeadAssignmentState.Rejected &&
+                            x.LeadAssignmentState != LeadAssignmentState.Expired &&
+                            x.LeadAssignmentState != LeadAssignmentState.Claimed &&
+                            x.LeadAssignmentState != LeadAssignmentState.Broadcasting)
                 .OrderBy(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)
@@ -242,24 +248,6 @@ namespace DentalDashboard.Infrastracture.Repository
                 .OrderBy(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)
-                .ToListAsync();
-        }
-
-        public Task<List<LeadAssignment>> GetUnassignedLeadsNeedingOfflineRequeueAsync(bool includeRealTimeNew)
-        {
-            return GetAll()
-                .Where(x => !x.IsDeleted &&
-                            x.ConsultantProfileId == null &&
-                            x.AssignmentType != LeadAssignmentType.ConsultantPatient &&
-                            ((int)x.AssignmentType == 0 ||
-                             (int)x.LeadAssignmentState == 0 ||
-                             (x.AssignmentType == LeadAssignmentType.RealTime &&
-                              x.LeadAssignmentState == LeadAssignmentState.Expired) ||
-                             (includeRealTimeNew &&
-                              x.AssignmentType == LeadAssignmentType.RealTime &&
-                              x.LeadAssignmentState == LeadAssignmentState.New)))
-                .OrderBy(x => x.CreatedAt)
-                .ThenBy(x => x.Id)
                 .ToListAsync();
         }
 

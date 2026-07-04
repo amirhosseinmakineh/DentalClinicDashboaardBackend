@@ -32,37 +32,26 @@ public class GetBroadcastingLeadsQueryHandler
         GetBroadcastingLeadsQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (broadcastTestFilter.IsEnabled)
-        {
-            var profile = await consultantProfileRepository.GetByIdAsync(query.ProfileId);
-            if (profile is null || !broadcastTestFilter.IsAllowed(profile.UserId))
-            {
-                return new PaginatedResult<BroadcastingLeadResponse>
-                {
-                    Items = [],
-                    TotalCount = 0,
-                    PageNumber = 1,
-                    PageSize = 1,
-                };
-            }
-        }
+        var profile = await consultantProfileRepository.GetByIdAsync(query.ProfileId);
 
         await leadBroadcastService.ExpireStaleBroadcastsAsync(cancellationToken);
 
         var leads = await leadAssignmentRepository.GetBroadcastingLeadsAsync(query.ProfileId);
-        var items = leads.Select(x =>
-        {
-            var (firstName, lastName) = LeadBroadcastService.SplitUserName(x.UserName);
-            return new BroadcastingLeadResponse
+        var items = leads
+            .Where(x => profile is null || broadcastTestFilter.CanAccessLead(profile.UserId, x))
+            .Select(x =>
             {
-                LeadAssignmentId = x.Id,
-                FirstName = LeadBroadcastService.MaskName(firstName),
-                LastName = LeadBroadcastService.MaskName(lastName),
-                CreatedAt = x.CreatedAt,
-                BroadcastStartedAt = x.BroadcastStartedAt,
-                LeadAssignmentType = (int)x.AssignmentType,
-            };
-        }).ToList();
+                var (firstName, lastName) = LeadBroadcastService.SplitUserName(x.UserName);
+                return new BroadcastingLeadResponse
+                {
+                    LeadAssignmentId = x.Id,
+                    FirstName = LeadBroadcastService.MaskName(firstName),
+                    LastName = LeadBroadcastService.MaskName(lastName),
+                    CreatedAt = x.CreatedAt,
+                    BroadcastStartedAt = x.BroadcastStartedAt,
+                    LeadAssignmentType = (int)x.AssignmentType,
+                };
+            }).ToList();
 
         return new PaginatedResult<BroadcastingLeadResponse>
         {

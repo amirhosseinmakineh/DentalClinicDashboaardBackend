@@ -21,7 +21,6 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly IPushNotificationService pushNotificationService;
         private readonly ILeadBroadcastService leadBroadcastService;
         private readonly IConfiguration configuration;
-        private readonly LeadBroadcastTestFilter broadcastTestFilter;
 
         public LeadAssignmentService(
             HttpClient httpClient,
@@ -32,8 +31,7 @@ namespace DentalDashboard.ApplicationService.Services
             IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy,
             IPushNotificationService pushNotificationService,
             ILeadBroadcastService leadBroadcastService,
-            IConfiguration configuration,
-            LeadBroadcastTestFilter broadcastTestFilter)
+            IConfiguration configuration)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -44,7 +42,6 @@ namespace DentalDashboard.ApplicationService.Services
             this.pushNotificationService = pushNotificationService;
             this.leadBroadcastService = leadBroadcastService;
             this.configuration = configuration;
-            this.broadcastTestFilter = broadcastTestFilter;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync()
@@ -109,8 +106,8 @@ namespace DentalDashboard.ApplicationService.Services
             var realTimeCapacity = 0;
             if (leadDomainService.IsWorkingTime(now))
             {
-                var eligibleOnlineConsultants = broadcastTestFilter.FilterEligibleForBroadcast(
-                    await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync()).ToList();
+                var eligibleOnlineConsultants =
+                    await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
                 var unassignedRealTimeLeads = await leadAssignmentRepository.CountUnassignedRealTimeLeadsAsync();
                 realTimeCapacity = Math.Max(
                     eligibleOnlineConsultants.Count - unassignedRealTimeLeads,

@@ -4,33 +4,32 @@ using Microsoft.Extensions.Options;
 
 namespace DentalDashboard.ApplicationService.Services;
 
+/// <summary>
+/// Filters real-time broadcast visibility/notifications for test leads vs production leads.
+/// Offline queue assignment is never filtered here.
+/// </summary>
 public sealed class LeadBroadcastTestFilter(IOptions<LeadBroadcastSettings> options)
 {
-    private Guid[]? _parsedUserIds;
+    public bool IsTestModeEnabled => options.Value.EnableTestBroadcastLeads;
 
-    public bool IsEnabled => GetUserIds().Length > 0;
+    public bool IsTestUser(Guid userId) =>
+        LeadBroadcastTestData.IsTestUser(userId);
 
-    public bool IsAllowed(Guid userId) =>
-        !IsEnabled || GetUserIds().Contains(userId);
-
-    public IEnumerable<ConsultantProfile> FilterEligibleForBroadcast(
-        IEnumerable<ConsultantProfile> consultants) =>
-        IsEnabled
-            ? consultants.Where(x => IsAllowed(x.UserId))
-            : consultants;
-
-    private Guid[] GetUserIds()
+    public bool CanAccessLead(Guid userId, LeadAssignment lead)
     {
-        if (_parsedUserIds is not null)
-            return _parsedUserIds;
+        if (!IsTestModeEnabled || !LeadBroadcastTestData.IsTestLead(lead))
+            return true;
 
-        _parsedUserIds = options.Value.TestUserIds
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => Guid.TryParse(x.Trim(), out var id) ? id : Guid.Empty)
-            .Where(x => x != Guid.Empty)
-            .Distinct()
-            .ToArray();
+        return IsTestUser(userId);
+    }
 
-        return _parsedUserIds;
+    public IEnumerable<ConsultantProfile> FilterForTestLeadPush(
+        IEnumerable<ConsultantProfile> onlineConsultants,
+        LeadAssignment lead)
+    {
+        if (!IsTestModeEnabled || !LeadBroadcastTestData.IsTestLead(lead))
+            return onlineConsultants;
+
+        return onlineConsultants.Where(x => IsTestUser(x.UserId));
     }
 }

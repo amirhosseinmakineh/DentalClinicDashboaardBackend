@@ -11,7 +11,6 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
         Task ExpireOverdueRealTimeLeadsAsync();
         Task BroadcastRealTimeLeadsAsync();
         Task ExpireStaleBroadcastsAsync();
-        Task<int> RequeueUnassignedLeadsForOfflineAsync();
         Task<int> AssignPendingOfflineLeadsForConsultantAsync(long consultantProfileId);
         Task<int> SeedTestOfflineLeadsAsync(int count = 5);
     }

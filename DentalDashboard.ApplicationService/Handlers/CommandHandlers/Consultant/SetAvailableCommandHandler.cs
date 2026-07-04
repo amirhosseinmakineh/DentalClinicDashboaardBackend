@@ -11,6 +11,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
     {
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadAssignmentService leadAssignmentService;
+
         public SetAvailableCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentService leadAssignmentService)
@@ -19,7 +20,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             this.leadAssignmentService = leadAssignmentService;
         }
 
-        public async Task<Result> HandleAsync(SetAvailableCommand command,CancellationToken cancellationToken = default)
+        public async Task<Result> HandleAsync(
+            SetAvailableCommand command,
+            CancellationToken cancellationToken = default)
         {
             var profile = await consultantProfileRepository.GetAll()
                 .FirstOrDefaultAsync(x => x.Id == command.ProfileId, cancellationToken);
@@ -36,21 +39,22 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (command.IsAvailable)
             {
                 profile.IsAvailable = true;
+                profile.IsOnline = false;
                 profile.WorkStartTime = DateTime.Now.TimeOfDay;
 
                 consultantProfileRepository.Update(profile);
                 await consultantProfileRepository.SaveChange();
 
-                // Pending night/offline leads are also assigned by the background interval;
-                // this immediate trigger starts the 5-lead offline batches as soon as attendance is registered.
-                await leadAssignmentService.AssignPendingOfflineLeadsAsync();
+                var assignedCount =
+                    await leadAssignmentService.AssignPendingOfflineLeadsForConsultantAsync(profile.Id);
 
-                return Result.Success("حضور شما ثبت شد");
+                return Result.Success(assignedCount > 0
+                    ? $"حضور شما ثبت شد؛ {assignedCount} لید آفلاین دریافت کردید"
+                    : "حضور شما ثبت شد؛ در صف آفلاین لیدی برای تخصیص نبود");
             }
 
             profile.IsAvailable = false;
             profile.IsOnline = false;
-
             profile.WorkEndTime = DateTime.Now.TimeOfDay;
             profile.LastOfflineAt = DateTime.Now;
 

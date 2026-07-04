@@ -18,6 +18,7 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
     private readonly IPushNotificationService pushNotificationService;
     private readonly IConfiguration configuration;
     private readonly ILogger<LeadBroadcastService> logger;
+    private readonly LeadBroadcastTestFilter broadcastTestFilter;
     private readonly TimeSpan broadcastTimeout;
 
     public LeadBroadcastService(
@@ -26,7 +27,8 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
         IHubContext<LeadBroadcastHub> hub,
         IPushNotificationService pushNotificationService,
         IConfiguration configuration,
-        ILogger<LeadBroadcastService> logger)
+        ILogger<LeadBroadcastService> logger,
+        LeadBroadcastTestFilter broadcastTestFilter)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.consultantProfileRepository = consultantProfileRepository;
@@ -34,6 +36,7 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
         this.pushNotificationService = pushNotificationService;
         this.configuration = configuration;
         this.logger = logger;
+        this.broadcastTestFilter = broadcastTestFilter;
         broadcastTimeout = TimeSpan.FromMinutes(configuration.GetValue("LeadBroadcast:TimeoutMinutes", 10));
     }
 
@@ -57,23 +60,32 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
             .Group(LeadBroadcastHub.OnlineConsultantsGroup)
             .SendAsync(LeadBroadcastHubEvents.LeadBroadcastStarted, message, cancellationToken);
 
-        await pushNotificationService.SendToOnlineConsultantsAsync(
-            "لید جدید!",
-            "یک لید جدید منتظر پذیرش است — سریع بردارید.",
-            new Dictionary<string, string>
-            {
-                ["type"] = "lead_broadcast",
-                ["leadAssignmentId"] = assignment.Id.ToString(),
-            },
-            cancellationToken);
+        var onlineConsultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
+        var pushTargets = broadcastTestFilter
+            .FilterForTestLeadPush(onlineConsultants, assignment)
+            .ToList();
+
+        foreach (var consultant in pushTargets)
+        {
+            await pushNotificationService.SendAsync(
+                consultant.UserId,
+                "لید جدید!",
+                "یک لید جدید منتظر پذیرش است — سریع بردارید.",
+                new Dictionary<string, string>
+                {
+                    ["type"] = "lead_broadcast",
+                    ["leadAssignmentId"] = assignment.Id.ToString(),
+                },
+                cancellationToken);
+        }
     }
 
     public async Task BroadcastPendingRealTimeLeadsAsync(CancellationToken cancellationToken = default)
     {
         await ExpireStaleBroadcastsAsync(cancellationToken);
 
-        var onlineConsultants = LeadBroadcastTestConsultants.Filter(
-            await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync()).ToList();
+        var onlineConsultants =
+            await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
         if (!onlineConsultants.Any())
             return;
 
@@ -131,28 +143,59 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
         logger.LogInformation("Expired {Count} stale lead broadcasts.", expired.Count);
     }
 
-    public async Task<long> SeedTestBroadcastLeadAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<long>> SeedTestBroadcastLeadsAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTime.Now;
-        var suffix = now.ToString("HHmmssfff");
-        var lead = new LeadAssignment
-        {
-            UserName = $"تست لید {suffix}",
-            PhoneNumber = $"0912{suffix}",
-            AssignmentType = LeadAssignmentType.RealTime,
-            LeadAssignmentState = LeadAssignmentState.Broadcasting,
-            BroadcastStartedAt = now,
-            BroadcastExpiresAt = now.Add(broadcastTimeout),
-            CreatedAt = now,
-            RequiresThreeMinuteCall = false,
-            CallDeadlineAt = null,
-            IsDeleted = false,
-        };
+        var existingPhones = await leadAssignmentRepository.GetExistingPhoneNumbersAsync(
+            LeadBroadcastTestData.TestBroadcastLeads.Select(x => x.PhoneNumber));
 
-        await leadAssignmentRepository.AddAsync(lead);
-        await leadAssignmentRepository.SaveChange();
-        await NotifyBroadcastAsync(lead.Id, cancellationToken);
-        return lead.Id;
+        var createdIds = new List<long>();
+        foreach (var (userName, phoneNumber) in LeadBroadcastTestData.TestBroadcastLeads)
+        {
+            if (existingPhones.Contains(phoneNumber))
+            {
+                var existing = await leadAssignmentRepository.GetAll()
+                    .FirstOrDefaultAsync(
+                        x => !x.IsDeleted &&
+                             x.PhoneNumber == phoneNumber &&
+                             x.LeadAssignmentState == LeadAssignmentState.Broadcasting,
+                        cancellationToken);
+
+                if (existing is not null)
+                {
+                    createdIds.Add(existing.Id);
+                    await NotifyBroadcastAsync(existing.Id, cancellationToken);
+                    continue;
+                }
+            }
+
+            var lead = new LeadAssignment
+            {
+                UserName = userName,
+                PhoneNumber = phoneNumber,
+                AssignmentType = LeadAssignmentType.RealTime,
+                LeadAssignmentState = LeadAssignmentState.Broadcasting,
+                BroadcastStartedAt = now,
+                BroadcastExpiresAt = now.Add(broadcastTimeout),
+                CreatedAt = now,
+                RequiresThreeMinuteCall = false,
+                CallDeadlineAt = null,
+                IsDeleted = false,
+            };
+
+            await leadAssignmentRepository.AddAsync(lead);
+            await leadAssignmentRepository.SaveChange();
+            createdIds.Add(lead.Id);
+            await NotifyBroadcastAsync(lead.Id, cancellationToken);
+        }
+
+        return createdIds;
+    }
+
+    public async Task<long> SeedTestBroadcastLeadAsync(CancellationToken cancellationToken = default)
+    {
+        var ids = await SeedTestBroadcastLeadsAsync(cancellationToken);
+        return ids.FirstOrDefault();
     }
 
     internal static (string FirstName, string LastName) SplitUserName(string userName)

@@ -3,7 +3,6 @@ using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.ApplicationService.Services;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 
@@ -15,52 +14,44 @@ public class GetBroadcastingLeadsQueryHandler
     private readonly ILeadAssignmentRepository leadAssignmentRepository;
     private readonly ILeadBroadcastService leadBroadcastService;
     private readonly IConsultantProfileRepository consultantProfileRepository;
+    private readonly LeadBroadcastTestFilter broadcastTestFilter;
 
     public GetBroadcastingLeadsQueryHandler(
         ILeadAssignmentRepository leadAssignmentRepository,
         ILeadBroadcastService leadBroadcastService,
-        IConsultantProfileRepository consultantProfileRepository)
+        IConsultantProfileRepository consultantProfileRepository,
+        LeadBroadcastTestFilter broadcastTestFilter)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.leadBroadcastService = leadBroadcastService;
         this.consultantProfileRepository = consultantProfileRepository;
+        this.broadcastTestFilter = broadcastTestFilter;
     }
 
     public async Task<PaginatedResult<BroadcastingLeadResponse>> HandleAsync(
         GetBroadcastingLeadsQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (LeadBroadcastTestConsultants.IsEnabled)
-        {
-            var profile = await consultantProfileRepository.GetByIdAsync(query.ProfileId);
-            if (profile is null || !LeadBroadcastTestConsultants.IsAllowed(profile.UserId))
-            {
-                return new PaginatedResult<BroadcastingLeadResponse>
-                {
-                    Items = [],
-                    TotalCount = 0,
-                    PageNumber = 1,
-                    PageSize = 1,
-                };
-            }
-        }
+        var profile = await consultantProfileRepository.GetByIdAsync(query.ProfileId);
 
         await leadBroadcastService.ExpireStaleBroadcastsAsync(cancellationToken);
 
         var leads = await leadAssignmentRepository.GetBroadcastingLeadsAsync(query.ProfileId);
-        var items = leads.Select(x =>
-        {
-            var (firstName, lastName) = LeadBroadcastService.SplitUserName(x.UserName);
-            return new BroadcastingLeadResponse
+        var items = leads
+            .Where(x => profile is null || broadcastTestFilter.CanAccessLead(profile.UserId, x))
+            .Select(x =>
             {
-                LeadAssignmentId = x.Id,
-                FirstName = LeadBroadcastService.MaskName(firstName),
-                LastName = LeadBroadcastService.MaskName(lastName),
-                CreatedAt = x.CreatedAt,
-                BroadcastStartedAt = x.BroadcastStartedAt,
-                LeadAssignmentType = (int)x.AssignmentType,
-            };
-        }).ToList();
+                var (firstName, lastName) = LeadBroadcastService.SplitUserName(x.UserName);
+                return new BroadcastingLeadResponse
+                {
+                    LeadAssignmentId = x.Id,
+                    FirstName = LeadBroadcastService.MaskName(firstName),
+                    LastName = LeadBroadcastService.MaskName(lastName),
+                    CreatedAt = x.CreatedAt,
+                    BroadcastStartedAt = x.BroadcastStartedAt,
+                    LeadAssignmentType = (int)x.AssignmentType,
+                };
+            }).ToList();
 
         return new PaginatedResult<BroadcastingLeadResponse>
         {

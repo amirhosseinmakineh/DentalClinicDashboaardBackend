@@ -3,19 +3,26 @@ using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using FluentValidation;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DentalDashboard.ApplicationService;
 
 public static class ApplicationServiceRegistration
 {
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddApplicationServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
+        services.Configure<Settings.LeadBroadcastSettings>(
+            configuration.GetSection(Settings.LeadBroadcastSettings.SectionName));
+
         services.AddScoped<IRoleService, RoleService>();
         services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>();
         services.AddScoped<IPushNotificationService, WebPushNotificationService>();
         services.AddScoped<IConsultantProfileService, ConsultantProfileService>();
         services.AddScoped<ILeadBroadcastService, LeadBroadcastService>();
+        services.AddSingleton<LeadBroadcastTestFilter>();
 
         services.AddScoped<IQueryDispatcher, QueryDispatcher>();
         services.AddTransient<ICommandDispatcher, CommandDispatcher>();

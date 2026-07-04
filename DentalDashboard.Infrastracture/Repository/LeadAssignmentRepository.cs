@@ -245,5 +245,23 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ToListAsync();
         }
 
+        public Task<List<LeadAssignment>> GetUnassignedLeadsNeedingOfflineRequeueAsync(bool includeRealTimeNew)
+        {
+            return GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.ConsultantProfileId == null &&
+                            x.AssignmentType != LeadAssignmentType.ConsultantPatient &&
+                            ((int)x.AssignmentType == 0 ||
+                             (int)x.LeadAssignmentState == 0 ||
+                             (x.AssignmentType == LeadAssignmentType.RealTime &&
+                              x.LeadAssignmentState == LeadAssignmentState.Expired) ||
+                             (includeRealTimeNew &&
+                              x.AssignmentType == LeadAssignmentType.RealTime &&
+                              x.LeadAssignmentState == LeadAssignmentState.New)))
+                .OrderBy(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .ToListAsync();
+        }
+
     }
 }

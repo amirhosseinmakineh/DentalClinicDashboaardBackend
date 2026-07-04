@@ -117,18 +117,14 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
         if (!expired.Any())
             return;
 
-        var onlineExists = await consultantProfileRepository.GetAll()
-            .AsNoTracking()
-            .AnyAsync(x => !x.IsDeleted && x.IsOnline && x.IsAvailable, cancellationToken);
-
         foreach (var assignment in expired)
         {
-            assignment.LeadAssignmentState = onlineExists
-                ? LeadAssignmentState.Expired
-                : LeadAssignmentState.Pending;
-            assignment.AssignmentType = onlineExists
-                ? LeadAssignmentType.RealTime
-                : LeadAssignmentType.OfflineQueue;
+            assignment.LeadAssignmentState = LeadAssignmentState.Pending;
+            assignment.AssignmentType = LeadAssignmentType.OfflineQueue;
+            assignment.BroadcastStartedAt = null;
+            assignment.BroadcastExpiresAt = null;
+            assignment.RequiresThreeMinuteCall = false;
+            assignment.CallDeadlineAt = null;
             leadAssignmentRepository.Update(assignment);
 
             await hub.Clients
@@ -140,7 +136,7 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
         }
 
         await leadAssignmentRepository.SaveChange();
-        logger.LogInformation("Expired {Count} stale lead broadcasts.", expired.Count);
+        logger.LogInformation("Moved {Count} stale lead broadcasts to the offline queue.", expired.Count);
     }
 
     public async Task<IReadOnlyList<long>> SeedTestBroadcastLeadsAsync(CancellationToken cancellationToken = default)

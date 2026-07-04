@@ -27,9 +27,10 @@ namespace DentalDashboard.BackgroundServices
                         scope.ServiceProvider.GetRequiredService<ILeadAssignmentService>();
 
                     await leadAssignmentService.AddLeadsAsync();
-                    await leadAssignmentService.BroadcastRealTimeLeadsAsync();
-                    await leadAssignmentService.AssignPendingOfflineLeadsAsync();
                     await leadAssignmentService.ExpireStaleBroadcastsAsync();
+                    await leadAssignmentService.RequeueUnassignedLeadsForOfflineAsync();
+                    await leadAssignmentService.AssignPendingOfflineLeadsAsync();
+                    await leadAssignmentService.BroadcastRealTimeLeadsAsync();
                     await leadAssignmentService.ExpireOverdueRealTimeLeadsAsync();
                 }
                 catch (Exception ex)

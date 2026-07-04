@@ -106,5 +106,12 @@ namespace DentalDashboard.Controllers
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
         }
+
+        [HttpPost("AddPatientLead")]
+        public async Task<IActionResult> AddPatientLead(AddConsultantPatientLeadCommand command)
+        {
+            var result = await dispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
     }
 }

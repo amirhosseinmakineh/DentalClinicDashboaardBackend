@@ -89,6 +89,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             profile.CurrentScore += scoreLog.ScoreValue;
             profile.ScoreLogs.Add(scoreLog);
 
+            if (lead.AssignmentType == LeadAssignmentType.ConsultantPatient)
+            {
+                consultantProfileRepository.Update(profile);
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
+                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
+            }
+
             var hasPendingOfflineLeads = await leadAssignmentRepository.HasPendingOfflineLeadsAsync(profile.Id);
             if (hasPendingOfflineLeads)
             {

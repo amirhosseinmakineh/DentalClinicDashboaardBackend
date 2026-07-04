@@ -58,9 +58,6 @@ public class AcceptLeadCommandHandler : ICommandHandler<AcceptLeadCommand, Accep
         if (!consultant.IsOnline || !consultant.IsAvailable)
             return Result<AcceptLeadResponse>.Failure("برای پذیرش لید باید آنلاین و حاضر باشید");
 
-        if (!LeadBroadcastTestConsultants.IsAllowed(consultant.UserId))
-            return Result<AcceptLeadResponse>.Failure("این لید فقط برای مشاوران تست در دسترس است");
-
         var now = DateTime.Now;
         assignment.ConsultantProfileId = consultant.Id;
         assignment.LeadAssignmentState = LeadAssignmentState.Claimed;

@@ -1,7 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
-using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -26,11 +25,8 @@ public class SeedTestBroadcastLeadCommandHandler
         SeedTestBroadcastLeadCommand command,
         CancellationToken cancellationToken = default)
     {
-        if (!LeadBroadcastTestConsultants.IsEnabled)
-            return Result<SeedTestBroadcastLeadResponse>.Failure("حالت تست broadcast فعال نیست");
-
-        var onlineTestConsultants = LeadBroadcastTestConsultants.Filter(
-            await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync()).ToList();
+        var onlineConsultants =
+            await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
 
         var leadId = await leadBroadcastService.SeedTestBroadcastLeadAsync(cancellationToken);
 
@@ -38,10 +34,10 @@ public class SeedTestBroadcastLeadCommandHandler
             new SeedTestBroadcastLeadResponse
             {
                 LeadAssignmentId = leadId,
-                TestConsultantCount = onlineTestConsultants.Count,
+                TestConsultantCount = onlineConsultants.Count,
             },
-            onlineTestConsultants.Count > 0
-                ? $"لید تست #{leadId} برای {onlineTestConsultants.Count} مشاور آنلاین پخش شد"
-                : $"لید تست #{leadId} ساخته شد؛ هیچ‌کدام از مشاوران تست آنلاین نیستند");
+            onlineConsultants.Count > 0
+                ? $"لید تست #{leadId} برای {onlineConsultants.Count} مشاور آنلاین پخش شد"
+                : $"لید تست #{leadId} ساخته شد؛ هیچ مشاور واجد شرایط آنلاین نیست");
     }
 }

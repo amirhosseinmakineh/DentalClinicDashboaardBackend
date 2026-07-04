@@ -3,7 +3,6 @@ using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.ApplicationService.Services;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 
@@ -14,37 +13,19 @@ public class GetBroadcastingLeadsQueryHandler
 {
     private readonly ILeadAssignmentRepository leadAssignmentRepository;
     private readonly ILeadBroadcastService leadBroadcastService;
-    private readonly IConsultantProfileRepository consultantProfileRepository;
 
     public GetBroadcastingLeadsQueryHandler(
         ILeadAssignmentRepository leadAssignmentRepository,
-        ILeadBroadcastService leadBroadcastService,
-        IConsultantProfileRepository consultantProfileRepository)
+        ILeadBroadcastService leadBroadcastService)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.leadBroadcastService = leadBroadcastService;
-        this.consultantProfileRepository = consultantProfileRepository;
     }
 
     public async Task<PaginatedResult<BroadcastingLeadResponse>> HandleAsync(
         GetBroadcastingLeadsQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (LeadBroadcastTestConsultants.IsEnabled)
-        {
-            var profile = await consultantProfileRepository.GetByIdAsync(query.ProfileId);
-            if (profile is null || !LeadBroadcastTestConsultants.IsAllowed(profile.UserId))
-            {
-                return new PaginatedResult<BroadcastingLeadResponse>
-                {
-                    Items = [],
-                    TotalCount = 0,
-                    PageNumber = 1,
-                    PageSize = 1,
-                };
-            }
-        }
-
         await leadBroadcastService.ExpireStaleBroadcastsAsync(cancellationToken);
 
         var leads = await leadAssignmentRepository.GetBroadcastingLeadsAsync(query.ProfileId);

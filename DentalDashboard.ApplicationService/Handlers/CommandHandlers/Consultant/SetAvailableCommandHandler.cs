@@ -43,6 +43,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
                 // Pending night/offline leads are also assigned by the background interval;
                 // this immediate trigger starts the 5-lead offline batches as soon as attendance is registered.
+                await leadAssignmentService.AssignPendingOfflineLeadsForConsultantAsync(profile.Id);
                 await leadAssignmentService.AssignPendingOfflineLeadsAsync();
 
                 return Result.Success("حضور شما ثبت شد");

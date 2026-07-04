@@ -106,11 +106,11 @@ namespace DentalDashboard.ApplicationService.Services
             var realTimeCapacity = 0;
             if (leadDomainService.IsWorkingTime(now))
             {
-                var eligibleOnlineConsultants = LeadBroadcastTestConsultants.Filter(
-                    await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync());
+                var eligibleOnlineConsultants =
+                    await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
                 var unassignedRealTimeLeads = await leadAssignmentRepository.CountUnassignedRealTimeLeadsAsync();
                 realTimeCapacity = Math.Max(
-                    eligibleOnlineConsultants.Count() - unassignedRealTimeLeads,
+                    eligibleOnlineConsultants.Count - unassignedRealTimeLeads,
                     0);
             }
 
@@ -169,6 +169,31 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
 
             offlineLeadAssignmentStrategy.Assign(pendingLeads, consultants, dailyAssignedCounts);
+            await leadAssignmentRepository.SaveChange();
+            await SendAssignedLeadNotificationsAsync();
+        }
+
+        public async Task AssignPendingOfflineLeadsForConsultantAsync(long consultantProfileId)
+        {
+            var consultant = await consultantProfileRepository.GetByIdAsync(consultantProfileId);
+            if (consultant is null || consultant.IsDeleted || !consultant.IsCompleteProfile || !consultant.IsAvailable)
+                return;
+
+            var dailyAssignedCounts = await leadAssignmentRepository.GetDailyAssignedOfflineLeadCountsAsync(
+                new[] { consultantProfileId },
+                DateTime.Now);
+            var remainingCapacity = Math.Max(5 - dailyAssignedCounts.GetValueOrDefault(consultantProfileId), 0);
+            if (remainingCapacity <= 0)
+                return;
+
+            var pendingLeads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(remainingCapacity);
+            if (!pendingLeads.Any())
+                return;
+
+            offlineLeadAssignmentStrategy.Assign(
+                pendingLeads,
+                new List<ConsultantProfile> { consultant },
+                dailyAssignedCounts);
             await leadAssignmentRepository.SaveChange();
             await SendAssignedLeadNotificationsAsync();
         }

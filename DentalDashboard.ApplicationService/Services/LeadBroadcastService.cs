@@ -72,8 +72,8 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
     {
         await ExpireStaleBroadcastsAsync(cancellationToken);
 
-        var onlineConsultants = LeadBroadcastTestConsultants.Filter(
-            await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync()).ToList();
+        var onlineConsultants =
+            await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
         if (!onlineConsultants.Any())
             return;
 

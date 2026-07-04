@@ -59,15 +59,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
         }
         private async Task<bool> HasRealTimeLeadBlockerAsync(long consultantProfileId, CancellationToken cancellationToken)
         {
-            var hasDueAttendanceWithoutConsultantDecision = await reservationRepository.GetAll()
-                .AnyAsync(x => x.ConsultantProfileId == consultantProfileId &&
-                               !x.IsCanceled &&
-                               x.ReservationAt <= DateTime.Now &&
-                               x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation, cancellationToken);
-
-            if (hasDueAttendanceWithoutConsultantDecision)
-                return true;
-
             return await leadAssignmentRepository.GetAll()
                 .AnyAsync(x => !x.IsDeleted &&
                                x.ConsultantProfileId == consultantProfileId &&

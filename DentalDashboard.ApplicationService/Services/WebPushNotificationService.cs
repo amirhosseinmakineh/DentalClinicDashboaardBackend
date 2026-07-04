@@ -32,8 +32,8 @@ public class WebPushNotificationService : IPushNotificationService
         IReadOnlyDictionary<string, string>? data = null,
         CancellationToken cancellationToken = default)
     {
-        var subscriptionJson = await GetSubscriptionJsonAsync(userId, cancellationToken);
-        if (subscriptionJson == null)
+        var subscriptions = await GetSubscriptionsAsync(userId, cancellationToken);
+        if (subscriptions.Count == 0)
             return false;
 
         var vapidDetails = TryGetVapidDetails();
@@ -45,14 +45,6 @@ public class WebPushNotificationService : IPushNotificationService
             return false;
         }
 
-        if (!TryParseSubscription(subscriptionJson, out var pushSubscription))
-        {
-            logger.LogWarning(
-                "Push notification skipped for user {UserId}: stored push subscription is invalid",
-                userId);
-            return false;
-        }
-
         var payload = JsonSerializer.Serialize(new
         {
             title,
@@ -60,30 +52,45 @@ public class WebPushNotificationService : IPushNotificationService
             data = data ?? new Dictionary<string, string>()
         });
 
-        try
+        var client = new WebPushClient();
+        var delivered = false;
+        var invalidSubscriptions = new List<string>();
+
+        foreach (var subscriptionJson in subscriptions)
         {
-            var client = new WebPushClient();
-            await client.SendNotificationAsync(pushSubscription, payload, vapidDetails);
-            return true;
+            if (!TryParseSubscription(subscriptionJson, out var pushSubscription))
+            {
+                invalidSubscriptions.Add(subscriptionJson);
+                continue;
+            }
+
+            try
+            {
+                await client.SendNotificationAsync(pushSubscription, payload, vapidDetails);
+                delivered = true;
+            }
+            catch (WebPushException ex) when (IsInvalidSubscription(ex))
+            {
+                logger.LogWarning(
+                    ex,
+                    "WebPush rejected subscription for user {UserId}: {StatusCode}",
+                    userId,
+                    ex.StatusCode);
+                invalidSubscriptions.Add(subscriptionJson);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "WebPush request failed for user {UserId}", userId);
+            }
         }
-        catch (WebPushException ex) when (IsInvalidSubscription(ex))
-        {
-            logger.LogWarning(
-                ex,
-                "WebPush rejected subscription for user {UserId}: {StatusCode}",
-                userId,
-                ex.StatusCode);
-            await ClearSubscriptionAsync(userId, cancellationToken);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "WebPush request failed for user {UserId}", userId);
-            return false;
-        }
+
+        if (invalidSubscriptions.Count > 0)
+            await RemoveSubscriptionsAsync(userId, invalidSubscriptions, cancellationToken);
+
+        return delivered;
     }
 
-    private async Task<string?> GetSubscriptionJsonAsync(
+    private async Task<IReadOnlyList<string>> GetSubscriptionsAsync(
         Guid userId,
         CancellationToken cancellationToken)
     {
@@ -97,10 +104,10 @@ public class WebPushNotificationService : IPushNotificationService
             logger.LogWarning(
                 "Push notification skipped for user {UserId}: push subscription is missing",
                 userId);
-            return null;
+            return Array.Empty<string>();
         }
 
-        return user.PushNotificationToken.Trim();
+        return PushSubscriptionStorage.ParseSubscriptions(user.PushNotificationToken);
     }
 
     private VapidDetails? TryGetVapidDetails()
@@ -166,7 +173,10 @@ public class WebPushNotificationService : IPushNotificationService
                or HttpStatusCode.BadRequest;
     }
 
-    private async Task ClearSubscriptionAsync(Guid userId, CancellationToken cancellationToken)
+    private async Task RemoveSubscriptionsAsync(
+        Guid userId,
+        IReadOnlyCollection<string> subscriptionsToRemove,
+        CancellationToken cancellationToken)
     {
         var user = await userRepository.GetAll()
             .FirstOrDefaultAsync(x => x.Id == userId && !x.IsDeleted, cancellationToken);
@@ -174,10 +184,16 @@ public class WebPushNotificationService : IPushNotificationService
         if (user == null || string.IsNullOrWhiteSpace(user.PushNotificationToken))
             return;
 
-        user.PushNotificationToken = null;
+        var updated = user.PushNotificationToken;
+        foreach (var subscription in subscriptionsToRemove)
+            updated = PushSubscriptionStorage.RemoveSubscription(updated, subscription);
+
+        user.PushNotificationToken = updated;
         user.UpdatedAt = DateTime.UtcNow;
         userRepository.Update(user);
         await userRepository.SaveChange();
-        logger.LogInformation("Cleared invalid push subscription for user {UserId}", userId);
+        logger.LogInformation(
+            "Removed invalid push subscription(s) for user {UserId}",
+            userId);
     }
 }

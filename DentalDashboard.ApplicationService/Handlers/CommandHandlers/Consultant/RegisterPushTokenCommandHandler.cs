@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
@@ -27,7 +28,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (profile == null || profile.IsDeleted)
                 return Result.Failure("مشاوری یافت نشد");
 
-            profile.User.PushNotificationToken = command.DeviceToken.Trim();
+            profile.User.PushNotificationToken = PushSubscriptionStorage.UpsertSubscription(
+                profile.User.PushNotificationToken,
+                command.DeviceToken.Trim());
             await consultantProfileRepository.SaveChange();
 
             return Result.Success("توکن نوتیفیکیشن ثبت شد");

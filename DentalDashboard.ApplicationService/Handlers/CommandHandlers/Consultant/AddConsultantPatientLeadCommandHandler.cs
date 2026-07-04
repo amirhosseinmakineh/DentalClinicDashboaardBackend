@@ -5,6 +5,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
@@ -46,6 +47,19 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
             if (!profile.IsCompleteProfile)
                 return Result<AddConsultantPatientLeadResponse>.Failure("پروفایل مشاور کامل نیست");
+
+            var hasActiveLead = await leadAssignmentRepository.GetAll()
+                .AnyAsync(x => !x.IsDeleted &&
+                               x.ConsultantProfileId == command.ConsultantProfileId &&
+                               x.PhoneNumber == phoneNumber &&
+                               x.ReportSubmittedAt == null &&
+                               x.LeadAssignmentState != LeadAssignmentState.Expired &&
+                               x.LeadAssignmentState != LeadAssignmentState.Rejected,
+                    cancellationToken);
+
+            if (hasActiveLead)
+                return Result<AddConsultantPatientLeadResponse>.Failure(
+                    "برای این شماره تماس، لید فعال دیگری نزد شما وجود دارد");
 
             var now = DateTime.Now;
             var lead = new LeadAssignment

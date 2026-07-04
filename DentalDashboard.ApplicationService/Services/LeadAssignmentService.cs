@@ -273,7 +273,7 @@ namespace DentalDashboard.ApplicationService.Services
                     var sent = await pushNotificationService.SendAsync(
                         consultant.UserId,
                         "لید جدید",
-                        "شما یک لید جدید دارید و 3 دقیقه زمان دارید برای تماس.",
+                        "لید جدید داری — ۳ دقیقه وقت داری برای تماس.",
                         new Dictionary<string, string>
                         {
                             ["type"] = "realtime_lead",

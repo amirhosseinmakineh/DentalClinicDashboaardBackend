@@ -1,4 +1,5 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Auth;
+using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -25,7 +26,9 @@ public class RegisterUserPushTokenCommandHandler : ICommandHandler<RegisterUserP
         if (user is null || user.IsDeleted)
             return Result.Failure("کاربر یافت نشد");
 
-        user.PushNotificationToken = command.DeviceToken.Trim();
+        user.PushNotificationToken = PushSubscriptionStorage.UpsertSubscription(
+            user.PushNotificationToken,
+            command.DeviceToken.Trim());
         user.UpdatedAt = DateTime.UtcNow;
         userRepository.Update(user);
         await userRepository.SaveChange();

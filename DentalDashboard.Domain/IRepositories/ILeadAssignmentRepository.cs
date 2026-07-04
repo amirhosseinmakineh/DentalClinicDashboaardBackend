@@ -25,5 +25,6 @@ namespace DentalDashboard.Domain.IRepositories
         Task AddBroadcastDismissalAsync(long leadAssignmentId, long consultantProfileId);
         Task<List<LeadAssignment>> GetStaleBroadcastingLeadsAsync(DateTime now);
         Task<List<LeadAssignment>> GetPendingBroadcastRealTimeLeadsAsync(int take);
+        Task<List<LeadAssignment>> GetUnassignedLeadsNeedingOfflineRequeueAsync(bool includeRealTimeNew);
     }
 }

@@ -149,8 +149,6 @@ namespace DentalDashboard.ApplicationService.Services
 
         public async Task AssignPendingOfflineLeadsAsync()
         {
-            await RequeueUnassignedLeadsForOfflineAsync();
-
             var consultants = await consultantProfileRepository.GetAvailableConsultantsForOfflineAssignmentAsync();
             if (leadDomainService.IsWorkingTime(DateTime.Now))
                 consultants = consultants.Where(x => !x.IsOnline).ToList();
@@ -180,8 +178,6 @@ namespace DentalDashboard.ApplicationService.Services
             var consultant = await consultantProfileRepository.GetByIdAsync(consultantProfileId);
             if (consultant is null || consultant.IsDeleted || !consultant.IsCompleteProfile || !consultant.IsAvailable)
                 return 0;
-
-            await RequeueUnassignedLeadsForOfflineAsync();
 
             var dailyAssignedCounts = await leadAssignmentRepository.GetDailyAssignedOfflineLeadCountsAsync(
                 new[] { consultantProfileId },
@@ -236,37 +232,6 @@ namespace DentalDashboard.ApplicationService.Services
 
         public Task ExpireStaleBroadcastsAsync() =>
             leadBroadcastService.ExpireStaleBroadcastsAsync();
-
-        public async Task<int> RequeueUnassignedLeadsForOfflineAsync()
-        {
-            var now = DateTime.Now;
-            var includeRealTimeNew = !leadDomainService.IsWorkingTime(now);
-
-            if (!includeRealTimeNew)
-            {
-                var onlineConsultants =
-                    await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
-                includeRealTimeNew = !onlineConsultants.Any();
-            }
-
-            var leads = await leadAssignmentRepository.GetUnassignedLeadsNeedingOfflineRequeueAsync(includeRealTimeNew);
-            if (!leads.Any())
-                return 0;
-
-            foreach (var lead in leads)
-            {
-                lead.AssignmentType = LeadAssignmentType.OfflineQueue;
-                lead.LeadAssignmentState = LeadAssignmentState.Pending;
-                lead.BroadcastStartedAt = null;
-                lead.BroadcastExpiresAt = null;
-                lead.RequiresThreeMinuteCall = false;
-                lead.CallDeadlineAt = null;
-                leadAssignmentRepository.Update(lead);
-            }
-
-            await leadAssignmentRepository.SaveChange();
-            return leads.Count;
-        }
 
         public async Task AssignRealTimeLeadsAsync()
         {

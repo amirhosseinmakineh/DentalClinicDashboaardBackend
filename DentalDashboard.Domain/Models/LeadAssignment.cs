@@ -25,5 +25,7 @@ public class LeadAssignment : BaseAuditableEntity<long>
     public string? BusinessName { get; set; }
     public int? AttendanceProbabilityPercent { get; set; }
     public string? SecondaryPhoneNumber { get; set; }
-
+    public DateTime? BroadcastStartedAt { get; set; }
+    public DateTime? ClaimedAt { get; set; }
+    public DateTime? BroadcastExpiresAt { get; set; }
 }

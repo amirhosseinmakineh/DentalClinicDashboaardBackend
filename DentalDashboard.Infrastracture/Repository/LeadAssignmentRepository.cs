@@ -72,7 +72,8 @@ namespace DentalDashboard.Infrastracture.Repository
                                x.ConsultantProfileId == consultantProfileId &&
                                x.AssignmentType == LeadAssignmentType.RealTime &&
                                x.ReportSubmittedAt == null &&
-                               x.LeadAssignmentState == LeadAssignmentState.Assigned);
+                               (x.LeadAssignmentState == LeadAssignmentState.Assigned ||
+                                x.LeadAssignmentState == LeadAssignmentState.Claimed));
         }
 
         public Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now)
@@ -95,7 +96,8 @@ namespace DentalDashboard.Infrastracture.Repository
             return GetAll()
                 .CountAsync(x => !x.IsDeleted &&
                                  x.AssignmentType == LeadAssignmentType.RealTime &&
-                                 x.LeadAssignmentState == LeadAssignmentState.New &&
+                                 (x.LeadAssignmentState == LeadAssignmentState.New ||
+                                  x.LeadAssignmentState == LeadAssignmentState.Broadcasting) &&
                                  x.ConsultantProfileId == null);
         }
 
@@ -172,6 +174,74 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.LeadAssignmentState == LeadAssignmentState.Assigned)
                 .OrderBy(x => x.AssignedAt)
                 .ThenBy(x => x.Id)
+                .ToListAsync();
+        }
+
+        public Task<List<LeadAssignment>> GetBroadcastingLeadsAsync(long consultantProfileId, int take = 20)
+        {
+            var dismissedQuery = context.Set<LeadBroadcastDismissal>()
+                .Where(x => !x.IsDeleted && x.ConsultantProfileId == consultantProfileId)
+                .Select(x => x.LeadAssignmentId);
+
+            return GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.LeadAssignmentState == LeadAssignmentState.Broadcasting &&
+                            !dismissedQuery.Contains(x.Id))
+                .OrderByDescending(x => x.BroadcastStartedAt ?? x.CreatedAt)
+                .Take(take)
+                .ToListAsync();
+        }
+
+        public Task<List<long>> GetDismissedBroadcastLeadIdsAsync(long consultantProfileId)
+        {
+            return context.Set<LeadBroadcastDismissal>()
+                .AsNoTracking()
+                .Where(x => !x.IsDeleted && x.ConsultantProfileId == consultantProfileId)
+                .Select(x => x.LeadAssignmentId)
+                .ToListAsync();
+        }
+
+        public Task<bool> IsBroadcastDismissedAsync(long leadAssignmentId, long consultantProfileId)
+        {
+            return context.Set<LeadBroadcastDismissal>()
+                .AnyAsync(x => !x.IsDeleted &&
+                               x.LeadAssignmentId == leadAssignmentId &&
+                               x.ConsultantProfileId == consultantProfileId);
+        }
+
+        public async Task AddBroadcastDismissalAsync(long leadAssignmentId, long consultantProfileId)
+        {
+            context.Set<LeadBroadcastDismissal>().Add(new LeadBroadcastDismissal
+            {
+                LeadAssignmentId = leadAssignmentId,
+                ConsultantProfileId = consultantProfileId,
+                CreatedAt = DateTime.UtcNow,
+                IsDeleted = false
+            });
+
+            await Task.CompletedTask;
+        }
+
+        public Task<List<LeadAssignment>> GetStaleBroadcastingLeadsAsync(DateTime now)
+        {
+            return GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.LeadAssignmentState == LeadAssignmentState.Broadcasting &&
+                            x.BroadcastExpiresAt != null &&
+                            x.BroadcastExpiresAt <= now)
+                .ToListAsync();
+        }
+
+        public Task<List<LeadAssignment>> GetPendingBroadcastRealTimeLeadsAsync(int take)
+        {
+            return GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.RealTime &&
+                            x.LeadAssignmentState == LeadAssignmentState.New &&
+                            x.ConsultantProfileId == null)
+                .OrderBy(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .Take(take)
                 .ToListAsync();
         }
 

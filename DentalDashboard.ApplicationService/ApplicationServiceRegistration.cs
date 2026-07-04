@@ -15,6 +15,7 @@ public static class ApplicationServiceRegistration
         services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>();
         services.AddScoped<IPushNotificationService, WebPushNotificationService>();
         services.AddScoped<IConsultantProfileService, ConsultantProfileService>();
+        services.AddScoped<ILeadBroadcastService, LeadBroadcastService>();
 
         services.AddScoped<IQueryDispatcher, QueryDispatcher>();
         services.AddTransient<ICommandDispatcher, CommandDispatcher>();

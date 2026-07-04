@@ -124,8 +124,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             leadAssignmentRepository.Update(lead);
             await leadAssignmentRepository.SaveChange();
 
-            await leadAssignmentService.AssignRealTimeLeadsAsync();
-
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
         }
 

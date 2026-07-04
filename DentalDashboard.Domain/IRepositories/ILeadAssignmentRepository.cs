@@ -19,5 +19,11 @@ namespace DentalDashboard.Domain.IRepositories
         Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId);
         Task<Dictionary<long, int>> GetDailyAssignedOfflineLeadCountsAsync(IEnumerable<long> consultantProfileIds, DateTime day);
         Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync();
+        Task<List<LeadAssignment>> GetBroadcastingLeadsAsync(long consultantProfileId, int take = 20);
+        Task<List<long>> GetDismissedBroadcastLeadIdsAsync(long consultantProfileId);
+        Task<bool> IsBroadcastDismissedAsync(long leadAssignmentId, long consultantProfileId);
+        Task AddBroadcastDismissalAsync(long leadAssignmentId, long consultantProfileId);
+        Task<List<LeadAssignment>> GetStaleBroadcastingLeadsAsync(DateTime now);
+        Task<List<LeadAssignment>> GetPendingBroadcastRealTimeLeadsAsync(int take);
     }
 }

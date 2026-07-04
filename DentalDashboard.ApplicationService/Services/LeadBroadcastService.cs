@@ -72,7 +72,8 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
     {
         await ExpireStaleBroadcastsAsync(cancellationToken);
 
-        var onlineConsultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
+        var onlineConsultants = LeadBroadcastTestConsultants.Filter(
+            await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync()).ToList();
         if (!onlineConsultants.Any())
             return;
 
@@ -128,6 +129,30 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
 
         await leadAssignmentRepository.SaveChange();
         logger.LogInformation("Expired {Count} stale lead broadcasts.", expired.Count);
+    }
+
+    public async Task<long> SeedTestBroadcastLeadAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.Now;
+        var suffix = now.ToString("HHmmssfff");
+        var lead = new LeadAssignment
+        {
+            UserName = $"تست لید {suffix}",
+            PhoneNumber = $"0912{suffix}",
+            AssignmentType = LeadAssignmentType.RealTime,
+            LeadAssignmentState = LeadAssignmentState.Broadcasting,
+            BroadcastStartedAt = now,
+            BroadcastExpiresAt = now.Add(broadcastTimeout),
+            CreatedAt = now,
+            RequiresThreeMinuteCall = false,
+            CallDeadlineAt = null,
+            IsDeleted = false,
+        };
+
+        await leadAssignmentRepository.AddAsync(lead);
+        await leadAssignmentRepository.SaveChange();
+        await NotifyBroadcastAsync(lead.Id, cancellationToken);
+        return lead.Id;
     }
 
     internal static (string FirstName, string LastName) SplitUserName(string userName)

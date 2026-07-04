@@ -151,5 +151,13 @@ namespace DentalDashboard.Controllers
             var result = await dispatcher.DispatchAsync(new SeedTestBroadcastLeadCommand());
             return Ok(result);
         }
+
+        [HttpPost("SeedTestOfflineLeads")]
+        public async Task<IActionResult> SeedTestOfflineLeads([FromQuery] int count = 5)
+        {
+            var result = await dispatcher.DispatchAsync(
+                new SeedTestOfflineLeadsCommand { Count = count });
+            return Ok(result);
+        }
     }
 }

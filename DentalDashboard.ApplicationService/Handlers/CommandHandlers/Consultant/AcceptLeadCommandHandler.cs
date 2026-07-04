@@ -19,17 +19,20 @@ public class AcceptLeadCommandHandler : ICommandHandler<AcceptLeadCommand, Accep
     private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly ILeadBroadcastService leadBroadcastService;
     private readonly IHubContext<LeadBroadcastHub> hub;
+    private readonly LeadBroadcastTestFilter broadcastTestFilter;
 
     public AcceptLeadCommandHandler(
         ILeadAssignmentRepository leadAssignmentRepository,
         IConsultantProfileRepository consultantProfileRepository,
         ILeadBroadcastService leadBroadcastService,
-        IHubContext<LeadBroadcastHub> hub)
+        IHubContext<LeadBroadcastHub> hub,
+        LeadBroadcastTestFilter broadcastTestFilter)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.consultantProfileRepository = consultantProfileRepository;
         this.leadBroadcastService = leadBroadcastService;
         this.hub = hub;
+        this.broadcastTestFilter = broadcastTestFilter;
     }
 
     public async Task<Result<AcceptLeadResponse>> HandleAsync(
@@ -57,6 +60,9 @@ public class AcceptLeadCommandHandler : ICommandHandler<AcceptLeadCommand, Accep
 
         if (!consultant.IsOnline || !consultant.IsAvailable)
             return Result<AcceptLeadResponse>.Failure("برای پذیرش لید باید آنلاین و حاضر باشید");
+
+        if (!broadcastTestFilter.IsAllowed(consultant.UserId))
+            return Result<AcceptLeadResponse>.Failure("این لید فقط برای مشاوران تست در دسترس است");
 
         var now = DateTime.Now;
         assignment.ConsultantProfileId = consultant.Id;

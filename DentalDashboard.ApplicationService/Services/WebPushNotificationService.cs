@@ -15,17 +15,20 @@ public class WebPushNotificationService : IPushNotificationService
     private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly IConfiguration configuration;
     private readonly ILogger<WebPushNotificationService> logger;
+    private readonly LeadBroadcastTestFilter broadcastTestFilter;
 
     public WebPushNotificationService(
         IUserRepository userRepository,
         IConsultantProfileRepository consultantProfileRepository,
         IConfiguration configuration,
-        ILogger<WebPushNotificationService> logger)
+        ILogger<WebPushNotificationService> logger,
+        LeadBroadcastTestFilter broadcastTestFilter)
     {
         this.userRepository = userRepository;
         this.consultantProfileRepository = consultantProfileRepository;
         this.configuration = configuration;
         this.logger = logger;
+        this.broadcastTestFilter = broadcastTestFilter;
     }
 
     public async Task<bool> SendAsync(
@@ -105,6 +108,13 @@ public class WebPushNotificationService : IPushNotificationService
             .Select(x => x.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
+
+        if (broadcastTestFilter.IsEnabled)
+        {
+            onlineUserIds = onlineUserIds
+                .Where(broadcastTestFilter.IsAllowed)
+                .ToList();
+        }
 
         var deliveredCount = 0;
         foreach (var userId in onlineUserIds)

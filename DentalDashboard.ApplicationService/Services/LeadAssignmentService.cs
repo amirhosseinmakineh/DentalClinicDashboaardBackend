@@ -21,6 +21,7 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly IPushNotificationService pushNotificationService;
         private readonly ILeadBroadcastService leadBroadcastService;
         private readonly IConfiguration configuration;
+        private readonly LeadBroadcastTestFilter broadcastTestFilter;
 
         public LeadAssignmentService(
             HttpClient httpClient,
@@ -31,7 +32,8 @@ namespace DentalDashboard.ApplicationService.Services
             IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy,
             IPushNotificationService pushNotificationService,
             ILeadBroadcastService leadBroadcastService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            LeadBroadcastTestFilter broadcastTestFilter)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -42,6 +44,7 @@ namespace DentalDashboard.ApplicationService.Services
             this.pushNotificationService = pushNotificationService;
             this.leadBroadcastService = leadBroadcastService;
             this.configuration = configuration;
+            this.broadcastTestFilter = broadcastTestFilter;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync()
@@ -106,8 +109,8 @@ namespace DentalDashboard.ApplicationService.Services
             var realTimeCapacity = 0;
             if (leadDomainService.IsWorkingTime(now))
             {
-                var eligibleOnlineConsultants =
-                    await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
+                var eligibleOnlineConsultants = broadcastTestFilter.FilterEligibleForBroadcast(
+                    await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync()).ToList();
                 var unassignedRealTimeLeads = await leadAssignmentRepository.CountUnassignedRealTimeLeadsAsync();
                 realTimeCapacity = Math.Max(
                     eligibleOnlineConsultants.Count - unassignedRealTimeLeads,
@@ -173,29 +176,58 @@ namespace DentalDashboard.ApplicationService.Services
             await SendAssignedLeadNotificationsAsync();
         }
 
-        public async Task AssignPendingOfflineLeadsForConsultantAsync(long consultantProfileId)
+        public async Task<int> AssignPendingOfflineLeadsForConsultantAsync(long consultantProfileId)
         {
             var consultant = await consultantProfileRepository.GetByIdAsync(consultantProfileId);
             if (consultant is null || consultant.IsDeleted || !consultant.IsCompleteProfile || !consultant.IsAvailable)
-                return;
+                return 0;
 
             var dailyAssignedCounts = await leadAssignmentRepository.GetDailyAssignedOfflineLeadCountsAsync(
                 new[] { consultantProfileId },
                 DateTime.Now);
             var remainingCapacity = Math.Max(5 - dailyAssignedCounts.GetValueOrDefault(consultantProfileId), 0);
             if (remainingCapacity <= 0)
-                return;
+                return 0;
 
             var pendingLeads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(remainingCapacity);
             if (!pendingLeads.Any())
-                return;
+                return 0;
 
             offlineLeadAssignmentStrategy.Assign(
                 pendingLeads,
                 new List<ConsultantProfile> { consultant },
                 dailyAssignedCounts);
+            var assignedCount = pendingLeads.Count(x => x.ConsultantProfileId == consultantProfileId);
+            if (assignedCount <= 0)
+                return 0;
+
             await leadAssignmentRepository.SaveChange();
             await SendAssignedLeadNotificationsAsync();
+            return assignedCount;
+        }
+
+        public async Task<int> SeedTestOfflineLeadsAsync(int count = 5)
+        {
+            var now = DateTime.Now;
+            var leads = new List<LeadAssignment>();
+            for (var i = 0; i < count; i++)
+            {
+                var suffix = $"{now:HHmmss}{i}";
+                leads.Add(new LeadAssignment
+                {
+                    UserName = $"تست آفلاین {suffix}",
+                    PhoneNumber = $"0921{suffix}",
+                    AssignmentType = LeadAssignmentType.OfflineQueue,
+                    LeadAssignmentState = LeadAssignmentState.Pending,
+                    CreatedAt = now,
+                    RequiresThreeMinuteCall = false,
+                    IsDeleted = false,
+                });
+            }
+
+            await leadAssignmentRepository.AddRangeAsync(leads);
+            await leadAssignmentRepository.SaveChange();
+            return leads.Count;
         }
 
         public Task BroadcastRealTimeLeadsAsync() =>

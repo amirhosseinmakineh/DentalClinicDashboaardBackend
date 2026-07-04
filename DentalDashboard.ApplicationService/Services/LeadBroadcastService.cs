@@ -18,6 +18,7 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
     private readonly IPushNotificationService pushNotificationService;
     private readonly IConfiguration configuration;
     private readonly ILogger<LeadBroadcastService> logger;
+    private readonly LeadBroadcastTestFilter broadcastTestFilter;
     private readonly TimeSpan broadcastTimeout;
 
     public LeadBroadcastService(
@@ -26,7 +27,8 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
         IHubContext<LeadBroadcastHub> hub,
         IPushNotificationService pushNotificationService,
         IConfiguration configuration,
-        ILogger<LeadBroadcastService> logger)
+        ILogger<LeadBroadcastService> logger,
+        LeadBroadcastTestFilter broadcastTestFilter)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.consultantProfileRepository = consultantProfileRepository;
@@ -34,6 +36,7 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
         this.pushNotificationService = pushNotificationService;
         this.configuration = configuration;
         this.logger = logger;
+        this.broadcastTestFilter = broadcastTestFilter;
         broadcastTimeout = TimeSpan.FromMinutes(configuration.GetValue("LeadBroadcast:TimeoutMinutes", 10));
     }
 
@@ -72,8 +75,8 @@ public sealed class LeadBroadcastService : ILeadBroadcastService
     {
         await ExpireStaleBroadcastsAsync(cancellationToken);
 
-        var onlineConsultants =
-            await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
+        var onlineConsultants = broadcastTestFilter.FilterEligibleForBroadcast(
+            await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync()).ToList();
         if (!onlineConsultants.Any())
             return;
 

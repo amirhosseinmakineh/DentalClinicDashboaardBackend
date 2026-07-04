@@ -66,7 +66,16 @@ public class WebPushNotificationService : IPushNotificationService
 
             try
             {
-                await client.SendNotificationAsync(pushSubscription, payload, vapidDetails);
+                var options = new Dictionary<string, object>
+                {
+                    ["TTL"] = 86400,
+                    ["Urgency"] = "high",
+                };
+                await client.SendNotificationAsync(
+                    pushSubscription,
+                    payload,
+                    vapidDetails,
+                    options);
                 delivered = true;
             }
             catch (WebPushException ex) when (IsInvalidSubscription(ex))

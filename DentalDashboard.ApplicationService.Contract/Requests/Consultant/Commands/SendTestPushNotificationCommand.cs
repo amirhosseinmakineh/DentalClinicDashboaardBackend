@@ -5,4 +5,6 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Consultant.Comman
 public class SendTestPushNotificationCommand : ICommand
 {
     public long ProfileId { get; set; }
+
+    public string? DeviceToken { get; set; }
 }

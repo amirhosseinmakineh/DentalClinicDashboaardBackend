@@ -4,6 +4,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant;
 
@@ -31,6 +32,25 @@ public class SendTestPushNotificationCommandHandler : ICommandHandler<SendTestPu
         if (profile == null || profile.IsDeleted)
             return Result.Failure("مشاوری یافت نشد");
 
+        if (!string.IsNullOrWhiteSpace(command.DeviceToken))
+        {
+            profile.User.PushNotificationToken = command.DeviceToken.Trim();
+            profile.User.UpdatedAt = DateTime.UtcNow;
+            await consultantProfileRepository.SaveChange();
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.User.PushNotificationToken))
+        {
+            return Result.Failure(
+                "subscription روی سرور ثبت نشده است. ابتدا «فعال‌سازی نوتیفیکیشن» را بزنید.");
+        }
+
+        if (!LooksLikePushSubscription(profile.User.PushNotificationToken))
+        {
+            return Result.Failure(
+                "subscription ذخیره‌شده روی سرور معتبر نیست. دوباره «فعال‌سازی نوتیفیکیشن» را بزنید.");
+        }
+
         var sent = await pushNotificationService.SendAsync(
             profile.UserId,
             "تست نوتیفیکیشن",
@@ -45,6 +65,20 @@ public class SendTestPushNotificationCommandHandler : ICommandHandler<SendTestPu
         return sent
             ? Result.Success("نوتیفیکیشن تست ارسال شد")
             : Result.Failure(
-                "ارسال نوتیفیکیشن انجام نشد. ابتدا اجازه Notification را بدهید و PWA را یک‌بار باز کنید.");
+                "ارسال push انجام نشد. WEBPUSH_VAPID_PRIVATE_KEY و WEBPUSH_VAPID_PUBLIC_KEY را روی سرور و Netlify بررسی کنید.");
+    }
+
+    private static bool LooksLikePushSubscription(string value)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(value);
+            return document.RootElement.TryGetProperty("endpoint", out var endpoint) &&
+                   !string.IsNullOrWhiteSpace(endpoint.GetString());
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }

@@ -1,6 +1,10 @@
 /*
   Consultant patient leads (AssignmentType = 3 / ConsultantPatient)
 
+  API endpoints:
+    POST /api/Consultant/CreateConsultantPatientLead
+    POST /api/Consultant/AddPatientLead   (alias)
+
   No schema migration is required. The existing LeadAssignments.AssignmentType
   column already stores enum values as INT. This script documents the new value
   and optional verification queries.

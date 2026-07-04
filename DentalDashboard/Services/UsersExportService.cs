@@ -31,7 +31,8 @@ public class UsersExportService
                 x.BirthDate,
                 x.IsActive,
                 x.IsCompleteProfile,
-                x.CreatedAt
+                x.CreatedAt,
+                x.LastSeenAt
             })
             .ToListAsync(cancellationToken);
 
@@ -47,7 +48,8 @@ public class UsersExportService
                 "تاریخ تولد",
                 "وضعیت فعال",
                 "پروفایل تکمیل شده",
-                "تاریخ ثبت‌نام")
+                "تاریخ ثبت‌نام",
+                "آخرین بازدید")
         };
 
         foreach (var row in rows)
@@ -62,7 +64,10 @@ public class UsersExportService
                 DateConvertor.ToPersianDateString(row.BirthDate),
                 AdminReportPersianLabels.ToYesNo(row.IsActive),
                 AdminReportPersianLabels.ToYesNo(row.IsCompleteProfile),
-                DateConvertor.ToPersianDateTimeString(row.CreatedAt)));
+                DateConvertor.ToPersianDateTimeString(row.CreatedAt),
+                row.LastSeenAt.HasValue
+                    ? DateConvertor.ToPersianDateTimeString(row.LastSeenAt.Value)
+                    : string.Empty));
         }
 
         return CsvExportHelper.BuildFile(lines.ToArray());

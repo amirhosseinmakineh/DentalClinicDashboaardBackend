@@ -34,7 +34,12 @@ public class LeadsExportService
                 x.CallResult,
                 x.ReportSubmittedAt,
                 x.ContactedAt,
-                x.CreatedAt
+                x.CreatedAt,
+                x.PatientCity,
+                x.PatientRegion,
+                x.BusinessName,
+                x.AttendanceProbabilityPercent,
+                x.SecondaryPhoneNumber
             })
             .ToListAsync(cancellationToken);
 
@@ -54,6 +59,11 @@ public class LeadsExportService
                 "نتیجه تماس",
                 "تاریخ ثبت گزارش",
                 "تاریخ تماس",
+                "شهر بیمار",
+                "منطقه بیمار",
+                "نام بیزینس",
+                "احتمال حضور (درصد)",
+                "شماره دوم بیمار",
                 "تاریخ ایجاد لید")
         };
 
@@ -75,6 +85,11 @@ public class LeadsExportService
                 row.CallResult.HasValue ? row.CallResult.Value.ToPersian() : string.Empty,
                 row.ReportSubmittedAt.HasValue ? DateConvertor.ToPersianDateTimeString(row.ReportSubmittedAt.Value) : string.Empty,
                 row.ContactedAt.HasValue ? DateConvertor.ToPersianDateTimeString(row.ContactedAt.Value) : string.Empty,
+                row.PatientCity ?? string.Empty,
+                row.PatientRegion ?? string.Empty,
+                row.BusinessName ?? string.Empty,
+                row.AttendanceProbabilityPercent?.ToString() ?? string.Empty,
+                row.SecondaryPhoneNumber ?? string.Empty,
                 DateConvertor.ToPersianDateTimeString(row.CreatedAt)));
         }
 

@@ -29,6 +29,8 @@ namespace DentalDashboard.Domain.Models
 
         public string? PushNotificationToken { get; set; }
 
+        public DateTime? LastSeenAt { get; set; }
+
         #region Relations
 
         public PatientProfile? PatientProfile { get; set; }

@@ -62,6 +62,11 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
             return Result<LoginResponse>.Failure("رمز عبور اشتباه است");
         }
 
+        user.LastSeenAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+        userRepository.Update(user);
+        await userRepository.SaveChange();
+
         var userRoles = user.UserRoles
             .Where(x => !x.IsDeleted && x.Role != null && !x.Role.IsDeleted)
             .Select(x => x.Role!)

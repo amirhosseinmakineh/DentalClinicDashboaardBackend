@@ -4,6 +4,7 @@ using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using HtmlAgilityPack;
+using Microsoft.Extensions.Configuration;
 using System.Net;
 
 namespace DentalDashboard.ApplicationService.Services
@@ -18,7 +19,19 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly ILeadAssignmentStrategy leadAssignmentStrategy;
         private readonly IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy;
         private readonly IPushNotificationService pushNotificationService;
-        public LeadAssignmentService(HttpClient httpClient, ILeadAssignmentRepository leadAssignmentRepository, ILeadDomainService leadDomainService, IConsultantProfileRepository consultantProfileRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy, IPushNotificationService pushNotificationService)
+        private readonly ILeadBroadcastService leadBroadcastService;
+        private readonly IConfiguration configuration;
+
+        public LeadAssignmentService(
+            HttpClient httpClient,
+            ILeadAssignmentRepository leadAssignmentRepository,
+            ILeadDomainService leadDomainService,
+            IConsultantProfileRepository consultantProfileRepository,
+            ILeadAssignmentStrategy leadAssignmentStrategy,
+            IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy,
+            IPushNotificationService pushNotificationService,
+            ILeadBroadcastService leadBroadcastService,
+            IConfiguration configuration)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -27,6 +40,8 @@ namespace DentalDashboard.ApplicationService.Services
             this.leadAssignmentStrategy = leadAssignmentStrategy;
             this.offlineLeadAssignmentStrategy = offlineLeadAssignmentStrategy;
             this.pushNotificationService = pushNotificationService;
+            this.leadBroadcastService = leadBroadcastService;
+            this.configuration = configuration;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync()
@@ -98,6 +113,9 @@ namespace DentalDashboard.ApplicationService.Services
                     0);
             }
 
+            var broadcastTimeout = TimeSpan.FromMinutes(
+                configuration.GetValue("LeadBroadcast:TimeoutMinutes", 10));
+
             for (var i = 0; i < newLeads.Count; i++)
             {
                 var lead = newLeads[i];
@@ -106,8 +124,10 @@ namespace DentalDashboard.ApplicationService.Services
                 if (i < realTimeCapacity)
                 {
                     lead.AssignmentType = LeadAssignmentType.RealTime;
-                    lead.LeadAssignmentState = LeadAssignmentState.New;
-                    lead.RequiresThreeMinuteCall = true;
+                    lead.LeadAssignmentState = LeadAssignmentState.Broadcasting;
+                    lead.BroadcastStartedAt = now;
+                    lead.BroadcastExpiresAt = now.Add(broadcastTimeout);
+                    lead.RequiresThreeMinuteCall = false;
                     lead.CallDeadlineAt = null;
                 }
                 else
@@ -121,6 +141,9 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.AddRangeAsync(newLeads);
             await leadAssignmentRepository.SaveChange();
+
+            foreach (var lead in newLeads.Where(x => x.LeadAssignmentState == LeadAssignmentState.Broadcasting))
+                await leadBroadcastService.NotifyBroadcastAsync(lead.Id);
         }
 
         public async Task AssignPendingOfflineLeadsAsync()
@@ -149,31 +172,15 @@ namespace DentalDashboard.ApplicationService.Services
             await SendAssignedLeadNotificationsAsync();
         }
 
+        public Task BroadcastRealTimeLeadsAsync() =>
+            leadBroadcastService.BroadcastPendingRealTimeLeadsAsync();
+
+        public Task ExpireStaleBroadcastsAsync() =>
+            leadBroadcastService.ExpireStaleBroadcastsAsync();
+
         public async Task AssignRealTimeLeadsAsync()
         {
-            var consultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
-            if (!consultants.Any())
-                return;
-
-            var leads = await leadAssignmentRepository.GetUnassignedRealTimeLeadsAsync(consultants.Count);
-            if (!leads.Any())
-                return;
-
-            leadAssignmentStrategy.Assign(leads, consultants);
-
-            var assignedLeadTimes = leads
-                .Where(l => l.ConsultantProfileId.HasValue)
-                .GroupBy(l => l.ConsultantProfileId!.Value)
-                .ToDictionary(g => g.Key, g => g.First().AssignedAt ?? DateTime.Now);
-
-            foreach (var consultant in consultants.Where(x => assignedLeadTimes.ContainsKey(x.Id)))
-            {
-                consultant.IsOnline = false;
-                consultant.LastOfflineAt = assignedLeadTimes[consultant.Id];
-            }
-
-            await leadAssignmentRepository.SaveChange();
-            await SendAssignedLeadNotificationsAsync();
+            await BroadcastRealTimeLeadsAsync();
         }
 
         public async Task ExpireOverdueRealTimeLeadsAsync()
@@ -230,7 +237,7 @@ namespace DentalDashboard.ApplicationService.Services
                     x.ConsultantProfile.IsOnline);
 
                 if (anyConsultantBackOnline)
-                    await AssignRealTimeLeadsAsync();
+                    await BroadcastRealTimeLeadsAsync();
             }
         }
         private async Task SendAssignedLeadNotificationsAsync()
@@ -273,12 +280,11 @@ namespace DentalDashboard.ApplicationService.Services
                     var sent = await pushNotificationService.SendAsync(
                         consultant.UserId,
                         "لید جدید",
-                        "لید جدید داری — ۳ دقیقه وقت داری برای تماس.",
+                        "لید جدید داری — سریع بپذیر و تماس بگیر.",
                         new Dictionary<string, string>
                         {
-                            ["type"] = "realtime_lead",
+                            ["type"] = "lead_broadcast",
                             ["leadAssignmentId"] = lead.Id.ToString(),
-                            ["callDeadlineAt"] = lead.CallDeadlineAt?.ToString("O") ?? string.Empty
                         });
 
                     if (sent)

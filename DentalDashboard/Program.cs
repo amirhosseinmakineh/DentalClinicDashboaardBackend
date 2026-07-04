@@ -15,6 +15,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+builder.Services.AddSignalR();
+
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
@@ -72,7 +74,8 @@ builder.Services.AddCors(options =>
                 "http://drsaeedmoghadam.com"
             )
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 builder.Services.AddApplicationServices();
@@ -121,5 +124,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+
+app.MapHub<DentalDashboard.ApplicationService.Hubs.LeadBroadcastHub>("/hubs/lead-broadcast");
 
 app.Run();

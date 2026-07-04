@@ -120,5 +120,29 @@ namespace DentalDashboard.Controllers
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
+
+        [HttpGet("GetBroadcastingLeads")]
+        public async Task<IActionResult> GetBroadcastingLeads([FromQuery] GetBroadcastingLeadsQuery query)
+        {
+            var result = await queryDispatcher.DispatchAsync(query);
+            return Ok(result);
+        }
+
+        [HttpPost("AcceptLead")]
+        public async Task<IActionResult> AcceptLead(AcceptLeadCommand command)
+        {
+            var result = await dispatcher.DispatchAsync(command);
+            if (!result.IsSuccess)
+                return Conflict(result);
+
+            return Ok(result);
+        }
+
+        [HttpPost("RejectBroadcast")]
+        public async Task<IActionResult> RejectBroadcast(RejectBroadcastCommand command)
+        {
+            var result = await dispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
     }
 }

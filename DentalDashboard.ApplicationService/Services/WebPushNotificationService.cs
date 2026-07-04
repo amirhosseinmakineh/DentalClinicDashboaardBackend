@@ -12,15 +12,18 @@ namespace DentalDashboard.ApplicationService.Services;
 public class WebPushNotificationService : IPushNotificationService
 {
     private readonly IUserRepository userRepository;
+    private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly IConfiguration configuration;
     private readonly ILogger<WebPushNotificationService> logger;
 
     public WebPushNotificationService(
         IUserRepository userRepository,
+        IConsultantProfileRepository consultantProfileRepository,
         IConfiguration configuration,
         ILogger<WebPushNotificationService> logger)
     {
         this.userRepository = userRepository;
+        this.consultantProfileRepository = consultantProfileRepository;
         this.configuration = configuration;
         this.logger = logger;
     }
@@ -88,6 +91,29 @@ public class WebPushNotificationService : IPushNotificationService
             await RemoveSubscriptionsAsync(userId, invalidSubscriptions, cancellationToken);
 
         return delivered;
+    }
+
+    public async Task<int> SendToOnlineConsultantsAsync(
+        string title,
+        string body,
+        IReadOnlyDictionary<string, string>? data = null,
+        CancellationToken cancellationToken = default)
+    {
+        var onlineUserIds = await consultantProfileRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => !x.IsDeleted && x.IsOnline && x.IsAvailable)
+            .Select(x => x.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var deliveredCount = 0;
+        foreach (var userId in onlineUserIds)
+        {
+            if (await SendAsync(userId, title, body, data, cancellationToken))
+                deliveredCount++;
+        }
+
+        return deliveredCount;
     }
 
     private async Task<IReadOnlyList<string>> GetSubscriptionsAsync(

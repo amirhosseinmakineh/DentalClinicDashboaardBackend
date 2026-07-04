@@ -61,7 +61,9 @@ public class RegisterCommandHandler : ICommandHandler<RegisterCommand, RegisterR
                 Gender = command.Gender,
                 AvatarImageName = command.AvatarImageName,
                 IsActive = true,
-                IsCompleteProfile = false
+                IsCompleteProfile = false,
+                CreatedAt = DateTime.UtcNow,
+                LastSeenAt = DateTime.UtcNow
             };
 
             await userRepository.AddAsync(user);

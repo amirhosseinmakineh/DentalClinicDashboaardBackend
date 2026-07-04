@@ -43,6 +43,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                 reservations = reservations.Where(x => x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
                                                        x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
 
+            if (query.OnlyConsultantAttendanceConfirmed)
+                reservations = reservations.Where(x =>
+                    x.ConsultantAttendanceConfirmedAt != null ||
+                    x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
+                    x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
+
             var totalCount = await reservations.CountAsync(cancellationToken);
             var items = await reservations
                 .OrderByDescending(x => x.ReservationAt)

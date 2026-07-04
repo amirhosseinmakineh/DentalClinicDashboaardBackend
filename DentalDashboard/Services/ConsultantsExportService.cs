@@ -32,6 +32,18 @@ public class ConsultantsExportService
             .GroupBy(x => x.ConsultantProfileId!.Value)
             .ToDictionary(x => x.Key, x => x.ToList());
 
+        var reservationStats = await context.Reservations.AsNoTracking()
+            .Where(x => !x.IsDeleted && consultantIds.Contains(x.ConsultantProfileId))
+            .GroupBy(x => x.ConsultantProfileId)
+            .Select(g => new
+            {
+                ConsultantProfileId = g.Key,
+                TotalReservations = g.Count(),
+                ActiveReservations = g.Count(x => !x.IsCanceled),
+                ConsultantConfirmed = g.Count(x => x.ConsultantAttendanceConfirmedAt != null)
+            })
+            .ToDictionaryAsync(x => x.ConsultantProfileId, cancellationToken);
+
         var lines = new List<string>
         {
             CsvExportHelper.JoinRow("بخش خلاصه مشاوران"),
@@ -44,7 +56,13 @@ public class ConsultantsExportService
                 "امتیاز فعلی",
                 "وضعیت آنلاین",
                 "وضعیت حضور",
+                "آخرین بازدید",
+                "آخرین آنلاین",
+                "آخرین آفلاین",
                 "تعداد کل لیدها",
+                "تعداد رزرو",
+                "تعداد رزرو فعال",
+                "تعداد تایید حضور مشاور",
                 "تعداد تماس گرفته",
                 "تعداد تماس نگرفته",
                 "تعداد تبدیل شده",
@@ -60,6 +78,7 @@ public class ConsultantsExportService
             var convertedCount = leads.Count(x => x.LeadAssignmentState == LeadAssignmentState.Converted);
             var rejectedCount = leads.Count(x => x.LeadAssignmentState == LeadAssignmentState.Rejected);
             var expiredCount = leads.Count(x => x.LeadAssignmentState == LeadAssignmentState.Expired);
+            var stats = reservationStats.GetValueOrDefault(consultant.Id);
 
             lines.Add(CsvExportHelper.JoinRow(
                 consultant.Id.ToString(),
@@ -70,7 +89,19 @@ public class ConsultantsExportService
                 consultant.CurrentScore.ToString(),
                 AdminReportPersianLabels.ToYesNo(consultant.IsOnline),
                 AdminReportPersianLabels.ToYesNo(consultant.IsAvailable),
+                consultant.User?.LastSeenAt.HasValue == true
+                    ? DateConvertor.ToPersianDateTimeString(consultant.User.LastSeenAt.Value)
+                    : string.Empty,
+                consultant.LastOnlineAt.HasValue
+                    ? DateConvertor.ToPersianDateTimeString(consultant.LastOnlineAt.Value)
+                    : string.Empty,
+                consultant.LastOfflineAt.HasValue
+                    ? DateConvertor.ToPersianDateTimeString(consultant.LastOfflineAt.Value)
+                    : string.Empty,
                 leads.Count.ToString(),
+                stats?.TotalReservations.ToString() ?? "0",
+                stats?.ActiveReservations.ToString() ?? "0",
+                stats?.ConsultantConfirmed.ToString() ?? "0",
                 calledCount.ToString(),
                 notCalledCount.ToString(),
                 convertedCount.ToString(),

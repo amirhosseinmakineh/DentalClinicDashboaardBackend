@@ -61,4 +61,17 @@ public static class AdminReportPersianLabels
 
     public static string ToCallStatus(bool hasCalled) =>
         hasCalled ? "تماس گرفته" : "تماس نگرفته";
+
+    public static string ToYesNoNullable(bool? value) =>
+        value.HasValue ? ToYesNo(value.Value) : "ثبت نشده";
+
+    public static string ToPersian(this ReservationAttendanceConfirmationStatus status) => status switch
+    {
+        ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation => "منتظر اعلام مشاور",
+        ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent => "مشاور: بیمار آمده",
+        ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent => "مشاور: بیمار نیامده",
+        ReservationAttendanceConfirmationStatus.SecretaryApproved => "تایید نهایی منشی",
+        ReservationAttendanceConfirmationStatus.SecretaryRejected => "رد نهایی منشی",
+        _ => "نامشخص"
+    };
 }

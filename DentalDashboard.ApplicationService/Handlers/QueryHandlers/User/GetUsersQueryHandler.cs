@@ -3,6 +3,7 @@ using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
 {
@@ -48,10 +49,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
             if (query.IsCompleteName.HasValue)
                 users = users.Where(x => x.IsCompleteProfile == query.IsCompleteName.Value);
 
-            var totalCount = users.Count();
+            var totalCount = await users.CountAsync(cancellationToken);
 
-            var items = users
-                .OrderByDescending(x => x.CreatedAt)
+            var items = await users
+                .OrderByDescending(x => x.LastSeenAt ?? x.CreatedAt)
+                .ThenByDescending(x => x.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(user => new UserItemResponse
@@ -60,13 +62,17 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
                     FirstName = user.FirstName,
                     LastName = user.LastName,
                     IsActive = user.IsActive,
+                    IsCompleteProfile = user.IsCompleteProfile,
+                    Gender = user.Gender,
+                    CreatedAt = user.CreatedAt,
+                    LastSeenAt = user.LastSeenAt,
                     PhoneNumber = user.PhoneNumber,
                     RoleName = user.UserRoles
                         .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
                         .Select(ur => ur.Role!.RoleName)
                         .FirstOrDefault() ?? string.Empty
                 })
-                .ToList();
+                .ToListAsync(cancellationToken);
 
             return new PaginatedResult<UserItemResponse>
             {

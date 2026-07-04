@@ -85,6 +85,7 @@ builder.Services.AddScoped<DentalDashboard.Services.LeadCallReportExportService>
 builder.Services.AddScoped<DentalDashboard.Services.UsersExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.LeadsExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.ConsultantsExportService>();
+builder.Services.AddScoped<DentalDashboard.Services.ReservationsExportService>();
 
 builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
 
@@ -109,6 +110,8 @@ app.UseCors("FrontendCors");
 app.UseAuthentication();
 
 app.UseAuthorization();
+
+app.UseMiddleware<DentalDashboard.Middleware.LastSeenTrackingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

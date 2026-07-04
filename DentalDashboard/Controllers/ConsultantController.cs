@@ -144,5 +144,12 @@ namespace DentalDashboard.Controllers
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
+
+        [HttpPost("SeedTestBroadcastLead")]
+        public async Task<IActionResult> SeedTestBroadcastLead()
+        {
+            var result = await dispatcher.DispatchAsync(new SeedTestBroadcastLeadCommand());
+            return Ok(result);
+        }
     }
 }

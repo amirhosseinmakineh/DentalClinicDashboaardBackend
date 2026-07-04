@@ -106,6 +106,13 @@ public class WebPushNotificationService : IPushNotificationService
             .Distinct()
             .ToListAsync(cancellationToken);
 
+        if (LeadBroadcastTestConsultants.IsEnabled)
+        {
+            onlineUserIds = onlineUserIds
+                .Where(LeadBroadcastTestConsultants.IsAllowed)
+                .ToList();
+        }
+
         var deliveredCount = 0;
         foreach (var userId in onlineUserIds)
         {

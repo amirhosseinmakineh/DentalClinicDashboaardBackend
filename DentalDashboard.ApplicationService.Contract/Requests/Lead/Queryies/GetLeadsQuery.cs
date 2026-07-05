@@ -10,6 +10,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
         public long ProfileId { get; set; }
         public LeadAssignmentState? leadAssignmentState { get; set; }
         public LeadAssignmentType? LeadAssignmentType { get; set; }
+        public bool? HasSubmittedReport { get; set; }
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

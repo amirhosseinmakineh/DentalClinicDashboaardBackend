@@ -43,6 +43,17 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     AssignedAt = x.AssignedAt,
                     CallDeadlineAt = x.CallDeadlineAt,
                     RequiresThreeMinuteCall = x.RequiresThreeMinuteCall,
+                    IsReportSubmitted = x.ReportSubmittedAt != null,
+                    ReportSubmittedAt = x.ReportSubmittedAt,
+                    ContactedAt = x.ContactedAt,
+                    CallInitiatedAt = x.CallInitiatedAt,
+                    CallResult = x.CallResult,
+                    ReportDescription = x.ReportDescription,
+                    PatientCity = x.PatientCity,
+                    PatientRegion = x.PatientRegion,
+                    BusinessName = x.BusinessName,
+                    AttendanceProbabilityPercent = x.AttendanceProbabilityPercent,
+                    SecondaryPhoneNumber = x.SecondaryPhoneNumber,
                     HasActiveReservation = reservationRepository.GetAll()
                         .Any(r => r.LeadAssignmentId == x.Id && !r.IsCanceled)
                 });
@@ -53,6 +64,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             if (query.LeadAssignmentType.HasValue)
             {
                 allLeads = allLeads.Where(x => x.leadAssignmentType == query.LeadAssignmentType.Value);
+            }
+            if (query.HasSubmittedReport.HasValue)
+            {
+                allLeads = query.HasSubmittedReport.Value
+                    ? allLeads.Where(x => x.IsReportSubmitted)
+                    : allLeads.Where(x => !x.IsReportSubmitted);
             }
 
             return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);

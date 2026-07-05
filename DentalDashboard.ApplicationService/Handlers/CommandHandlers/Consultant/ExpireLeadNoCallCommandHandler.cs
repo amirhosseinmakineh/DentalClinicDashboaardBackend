@@ -57,6 +57,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (lead.ReportSubmittedAt.HasValue)
                 return Result<ExpireLeadNoCallResponse>.Failure("برای این لید قبلا گزارش ثبت شده است");
 
+            if (lead.CallInitiatedAt.HasValue)
+                return Result<ExpireLeadNoCallResponse>.Failure("مشاور تماس را آغاز کرده و امکان منقضی شدن وجود ندارد");
+
             if (lead.LeadAssignmentState == LeadAssignmentState.Expired)
                 return Result<ExpireLeadNoCallResponse>.Failure("این لید قبلا منقضی شده است");
 

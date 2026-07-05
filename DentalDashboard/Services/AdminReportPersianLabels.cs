@@ -43,6 +43,8 @@ public static class AdminReportPersianLabels
         LeadCallResult.NoAnswer => "پاسخ نداد",
         LeadCallResult.WrongNumber => "شماره اشتباه",
         LeadCallResult.NeedFollowUp => "نیاز به پیگیری",
+        LeadCallResult.Busy => "اشغال",
+        LeadCallResult.PatientHungUp => "قطع تماس توسط بیمار",
         _ => "نامشخص"
     };
 

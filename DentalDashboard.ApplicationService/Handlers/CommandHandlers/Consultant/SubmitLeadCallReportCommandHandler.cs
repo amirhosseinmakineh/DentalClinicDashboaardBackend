@@ -140,6 +140,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 LeadCallResult.Contacted => (ScoreReason.SuccessfulCall, 5, "تماس موفق با لید"),
                 LeadCallResult.Converted => (ScoreReason.SuccessfulCall, 10, "تبدیل لید پس از تماس"),
                 LeadCallResult.NeedFollowUp => (ScoreReason.SuccessfulCall, 3, "تماس نیازمند پیگیری"),
+                LeadCallResult.Busy => (ScoreReason.NoAnswer, -2, "اشغال بودن خط لید"),
+                LeadCallResult.PatientHungUp => (ScoreReason.FailedCall, -1, "قطع تماس توسط بیمار"),
                 LeadCallResult.NoAnswer => (ScoreReason.NoAnswer, -2, "عدم پاسخگویی لید"),
                 LeadCallResult.Rejected => (ScoreReason.FailedCall, -3, "رد شدن لید پس از تماس"),
                 LeadCallResult.WrongNumber => (ScoreReason.FailedCall, -5, "شماره تماس اشتباه"),

@@ -134,7 +134,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
         }
 
-        private ScoreLog CreateScoreLog(
+        private DentalDashboard.Domain.Models.ScoreLog CreateScoreLog(
             LeadAssignment lead,
             ConsultantProfile profile,
             LeadCallResult callResult,

@@ -152,6 +152,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("CallDeadlineAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("CallInitiatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("CallResult")
                         .HasColumnType("int");
 

@@ -1,9 +1,11 @@
 using DentalDashboard.ApplicationService;
 using DentalDashboard.BackgroundServices;
 using DentalDashboard.Domain;
+using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Infrastracture.Registration;
 using DentalDashboard.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -97,6 +99,12 @@ builder.Services.AddInfrastructure(
 // ====================================
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<DentalContext>();
+    dbContext.Database.Migrate();
+}
 
 // ====================================
 // Middleware

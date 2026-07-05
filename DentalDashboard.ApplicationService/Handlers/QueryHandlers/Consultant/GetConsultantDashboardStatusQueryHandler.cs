@@ -1,5 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
+using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
@@ -10,13 +11,16 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
     {
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
+        private readonly ILeadDomainService leadDomainService;
 
         public GetConsultantDashboardStatusQueryHandler(
             IConsultantProfileRepository consultantProfileRepository,
-            ILeadAssignmentRepository leadAssignmentRepository)
+            ILeadAssignmentRepository leadAssignmentRepository,
+            ILeadDomainService leadDomainService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadAssignmentRepository = leadAssignmentRepository;
+            this.leadDomainService = leadDomainService;
         }
 
         public async Task<ConsultantDashboardStatusResponse> HandleAsync(
@@ -36,11 +40,13 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 .CountPendingOfflineLeadsAsync(profile.Id);
 
             var hasActiveRealTimeLead = await leadAssignmentRepository.HasActiveRealTimeLeadAsync(profile.Id);
+            var isWorkingTime = leadDomainService.IsWorkingTime(DateTime.Now);
 
             var canGoOnline = profile.IsCompleteProfile &&
                               profile.IsAvailable &&
                               pendingOfflineLeadCount == 0 &&
-                              !hasActiveRealTimeLead;
+                              !hasActiveRealTimeLead &&
+                              isWorkingTime;
 
             return new ConsultantDashboardStatusResponse
             {
@@ -56,7 +62,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                     profile.IsCompleteProfile,
                     profile.IsAvailable,
                     pendingOfflineLeadCount,
-                    hasActiveRealTimeLead)
+                    hasActiveRealTimeLead,
+                    isWorkingTime)
             };
         }
 
@@ -64,8 +71,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             bool isCompleteProfile,
             bool isAvailable,
             int pendingOfflineLeadCount,
-            bool hasActiveRealTimeLead)
+            bool hasActiveRealTimeLead,
+            bool isWorkingTime)
         {
+            if (!isWorkingTime)
+                return "امکان آنلاین شدن فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد";
+
             if (!isCompleteProfile)
                 return "پروفایل مشاور کامل نیست";
 

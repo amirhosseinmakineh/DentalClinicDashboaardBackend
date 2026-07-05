@@ -78,7 +78,8 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now)
         {
             return GetAll()
-                .Include(x => x.ConsultantProfile)
+                .Include(x => x.ConsultantProfile!)
+                .ThenInclude(x => x.ScoreLogs)
                 .Where(x => !x.IsDeleted &&
                             x.AssignmentType == LeadAssignmentType.RealTime &&
                             x.RequiresThreeMinuteCall &&

@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
+using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -12,15 +13,18 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadAssignmentService leadAssignmentService;
+        private readonly ILeadDomainService leadDomainService;
 
         public SetOnlineOfflineCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentRepository leadAssignmentRepository,
-            ILeadAssignmentService leadAssignmentService)
+            ILeadAssignmentService leadAssignmentService,
+            ILeadDomainService leadDomainService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.leadAssignmentService = leadAssignmentService;
+            this.leadDomainService = leadDomainService;
         }
 
         public async Task<Result> HandleAsync(
@@ -44,6 +48,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
             if (command.IsOnline)
             {
+                if (!leadDomainService.IsWorkingTime(DateTime.Now))
+                    return Result.Failure("امکان آنلاین شدن فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد");
+
                 var hasPendingOfflineLeads =
                     await leadAssignmentRepository.HasPendingOfflineLeadsAsync(profile.Id);
 

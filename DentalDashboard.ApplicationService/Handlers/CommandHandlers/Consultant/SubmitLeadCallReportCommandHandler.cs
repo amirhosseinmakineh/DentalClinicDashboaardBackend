@@ -7,6 +7,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 {
@@ -17,19 +18,22 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly ILeadReportDomainService leadReportDomainService;
         private readonly ILeadDomainService leadDomainService;
         private readonly ILeadAssignmentService leadAssignmentService;
+        private readonly IConsultantScoreDomainService consultantScoreDomainService;
 
         public SubmitLeadCallReportCommandHandler(
             ILeadAssignmentRepository leadAssignmentRepository,
             IConsultantProfileRepository consultantProfileRepository,
             ILeadReportDomainService leadReportDomainService,
             ILeadDomainService leadDomainService,
-            ILeadAssignmentService leadAssignmentService)
+            ILeadAssignmentService leadAssignmentService,
+            IConsultantScoreDomainService consultantScoreDomainService)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadReportDomainService = leadReportDomainService;
             this.leadDomainService = leadDomainService;
             this.leadAssignmentService = leadAssignmentService;
+            this.consultantScoreDomainService = consultantScoreDomainService;
         }
 
         public async Task<Result<SubmitLeadCallReportResponse>> HandleAsync(SubmitLeadCallReportCommand command, CancellationToken cancellationToken = default)
@@ -38,7 +42,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (lead == null)
                 return Result<SubmitLeadCallReportResponse>.Failure("لید یافت نشد");
 
-            var profile = await consultantProfileRepository.GetByIdAsync(command.ConsultantProfileId);
+            var profile = await consultantProfileRepository.GetAll()
+                .Include(x => x.ScoreLogs)
+                .FirstOrDefaultAsync(x => x.Id == command.ConsultantProfileId);
             if (profile == null)
                 return Result<SubmitLeadCallReportResponse>.Failure("مشاوری یافت نشد");
 
@@ -86,8 +92,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             lead.LeadAssignmentState = leadReportDomainService.MapCallResultToState(command.CallResult);
 
             var scoreLog = CreateScoreLog(lead, profile, command.CallResult, now);
-            profile.CurrentScore += scoreLog.ScoreValue;
-            profile.ScoreLogs.Add(scoreLog);
+            consultantScoreDomainService.ApplyScoreEvent(profile, scoreLog);
 
             if (lead.AssignmentType == LeadAssignmentType.ConsultantPatient)
             {
@@ -129,31 +134,31 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
         }
 
-        private static DentalDashboard.Domain.Models.ScoreLog CreateScoreLog(
+        private ScoreLog CreateScoreLog(
             LeadAssignment lead,
             ConsultantProfile profile,
             LeadCallResult callResult,
             DateTime now)
         {
-            var (reason, scoreValue, description) = callResult switch
+            var (reason, description) = callResult switch
             {
-                LeadCallResult.Contacted => (ScoreReason.SuccessfulCall, 5, "تماس موفق با لید"),
-                LeadCallResult.Converted => (ScoreReason.SuccessfulCall, 10, "تبدیل لید پس از تماس"),
-                LeadCallResult.NeedFollowUp => (ScoreReason.SuccessfulCall, 3, "تماس نیازمند پیگیری"),
-                LeadCallResult.Busy => (ScoreReason.NoAnswer, -2, "اشغال بودن خط لید"),
-                LeadCallResult.PatientHungUp => (ScoreReason.FailedCall, -1, "قطع تماس توسط بیمار"),
-                LeadCallResult.NoAnswer => (ScoreReason.NoAnswer, -2, "عدم پاسخگویی لید"),
-                LeadCallResult.Rejected => (ScoreReason.FailedCall, -3, "رد شدن لید پس از تماس"),
-                LeadCallResult.WrongNumber => (ScoreReason.FailedCall, -5, "شماره تماس اشتباه"),
-                _ => (ScoreReason.FailedCall, 0, "ثبت گزارش تماس لید")
+                LeadCallResult.Contacted => (ScoreReason.SuccessfulCall, "تماس موفق با لید"),
+                LeadCallResult.Converted => (ScoreReason.SuccessfulCall, "تبدیل لید پس از تماس"),
+                LeadCallResult.NeedFollowUp => (ScoreReason.SuccessfulCall, "تماس نیازمند پیگیری"),
+                LeadCallResult.Busy => (ScoreReason.NoAnswer, "اشغال بودن خط لید"),
+                LeadCallResult.PatientHungUp => (ScoreReason.FailedCall, "قطع تماس توسط بیمار"),
+                LeadCallResult.NoAnswer => (ScoreReason.NoAnswer, "عدم پاسخگویی لید"),
+                LeadCallResult.Rejected => (ScoreReason.FailedCall, "رد شدن لید پس از تماس"),
+                LeadCallResult.WrongNumber => (ScoreReason.FailedCall, "شماره تماس اشتباه"),
+                _ => (ScoreReason.FailedCall, "ثبت گزارش تماس لید")
             };
 
-            return new DentalDashboard.Domain.Models.ScoreLog
+            return new ScoreLog
             {
                 ConsultantProfileId = profile.Id,
                 Source = ScoreSource.System,
                 Reason = reason,
-                ScoreValue = scoreValue,
+                ScoreValue = consultantScoreDomainService.GetCallResultEventScore(callResult),
                 Description = description,
                 LeadAssignmentId = lead.Id,
                 UserId = profile.UserId,

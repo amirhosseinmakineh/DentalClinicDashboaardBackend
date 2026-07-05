@@ -30,6 +30,7 @@ namespace DentalDashboard.BackgroundServices
                     await leadAssignmentService.AssignRealTimeLeadsAsync();
                     await leadAssignmentService.AssignPendingOfflineLeadsAsync();
                     await leadAssignmentService.ExpireOverdueRealTimeLeadsAsync();
+                    await leadAssignmentService.EnforceNightShiftClosureAsync();
                 }
                 catch (Exception ex)
                 {

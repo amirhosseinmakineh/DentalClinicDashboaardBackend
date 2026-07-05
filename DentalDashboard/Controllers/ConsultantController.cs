@@ -100,6 +100,20 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpPost("RecordLeadCallInitiated")]
+        public async Task<IActionResult> RecordLeadCallInitiated(RecordLeadCallInitiatedCommand command)
+        {
+            var result = await dispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
+        [HttpPost("UpdateLeadCallReport")]
+        public async Task<IActionResult> UpdateLeadCallReport(UpdateLeadCallReportCommand command)
+        {
+            var result = await dispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
         [HttpGet("GetLeads")]
         public async Task<IActionResult> GetLeads([FromQuery]GetLeadsQuery query)
         {

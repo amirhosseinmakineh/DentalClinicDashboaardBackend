@@ -14,6 +14,8 @@ namespace DentalDashboard.Domain.DomainServices
                 LeadCallResult.WrongNumber => LeadAssignmentState.Rejected,
                 LeadCallResult.NoAnswer => LeadAssignmentState.Contacted,
                 LeadCallResult.NeedFollowUp => LeadAssignmentState.Contacted,
+                LeadCallResult.Busy => LeadAssignmentState.Contacted,
+                LeadCallResult.PatientHungUp => LeadAssignmentState.Contacted,
                 LeadCallResult.Contacted => LeadAssignmentState.Contacted,
                 _ => LeadAssignmentState.Contacted
             };

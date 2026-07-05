@@ -84,6 +84,7 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.RequiresThreeMinuteCall &&
                             x.LeadAssignmentState == LeadAssignmentState.Assigned &&
                             x.ReportSubmittedAt == null &&
+                            x.CallInitiatedAt == null &&
                             x.CallDeadlineAt != null &&
                             x.CallDeadlineAt < now)
                 .ToListAsync();

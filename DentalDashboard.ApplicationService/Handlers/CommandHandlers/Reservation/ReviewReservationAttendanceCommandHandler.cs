@@ -60,7 +60,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             reservation.AttendanceScoreAppliedAt = DateTime.UtcNow;
             reservation.UpdatedAt = DateTime.UtcNow;
 
-            var scoreLog = new ScoreLog
+            var scoreLog = new DentalDashboard.Domain.Models.ScoreLog
             {
                 ConsultantProfileId = reservation.ConsultantProfileId,
                 Source = ScoreSource.System,

@@ -153,7 +153,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 _ => (ScoreReason.FailedCall, "ثبت گزارش تماس لید")
             };
 
-            return new ScoreLog
+            return new DentalDashboard.Domain.Models.ScoreLog
             {
                 ConsultantProfileId = profile.Id,
                 Source = ScoreSource.System,

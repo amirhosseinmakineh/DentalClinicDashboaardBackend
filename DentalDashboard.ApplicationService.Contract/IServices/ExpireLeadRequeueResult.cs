@@ -1,8 +1,8 @@
 using DentalDashboard.Domain.Enums;
 
-namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
+namespace DentalDashboard.ApplicationService.Contract.IServices
 {
-    public record ExpireLeadNoCallResponse
+    public record ExpireLeadRequeueResult
     {
         public long LeadAssignmentId { get; init; }
         public long ConsultantProfileId { get; init; }

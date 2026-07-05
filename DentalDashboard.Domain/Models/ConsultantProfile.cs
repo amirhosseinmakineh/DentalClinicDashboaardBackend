@@ -19,7 +19,7 @@ public class ConsultantProfile : BaseAuditableEntity<long>
     public bool IsOnline { get; set; }
     public DateTime? LastOnlineAt { get; set; }
     public DateTime? LastOfflineAt { get; set; }
-    public int CurrentScore { get; set; } = 0;
+    public int CurrentScore { get; set; } = 100;
     #region Relations
     public User User { get; set; } = default!;
     public ICollection<LeadAssignment> CallAssignments { get; set; }

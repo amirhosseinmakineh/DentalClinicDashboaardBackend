@@ -4,6 +4,7 @@ using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using HtmlAgilityPack;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 
 namespace DentalDashboard.ApplicationService.Services
@@ -18,7 +19,9 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly ILeadAssignmentStrategy leadAssignmentStrategy;
         private readonly IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy;
         private readonly IPushNotificationService pushNotificationService;
-        public LeadAssignmentService(HttpClient httpClient, ILeadAssignmentRepository leadAssignmentRepository, ILeadDomainService leadDomainService, IConsultantProfileRepository consultantProfileRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy, IPushNotificationService pushNotificationService)
+        private readonly IConsultantScoreDomainService consultantScoreDomainService;
+
+        public LeadAssignmentService(HttpClient httpClient, ILeadAssignmentRepository leadAssignmentRepository, ILeadDomainService leadDomainService, IConsultantProfileRepository consultantProfileRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy, IPushNotificationService pushNotificationService, IConsultantScoreDomainService consultantScoreDomainService)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -27,6 +30,7 @@ namespace DentalDashboard.ApplicationService.Services
             this.leadAssignmentStrategy = leadAssignmentStrategy;
             this.offlineLeadAssignmentStrategy = offlineLeadAssignmentStrategy;
             this.pushNotificationService = pushNotificationService;
+            this.consultantScoreDomainService = consultantScoreDomainService;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync()
@@ -149,9 +153,17 @@ namespace DentalDashboard.ApplicationService.Services
             await SendAssignedLeadNotificationsAsync();
         }
 
-        public async Task AssignRealTimeLeadsAsync()
+        public async Task AssignRealTimeLeadsAsync(IReadOnlyCollection<long>? excludedConsultantIds = null)
         {
             var consultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
+            if (excludedConsultantIds is { Count: > 0 })
+            {
+                var excluded = excludedConsultantIds.ToHashSet();
+                consultants = consultants
+                    .Where(x => !excluded.Contains(x.Id))
+                    .ToList();
+            }
+
             if (!consultants.Any())
                 return;
 
@@ -176,10 +188,32 @@ namespace DentalDashboard.ApplicationService.Services
             await SendAssignedLeadNotificationsAsync();
         }
 
+        public async Task<ExpireLeadRequeueResult> ExpireAndRequeueRealTimeLeadAsync(
+            LeadAssignment lead,
+            ConsultantProfile consultant)
+        {
+            var eventScore = await ExpireAndRequeueRealTimeLeadInternalAsync(lead, consultant);
+
+            return new ExpireLeadRequeueResult
+            {
+                LeadAssignmentId = lead.Id,
+                ConsultantProfileId = consultant.Id,
+                LeadAssignmentState = lead.LeadAssignmentState,
+                EventScore = eventScore,
+                DeductedScore = eventScore,
+                CurrentScore = consultant.CurrentScore,
+                IsConsultantOnline = consultant.IsOnline,
+                WasRequeued = true
+            };
+        }
+
         public async Task ExpireOverdueRealTimeLeadsAsync()
         {
             var now = DateTime.Now;
             var expiredLeads = await leadAssignmentRepository.GetExpiredRealTimeLeadsAsync(now);
+
+            if (!expiredLeads.Any())
+                return;
 
             var consultantIds = expiredLeads
                 .Where(x => x.ConsultantProfileId.HasValue)
@@ -187,52 +221,132 @@ namespace DentalDashboard.ApplicationService.Services
             var consultantIdsWithPendingOfflineLeads =
                 await leadAssignmentRepository.GetConsultantIdsWithPendingOfflineLeadsAsync(consultantIds);
             var isWorkingTime = leadDomainService.IsWorkingTime(now);
+            var failedConsultantIds = new HashSet<long>();
 
             foreach (var lead in expiredLeads)
             {
-                lead.LeadAssignmentState = LeadAssignmentState.Expired;
-
-                if (lead.ConsultantProfile != null)
+                if (lead.ConsultantProfile == null)
                 {
-                    lead.ConsultantProfile.ScoreLogs.Add(new ScoreLog
-                    {
-                        ConsultantProfileId = lead.ConsultantProfile.Id,
-                        Source = ScoreSource.System,
-                        Reason = ScoreReason.LateCall,
-                        ScoreValue = -10,
-                        Description = "عدم تماس در بازه سه دقیقه‌ای",
-                        LeadAssignmentId = lead.Id,
-                        UserId = lead.ConsultantProfile.UserId,
-                        CreatedAt = now
-                    });
-                    lead.ConsultantProfile.CurrentScore += -10;
+                    ResetLeadToRealtimeQueue(lead);
+                    continue;
+                }
 
-                    var hasPendingOfflineLeads = consultantIdsWithPendingOfflineLeads.Contains(lead.ConsultantProfile.Id);
-                    if (hasPendingOfflineLeads || !isWorkingTime)
-                    {
-                        lead.ConsultantProfile.IsOnline = false;
-                        lead.ConsultantProfile.LastOfflineAt = now;
-                    }
-                    else
-                    {
-                        lead.ConsultantProfile.IsOnline = true;
-                        lead.ConsultantProfile.LastOnlineAt = now;
-                    }
+                var consultant = lead.ConsultantProfile;
+                failedConsultantIds.Add(consultant.Id);
+
+                ApplyLateCallScore(consultant, lead, now);
+                ResetLeadToRealtimeQueue(lead);
+
+                var hasPendingOfflineLeads =
+                    consultantIdsWithPendingOfflineLeads.Contains(consultant.Id);
+                if (hasPendingOfflineLeads || !isWorkingTime)
+                {
+                    consultant.IsOnline = false;
+                    consultant.LastOfflineAt = now;
+                }
+                else
+                {
+                    consultant.IsOnline = true;
+                    consultant.LastOnlineAt = now;
                 }
             }
 
-            if (expiredLeads.Any())
-            {
-                await leadAssignmentRepository.SaveChange();
+            await leadAssignmentRepository.SaveChange();
 
-                var anyConsultantBackOnline = expiredLeads.Any(x =>
-                    x.ConsultantProfile != null &&
-                    x.ConsultantProfile.IsOnline);
-
-                if (anyConsultantBackOnline)
-                    await AssignRealTimeLeadsAsync();
-            }
+            if (isWorkingTime)
+                await AssignRealTimeLeadsAsync(failedConsultantIds);
         }
+
+        public async Task EnforceNightShiftClosureAsync()
+        {
+            if (leadDomainService.IsWorkingTime(DateTime.Now))
+                return;
+
+            var consultants = await consultantProfileRepository.GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.IsCompleteProfile &&
+                            (x.IsOnline || x.IsAvailable))
+                .ToListAsync();
+
+            if (!consultants.Any())
+                return;
+
+            var now = DateTime.Now;
+            foreach (var consultant in consultants)
+            {
+                consultant.IsOnline = false;
+                consultant.IsAvailable = false;
+                consultant.LastOfflineAt = now;
+                consultant.WorkEndTime = now.TimeOfDay;
+                consultantProfileRepository.Update(consultant);
+            }
+
+            await consultantProfileRepository.SaveChange();
+        }
+
+        private static void ResetLeadToRealtimeQueue(LeadAssignment lead)
+        {
+            lead.ConsultantProfileId = null;
+            lead.LeadAssignmentState = LeadAssignmentState.New;
+            lead.AssignmentType = LeadAssignmentType.RealTime;
+            lead.AssignedAt = null;
+            lead.CallDeadlineAt = null;
+            lead.CallInitiatedAt = null;
+            lead.NotificationSent = false;
+            lead.RequiresThreeMinuteCall = true;
+        }
+
+        private async Task<int> ExpireAndRequeueRealTimeLeadInternalAsync(
+            LeadAssignment lead,
+            ConsultantProfile consultant)
+        {
+            var now = DateTime.Now;
+            var failedConsultantId = consultant.Id;
+            var eventScore = ApplyLateCallScore(consultant, lead, now);
+
+            ResetLeadToRealtimeQueue(lead);
+
+            var hasPendingOfflineLeads =
+                await leadAssignmentRepository.HasPendingOfflineLeadsAsync(consultant.Id);
+            if (hasPendingOfflineLeads || !leadDomainService.IsWorkingTime(now))
+            {
+                consultant.IsOnline = false;
+                consultant.LastOfflineAt = now;
+            }
+            else
+            {
+                consultant.IsOnline = true;
+                consultant.LastOnlineAt = now;
+            }
+
+            leadAssignmentRepository.Update(lead);
+            consultantProfileRepository.Update(consultant);
+            await leadAssignmentRepository.SaveChange();
+
+            if (leadDomainService.IsWorkingTime(now))
+                await AssignRealTimeLeadsAsync(new[] { failedConsultantId });
+
+            return eventScore;
+        }
+
+        private int ApplyLateCallScore(ConsultantProfile consultant, LeadAssignment lead, DateTime now)
+        {
+            var eventScore = consultantScoreDomainService.GetLateCallEventScore();
+            consultantScoreDomainService.ApplyScoreEvent(consultant, new ScoreLog
+            {
+                ConsultantProfileId = consultant.Id,
+                Source = ScoreSource.System,
+                Reason = ScoreReason.LateCall,
+                ScoreValue = eventScore,
+                Description = "عدم تماس در بازه سه دقیقه‌ای",
+                LeadAssignmentId = lead.Id,
+                UserId = consultant.UserId,
+                CreatedAt = now,
+                IsDeleted = false
+            });
+            return eventScore;
+        }
+
         private async Task SendAssignedLeadNotificationsAsync()
         {
             var assignedLeads = await leadAssignmentRepository.GetAssignedLeadsPendingNotificationAsync();

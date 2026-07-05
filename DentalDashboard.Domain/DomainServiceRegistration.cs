@@ -12,6 +12,7 @@ public static class DomainServiceRegistration
         services.AddScoped<IOfflineLeadAssignmentStrategy, OfflineLeadAssignmentStrategy>();
         services.AddScoped<ILeadDomainService, LeadDomainService>();
         services.AddScoped<ILeadReportDomainService, LeadReportDomainService>();
+        services.AddScoped<IConsultantScoreDomainService, ConsultantScoreDomainService>();
 
         return services;
     }

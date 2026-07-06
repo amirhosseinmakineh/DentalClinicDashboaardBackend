@@ -196,7 +196,7 @@ namespace DentalDashboard.ApplicationService.Services
         {
             var consultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
             if (excludedConsultantIds is { Count: > 0 })
-            {
+            { 
                 var excluded = excludedConsultantIds.ToHashSet();
                 consultants = consultants
                     .Where(x => !excluded.Contains(x.Id))

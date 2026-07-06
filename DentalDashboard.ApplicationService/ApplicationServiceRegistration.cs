@@ -17,6 +17,7 @@ public static class ApplicationServiceRegistration
         services.AddScoped<IPushNotificationService, WebPushNotificationService>();
         services.AddScoped<IConsultantProfileService, ConsultantProfileService>();
         services.AddScoped<IUserPresenceService, UserPresenceService>();
+        services.AddScoped<IAttendanceService, AttendanceService>();
 
         services.AddScoped<IQueryDispatcher, QueryDispatcher>();
         services.AddTransient<ICommandDispatcher, CommandDispatcher>();

@@ -214,7 +214,7 @@ namespace DentalDashboard.ApplicationService.Services
             if (!leads.Any())
             {
                 logger.LogInformation("AssignRealTimeLeadsAsync skipped: realtime queue is empty");
-                return;
+                return; 
             }
 
             leadAssignmentStrategy.Assign(leads, consultants);

@@ -19,25 +19,32 @@ namespace DentalDashboard.BackgroundServices
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                try
-                {
-                    using var scope = scopeFactory.CreateScope();
+                using var scope = scopeFactory.CreateScope();
+                var leadAssignmentService =
+                    scope.ServiceProvider.GetRequiredService<ILeadAssignmentService>();
 
-                    var leadAssignmentService =
-                        scope.ServiceProvider.GetRequiredService<ILeadAssignmentService>();
-
-                    await leadAssignmentService.AddLeadsAsync();
-                    await leadAssignmentService.AssignRealTimeLeadsAsync();
-                    await leadAssignmentService.AssignOfflineLeadsAsync();
-                    await leadAssignmentService.ExpireOverdueRealTimeLeadsAsync();
-                    await leadAssignmentService.EnforceNightShiftClosureAsync();
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Lead assignment cycle failed");
-                }
+                // Each step is isolated so a failure in lead import does not skip assignment.
+                await RunStepAsync("AddLeads", () => leadAssignmentService.AddLeadsAsync(), stoppingToken);
+                await RunStepAsync("AssignOfflineLeads", () => leadAssignmentService.AssignOfflineLeadsAsync(), stoppingToken);
+                await RunStepAsync("AssignRealTimeLeads", () => leadAssignmentService.AssignRealTimeLeadsAsync(), stoppingToken);
+                await RunStepAsync("ExpireOverdueRealTimeLeads", () => leadAssignmentService.ExpireOverdueRealTimeLeadsAsync(), stoppingToken);
+                await RunStepAsync("EnforceNightShiftClosure", () => leadAssignmentService.EnforceNightShiftClosureAsync(), stoppingToken);
 
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            }
+        }
+
+        private async Task RunStepAsync(string stepName, Func<Task> step, CancellationToken stoppingToken)
+        {
+            try
+            {
+                logger.LogInformation("Lead assignment cycle step started: {StepName}", stepName);
+                await step();
+                logger.LogInformation("Lead assignment cycle step completed: {StepName}", stepName);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Lead assignment cycle step failed: {StepName}", stepName);
             }
         }
     }

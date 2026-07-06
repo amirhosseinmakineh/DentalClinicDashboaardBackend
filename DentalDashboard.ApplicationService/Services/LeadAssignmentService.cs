@@ -5,6 +5,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace DentalDashboard.ApplicationService.Services
@@ -20,8 +21,9 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy;
         private readonly IPushNotificationService pushNotificationService;
         private readonly IConsultantScoreDomainService consultantScoreDomainService;
+        private readonly ILogger<LeadAssignmentService> logger;
 
-        public LeadAssignmentService(HttpClient httpClient, ILeadAssignmentRepository leadAssignmentRepository, ILeadDomainService leadDomainService, IConsultantProfileRepository consultantProfileRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy, IPushNotificationService pushNotificationService, IConsultantScoreDomainService consultantScoreDomainService)
+        public LeadAssignmentService(HttpClient httpClient, ILeadAssignmentRepository leadAssignmentRepository, ILeadDomainService leadDomainService, IConsultantProfileRepository consultantProfileRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy, IPushNotificationService pushNotificationService, IConsultantScoreDomainService consultantScoreDomainService, ILogger<LeadAssignmentService> logger)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -31,6 +33,7 @@ namespace DentalDashboard.ApplicationService.Services
             this.offlineLeadAssignmentStrategy = offlineLeadAssignmentStrategy;
             this.pushNotificationService = pushNotificationService;
             this.consultantScoreDomainService = consultantScoreDomainService;
+            this.logger = logger;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync()
@@ -90,7 +93,10 @@ namespace DentalDashboard.ApplicationService.Services
                 .ToList();
 
             if (!newLeads.Any())
+            {
+                logger.LogDebug("AddLeadsAsync skipped: no new phone numbers from landing page");
                 return;
+            }
 
             var hasOnlineConsultant = false;
             if (leadDomainService.IsWorkingTime(now))
@@ -147,16 +153,26 @@ namespace DentalDashboard.ApplicationService.Services
             var totalRemainingDailyCapacity = consultants
                 .Sum(x => Math.Max(5 - dailyAssignedCounts.GetValueOrDefault(x.Id), 0));
             if (totalRemainingDailyCapacity <= 0)
+            {
+                logger.LogInformation("AssignOfflineLeadsAsync skipped: daily offline capacity exhausted for all consultants");
                 return;
+            }
 
             var leads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(totalRemainingDailyCapacity);
             if (!leads.Any())
+            {
+                logger.LogInformation("AssignOfflineLeadsAsync skipped: offline queue is empty");
                 return;
+            }
 
             offlineLeadAssignmentStrategy.Assign(leads, consultants, dailyAssignedCounts);
 
             await leadAssignmentRepository.SaveChange();
             await SendAssignedLeadNotificationsAsync();
+            logger.LogInformation(
+                "AssignOfflineLeadsAsync assigned {LeadCount} offline leads to {ConsultantCount} consultants",
+                leads.Count(l => l.ConsultantProfileId.HasValue),
+                consultants.Count);
         }
 
         public async Task AssignRealTimeLeadsAsync(IReadOnlyCollection<long>? excludedConsultantIds = null)
@@ -171,11 +187,18 @@ namespace DentalDashboard.ApplicationService.Services
             }
 
             if (!consultants.Any())
+            {
+                logger.LogInformation(
+                    "AssignRealTimeLeadsAsync skipped: no online consultants ready (check IsOnline, pending offline/active realtime leads)");
                 return;
+            }
 
             var leads = await leadAssignmentRepository.GetUnassignedRealTimeLeadsAsync(consultants.Count);
             if (!leads.Any())
+            {
+                logger.LogInformation("AssignRealTimeLeadsAsync skipped: realtime queue is empty");
                 return;
+            }
 
             leadAssignmentStrategy.Assign(leads, consultants);
 
@@ -192,6 +215,9 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.SaveChange();
             await SendAssignedLeadNotificationsAsync();
+            logger.LogInformation(
+                "AssignRealTimeLeadsAsync assigned {LeadCount} realtime leads",
+                leads.Count(l => l.ConsultantProfileId.HasValue));
         }
 
         public async Task<ExpireLeadRequeueResult> ExpireAndRequeueRealTimeLeadAsync(

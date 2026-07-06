@@ -12,7 +12,8 @@ public static class ApplicationServiceRegistration
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddScoped<IRoleService, RoleService>();
-        services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>();
+        services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>()
+            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(30));
         services.AddScoped<IPushNotificationService, WebPushNotificationService>();
         services.AddScoped<IConsultantProfileService, ConsultantProfileService>();
 

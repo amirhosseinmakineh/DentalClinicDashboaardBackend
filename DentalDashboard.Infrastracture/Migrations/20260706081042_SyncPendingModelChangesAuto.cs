@@ -10,14 +10,13 @@ namespace DentalDashboard.Infrastracture.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // SQL Server nvarchar(n) max is 4000; use nvarchar(max) for multi-device push tokens.
             migrationBuilder.Sql("""
                 IF COL_LENGTH('Users', 'PushNotificationToken') IS NULL
-                    ALTER TABLE Users ADD PushNotificationToken nvarchar(16000) NULL;
+                    ALTER TABLE Users ADD PushNotificationToken nvarchar(max) NULL;
 
                 IF COL_LENGTH('Users', 'PushNotificationToken') IS NOT NULL
-                BEGIN
-                    ALTER TABLE Users ALTER COLUMN PushNotificationToken nvarchar(16000) NULL;
-                END
+                    ALTER TABLE Users ALTER COLUMN PushNotificationToken nvarchar(max) NULL;
 
                 IF COL_LENGTH('Users', 'LastSeenAt') IS NULL
                     ALTER TABLE Users ADD LastSeenAt datetime2 NULL;
@@ -47,8 +46,8 @@ namespace DentalDashboard.Infrastracture.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PushNotificationToken",
                 table: "Users",
-                type: "nvarchar(16000)",
-                maxLength: 16000,
+                type: "nvarchar(4000)",
+                maxLength: 4000,
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "nvarchar(max)",

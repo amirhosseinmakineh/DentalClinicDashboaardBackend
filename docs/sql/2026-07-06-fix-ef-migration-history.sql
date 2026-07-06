@@ -26,4 +26,9 @@ IF NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = '20260628
     INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion)
     VALUES ('20260628195930_CreateSomeTables', '10.0.8');
 
+IF NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = '20260706081042_SyncPendingModelChangesAuto')
+   AND COL_LENGTH('Users', 'LastSeenAt') IS NOT NULL
+    INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion)
+    VALUES ('20260706081042_SyncPendingModelChangesAuto', '10.0.8');
+
 COMMIT TRANSACTION;

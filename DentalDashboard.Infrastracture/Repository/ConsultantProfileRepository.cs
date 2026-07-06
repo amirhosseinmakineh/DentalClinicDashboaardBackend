@@ -20,7 +20,10 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<List<ConsultantProfile>> GetAvailableConsultantsForOfflineAssignmentAsync()
         {
             return GetAll()
-                .Where(x => !x.IsDeleted && x.IsCompleteProfile && x.IsAvailable)
+                .Where(x => !x.IsDeleted &&
+                            x.IsCompleteProfile &&
+                            x.IsAvailable &&
+                            !x.IsOnline)
                 .OrderByDescending(x => x.CurrentScore)
                 .ThenBy(x => x.Id)
                 .ToListAsync();

@@ -22,8 +22,10 @@ namespace DentalDashboard.Infrastracture.Repository
             return GetAll()
                 .Where(x => !x.IsDeleted &&
                             x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                            x.LeadAssignmentState == LeadAssignmentState.Pending &&
-                            x.ConsultantProfileId == null)
+                            x.ConsultantProfileId == null &&
+                            x.ReportSubmittedAt == null &&
+                            (x.LeadAssignmentState == LeadAssignmentState.New ||
+                             x.LeadAssignmentState == LeadAssignmentState.Pending))
                 .OrderBy(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)

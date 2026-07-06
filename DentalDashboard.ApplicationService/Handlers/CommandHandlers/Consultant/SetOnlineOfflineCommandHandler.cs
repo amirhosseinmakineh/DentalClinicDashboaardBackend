@@ -63,7 +63,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 await consultantProfileRepository.SaveChange();
 
-                await leadAssignmentService.PromoteUnassignedOfflineLeadsToRealTimeAsync();
                 await leadAssignmentService.AssignRealTimeLeadsAsync();
 
                 return Result.Success("شما آنلاین شدید");

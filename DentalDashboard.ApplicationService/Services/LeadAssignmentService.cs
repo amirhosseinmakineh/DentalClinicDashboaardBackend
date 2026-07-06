@@ -125,32 +125,6 @@ namespace DentalDashboard.ApplicationService.Services
             await leadAssignmentRepository.SaveChange();
         }
 
-        public async Task PromoteUnassignedOfflineLeadsToRealTimeAsync()
-        {
-            var now = DateTime.Now;
-            if (!leadDomainService.IsWorkingTime(now))
-                return;
-
-            var availableConsultants =
-                await consultantProfileRepository.GetAvailableConsultantsForOfflineAssignmentAsync();
-            if (!availableConsultants.Any())
-                return;
-
-            var pendingOfflineLeads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(500);
-            if (!pendingOfflineLeads.Any())
-                return;
-
-            foreach (var lead in pendingOfflineLeads)
-            {
-                lead.AssignmentType = LeadAssignmentType.RealTime;
-                lead.LeadAssignmentState = LeadAssignmentState.New;
-                lead.RequiresThreeMinuteCall = true;
-                lead.CallDeadlineAt = null;
-            }
-
-            await leadAssignmentRepository.SaveChange();
-        }
-
         public async Task AssignOfflineLeadsToConsultantAsync(long consultantProfileId)
         {
             var consultant = await consultantProfileRepository.GetByIdAsync(consultantProfileId);
@@ -177,32 +151,6 @@ namespace DentalDashboard.ApplicationService.Services
                 new List<ConsultantProfile> { consultant },
                 dailyAssignedCounts);
 
-            await leadAssignmentRepository.SaveChange();
-            await SendAssignedLeadNotificationsAsync();
-        }
-
-        public async Task AssignPendingOfflineLeadsAsync()
-        {
-            var consultants = await consultantProfileRepository.GetAvailableConsultantsForOfflineAssignmentAsync();
-            if (leadDomainService.IsWorkingTime(DateTime.Now))
-                consultants = consultants.Where(x => !x.IsOnline).ToList();
-
-            if (!consultants.Any())
-                return;
-
-            var dailyAssignedCounts = await leadAssignmentRepository.GetDailyAssignedOfflineLeadCountsAsync(
-                consultants.Select(x => x.Id),
-                DateTime.Now);
-            var totalRemainingDailyCapacity = consultants
-                .Sum(x => Math.Max(5 - dailyAssignedCounts.GetValueOrDefault(x.Id), 0));
-            if (totalRemainingDailyCapacity <= 0)
-                return;
-
-            var pendingLeads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(totalRemainingDailyCapacity);
-            if (!pendingLeads.Any())
-                return;
-
-            offlineLeadAssignmentStrategy.Assign(pendingLeads, consultants, dailyAssignedCounts);
             await leadAssignmentRepository.SaveChange();
             await SendAssignedLeadNotificationsAsync();
         }

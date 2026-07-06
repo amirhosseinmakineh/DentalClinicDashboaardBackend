@@ -6,8 +6,6 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
     {
         Task<LeadAssignment[]> LeadsListAsync();
         Task AddLeadsAsync();
-        Task PromoteUnassignedOfflineLeadsToRealTimeAsync();
-        Task AssignPendingOfflineLeadsAsync();
         Task AssignOfflineLeadsToConsultantAsync(long consultantProfileId);
         Task AssignRealTimeLeadsAsync(IReadOnlyCollection<long>? excludedConsultantIds = null);
         Task ExpireOverdueRealTimeLeadsAsync();

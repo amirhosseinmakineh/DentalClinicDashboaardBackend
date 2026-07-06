@@ -10,19 +10,19 @@ namespace DentalDashboard.Infrastracture.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTime>(
-                name: "CallInitiatedAt",
-                table: "LeadAssignments",
-                type: "datetime2",
-                nullable: true);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('LeadAssignments', 'CallInitiatedAt') IS NULL
+                    ALTER TABLE LeadAssignments ADD CallInitiatedAt datetime2 NULL;
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "CallInitiatedAt",
-                table: "LeadAssignments");
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('LeadAssignments', 'CallInitiatedAt') IS NOT NULL
+                    ALTER TABLE LeadAssignments DROP COLUMN CallInitiatedAt;
+                """);
         }
     }
 }

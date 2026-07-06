@@ -11,40 +11,32 @@ namespace DentalDashboard.Infrastracture.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<Guid>(
-                name: "PatientUserId",
-                table: "Reservations",
-                type: "uniqueidentifier",
-                nullable: true);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('Reservations', 'PatientUserId') IS NULL
+                    ALTER TABLE Reservations ADD PatientUserId uniqueidentifier NULL;
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Reservations_PatientUserId",
-                table: "Reservations",
-                column: "PatientUserId");
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Reservations_PatientUserId' AND object_id = OBJECT_ID('Reservations'))
+                    CREATE INDEX IX_Reservations_PatientUserId ON Reservations (PatientUserId);
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_Reservations_Users_PatientUserId",
-                table: "Reservations",
-                column: "PatientUserId",
-                principalTable: "Users",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Restrict);
+                IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Reservations_Users_PatientUserId')
+                    ALTER TABLE Reservations ADD CONSTRAINT FK_Reservations_Users_PatientUserId
+                        FOREIGN KEY (PatientUserId) REFERENCES Users(Id) ON DELETE NO ACTION;
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Reservations_Users_PatientUserId",
-                table: "Reservations");
+            migrationBuilder.Sql("""
+                IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Reservations_Users_PatientUserId')
+                    ALTER TABLE Reservations DROP CONSTRAINT FK_Reservations_Users_PatientUserId;
 
-            migrationBuilder.DropIndex(
-                name: "IX_Reservations_PatientUserId",
-                table: "Reservations");
+                IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Reservations_PatientUserId' AND object_id = OBJECT_ID('Reservations'))
+                    DROP INDEX IX_Reservations_PatientUserId ON Reservations;
 
-            migrationBuilder.DropColumn(
-                name: "PatientUserId",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'PatientUserId') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN PatientUserId;
+                """);
         }
     }
 }

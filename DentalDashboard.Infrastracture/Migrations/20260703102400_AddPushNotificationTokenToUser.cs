@@ -10,20 +10,19 @@ namespace DentalDashboard.Infrastracture.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "PushNotificationToken",
-                table: "Users",
-                type: "nvarchar(1000)",
-                maxLength: 1000,
-                nullable: true);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('Users', 'PushNotificationToken') IS NULL
+                    ALTER TABLE Users ADD PushNotificationToken nvarchar(1000) NULL;
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "PushNotificationToken",
-                table: "Users");
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('Users', 'PushNotificationToken') IS NOT NULL
+                    ALTER TABLE Users DROP COLUMN PushNotificationToken;
+                """);
         }
     }
 }

@@ -22,9 +22,10 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy;
         private readonly IPushNotificationService pushNotificationService;
         private readonly IConsultantScoreDomainService consultantScoreDomainService;
+        private readonly IAttendanceService attendanceService;
         private readonly ILogger<LeadAssignmentService> logger;
 
-        public LeadAssignmentService(HttpClient httpClient, ILeadAssignmentRepository leadAssignmentRepository, ILeadDomainService leadDomainService, IConsultantProfileRepository consultantProfileRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy, IPushNotificationService pushNotificationService, IConsultantScoreDomainService consultantScoreDomainService, ILogger<LeadAssignmentService> logger)
+        public LeadAssignmentService(HttpClient httpClient, ILeadAssignmentRepository leadAssignmentRepository, ILeadDomainService leadDomainService, IConsultantProfileRepository consultantProfileRepository, ILeadAssignmentStrategy leadAssignmentStrategy, IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy, IPushNotificationService pushNotificationService, IConsultantScoreDomainService consultantScoreDomainService, IAttendanceService attendanceService, ILogger<LeadAssignmentService> logger)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -34,6 +35,7 @@ namespace DentalDashboard.ApplicationService.Services
             this.offlineLeadAssignmentStrategy = offlineLeadAssignmentStrategy;
             this.pushNotificationService = pushNotificationService;
             this.consultantScoreDomainService = consultantScoreDomainService;
+            this.attendanceService = attendanceService;
             this.logger = logger;
         }
 
@@ -323,11 +325,16 @@ namespace DentalDashboard.ApplicationService.Services
             var now = DateTime.Now;
             foreach (var consultant in consultants)
             {
+                var wasAvailable = consultant.IsAvailable;
+
                 consultant.IsOnline = false;
                 consultant.IsAvailable = false;
                 consultant.LastOfflineAt = now;
                 consultant.WorkEndTime = now.TimeOfDay;
                 consultantProfileRepository.Update(consultant);
+
+                if (wasAvailable)
+                    await attendanceService.RecordCheckOutAsync(consultant.Id, now);
             }
 
             await consultantProfileRepository.SaveChange();

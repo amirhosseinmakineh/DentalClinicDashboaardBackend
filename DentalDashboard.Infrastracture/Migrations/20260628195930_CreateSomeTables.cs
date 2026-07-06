@@ -10,107 +10,68 @@ namespace DentalDashboard.Infrastracture.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "AttendancePrediction",
-                table: "Reservations");
+            // Idempotent: manual SQL may have already moved/dropped these reservation columns.
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('Reservations', 'AttendancePrediction') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN AttendancePrediction;
 
-            migrationBuilder.DropColumn(
-                name: "AttendanceProbabilityPercent",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'AttendanceProbabilityPercent') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN AttendanceProbabilityPercent;
 
-            migrationBuilder.DropColumn(
-                name: "PatientCity",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'PatientCity') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN PatientCity;
 
-            migrationBuilder.AddColumn<string>(
-                name: "SecondaryPhoneNumber",
-                table: "Reservations",
-                type: "nvarchar(20)",
-                maxLength: 20,
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'SecondaryPhoneNumber') IS NULL
+                    ALTER TABLE Reservations ADD SecondaryPhoneNumber nvarchar(20) NULL;
 
-            migrationBuilder.AddColumn<int>(
-                name: "AttendanceProbabilityPercent",
-                table: "LeadAssignments",
-                type: "int",
-                nullable: true);
+                IF COL_LENGTH('LeadAssignments', 'AttendanceProbabilityPercent') IS NULL
+                    ALTER TABLE LeadAssignments ADD AttendanceProbabilityPercent int NULL;
 
-            migrationBuilder.AddColumn<string>(
-                name: "BusinessName",
-                table: "LeadAssignments",
-                type: "nvarchar(200)",
-                maxLength: 200,
-                nullable: true);
+                IF COL_LENGTH('LeadAssignments', 'BusinessName') IS NULL
+                    ALTER TABLE LeadAssignments ADD BusinessName nvarchar(200) NULL;
 
-            migrationBuilder.AddColumn<string>(
-                name: "PatientCity",
-                table: "LeadAssignments",
-                type: "nvarchar(100)",
-                maxLength: 100,
-                nullable: true);
+                IF COL_LENGTH('LeadAssignments', 'PatientCity') IS NULL
+                    ALTER TABLE LeadAssignments ADD PatientCity nvarchar(100) NULL;
 
-            migrationBuilder.AddColumn<string>(
-                name: "PatientRegion",
-                table: "LeadAssignments",
-                type: "nvarchar(100)",
-                maxLength: 100,
-                nullable: true);
+                IF COL_LENGTH('LeadAssignments', 'PatientRegion') IS NULL
+                    ALTER TABLE LeadAssignments ADD PatientRegion nvarchar(100) NULL;
 
-            migrationBuilder.CreateIndex(
-                name: "IX_LeadAssignments_ReportSubmittedAt",
-                table: "LeadAssignments",
-                column: "ReportSubmittedAt");
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_LeadAssignments_ReportSubmittedAt' AND object_id = OBJECT_ID('LeadAssignments'))
+                    CREATE INDEX IX_LeadAssignments_ReportSubmittedAt ON LeadAssignments (ReportSubmittedAt);
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_LeadAssignments_ReportSubmittedAt",
-                table: "LeadAssignments");
+            migrationBuilder.Sql("""
+                IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_LeadAssignments_ReportSubmittedAt' AND object_id = OBJECT_ID('LeadAssignments'))
+                    DROP INDEX IX_LeadAssignments_ReportSubmittedAt ON LeadAssignments;
 
-            migrationBuilder.DropColumn(
-                name: "SecondaryPhoneNumber",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'SecondaryPhoneNumber') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN SecondaryPhoneNumber;
 
-            migrationBuilder.DropColumn(
-                name: "AttendanceProbabilityPercent",
-                table: "LeadAssignments");
+                IF COL_LENGTH('LeadAssignments', 'AttendanceProbabilityPercent') IS NOT NULL
+                    ALTER TABLE LeadAssignments DROP COLUMN AttendanceProbabilityPercent;
 
-            migrationBuilder.DropColumn(
-                name: "BusinessName",
-                table: "LeadAssignments");
+                IF COL_LENGTH('LeadAssignments', 'BusinessName') IS NOT NULL
+                    ALTER TABLE LeadAssignments DROP COLUMN BusinessName;
 
-            migrationBuilder.DropColumn(
-                name: "PatientCity",
-                table: "LeadAssignments");
+                IF COL_LENGTH('LeadAssignments', 'PatientCity') IS NOT NULL
+                    ALTER TABLE LeadAssignments DROP COLUMN PatientCity;
 
-            migrationBuilder.DropColumn(
-                name: "PatientRegion",
-                table: "LeadAssignments");
+                IF COL_LENGTH('LeadAssignments', 'PatientRegion') IS NOT NULL
+                    ALTER TABLE LeadAssignments DROP COLUMN PatientRegion;
 
-            migrationBuilder.AddColumn<string>(
-                name: "AttendancePrediction",
-                table: "Reservations",
-                type: "nvarchar(1000)",
-                maxLength: 1000,
-                nullable: false,
-                defaultValue: "");
+                IF COL_LENGTH('Reservations', 'AttendancePrediction') IS NULL
+                    ALTER TABLE Reservations ADD AttendancePrediction nvarchar(1000) NOT NULL CONSTRAINT DF_Reservations_AttendancePrediction_Down DEFAULT (N'');
 
-            migrationBuilder.AddColumn<int>(
-                name: "AttendanceProbabilityPercent",
-                table: "Reservations",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
+                IF COL_LENGTH('Reservations', 'AttendanceProbabilityPercent') IS NULL
+                    ALTER TABLE Reservations ADD AttendanceProbabilityPercent int NOT NULL CONSTRAINT DF_Reservations_AttendanceProbabilityPercent_Down DEFAULT (0);
 
-            migrationBuilder.AddColumn<string>(
-                name: "PatientCity",
-                table: "Reservations",
-                type: "nvarchar(100)",
-                maxLength: 100,
-                nullable: false,
-                defaultValue: "");
+                IF COL_LENGTH('Reservations', 'PatientCity') IS NULL
+                    ALTER TABLE Reservations ADD PatientCity nvarchar(100) NOT NULL CONSTRAINT DF_Reservations_PatientCity_Down DEFAULT (N'');
+                """);
         }
     }
 }

@@ -11,158 +11,98 @@ namespace DentalDashboard.Infrastracture.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "AttendanceConfirmationStatus",
-                table: "Reservations",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
+            // Idempotent: columns may already exist if manual SQL was applied before this migration ran.
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('Reservations', 'AttendanceConfirmationStatus') IS NULL
+                    ALTER TABLE Reservations ADD AttendanceConfirmationStatus int NOT NULL CONSTRAINT DF_Reservations_AttendanceConfirmationStatus_Migration DEFAULT (0);
 
-            migrationBuilder.AddColumn<string>(
-                name: "AttendancePrediction",
-                table: "Reservations",
-                type: "nvarchar(1000)",
-                maxLength: 1000,
-                nullable: false,
-                defaultValue: "");
+                IF COL_LENGTH('Reservations', 'AttendancePrediction') IS NULL
+                    ALTER TABLE Reservations ADD AttendancePrediction nvarchar(1000) NOT NULL CONSTRAINT DF_Reservations_AttendancePrediction DEFAULT (N'');
 
-            migrationBuilder.AddColumn<int>(
-                name: "AttendanceProbabilityPercent",
-                table: "Reservations",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
+                IF COL_LENGTH('Reservations', 'AttendanceProbabilityPercent') IS NULL
+                    ALTER TABLE Reservations ADD AttendanceProbabilityPercent int NOT NULL CONSTRAINT DF_Reservations_AttendanceProbabilityPercent DEFAULT (0);
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "AttendanceScoreAppliedAt",
-                table: "Reservations",
-                type: "datetime2",
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'AttendanceScoreAppliedAt') IS NULL
+                    ALTER TABLE Reservations ADD AttendanceScoreAppliedAt datetime2 NULL;
 
-            migrationBuilder.AddColumn<int>(
-                name: "AttendanceScoreValue",
-                table: "Reservations",
-                type: "int",
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'AttendanceScoreValue') IS NULL
+                    ALTER TABLE Reservations ADD AttendanceScoreValue int NULL;
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ConsultantAttendanceConfirmedAt",
-                table: "Reservations",
-                type: "datetime2",
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'ConsultantAttendanceConfirmedAt') IS NULL
+                    ALTER TABLE Reservations ADD ConsultantAttendanceConfirmedAt datetime2 NULL;
 
-            migrationBuilder.AddColumn<string>(
-                name: "ConsultantAttendanceNote",
-                table: "Reservations",
-                type: "nvarchar(1000)",
-                maxLength: 1000,
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'ConsultantAttendanceNote') IS NULL
+                    ALTER TABLE Reservations ADD ConsultantAttendanceNote nvarchar(1000) NULL;
 
-            migrationBuilder.AddColumn<bool>(
-                name: "ConsultantSaysPatientAttended",
-                table: "Reservations",
-                type: "bit",
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'ConsultantSaysPatientAttended') IS NULL
+                    ALTER TABLE Reservations ADD ConsultantSaysPatientAttended bit NULL;
 
-            migrationBuilder.AddColumn<bool>(
-                name: "IsAttendanceScoreApplied",
-                table: "Reservations",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
+                IF COL_LENGTH('Reservations', 'IsAttendanceScoreApplied') IS NULL
+                    ALTER TABLE Reservations ADD IsAttendanceScoreApplied bit NOT NULL CONSTRAINT DF_Reservations_IsAttendanceScoreApplied_Migration DEFAULT (0);
 
-            migrationBuilder.AddColumn<string>(
-                name: "PatientCity",
-                table: "Reservations",
-                type: "nvarchar(100)",
-                maxLength: 100,
-                nullable: false,
-                defaultValue: "");
+                IF COL_LENGTH('Reservations', 'PatientCity') IS NULL
+                    ALTER TABLE Reservations ADD PatientCity nvarchar(100) NOT NULL CONSTRAINT DF_Reservations_PatientCity DEFAULT (N'');
 
-            migrationBuilder.AddColumn<bool>(
-                name: "SecretaryApprovedConsultantConfirmation",
-                table: "Reservations",
-                type: "bit",
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'SecretaryApprovedConsultantConfirmation') IS NULL
+                    ALTER TABLE Reservations ADD SecretaryApprovedConsultantConfirmation bit NULL;
 
-            migrationBuilder.AddColumn<string>(
-                name: "SecretaryReviewNote",
-                table: "Reservations",
-                type: "nvarchar(1000)",
-                maxLength: 1000,
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'SecretaryReviewNote') IS NULL
+                    ALTER TABLE Reservations ADD SecretaryReviewNote nvarchar(1000) NULL;
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "SecretaryReviewedAt",
-                table: "Reservations",
-                type: "datetime2",
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'SecretaryReviewedAt') IS NULL
+                    ALTER TABLE Reservations ADD SecretaryReviewedAt datetime2 NULL;
 
-            migrationBuilder.AddColumn<Guid>(
-                name: "SecretaryUserId",
-                table: "Reservations",
-                type: "uniqueidentifier",
-                nullable: true);
+                IF COL_LENGTH('Reservations', 'SecretaryUserId') IS NULL
+                    ALTER TABLE Reservations ADD SecretaryUserId uniqueidentifier NULL;
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "AttendanceConfirmationStatus",
-                table: "Reservations");
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('Reservations', 'AttendanceConfirmationStatus') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN AttendanceConfirmationStatus;
 
-            migrationBuilder.DropColumn(
-                name: "AttendancePrediction",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'AttendancePrediction') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN AttendancePrediction;
 
-            migrationBuilder.DropColumn(
-                name: "AttendanceProbabilityPercent",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'AttendanceProbabilityPercent') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN AttendanceProbabilityPercent;
 
-            migrationBuilder.DropColumn(
-                name: "AttendanceScoreAppliedAt",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'AttendanceScoreAppliedAt') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN AttendanceScoreAppliedAt;
 
-            migrationBuilder.DropColumn(
-                name: "AttendanceScoreValue",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'AttendanceScoreValue') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN AttendanceScoreValue;
 
-            migrationBuilder.DropColumn(
-                name: "ConsultantAttendanceConfirmedAt",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'ConsultantAttendanceConfirmedAt') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN ConsultantAttendanceConfirmedAt;
 
-            migrationBuilder.DropColumn(
-                name: "ConsultantAttendanceNote",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'ConsultantAttendanceNote') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN ConsultantAttendanceNote;
 
-            migrationBuilder.DropColumn(
-                name: "ConsultantSaysPatientAttended",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'ConsultantSaysPatientAttended') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN ConsultantSaysPatientAttended;
 
-            migrationBuilder.DropColumn(
-                name: "IsAttendanceScoreApplied",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'IsAttendanceScoreApplied') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN IsAttendanceScoreApplied;
 
-            migrationBuilder.DropColumn(
-                name: "PatientCity",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'PatientCity') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN PatientCity;
 
-            migrationBuilder.DropColumn(
-                name: "SecretaryApprovedConsultantConfirmation",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'SecretaryApprovedConsultantConfirmation') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN SecretaryApprovedConsultantConfirmation;
 
-            migrationBuilder.DropColumn(
-                name: "SecretaryReviewNote",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'SecretaryReviewNote') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN SecretaryReviewNote;
 
-            migrationBuilder.DropColumn(
-                name: "SecretaryReviewedAt",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'SecretaryReviewedAt') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN SecretaryReviewedAt;
 
-            migrationBuilder.DropColumn(
-                name: "SecretaryUserId",
-                table: "Reservations");
+                IF COL_LENGTH('Reservations', 'SecretaryUserId') IS NOT NULL
+                    ALTER TABLE Reservations DROP COLUMN SecretaryUserId;
+                """);
         }
     }
 }

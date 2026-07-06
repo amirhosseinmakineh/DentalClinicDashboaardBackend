@@ -10,7 +10,6 @@ namespace DentalDashboard.Infrastracture.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // SQL Server nvarchar(n) max is 4000; use nvarchar(max) for multi-device push tokens.
             migrationBuilder.Sql("""
                 IF COL_LENGTH('Users', 'PushNotificationToken') IS NULL
                     ALTER TABLE Users ADD PushNotificationToken nvarchar(max) NULL;
@@ -27,32 +26,21 @@ namespace DentalDashboard.Infrastracture.Migrations
                 IF COL_LENGTH('LeadAssignments', 'SecondaryPhoneNumber') IS NULL
                     ALTER TABLE LeadAssignments ADD SecondaryPhoneNumber nvarchar(20) NULL;
                 """);
-
-            migrationBuilder.AlterColumn<string>(
-                name: "PushNotificationToken",
-                table: "Users",
-                type: "nvarchar(max)",
-                maxLength: 16000,
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(16000)",
-                oldMaxLength: 16000,
-                oldNullable: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<string>(
-                name: "PushNotificationToken",
-                table: "Users",
-                type: "nvarchar(4000)",
-                maxLength: 4000,
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
-                oldMaxLength: 16000,
-                oldNullable: true);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('LeadAssignments', 'SecondaryPhoneNumber') IS NOT NULL
+                    ALTER TABLE LeadAssignments DROP COLUMN SecondaryPhoneNumber;
+
+                IF COL_LENGTH('LeadAssignments', 'CallInitiatedAt') IS NOT NULL
+                    ALTER TABLE LeadAssignments DROP COLUMN CallInitiatedAt;
+
+                IF COL_LENGTH('Users', 'LastSeenAt') IS NOT NULL
+                    ALTER TABLE Users DROP COLUMN LastSeenAt;
+                """);
         }
     }
 }

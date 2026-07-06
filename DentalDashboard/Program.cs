@@ -103,7 +103,23 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<DentalContext>();
-    dbContext.Database.Migrate();
+    var migrationLogger = scope.ServiceProvider
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("DatabaseMigration");
+
+    try
+    {
+        migrationLogger.LogInformation("Applying EF Core database migrations...");
+        dbContext.Database.Migrate();
+        migrationLogger.LogInformation("Database migrations applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        migrationLogger.LogCritical(
+            ex,
+            "Database migration failed. Run docs/sql/2026-07-06-fix-callinitiatedat-column.sql if CallInitiatedAt is missing.");
+        throw;
+    }
 }
 
 // ====================================

@@ -6,7 +6,7 @@ namespace DentalDashboard.Domain.IDomainService
     public interface ILeadDomainService
     {
         IEnumerable<LeadAssignment> GetNewLeads(IEnumerable<LeadAssignment> oldNumbers, IEnumerable<LeadAssignment> newNumbers);
-        LeadAssignmentType DetermineAssignmentType(DateTime now, bool hasAvailableConsultant);
+        LeadAssignmentType DetermineAssignmentType(DateTime now, bool hasOnlineConsultant);
         bool IsWorkingTime(DateTime now);
         bool IsNightTime(DateTime now);
     }

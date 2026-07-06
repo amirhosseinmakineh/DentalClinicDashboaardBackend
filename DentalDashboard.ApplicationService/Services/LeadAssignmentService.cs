@@ -92,19 +92,15 @@ namespace DentalDashboard.ApplicationService.Services
             if (!newLeads.Any())
                 return;
 
-            var hasAvailableConsultant = false;
+            var hasOnlineConsultant = false;
             if (leadDomainService.IsWorkingTime(now))
-            {
-                var availableConsultants =
-                    await consultantProfileRepository.GetAvailableConsultantsForOfflineAssignmentAsync();
-                hasAvailableConsultant = availableConsultants.Any();
-            }
+                hasOnlineConsultant = await consultantProfileRepository.HasOnlineConsultantAsync();
 
             foreach (var lead in newLeads)
             {
                 lead.CreatedAt = now;
 
-                if (leadDomainService.DetermineAssignmentType(now, hasAvailableConsultant) ==
+                if (leadDomainService.DetermineAssignmentType(now, hasOnlineConsultant) ==
                     LeadAssignmentType.RealTime)
                 {
                     lead.AssignmentType = LeadAssignmentType.RealTime;

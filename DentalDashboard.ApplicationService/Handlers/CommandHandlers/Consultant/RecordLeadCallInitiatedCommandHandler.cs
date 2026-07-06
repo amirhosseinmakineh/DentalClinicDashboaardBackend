@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
@@ -11,13 +12,16 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
     {
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly IConsultantProfileRepository consultantProfileRepository;
+        private readonly ILeadAssignmentService leadAssignmentService;
 
         public RecordLeadCallInitiatedCommandHandler(
             ILeadAssignmentRepository leadAssignmentRepository,
-            IConsultantProfileRepository consultantProfileRepository)
+            IConsultantProfileRepository consultantProfileRepository,
+            ILeadAssignmentService leadAssignmentService)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
+            this.leadAssignmentService = leadAssignmentService;
         }
 
         public async Task<Result<RecordLeadCallInitiatedResponse>> HandleAsync(
@@ -48,11 +52,23 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 return Result<RecordLeadCallInitiatedResponse>.Failure("برای این لید قبلا گزارش ثبت شده است");
 
             var now = DateTime.Now;
-            if (!lead.CallInitiatedAt.HasValue)
+            var isFirstCallInitiation = !lead.CallInitiatedAt.HasValue;
+            if (isFirstCallInitiation)
             {
                 lead.CallInitiatedAt = now;
                 leadAssignmentRepository.Update(lead);
+
+                if (lead.AssignmentType == LeadAssignmentType.RealTime)
+                {
+                    profile.IsOnline = false;
+                    profile.LastOfflineAt = now;
+                    consultantProfileRepository.Update(profile);
+                }
+
                 await leadAssignmentRepository.SaveChange();
+
+                if (lead.AssignmentType == LeadAssignmentType.RealTime)
+                    await leadAssignmentService.AssignOfflineLeadsToConsultantAsync(profile.Id);
             }
 
             return Result<RecordLeadCallInitiatedResponse>.Success(new RecordLeadCallInitiatedResponse

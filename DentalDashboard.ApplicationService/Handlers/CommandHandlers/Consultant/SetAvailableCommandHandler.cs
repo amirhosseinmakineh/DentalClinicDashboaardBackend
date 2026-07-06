@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
@@ -10,13 +11,16 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
     public class SetAvailableCommandHandler : ICommandHandler<SetAvailableCommand>
     {
         private readonly IConsultantProfileRepository consultantProfileRepository;
+        private readonly ILeadAssignmentService leadAssignmentService;
         private readonly ILeadDomainService leadDomainService;
 
         public SetAvailableCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
+            ILeadAssignmentService leadAssignmentService,
             ILeadDomainService leadDomainService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
+            this.leadAssignmentService = leadAssignmentService;
             this.leadDomainService = leadDomainService;
         }
 
@@ -40,10 +44,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                     return Result.Failure("امکان ثبت حضور فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد");
 
                 profile.IsAvailable = true;
+                profile.IsOnline = false;
                 profile.WorkStartTime = DateTime.Now.TimeOfDay;
+                profile.LastOfflineAt = DateTime.Now;
 
                 consultantProfileRepository.Update(profile);
                 await consultantProfileRepository.SaveChange();
+
+                await leadAssignmentService.AssignOfflineLeadsToConsultantAsync(profile.Id);
 
                 return Result.Success("حضور شما ثبت شد");
             }

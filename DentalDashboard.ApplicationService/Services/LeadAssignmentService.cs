@@ -99,16 +99,13 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var hasOnlineConsultant = false;
-            if (leadDomainService.IsWorkingTime(now))
-                hasOnlineConsultant = await consultantProfileRepository.HasOnlineConsultantAsync();
+            var isWorkingTime = leadDomainService.IsWorkingTime(now);
 
             foreach (var lead in newLeads)
             {
                 lead.CreatedAt = now;
 
-                if (leadDomainService.DetermineAssignmentType(now, hasOnlineConsultant) ==
-                    LeadAssignmentType.RealTime)
+                if (isWorkingTime)
                 {
                     lead.AssignmentType = LeadAssignmentType.RealTime;
                     lead.LeadAssignmentState = LeadAssignmentState.New;
@@ -118,7 +115,7 @@ namespace DentalDashboard.ApplicationService.Services
                 else
                 {
                     lead.AssignmentType = LeadAssignmentType.OfflineQueue;
-                    lead.LeadAssignmentState = LeadAssignmentState.Pending;
+                    lead.LeadAssignmentState = LeadAssignmentState.New;
                     lead.RequiresThreeMinuteCall = false;
                     lead.CallDeadlineAt = null;
                 }
@@ -126,6 +123,86 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.AddRangeAsync(newLeads);
             await leadAssignmentRepository.SaveChange();
+            await ReconcileMisclassifiedLeadStatesAsync();
+        }
+
+        public async Task ReconcileMisclassifiedLeadStatesAsync()
+        {
+            var now = DateTime.Now;
+            var changed = false;
+
+            var expiredOfflineLeads = await leadAssignmentRepository.GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                            x.LeadAssignmentState == LeadAssignmentState.Expired)
+                .ToListAsync();
+
+            foreach (var lead in expiredOfflineLeads)
+            {
+                lead.LeadAssignmentState = lead.ConsultantProfileId.HasValue
+                    ? LeadAssignmentState.Assigned
+                    : LeadAssignmentState.New;
+                lead.UpdatedAt = now;
+                changed = true;
+            }
+
+            if (!leadDomainService.IsWorkingTime(now))
+            {
+                var unassignedRealtimeLeads = await leadAssignmentRepository.GetAll()
+                    .Where(x => !x.IsDeleted &&
+                                x.AssignmentType == LeadAssignmentType.RealTime &&
+                                x.ConsultantProfileId == null &&
+                                x.ReportSubmittedAt == null &&
+                                (x.LeadAssignmentState == LeadAssignmentState.New ||
+                                 x.LeadAssignmentState == LeadAssignmentState.Pending))
+                    .ToListAsync();
+
+                foreach (var lead in unassignedRealtimeLeads)
+                {
+                    lead.AssignmentType = LeadAssignmentType.OfflineQueue;
+                    lead.LeadAssignmentState = LeadAssignmentState.New;
+                    lead.RequiresThreeMinuteCall = false;
+                    lead.CallDeadlineAt = null;
+                    lead.UpdatedAt = now;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+                await leadAssignmentRepository.SaveChange();
+        }
+
+        public async Task PromoteUnassignedOfflineLeadsToRealtimeAsync()
+        {
+            if (!leadDomainService.IsWorkingTime(DateTime.Now))
+                return;
+
+            var leads = await leadAssignmentRepository.GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                            x.ConsultantProfileId == null &&
+                            x.ReportSubmittedAt == null &&
+                            (x.LeadAssignmentState == LeadAssignmentState.New ||
+                             x.LeadAssignmentState == LeadAssignmentState.Pending))
+                .ToListAsync();
+
+            if (!leads.Any())
+                return;
+
+            var now = DateTime.Now;
+            foreach (var lead in leads)
+            {
+                lead.AssignmentType = LeadAssignmentType.RealTime;
+                lead.LeadAssignmentState = LeadAssignmentState.New;
+                lead.RequiresThreeMinuteCall = true;
+                lead.CallDeadlineAt = null;
+                lead.UpdatedAt = now;
+            }
+
+            await leadAssignmentRepository.SaveChange();
+            logger.LogInformation(
+                "PromoteUnassignedOfflineLeadsToRealtimeAsync promoted {LeadCount} leads to realtime queue",
+                leads.Count);
         }
 
         public async Task AssignOfflineLeadsToConsultantAsync(long consultantProfileId)
@@ -194,6 +271,15 @@ namespace DentalDashboard.ApplicationService.Services
 
         public async Task AssignRealTimeLeadsAsync(IReadOnlyCollection<long>? excludedConsultantIds = null)
         {
+            if (!leadDomainService.IsWorkingTime(DateTime.Now))
+            {
+                logger.LogInformation(
+                    "AssignRealTimeLeadsAsync skipped: outside consultant working hours");
+                return;
+            }
+
+            await PromoteUnassignedOfflineLeadsToRealtimeAsync();
+
             var consultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
             if (excludedConsultantIds is { Count: > 0 })
             { 
@@ -317,20 +403,22 @@ namespace DentalDashboard.ApplicationService.Services
                             (x.IsOnline || x.IsAvailable))
                 .ToListAsync();
 
-            if (!consultants.Any())
-                return;
-
-            var now = DateTime.Now;
-            foreach (var consultant in consultants)
+            if (consultants.Any())
             {
-                consultant.IsOnline = false;
-                consultant.IsAvailable = false;
-                consultant.LastOfflineAt = now;
-                consultant.WorkEndTime = now.TimeOfDay;
-                consultantProfileRepository.Update(consultant);
+                var now = DateTime.Now;
+                foreach (var consultant in consultants)
+                {
+                    consultant.IsOnline = false;
+                    consultant.IsAvailable = false;
+                    consultant.LastOfflineAt = now;
+                    consultant.WorkEndTime = now.TimeOfDay;
+                    consultantProfileRepository.Update(consultant);
+                }
+
+                await consultantProfileRepository.SaveChange();
             }
 
-            await consultantProfileRepository.SaveChange();
+            await ReconcileMisclassifiedLeadStatesAsync();
         }
 
         private static void ResetLeadToRealtimeQueue(LeadAssignment lead)

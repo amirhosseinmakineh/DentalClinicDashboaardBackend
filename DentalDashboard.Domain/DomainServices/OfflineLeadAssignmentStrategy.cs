@@ -8,12 +8,12 @@ namespace DentalDashboard.Domain.DomainServices
 {
     public class OfflineLeadAssignmentStrategy : IOfflineLeadAssignmentStrategy
     {
-        private const int DefaultBatchSize = 5;
+        public const int OfflineBatchSize = 5;
 
         public void Assign(
             IList<LeadAssignment> leads,
             IList<ConsultantProfile> consultants,
-            IReadOnlyDictionary<long, int>? dailyAssignedOfflineLeadCounts = null)
+            IReadOnlyDictionary<long, int>? pendingOfflineLeadCounts = null)
         {
             if (leads == null || !leads.Any())
                 return;
@@ -45,11 +45,8 @@ namespace DentalDashboard.Domain.DomainServices
                 if (leadIndex >= unassignedLeads.Count)
                     break;
 
-                var alreadyAssignedToday = GetAlreadyAssignedToday(
-                    dailyAssignedOfflineLeadCounts,
-                    consultant.Id);
-
-                var remainingCapacity = DefaultBatchSize - alreadyAssignedToday;
+                var pendingCount = GetPendingOfflineCount(pendingOfflineLeadCounts, consultant.Id);
+                var remainingCapacity = OfflineBatchSize - pendingCount;
 
                 if (remainingCapacity <= 0)
                     continue;
@@ -70,14 +67,14 @@ namespace DentalDashboard.Domain.DomainServices
             }
         }
 
-        private static int GetAlreadyAssignedToday(
-            IReadOnlyDictionary<long, int>? dailyAssignedOfflineLeadCounts,
+        private static int GetPendingOfflineCount(
+            IReadOnlyDictionary<long, int>? pendingOfflineLeadCounts,
             long consultantId)
         {
-            if (dailyAssignedOfflineLeadCounts == null)
+            if (pendingOfflineLeadCounts == null)
                 return 0;
 
-            return dailyAssignedOfflineLeadCounts.TryGetValue(consultantId, out var count)
+            return pendingOfflineLeadCounts.TryGetValue(consultantId, out var count)
                 ? count
                 : 0;
         }

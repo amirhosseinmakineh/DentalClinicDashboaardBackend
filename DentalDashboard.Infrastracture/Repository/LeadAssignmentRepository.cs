@@ -57,11 +57,29 @@ namespace DentalDashboard.Infrastracture.Repository
             return PendingOfflineLeadsForConsultant(consultantProfileId).CountAsync();
         }
 
+        public async Task<Dictionary<long, int>> GetPendingOfflineLeadCountsAsync(IEnumerable<long> consultantProfileIds)
+        {
+            var ids = consultantProfileIds.ToHashSet();
+            if (!ids.Any())
+                return new Dictionary<long, int>();
+
+            return await PendingOfflineLeadsQuery()
+                .Where(x => x.ConsultantProfileId.HasValue && ids.Contains(x.ConsultantProfileId.Value))
+                .GroupBy(x => x.ConsultantProfileId!.Value)
+                .Select(g => new { ConsultantProfileId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ConsultantProfileId, x => x.Count);
+        }
+
         private IQueryable<LeadAssignment> PendingOfflineLeadsForConsultant(long consultantProfileId)
+        {
+            return PendingOfflineLeadsQuery()
+                .Where(x => x.ConsultantProfileId == consultantProfileId);
+        }
+
+        private IQueryable<LeadAssignment> PendingOfflineLeadsQuery()
         {
             return GetAll()
                 .Where(x => !x.IsDeleted &&
-                            x.ConsultantProfileId == consultantProfileId &&
                             x.AssignmentType == LeadAssignmentType.OfflineQueue &&
                             x.ReportSubmittedAt == null &&
                             x.LeadAssignmentState != LeadAssignmentState.Converted &&

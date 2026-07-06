@@ -1,4 +1,5 @@
 using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.Domain.DomainServices;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
@@ -141,35 +142,47 @@ namespace DentalDashboard.ApplicationService.Services
                 consultants = consultants
                     .Where(x => consultantIds.Contains(x.Id))
                     .ToList();
+
+                if (!consultants.Any())
+                {
+                    consultants = await consultantProfileRepository.GetAll()
+                        .Where(x => !x.IsDeleted &&
+                                    x.IsCompleteProfile &&
+                                    x.IsAvailable &&
+                                    consultantIds.Contains(x.Id))
+                        .OrderByDescending(x => x.CurrentScore)
+                        .ThenBy(x => x.Id)
+                        .ToListAsync();
+                }
             }
 
             if (!consultants.Any())
             {
                 logger.LogInformation(
-                    "AssignOfflineLeadsAsync skipped: no available offline consultants (IsAvailable=1, IsOnline=0, IsCompleteProfile=1)");
+                    "AssignOfflineLeadsAsync skipped: no available consultants for offline assignment");
                 return;
             }
 
-            var now = DateTime.Now;
-            var dailyAssignedCounts = await leadAssignmentRepository.GetDailyAssignedOfflineLeadCountsAsync(
-                consultants.Select(x => x.Id),
-                now);
-            var totalRemainingDailyCapacity = consultants
-                .Sum(x => Math.Max(5 - dailyAssignedCounts.GetValueOrDefault(x.Id), 0));
-            if (totalRemainingDailyCapacity <= 0)
+            var pendingOfflineCounts = await leadAssignmentRepository.GetPendingOfflineLeadCountsAsync(
+                consultants.Select(x => x.Id));
+            var totalRemainingCapacity = consultants
+                .Sum(x => Math.Max(OfflineLeadAssignmentStrategy.OfflineBatchSize - pendingOfflineCounts.GetValueOrDefault(x.Id), 0));
+            if (totalRemainingCapacity <= 0)
             {
-                logger.LogInformation("AssignOfflineLeadsAsync skipped: daily offline capacity exhausted for all consultants");
+                logger.LogInformation(
+                    "AssignOfflineLeadsAsync skipped: consultants already have {BatchSize} unreported offline leads",
+                    OfflineLeadAssignmentStrategy.OfflineBatchSize);
                 return;
             }
 
-            var leads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(totalRemainingDailyCapacity);
+            var leads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(totalRemainingCapacity);
             if (!leads.Any())
             {
                 logger.LogInformation("AssignOfflineLeadsAsync skipped: offline queue is empty");
                 return;
             }
 
-            offlineLeadAssignmentStrategy.Assign(leads, consultants, dailyAssignedCounts);
+            offlineLeadAssignmentStrategy.Assign(leads, consultants, pendingOfflineCounts);
 
             await leadAssignmentRepository.SaveChange();
             await SendAssignedLeadNotificationsAsync();

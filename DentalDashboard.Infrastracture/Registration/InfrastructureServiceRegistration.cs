@@ -2,6 +2,7 @@
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Infrastracture.Repository;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using DentalDashboard.Framwork.IRepositories;
@@ -16,6 +17,8 @@ public static class InfrastructureServiceRegistration
         {
             options.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"));
+            options.ConfigureWarnings(warnings =>
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 
         services.AddScoped(typeof(IBaseRepository<,>),typeof(BaseRepository<,>));

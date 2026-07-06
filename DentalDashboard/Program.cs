@@ -117,7 +117,7 @@ using (var scope = app.Services.CreateScope())
     {
         migrationLogger.LogCritical(
             ex,
-            "Database migration failed. Run docs/sql/2026-07-06-fix-callinitiatedat-column.sql if CallInitiatedAt is missing.");
+            "Database migration failed. Run docs/sql/2026-07-06-user-presence-logs-fix.sql and redeploy the latest backend build.");
         throw;
     }
 }

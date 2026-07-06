@@ -203,7 +203,7 @@ namespace DentalDashboard.ApplicationService.Services
                     .ToList();
             }
 
-            if (!consultants.Any())
+            if (!consultants.Any()) 
             {
                 logger.LogInformation(
                     "AssignRealTimeLeadsAsync skipped: no online consultants ready (check IsOnline, pending offline/active realtime leads)");

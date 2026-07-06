@@ -30,7 +30,7 @@ namespace DentalDashboard.BackgroundServices
                 await RunStepAsync("ExpireOverdueRealTimeLeads", () => leadAssignmentService.ExpireOverdueRealTimeLeadsAsync(), stoppingToken);
                 await RunStepAsync("EnforceNightShiftClosure", () => leadAssignmentService.EnforceNightShiftClosureAsync(), stoppingToken);
 
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
             }
         }
 

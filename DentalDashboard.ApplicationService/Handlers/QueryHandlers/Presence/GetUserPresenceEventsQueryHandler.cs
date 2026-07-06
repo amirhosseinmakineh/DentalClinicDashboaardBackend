@@ -30,7 +30,9 @@ public class GetUserPresenceEventsQueryHandler
         var events = presenceLogRepository.GetAll()
             .Where(x => !x.IsDeleted &&
                         x.OccurredAt >= dayStart &&
-                        x.OccurredAt <= dayEnd);
+                        x.OccurredAt <= dayEnd &&
+                        x.User.ConsultantProfile != null &&
+                        !x.User.ConsultantProfile.IsDeleted);
 
         if (query.UserId.HasValue)
             events = events.Where(x => x.UserId == query.UserId.Value);

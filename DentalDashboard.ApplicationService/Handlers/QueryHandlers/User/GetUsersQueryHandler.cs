@@ -70,7 +70,16 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
                     RoleName = user.UserRoles
                         .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
                         .Select(ur => ur.Role!.RoleName)
-                        .FirstOrDefault() ?? string.Empty
+                        .FirstOrDefault() ?? string.Empty,
+                    ConsultantProfileId = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
+                        ? user.ConsultantProfile.Id
+                        : null,
+                    ConsultantIsOnline = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
+                        ? user.ConsultantProfile.IsOnline
+                        : null,
+                    ConsultantIsAvailable = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
+                        ? user.ConsultantProfile.IsAvailable
+                        : null
                 })
                 .ToListAsync(cancellationToken);
 

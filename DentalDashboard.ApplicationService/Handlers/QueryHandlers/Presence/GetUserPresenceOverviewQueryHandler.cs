@@ -34,7 +34,8 @@ public class GetUserPresenceOverviewQueryHandler
         var selectedDatePersian = dayStart.ToPersianDateString();
 
         var users = userRepository.GetAll()
-            .Where(x => !x.IsDeleted);
+            .Where(x => !x.IsDeleted)
+            .Where(x => x.ConsultantProfile != null && !x.ConsultantProfile.IsDeleted);
 
         if (!string.IsNullOrWhiteSpace(query.FirstName))
             users = users.Where(x => x.FirstName.Contains(query.FirstName));

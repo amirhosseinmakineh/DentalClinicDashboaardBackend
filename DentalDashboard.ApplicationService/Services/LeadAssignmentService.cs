@@ -144,7 +144,11 @@ namespace DentalDashboard.ApplicationService.Services
             }
 
             if (!consultants.Any())
+            {
+                logger.LogInformation(
+                    "AssignOfflineLeadsAsync skipped: no available offline consultants (IsAvailable=1, IsOnline=0, IsCompleteProfile=1)");
                 return;
+            }
 
             var now = DateTime.Now;
             var dailyAssignedCounts = await leadAssignmentRepository.GetDailyAssignedOfflineLeadCountsAsync(

@@ -61,7 +61,8 @@ public class SendTestPushNotificationCommandHandler : ICommandHandler<SendTestPu
             cancellationToken);
 
         return sent
-            ? Result.Success("نوتیفیکیشن تست ارسال شد")
+            ? Result.Success(
+                "نوتیفیکیشن تست ارسال شد. اگر پیام سیستمی ندیدید، اجازه Notification را در مرورگر بررسی کنید.")
             : Result.Failure(
                 "ارسال push انجام نشد. WEBPUSH_VAPID_PRIVATE_KEY و WEBPUSH_VAPID_PUBLIC_KEY را روی سرور و Netlify بررسی کنید.");
     }

@@ -16,9 +16,9 @@ namespace DentalDashboard.Domain.DomainServices
             return newNumbers
                 .Where(x => !oldPhoneNumbers.Contains(x.PhoneNumber));
         }
-        public LeadAssignmentType DetermineAssignmentType(DateTime now, bool hasOnlineConsultant)
+        public LeadAssignmentType DetermineAssignmentType(DateTime now, bool hasAvailableConsultant)
         {
-            return IsWorkingTime(now) && hasOnlineConsultant
+            return IsWorkingTime(now) && hasAvailableConsultant
                 ? LeadAssignmentType.RealTime
                 : LeadAssignmentType.OfflineQueue;
         }

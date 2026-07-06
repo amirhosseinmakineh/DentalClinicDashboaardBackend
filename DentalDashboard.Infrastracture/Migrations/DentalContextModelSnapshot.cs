@@ -456,6 +456,50 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.ToTable("ScoreLogs");
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "OccurredAt");
+
+                    b.ToTable("UserPresenceLogs");
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -647,6 +691,17 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("ConsultantProfile");
 
                     b.Navigation("LeadAssignment");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

@@ -74,6 +74,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             consultantProfileRepository.Update(profile);
             await consultantProfileRepository.SaveChange();
 
+            await leadAssignmentService.AssignOfflineLeadsToConsultantAsync(profile.Id);
+
             return Result.Success("شما آفلاین شدید");
         }
     }

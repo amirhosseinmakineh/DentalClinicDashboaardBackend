@@ -44,14 +44,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                     return Result.Failure("امکان ثبت حضور فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد");
 
                 profile.IsAvailable = true;
+                profile.IsOnline = false;
                 profile.WorkStartTime = DateTime.Now.TimeOfDay;
+                profile.LastOfflineAt = DateTime.Now;
 
                 consultantProfileRepository.Update(profile);
                 await consultantProfileRepository.SaveChange();
 
-                // Pending night/offline leads are also assigned by the background interval;
-                // this immediate trigger starts the 5-lead offline batches as soon as attendance is registered.
-                await leadAssignmentService.AssignPendingOfflineLeadsAsync();
+                await leadAssignmentService.AssignOfflineLeadsToConsultantAsync(profile.Id);
 
                 return Result.Success("حضور شما ثبت شد");
             }

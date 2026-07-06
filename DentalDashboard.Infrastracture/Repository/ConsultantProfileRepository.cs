@@ -45,5 +45,14 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ThenBy(x => x.Id)
                 .ToListAsync();
         }
+
+        public Task<bool> HasOnlineConsultantAsync()
+        {
+            return GetAll()
+                .AnyAsync(x => !x.IsDeleted &&
+                               x.IsCompleteProfile &&
+                               x.IsAvailable &&
+                               x.IsOnline);
+        }
     }
 }

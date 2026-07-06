@@ -16,6 +16,7 @@ public static class ApplicationServiceRegistration
             .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(30));
         services.AddScoped<IPushNotificationService, WebPushNotificationService>();
         services.AddScoped<IConsultantProfileService, ConsultantProfileService>();
+        services.AddScoped<IUserPresenceService, UserPresenceService>();
 
         services.AddScoped<IQueryDispatcher, QueryDispatcher>();
         services.AddTransient<ICommandDispatcher, CommandDispatcher>();

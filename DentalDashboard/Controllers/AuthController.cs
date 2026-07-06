@@ -93,5 +93,25 @@ namespace DentalDashboard.Controllers
 
             return Ok(Result<AuthenticatedUserResponse>.Success(response));
         }
+
+        [Authorize]
+        [HttpPost("Logout")]
+        public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+        {
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                              User.FindFirstValue("userId") ??
+                              User.FindFirstValue("Id");
+
+            if (!Guid.TryParse(userIdValue, out var userId))
+            {
+                return Ok(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            }
+
+            var result = await dispatcher.DispatchAsync(
+                new LogoutCommand { UserId = userId },
+                cancellationToken);
+
+            return Ok(result);
+        }
     }
 }

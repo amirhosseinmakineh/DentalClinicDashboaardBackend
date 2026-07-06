@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
@@ -14,17 +15,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadAssignmentService leadAssignmentService;
         private readonly ILeadDomainService leadDomainService;
+        private readonly IUserPresenceService presenceService;
 
         public SetOnlineOfflineCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentRepository leadAssignmentRepository,
             ILeadAssignmentService leadAssignmentService,
-            ILeadDomainService leadDomainService)
+            ILeadDomainService leadDomainService,
+            IUserPresenceService presenceService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.leadAssignmentService = leadAssignmentService;
             this.leadDomainService = leadDomainService;
+            this.presenceService = presenceService;
         }
 
         public async Task<Result> HandleAsync(
@@ -63,6 +67,12 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 await consultantProfileRepository.SaveChange();
 
+                await presenceService.LogAsync(
+                    profile.UserId,
+                    UserPresenceEventType.Online,
+                    profile.LastOnlineAt,
+                    cancellationToken: cancellationToken);
+
                 await leadAssignmentService.AssignRealTimeLeadsAsync();
 
                 return Result.Success("شما آنلاین شدید");
@@ -73,6 +83,12 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
             consultantProfileRepository.Update(profile);
             await consultantProfileRepository.SaveChange();
+
+            await presenceService.LogAsync(
+                profile.UserId,
+                UserPresenceEventType.Offline,
+                profile.LastOfflineAt,
+                cancellationToken: cancellationToken);
 
             await leadAssignmentService.AssignOfflineLeadsToConsultantAsync(profile.Id);
 

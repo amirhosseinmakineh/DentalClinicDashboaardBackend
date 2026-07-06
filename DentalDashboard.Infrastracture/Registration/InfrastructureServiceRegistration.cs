@@ -29,6 +29,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<IScoreLogRepository, ScoreLogRepository>();
         services.AddScoped<IReservationRepository, ReservationRepository>();
+        services.AddScoped<IUserPresenceLogRepository, UserPresenceLogRepository>();
 
 
         return services;

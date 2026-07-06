@@ -1,6 +1,8 @@
-﻿using DentalDashboard.ApplicationService.Contract.Requests.Auth;
+﻿using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.Requests.Auth;
 using DentalDashboard.ApplicationService.Contract.Responses.AuthResponse;
 using DentalDashboard.ApplicationService.Handlers.CommandHandlers.Auth.Helpers;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -16,15 +18,18 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
     private readonly IUserRepository userRepository;
     private readonly ITokenGenerator tokenGenerator;
     private readonly IValidator<LoginCommand> validator;
+    private readonly IUserPresenceService presenceService;
 
     public LoginCommandHandler(
         IUserRepository userRepository,
         ITokenGenerator tokenGenerator,
-        IValidator<LoginCommand> validator)
+        IValidator<LoginCommand> validator,
+        IUserPresenceService presenceService)
     {
         this.userRepository = userRepository;
         this.tokenGenerator = tokenGenerator;
         this.validator = validator;
+        this.presenceService = presenceService;
     }
 
     public async Task<Result<LoginResponse>> HandleAsync(
@@ -66,6 +71,11 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
         user.UpdatedAt = DateTime.UtcNow;
         userRepository.Update(user);
         await userRepository.SaveChange();
+
+        await presenceService.LogAsync(
+            user.Id,
+            UserPresenceEventType.Login,
+            cancellationToken: cancellationToken);
 
         var userRoles = user.UserRoles
             .Where(x => !x.IsDeleted && x.Role != null && !x.Role.IsDeleted)

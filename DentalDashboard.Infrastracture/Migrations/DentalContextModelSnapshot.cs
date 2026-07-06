@@ -553,7 +553,6 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("PushNotificationToken")
-                        .HasMaxLength(16000)
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")

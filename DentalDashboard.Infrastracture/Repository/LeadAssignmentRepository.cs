@@ -81,12 +81,13 @@ namespace DentalDashboard.Infrastracture.Repository
             return GetAll()
                 .Where(x => !x.IsDeleted &&
                             x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                            x.LeadAssignmentState == LeadAssignmentState.New && 
                             x.ReportSubmittedAt == null &&
                             x.LeadAssignmentState != LeadAssignmentState.Converted &&
                             x.LeadAssignmentState != LeadAssignmentState.Rejected &&
                             x.LeadAssignmentState != LeadAssignmentState.Expired);
         }
-
+        
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
         {
             return GetAll()

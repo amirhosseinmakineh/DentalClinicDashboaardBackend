@@ -87,7 +87,9 @@ namespace DentalDashboard.ApplicationService.Services
         public async Task AddLeadsAsync()
         {
             var now = DateTime.Now;
+
             var updatedLeads = await LeadsListAsync();
+
             var existingPhoneNumbers = await leadAssignmentRepository.GetExistingPhoneNumbersAsync(
                 updatedLeads.Select(x => x.PhoneNumber));
 
@@ -106,25 +108,26 @@ namespace DentalDashboard.ApplicationService.Services
             foreach (var lead in newLeads)
             {
                 lead.CreatedAt = now;
+                lead.LeadAssignmentState = LeadAssignmentState.New;
+                lead.CallDeadlineAt = null;
 
                 if (isWorkingTime)
                 {
+                    // ساعت کاری (09:00 تا قبل از 21:00)
                     lead.AssignmentType = LeadAssignmentType.RealTime;
-                    lead.LeadAssignmentState = LeadAssignmentState.New;
                     lead.RequiresThreeMinuteCall = true;
-                    lead.CallDeadlineAt = null;
                 }
                 else
                 {
+                    // خارج از ساعت کاری
                     lead.AssignmentType = LeadAssignmentType.OfflineQueue;
-                    lead.LeadAssignmentState = LeadAssignmentState.New;
                     lead.RequiresThreeMinuteCall = false;
-                    lead.CallDeadlineAt = null;
                 }
             }
 
             await leadAssignmentRepository.AddRangeAsync(newLeads);
             await leadAssignmentRepository.SaveChange();
+
             await ReconcileMisclassifiedLeadStatesAsync();
         }
 
@@ -364,7 +367,7 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 if (lead.ConsultantProfile == null)
                 {
-                    ResetLeadToRealtimeQueue(lead);
+                    ResetLeadQueue(lead);
                     continue;
                 }
 
@@ -372,7 +375,7 @@ namespace DentalDashboard.ApplicationService.Services
                 failedConsultantIds.Add(consultant.Id);
 
                 ApplyLateCallScore(consultant, lead, now);
-                ResetLeadToRealtimeQueue(lead);
+                ResetLeadQueue(lead);
 
                 var hasPendingOfflineLeads =
                     consultantIdsWithPendingOfflineLeads.Contains(consultant.Id);
@@ -423,18 +426,28 @@ namespace DentalDashboard.ApplicationService.Services
             await ReconcileMisclassifiedLeadStatesAsync();
         }
 
-        private static void ResetLeadToRealtimeQueue(LeadAssignment lead)
+        private void ResetLeadQueue(LeadAssignment lead)
         {
+            var now = DateTime.Now;
+
             lead.ConsultantProfileId = null;
             lead.LeadAssignmentState = LeadAssignmentState.New;
-            lead.AssignmentType = LeadAssignmentType.RealTime;
             lead.AssignedAt = null;
             lead.CallDeadlineAt = null;
             lead.CallInitiatedAt = null;
             lead.NotificationSent = false;
-            lead.RequiresThreeMinuteCall = true;
-        }
 
+            if (leadDomainService.IsWorkingTime(now))
+            {
+                lead.AssignmentType = LeadAssignmentType.RealTime;
+                lead.RequiresThreeMinuteCall = true;
+            }
+            else
+            {
+                lead.AssignmentType = LeadAssignmentType.OfflineQueue;
+                lead.RequiresThreeMinuteCall = false;
+            }
+        }
         private async Task<int> ExpireAndRequeueRealTimeLeadInternalAsync(
             LeadAssignment lead,
             ConsultantProfile consultant)
@@ -443,7 +456,7 @@ namespace DentalDashboard.ApplicationService.Services
             var failedConsultantId = consultant.Id;
             var eventScore = ApplyLateCallScore(consultant, lead, now);
 
-            ResetLeadToRealtimeQueue(lead);
+            ResetLeadQueue(lead);
 
             var hasPendingOfflineLeads =
                 await leadAssignmentRepository.HasPendingOfflineLeadsAsync(consultant.Id);

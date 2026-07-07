@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DentalDashboard.Infrastracture.Migrations
 {
     [DbContext(typeof(DentalContext))]
-    [Migration("20260628195930_CreateSomeTables")]
-    partial class CreateSomeTables
+    [Migration("20260707170531_CreateDatabase")]
+    partial class CreateDatabase
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -36,10 +36,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateOnly>("AttendanceDate")
                         .HasColumnType("date");
 
-                    b.Property<TimeOnly>("CheckInTime")
+                    b.Property<TimeOnly?>("CheckInTime")
                         .HasColumnType("time");
 
-                    b.Property<TimeOnly>("CheckOutTime")
+                    b.Property<TimeOnly?>("CheckOutTime")
                         .HasColumnType("time");
 
                     b.Property<long>("ConsultantProfileId")
@@ -162,6 +162,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("CallDeadlineAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("CallInitiatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("CallResult")
                         .HasColumnType("int");
 
@@ -206,6 +209,10 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Property<bool>("RequiresThreeMinuteCall")
                         .HasColumnType("bit");
+
+                    b.Property<string>("SecondaryPhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<bool>("SmsSent")
                         .HasColumnType("bit");
@@ -340,10 +347,6 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Property<DateTime>("ReservationAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("SecondaryPhoneNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<bool?>("SecretaryApprovedConsultantConfirmation")
                         .HasColumnType("bit");
@@ -496,6 +499,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -504,6 +510,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PushNotificationToken")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -514,6 +523,50 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "OccurredAt");
+
+                    b.ToTable("UserPresenceLogs", (string)null);
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.UserRole", b =>
@@ -640,6 +693,17 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("ConsultantProfile");
 
                     b.Navigation("LeadAssignment");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

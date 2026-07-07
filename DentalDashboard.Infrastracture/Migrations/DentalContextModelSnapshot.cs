@@ -33,10 +33,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateOnly>("AttendanceDate")
                         .HasColumnType("date");
 
-                    b.Property<TimeOnly>("CheckInTime")
+                    b.Property<TimeOnly?>("CheckInTime")
                         .HasColumnType("time");
 
-                    b.Property<TimeOnly>("CheckOutTime")
+                    b.Property<TimeOnly?>("CheckOutTime")
                         .HasColumnType("time");
 
                     b.Property<long>("ConsultantProfileId")
@@ -456,50 +456,6 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.ToTable("ScoreLogs");
                 });
 
-            modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("EventType")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("OccurredAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OccurredAt");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "OccurredAt");
-
-                    b.ToTable("UserPresenceLogs");
-                });
-
             modelBuilder.Entity("DentalDashboard.Domain.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -564,6 +520,50 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "OccurredAt");
+
+                    b.ToTable("UserPresenceLogs", (string)null);
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.UserRole", b =>

@@ -33,10 +33,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateOnly>("AttendanceDate")
                         .HasColumnType("date");
 
-                    b.Property<TimeOnly>("CheckInTime")
+                    b.Property<TimeOnly?>("CheckInTime")
                         .HasColumnType("time");
 
-                    b.Property<TimeOnly>("CheckOutTime")
+                    b.Property<TimeOnly?>("CheckOutTime")
                         .HasColumnType("time");
 
                     b.Property<long>("ConsultantProfileId")

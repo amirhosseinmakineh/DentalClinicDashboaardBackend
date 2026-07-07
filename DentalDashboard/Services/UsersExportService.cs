@@ -1,6 +1,4 @@
-using System.Globalization;
 using DentalDashboard.Infrastracture.Context;
-using DentalDashboard.Utilities.Convertor;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Services;
@@ -19,55 +17,28 @@ public class UsersExportService
             .OrderBy(x => x.LastName).ThenBy(x => x.FirstName)
             .Select(x => new
             {
-                x.Id,
                 x.FirstName,
                 x.LastName,
                 x.PhoneNumber,
                 RoleName = x.UserRoles
                     .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
                     .Select(ur => ur.Role!.RoleName)
-                    .FirstOrDefault(),
-                x.Gender,
-                x.BirthDate,
-                x.IsActive,
-                x.IsCompleteProfile,
-                x.CreatedAt,
-                x.LastSeenAt
+                    .FirstOrDefault()
             })
             .ToListAsync(cancellationToken);
 
         var lines = new List<string>
         {
-            CsvExportHelper.JoinRow(
-                "شناسه",
-                "نام",
-                "نام خانوادگی",
-                "موبایل",
-                "نقش",
-                "جنسیت",
-                "تاریخ تولد",
-                "وضعیت فعال",
-                "پروفایل تکمیل شده",
-                "تاریخ ثبت‌نام",
-                "آخرین بازدید")
+            CsvExportHelper.JoinRow("نام", "نام خانوادگی", "شماره همراه", "نقش")
         };
 
         foreach (var row in rows)
         {
             lines.Add(CsvExportHelper.JoinRow(
-                row.Id.ToString(),
                 row.FirstName,
                 row.LastName,
                 row.PhoneNumber,
-                AdminReportPersianLabels.ToPersianRole(row.RoleName),
-                row.Gender.ToPersian(),
-                DateConvertor.ToPersianDateString(row.BirthDate),
-                AdminReportPersianLabels.ToYesNo(row.IsActive),
-                AdminReportPersianLabels.ToYesNo(row.IsCompleteProfile),
-                DateConvertor.ToPersianDateTimeString(row.CreatedAt),
-                row.LastSeenAt.HasValue
-                    ? DateConvertor.ToPersianDateTimeString(row.LastSeenAt.Value)
-                    : string.Empty));
+                AdminReportPersianLabels.ToPersianRole(row.RoleName)));
         }
 
         return CsvExportHelper.BuildFile(lines.ToArray());

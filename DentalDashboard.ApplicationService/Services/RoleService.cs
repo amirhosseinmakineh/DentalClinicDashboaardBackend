@@ -28,25 +28,35 @@ public class RoleService : IRoleService
                 $"Role '{roleName}' یافت نشد");
         }
 
-        var userRoles = await userRoleRepository.GetAllAsync();
+        var userRoles = (await userRoleRepository.FindAsync(x => x.UserId == userId)).ToList();
 
-        var existingUserRole = userRoles.FirstOrDefault(
-            x => x.UserId == userId &&
-                 x.RoleId == role.Id &&
-                 !x.IsDeleted);
+        var activeUserRole = userRoles.FirstOrDefault(
+            x => x.RoleId == role.Id && !x.IsDeleted);
 
-        if (existingUserRole is not null)
+        if (activeUserRole is not null)
+            return;
+
+        var inactiveUserRole = userRoles
+            .Where(x => x.RoleId == role.Id && x.IsDeleted)
+            .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
+            .FirstOrDefault();
+
+        if (inactiveUserRole is not null)
         {
+            var now = DateTime.UtcNow;
+            inactiveUserRole.IsDeleted = false;
+            inactiveUserRole.DeletedAt = null;
+            inactiveUserRole.UpdatedAt = now;
+            userRoleRepository.Update(inactiveUserRole);
+            await userRoleRepository.SaveChange();
             return;
         }
 
-        var userRole = new UserRole
+        await userRoleRepository.AddAsync(new UserRole
         {
             UserId = userId,
             RoleId = role.Id
-        };
-
-        await userRoleRepository.AddAsync(userRole);
+        });
 
         await userRoleRepository.SaveChange();
     }
@@ -59,39 +69,36 @@ public class RoleService : IRoleService
         if (role is null)
             throw new Exception($"Role '{roleName}' یافت نشد");
 
-        var userRoles = await userRoleRepository.FindAsync(x => x.UserId == userId);
+        var userRoles = (await userRoleRepository.FindAsync(x => x.UserId == userId)).ToList();
         var now = DateTime.UtcNow;
 
         foreach (var userRole in userRoles.Where(x => !x.IsDeleted))
         {
-            if (userRole.RoleId == role.Id)
-                continue;
-
             userRole.IsDeleted = true;
             userRole.DeletedAt = now;
             userRole.UpdatedAt = now;
             userRoleRepository.Update(userRole);
         }
 
-        var inactiveRole = userRoles.FirstOrDefault(x => x.RoleId == role.Id && x.IsDeleted);
-        if (inactiveRole is not null)
+        var existingRoleRow = userRoles
+            .Where(x => x.RoleId == role.Id)
+            .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
+            .FirstOrDefault();
+
+        if (existingRoleRow is not null)
         {
-            inactiveRole.IsDeleted = false;
-            inactiveRole.DeletedAt = null;
-            inactiveRole.UpdatedAt = now;
-            userRoleRepository.Update(inactiveRole);
+            existingRoleRow.IsDeleted = false;
+            existingRoleRow.DeletedAt = null;
+            existingRoleRow.UpdatedAt = now;
+            userRoleRepository.Update(existingRoleRow);
         }
         else
         {
-            var activeRole = userRoles.FirstOrDefault(x => x.RoleId == role.Id && !x.IsDeleted);
-            if (activeRole is null)
+            await userRoleRepository.AddAsync(new UserRole
             {
-                await userRoleRepository.AddAsync(new UserRole
-                {
-                    UserId = userId,
-                    RoleId = role.Id
-                });
-            }
+                UserId = userId,
+                RoleId = role.Id
+            });
         }
 
         await userRoleRepository.SaveChange();

@@ -15,13 +15,16 @@ public class GetUserPresenceOverviewQueryHandler
 {
     private readonly IUserRepository userRepository;
     private readonly IUserPresenceLogRepository presenceLogRepository;
+    private readonly IAttendanceRepository attendanceRepository;
 
     public GetUserPresenceOverviewQueryHandler(
         IUserRepository userRepository,
-        IUserPresenceLogRepository presenceLogRepository)
+        IUserPresenceLogRepository presenceLogRepository,
+        IAttendanceRepository attendanceRepository)
     {
         this.userRepository = userRepository;
         this.presenceLogRepository = presenceLogRepository;
+        this.attendanceRepository = attendanceRepository;
     }
 
     public async Task<PaginatedResult<UserPresenceOverviewItemResponse>> HandleAsync(
@@ -80,6 +83,9 @@ public class GetUserPresenceOverviewQueryHandler
                     .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
                     .Select(ur => ur.Role!.RoleName)
                     .FirstOrDefault() ?? string.Empty,
+                ConsultantProfileId = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
+                    ? (long?)user.ConsultantProfile.Id
+                    : null,
                 ConsultantIsOnline = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
                     ? (bool?)user.ConsultantProfile.IsOnline
                     : null,
@@ -90,28 +96,60 @@ public class GetUserPresenceOverviewQueryHandler
             .ToListAsync(cancellationToken);
 
         var userIds = pageUsers.Select(x => x.Id).ToList();
+        var consultantProfileIds = pageUsers
+            .Where(x => x.ConsultantProfileId.HasValue)
+            .Select(x => x.ConsultantProfileId!.Value)
+            .ToList();
 
         var dayLogs = await presenceLogRepository.GetAll()
             .Where(x => !x.IsDeleted &&
                         userIds.Contains(x.UserId) &&
                         x.OccurredAt >= dayStart &&
-                        x.OccurredAt <= dayEnd)
+                        x.OccurredAt <= dayEnd &&
+                        x.EventType != UserPresenceEventType.CheckIn &&
+                        x.EventType != UserPresenceEventType.CheckOut)
+            .ToListAsync(cancellationToken);
+
+        var dayAttendances = await attendanceRepository.GetAll()
+            .Where(x => !x.IsDeleted &&
+                        consultantProfileIds.Contains(x.ConsultantProfileId) &&
+                        x.AttendanceDate == query.Date)
+            .Select(x => new
+            {
+                x.ConsultantProfileId,
+                x.ConsultantProfile.UserId,
+                x.AttendanceDate,
+                x.CheckInTime,
+                x.CheckOutTime
+            })
             .ToListAsync(cancellationToken);
 
         var logsByUser = dayLogs
             .GroupBy(x => x.UserId)
             .ToDictionary(x => x.Key, x => x.ToList());
 
+        var attendancesByUser = dayAttendances
+            .GroupBy(x => x.UserId)
+            .ToDictionary(x => x.Key, x => x.First());
+
         var items = pageUsers.Select(user =>
         {
             logsByUser.TryGetValue(user.Id, out var logs);
             logs ??= [];
+
+            attendancesByUser.TryGetValue(user.Id, out var attendance);
 
             DateTime? First(UserPresenceEventType type) =>
                 logs.Where(x => x.EventType == type).Select(x => (DateTime?)x.OccurredAt).Min();
 
             DateTime? Last(UserPresenceEventType type) =>
                 logs.Where(x => x.EventType == type).Select(x => (DateTime?)x.OccurredAt).Max();
+
+            var attendanceEventCount = attendance switch
+            {
+                null => 0,
+                _ => (attendance.CheckInTime.HasValue ? 1 : 0) + (attendance.CheckOutTime.HasValue ? 1 : 0)
+            };
 
             return new UserPresenceOverviewItemResponse
             {
@@ -129,9 +167,13 @@ public class GetUserPresenceOverviewQueryHandler
                 LastLogoutAtPersian = Last(UserPresenceEventType.Logout)?.ToPersianDateTimeString(),
                 FirstOnlineAtPersian = First(UserPresenceEventType.Online)?.ToPersianDateTimeString(),
                 LastOfflineAtPersian = Last(UserPresenceEventType.Offline)?.ToPersianDateTimeString(),
-                FirstCheckInAtPersian = First(UserPresenceEventType.CheckIn)?.ToPersianDateTimeString(),
-                LastCheckOutAtPersian = Last(UserPresenceEventType.CheckOut)?.ToPersianDateTimeString(),
-                EventCountForDay = logs.Count
+                FirstCheckInAtPersian = attendance is null
+                    ? null
+                    : AttendanceLabels.ToPersianDateTime(attendance.AttendanceDate, attendance.CheckInTime),
+                LastCheckOutAtPersian = attendance is null
+                    ? null
+                    : AttendanceLabels.ToPersianDateTime(attendance.AttendanceDate, attendance.CheckOutTime),
+                EventCountForDay = logs.Count + attendanceEventCount
             };
         }).ToList();
 

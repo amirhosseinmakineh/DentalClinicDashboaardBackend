@@ -1,6 +1,5 @@
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
@@ -14,18 +13,18 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadAssignmentService leadAssignmentService;
         private readonly ILeadDomainService leadDomainService;
-        private readonly IUserPresenceService presenceService;
+        private readonly IAttendanceService attendanceService;
 
         public SetAvailableCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentService leadAssignmentService,
             ILeadDomainService leadDomainService,
-            IUserPresenceService presenceService)
+            IAttendanceService attendanceService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadAssignmentService = leadAssignmentService;
             this.leadDomainService = leadDomainService;
-            this.presenceService = presenceService;
+            this.attendanceService = attendanceService;
         }
 
         public async Task<Result> HandleAsync(SetAvailableCommand command,CancellationToken cancellationToken = default)
@@ -55,11 +54,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 consultantProfileRepository.Update(profile);
                 await consultantProfileRepository.SaveChange();
 
-                await presenceService.LogAsync(
-                    profile.UserId,
-                    UserPresenceEventType.CheckIn,
+                await attendanceService.RecordCheckInAsync(
+                    profile.Id,
                     DateTime.Now,
-                    cancellationToken: cancellationToken);
+                    cancellationToken);
 
                 await leadAssignmentService.AssignOfflineLeadsToConsultantAsync(profile.Id);
 
@@ -75,11 +73,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             consultantProfileRepository.Update(profile);
             await consultantProfileRepository.SaveChange();
 
-            await presenceService.LogAsync(
-                profile.UserId,
-                UserPresenceEventType.CheckOut,
+            await attendanceService.RecordCheckOutAsync(
+                profile.Id,
                 DateTime.Now,
-                cancellationToken: cancellationToken);
+                cancellationToken);
 
             return Result.Success("عدم حضور شما ثبت شد");
         }

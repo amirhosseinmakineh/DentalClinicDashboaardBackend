@@ -22,7 +22,7 @@ namespace DentalDashboard.Domain.DomainServices
 
         public LeadAssignmentType DetermineAssignmentType(DateTime now, bool hasOnlineConsultant)
         {
-            return IsWorkingTime(now) && hasOnlineConsultant
+            return IsWorkingTime(now)
                 ? LeadAssignmentType.RealTime
                 : LeadAssignmentType.OfflineQueue;
         }

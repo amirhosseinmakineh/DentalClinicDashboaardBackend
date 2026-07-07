@@ -25,6 +25,10 @@ namespace DentalDashboard.BackgroundServices
 
                 // Each step is isolated so a failure in lead import does not skip assignment.
                 await RunStepAsync("AddLeads", () => leadAssignmentService.AddLeadsAsync(), stoppingToken);
+                await RunStepAsync(
+                    "ReconcileLeadStates",
+                    () => leadAssignmentService.ReconcileMisclassifiedLeadStatesAsync(),
+                    stoppingToken);
                 await RunStepAsync("AssignOfflineLeads", () => leadAssignmentService.AssignOfflineLeadsAsync(), stoppingToken);
                 await RunStepAsync("AssignRealTimeLeads", () => leadAssignmentService.AssignRealTimeLeadsAsync(), stoppingToken);
                 await RunStepAsync("ExpireOverdueRealTimeLeads", () => leadAssignmentService.ExpireOverdueRealTimeLeadsAsync(), stoppingToken);

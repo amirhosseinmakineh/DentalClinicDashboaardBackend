@@ -73,18 +73,41 @@ public class RoleService : IRoleService
             userRoleRepository.Update(userRole);
         }
 
-        var inactiveRole = userRoles.FirstOrDefault(x => x.RoleId == role.Id && x.IsDeleted);
-        if (inactiveRole is not null)
+        var activeTargetRoles = userRoles
+            .Where(x => x.RoleId == role.Id && !x.IsDeleted)
+            .ToList();
+
+        if (activeTargetRoles.Count > 1)
         {
-            inactiveRole.IsDeleted = false;
-            inactiveRole.DeletedAt = null;
-            inactiveRole.UpdatedAt = now;
-            userRoleRepository.Update(inactiveRole);
+            var keep = activeTargetRoles
+                .OrderByDescending(x => x.UpdatedAt)
+                .ThenByDescending(x => x.Id)
+                .First();
+
+            foreach (var duplicate in activeTargetRoles.Where(x => x.Id != keep.Id))
+            {
+                duplicate.IsDeleted = true;
+                duplicate.DeletedAt = now;
+                duplicate.UpdatedAt = now;
+                userRoleRepository.Update(duplicate);
+            }
         }
-        else
+        else if (activeTargetRoles.Count == 0)
         {
-            var activeRole = userRoles.FirstOrDefault(x => x.RoleId == role.Id && !x.IsDeleted);
-            if (activeRole is null)
+            var inactiveRole = userRoles
+                .Where(x => x.RoleId == role.Id && x.IsDeleted)
+                .OrderByDescending(x => x.UpdatedAt)
+                .ThenByDescending(x => x.Id)
+                .FirstOrDefault();
+
+            if (inactiveRole is not null)
+            {
+                inactiveRole.IsDeleted = false;
+                inactiveRole.DeletedAt = null;
+                inactiveRole.UpdatedAt = now;
+                userRoleRepository.Update(inactiveRole);
+            }
+            else
             {
                 await userRoleRepository.AddAsync(new UserRole
                 {

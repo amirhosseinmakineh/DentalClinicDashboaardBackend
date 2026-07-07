@@ -52,8 +52,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
             var totalCount = await users.CountAsync(cancellationToken);
 
             var items = await users
-                .OrderByDescending(x => x.LastSeenAt ?? x.CreatedAt)
-                .ThenByDescending(x => x.CreatedAt)
+                .OrderByDescending(x => x.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(user => new UserItemResponse
@@ -65,10 +64,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
                     IsCompleteProfile = user.IsCompleteProfile,
                     Gender = user.Gender,
                     CreatedAt = user.CreatedAt,
-                    LastSeenAt = user.LastSeenAt,
                     PhoneNumber = user.PhoneNumber,
                     RoleName = user.UserRoles
                         .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
+                        .OrderByDescending(ur => ur.UpdatedAt)
+                        .ThenByDescending(ur => ur.Id)
                         .Select(ur => ur.Role!.RoleName)
                         .FirstOrDefault() ?? string.Empty
                 })

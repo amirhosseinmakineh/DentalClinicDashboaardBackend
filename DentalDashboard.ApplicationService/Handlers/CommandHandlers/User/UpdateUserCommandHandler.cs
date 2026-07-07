@@ -4,6 +4,7 @@ using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 {
@@ -52,11 +53,23 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 userRepository.Update(user);
 
-                await roleService.SetUserRole(user.Id, command.RoleName);
+                var currentRoleName = await userRepository.GetAll()
+                    .Where(x => x.Id == user.Id)
+                    .SelectMany(x => x.UserRoles)
+                    .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
+                    .OrderByDescending(ur => ur.UpdatedAt)
+                    .ThenByDescending(ur => ur.Id)
+                    .Select(ur => ur.Role!.RoleName)
+                    .FirstOrDefaultAsync(cancellationToken);
 
-                if (command.RoleName == "Consultant")
+                if (!string.Equals(currentRoleName, command.RoleName, StringComparison.Ordinal))
                 {
-                    await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                    await roleService.SetUserRole(user.Id, command.RoleName);
+
+                    if (command.RoleName == "Consultant")
+                    {
+                        await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                    }
                 }
 
                 await userRepository.SaveChange();

@@ -81,9 +81,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                                x.ConsultantProfileId == consultantProfileId &&
                                x.AssignmentType == DentalDashboard.Domain.Enums.LeadAssignmentType.OfflineQueue &&
                                x.ReportSubmittedAt == null &&
-                               x.LeadAssignmentState != LeadAssignmentState.Expired &&
-                               x.LeadAssignmentState != LeadAssignmentState.Rejected &&
-                               x.LeadAssignmentState != LeadAssignmentState.Converted, cancellationToken);
+                               (x.LeadAssignmentState == LeadAssignmentState.New ||
+                                x.LeadAssignmentState == LeadAssignmentState.Assigned), cancellationToken);
         }
 
     }

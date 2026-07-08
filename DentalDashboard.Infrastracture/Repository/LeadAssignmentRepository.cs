@@ -24,8 +24,7 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.AssignmentType == LeadAssignmentType.OfflineQueue &&
                             x.ConsultantProfileId == null &&
                             x.ReportSubmittedAt == null &&
-                            (x.LeadAssignmentState == LeadAssignmentState.New ||
-                             x.LeadAssignmentState == LeadAssignmentState.Pending))
+                            x.LeadAssignmentState == LeadAssignmentState.New)
                 .OrderBy(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)
@@ -39,8 +38,7 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.AssignmentType == LeadAssignmentType.RealTime &&
                             x.ConsultantProfileId == null &&
                             x.ReportSubmittedAt == null &&
-                            (x.LeadAssignmentState == LeadAssignmentState.New ||
-                             x.LeadAssignmentState == LeadAssignmentState.Pending))
+                            x.LeadAssignmentState == LeadAssignmentState.New)
                 .OrderBy(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)
@@ -81,11 +79,9 @@ namespace DentalDashboard.Infrastracture.Repository
             return GetAll()
                 .Where(x => !x.IsDeleted &&
                             x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                            x.LeadAssignmentState == LeadAssignmentState.New && 
                             x.ReportSubmittedAt == null &&
-                            x.LeadAssignmentState != LeadAssignmentState.Converted &&
-                            x.LeadAssignmentState != LeadAssignmentState.Rejected &&
-                            x.LeadAssignmentState != LeadAssignmentState.Expired);
+                            (x.LeadAssignmentState == LeadAssignmentState.New ||
+                             x.LeadAssignmentState == LeadAssignmentState.Assigned));
         }
         
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
@@ -122,8 +118,7 @@ namespace DentalDashboard.Infrastracture.Repository
                                  x.AssignmentType == LeadAssignmentType.RealTime &&
                                  x.ConsultantProfileId == null &&
                                  x.ReportSubmittedAt == null &&
-                                 (x.LeadAssignmentState == LeadAssignmentState.New ||
-                                  x.LeadAssignmentState == LeadAssignmentState.Pending));
+                                 x.LeadAssignmentState == LeadAssignmentState.New);
         }
 
         public async Task<HashSet<long>> GetConsultantIdsWithPendingOfflineLeadsAsync(IEnumerable<long> consultantProfileIds)
@@ -132,15 +127,8 @@ namespace DentalDashboard.Infrastracture.Repository
             if (!ids.Any())
                 return new HashSet<long>();
 
-            return (await GetAll()
-                    .Where(x => !x.IsDeleted &&
-                                x.ConsultantProfileId.HasValue &&
-                                ids.Contains(x.ConsultantProfileId.Value) &&
-                                x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                                x.ReportSubmittedAt == null &&
-                                x.LeadAssignmentState != LeadAssignmentState.Converted &&
-                                x.LeadAssignmentState != LeadAssignmentState.Rejected &&
-                                x.LeadAssignmentState != LeadAssignmentState.Expired)
+            return (await PendingOfflineLeadsQuery()
+                    .Where(x => x.ConsultantProfileId.HasValue && ids.Contains(x.ConsultantProfileId.Value))
                     .Select(x => x.ConsultantProfileId!.Value)
                     .Distinct()
                     .ToListAsync())

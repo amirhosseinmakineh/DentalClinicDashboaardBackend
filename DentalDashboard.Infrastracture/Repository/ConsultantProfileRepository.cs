@@ -38,9 +38,8 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.IsOnline &&
                             !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.OfflineQueue &&
                                                         l.ReportSubmittedAt == null &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Converted &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Rejected &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Expired) &&
+                                                        (l.LeadAssignmentState == LeadAssignmentState.New ||
+                                                         l.LeadAssignmentState == LeadAssignmentState.Assigned)) &&
                             !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.RealTime &&
                                                         l.LeadAssignmentState == LeadAssignmentState.Assigned &&
                                                         l.ReportSubmittedAt == null))

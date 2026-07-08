@@ -179,8 +179,6 @@ namespace DentalDashboard.ApplicationService.Services
 
         public async Task PromoteUnassignedOfflineLeadsToRealtimeAsync()
         {
-            if (!leadDomainService.IsWorkingTime(DateTime.Now))
-                return;
 
             var leads = await leadAssignmentRepository.GetAll()
                 .Where(x => !x.IsDeleted &&
@@ -276,12 +274,6 @@ namespace DentalDashboard.ApplicationService.Services
 
         public async Task AssignRealTimeLeadsAsync(IReadOnlyCollection<long>? excludedConsultantIds = null)
         {
-            if (!leadDomainService.IsWorkingTime(DateTime.Now))
-            {
-                logger.LogInformation(
-                    "AssignRealTimeLeadsAsync skipped: outside consultant working hours");
-                return;
-            }
 
             await PromoteUnassignedOfflineLeadsToRealtimeAsync();
 

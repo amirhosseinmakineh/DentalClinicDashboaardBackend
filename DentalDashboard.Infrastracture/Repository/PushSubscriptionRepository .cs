@@ -1,20 +1,62 @@
 ﻿using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Infrastracture.Repository
 {
-    public class PushSubscriptionRepository :  BaseRepository<long, PushSubscription>, IPushSubscriptionRepository
+    public class PushSubscriptionRepository : BaseRepository<long, PushSubscription>, IPushSubscriptionRepository
     {
         public PushSubscriptionRepository(DentalContext context) : base(context)
         {
         }
 
-        public async Task<IQueryable<PushSubscription>> GetByUserIdAsync(Guid userId,CancellationToken cancellationToken = default)
+        public Task<List<PushSubscription>> GetActiveByUserIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
         {
-            var result = context.PushSubscriptions.Where(x => x.UserId == userId && !x.IsDeleted);
-            return result;
+            return context.PushSubscriptions
+                .Where(x => x.UserId == userId && !x.IsDeleted)
+                .ToListAsync(cancellationToken);
         }
 
+        public async Task<PushSubscription> UpsertAsync(
+            Guid userId,
+            string endpoint,
+            string p256dh,
+            string auth,
+            CancellationToken cancellationToken = default)
+        {
+            var existing = await context.PushSubscriptions
+                .FirstOrDefaultAsync(
+                    x => x.UserId == userId &&
+                         x.Endpoint == endpoint &&
+                         !x.IsDeleted,
+                    cancellationToken);
+
+            var now = DateTime.UtcNow;
+            if (existing != null)
+            {
+                existing.P256dh = p256dh;
+                existing.Auth = auth;
+                existing.UpdatedAt = now;
+                context.PushSubscriptions.Update(existing);
+                return existing;
+            }
+
+            var created = new PushSubscription
+            {
+                UserId = userId,
+                Endpoint = endpoint,
+                P256dh = p256dh,
+                Auth = auth,
+                CreatedAt = now,
+                UpdatedAt = now,
+                IsDeleted = false,
+            };
+
+            await context.PushSubscriptions.AddAsync(created, cancellationToken);
+            return created;
+        }
     }
 }

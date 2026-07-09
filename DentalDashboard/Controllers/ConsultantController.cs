@@ -80,6 +80,26 @@ namespace DentalDashboard.Controllers
             return Ok(Result<string>.Success(publicKey.Trim()));
         }
 
+        [HttpGet("WebPushHealth")]
+        public IActionResult WebPushHealth([FromServices] IConfiguration configuration)
+        {
+            var publicKey = configuration["WebPush:VapidPublicKey"]
+                            ?? Environment.GetEnvironmentVariable("WEBPUSH_VAPID_PUBLIC_KEY");
+            var privateKey = configuration["WebPush:VapidPrivateKey"]
+                             ?? Environment.GetEnvironmentVariable("WEBPUSH_VAPID_PRIVATE_KEY");
+
+            var ready =
+                !string.IsNullOrWhiteSpace(publicKey) &&
+                !string.IsNullOrWhiteSpace(privateKey);
+
+            return Ok(Result<object>.Success(new
+            {
+                ready,
+                publicKeyConfigured = !string.IsNullOrWhiteSpace(publicKey),
+                privateKeyConfigured = !string.IsNullOrWhiteSpace(privateKey),
+            }));
+        }
+
         [HttpGet("GetDashboardStatus")]
         public async Task<IActionResult> GetDashboardStatus([FromQuery] GetConsultantDashboardStatusQuery query)
         {

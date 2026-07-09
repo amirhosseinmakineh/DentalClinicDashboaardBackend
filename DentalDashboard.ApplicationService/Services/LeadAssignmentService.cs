@@ -597,8 +597,13 @@ namespace DentalDashboard.ApplicationService.Services
 
                 await pushNotificationService.SendAsync(
                     consultant.UserId,
-                    "لید جدید دارید",
-                    $"تعداد {count} لید آفلاین منتظر بررسی شماست");
+                    "لید آفلاین جدید!",
+                    $"{count} لید آفلاین داری، بیا اینارو تعیین تکلیف کن",
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "offline_leads",
+                        ["count"] = count.ToString(),
+                    });
             }
         }
 

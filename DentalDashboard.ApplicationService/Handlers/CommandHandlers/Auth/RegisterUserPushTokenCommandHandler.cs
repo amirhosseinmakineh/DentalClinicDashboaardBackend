@@ -9,10 +9,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Auth;
 public class RegisterUserPushTokenCommandHandler : ICommandHandler<RegisterUserPushTokenCommand>
 {
     private readonly IUserRepository userRepository;
+    private readonly IPushSubscriptionRepository pushSubscriptionRepository;
 
-    public RegisterUserPushTokenCommandHandler(IUserRepository userRepository)
+    public RegisterUserPushTokenCommandHandler(
+        IUserRepository userRepository,
+        IPushSubscriptionRepository pushSubscriptionRepository)
     {
         this.userRepository = userRepository;
+        this.pushSubscriptionRepository = pushSubscriptionRepository;
     }
 
     public async Task<Result> HandleAsync(
@@ -22,16 +26,32 @@ public class RegisterUserPushTokenCommandHandler : ICommandHandler<RegisterUserP
         if (string.IsNullOrWhiteSpace(command.DeviceToken))
             return Result.Failure("توکن نوتیفیکیشن معتبر نیست");
 
+        if (!PushSubscriptionJsonParser.TryParse(
+                command.DeviceToken.Trim(),
+                out var endpoint,
+                out var p256dh,
+                out var auth))
+        {
+            return Result.Failure("فرمت subscription معتبر نیست");
+        }
+
         var user = await userRepository.GetByIdAsync(command.UserId);
         if (user is null || user.IsDeleted)
             return Result.Failure("کاربر یافت نشد");
+
+        await pushSubscriptionRepository.UpsertAsync(
+            user.Id,
+            endpoint,
+            p256dh,
+            auth,
+            cancellationToken);
 
         user.PushNotificationToken = PushSubscriptionStorage.UpsertSubscription(
             user.PushNotificationToken,
             command.DeviceToken.Trim());
         user.UpdatedAt = DateTime.UtcNow;
         userRepository.Update(user);
-        await userRepository.SaveChange();
+        await pushSubscriptionRepository.SaveChange();
 
         return Result.Success("توکن نوتیفیکیشن ثبت شد");
     }

@@ -12,58 +12,78 @@ public class SendTestPushNotificationCommandHandler : ICommandHandler<SendTestPu
 {
     private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly IPushNotificationService pushNotificationService;
+    private readonly IPushSubscriptionRepository pushSubscriptionRepository;
 
     public SendTestPushNotificationCommandHandler(
         IConsultantProfileRepository consultantProfileRepository,
-        IPushNotificationService pushNotificationService)
+        IPushNotificationService pushNotificationService,
+        IPushSubscriptionRepository pushSubscriptionRepository)
     {
         this.consultantProfileRepository = consultantProfileRepository;
         this.pushNotificationService = pushNotificationService;
+        this.pushSubscriptionRepository = pushSubscriptionRepository;
     }
 
     public async Task<Result> HandleAsync(
         SendTestPushNotificationCommand command,
         CancellationToken cancellationToken = default)
     {
-        //var profile = await consultantProfileRepository.GetAll()
-        //    .Include(x => x.User)
-        //    .FirstOrDefaultAsync(x => x.Id == command.ProfileId, cancellationToken);
+        var profile = await consultantProfileRepository.GetAll()
+            .Include(x => x.User)
+            .FirstOrDefaultAsync(x => x.Id == command.ProfileId, cancellationToken);
 
-        //if (profile == null || profile.IsDeleted)
-        //    return Result.Failure("مشاوری یافت نشد");
+        if (profile == null || profile.IsDeleted)
+            return Result.Failure("مشاوری یافت نشد");
 
-        //if (!string.IsNullOrWhiteSpace(command.DeviceToken))
-        //{
-        //    profile.User.PushNotificationToken = PushSubscriptionStorage.UpsertSubscription(
-        //        profile.User.PushNotificationToken,
-        //        command.DeviceToken.Trim());
-        //    profile.User.UpdatedAt = DateTime.UtcNow;
-        //    await consultantProfileRepository.SaveChange();
-        //}
+        if (!string.IsNullOrWhiteSpace(command.DeviceToken))
+        {
+            if (!PushSubscriptionJsonParser.TryParse(
+                    command.DeviceToken.Trim(),
+                    out var endpoint,
+                    out var p256dh,
+                    out var auth))
+            {
+                return Result.Failure("فرمت subscription معتبر نیست");
+            }
 
-        //var subscriptions = PushSubscriptionStorage.ParseSubscriptions(
-        //    profile.User.PushNotificationToken);
-        //if (subscriptions.Count == 0)
-        //{
-        //    return Result.Failure(
-        //        "subscription روی سرور ثبت نشده است. ابتدا «فعال‌سازی نوتیفیکیشن» را بزنید.");
-        //}
+            await pushSubscriptionRepository.UpsertAsync(
+                profile.UserId,
+                endpoint,
+                p256dh,
+                auth,
+                cancellationToken);
 
-        ////var sent = await pushNotificationService.SendAsync(
-        ////    profile.UserId,
-        ////    "تست نوتیفیکیشن",
-        ////    "اگر این پیام را می‌بینید، Web Push روی PWA شما فعال است.",
-        ////    new Dictionary<string, string>
-        ////    {
-        ////        ["type"] = "test_push",
-        ////        ["profileId"] = profile.Id.ToString()
-        ////    },
-        ////    cancellationToken);
+            profile.User.PushNotificationToken = PushSubscriptionStorage.UpsertSubscription(
+                profile.User.PushNotificationToken,
+                command.DeviceToken.Trim());
+            profile.User.UpdatedAt = DateTime.UtcNow;
+            await consultantProfileRepository.SaveChange();
+        }
 
-        //return  Result.Success(
-        //        "نوتیفیکیشن تست ارسال شد. اگر پیام سیستمی ندیدید، اجازه Notification را در مرورگر بررسی کنید.")
-        //    : Result.Failure(
-        //        "ارسال push انجام نشد. WEBPUSH_VAPID_PRIVATE_KEY و WEBPUSH_VAPID_PUBLIC_KEY را روی سرور و Netlify بررسی کنید.");
-        return null;
+        var subscriptions = await pushSubscriptionRepository.GetActiveByUserIdAsync(
+            profile.UserId,
+            cancellationToken);
+        if (subscriptions.Count == 0)
+        {
+            return Result.Failure(
+                "subscription روی سرور ثبت نشده است. ابتدا «فعال‌سازی نوتیفیکیشن» را بزنید.");
+        }
+
+        var sent = await pushNotificationService.SendAsync(
+            profile.UserId,
+            "تست نوتیفیکیشن",
+            "اگر این پیام را می‌بینید، Web Push روی PWA شما فعال است.",
+            new Dictionary<string, string>
+            {
+                ["type"] = "test_push",
+                ["profileId"] = profile.Id.ToString(),
+            },
+            cancellationToken);
+
+        return sent
+            ? Result.Success(
+                "نوتیفیکیشن تست ارسال شد. اگر پیام سیستمی ندیدید، اجازه Notification را در مرورگر بررسی کنید.")
+            : Result.Failure(
+                "ارسال push انجام نشد. WEBPUSH_VAPID_PRIVATE_KEY و WEBPUSH_VAPID_PUBLIC_KEY را روی سرور بررسی کنید.");
     }
 }

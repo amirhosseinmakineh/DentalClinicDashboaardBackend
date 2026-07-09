@@ -4,6 +4,7 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
+using DentalDashboard.Utilities.Convertor;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -64,16 +65,21 @@ namespace DentalDashboard.ApplicationService.Services
 
                 string userName = Clean(cells[2].InnerText);
                 string phoneNumber = Clean(cells[3].InnerText);
+                string createAt = Clean(cells[9].InnerText);
+
+                DateTime createdAt;
+
+                DateTime.TryParse(createAt, out createdAt);
 
                 leads.Add(new LeadAssignment
                 {
                     UserName = userName,
                     PhoneNumber = phoneNumber,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = createdAt
                 });
-            }
 
-            return leads.ToArray();
+            }
+                return leads.ToArray();
         }
         private static string Clean(string value)
         {

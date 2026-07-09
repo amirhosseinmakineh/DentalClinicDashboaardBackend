@@ -322,14 +322,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("UserId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
-
-                    b.HasIndex("UserId1");
 
                     b.ToTable("PushSubscriptions", (string)null);
                 });
@@ -695,16 +690,10 @@ namespace DentalDashboard.Infrastracture.Migrations
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.PushSubscription", b =>
                 {
-                    b.HasOne("DentalDashboard.Domain.Models.User", null)
+                    b.HasOne("DentalDashboard.Domain.Models.User", "User")
                         .WithMany("PushSubscriptions")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DentalDashboard.Domain.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId1")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("User");

@@ -1,6 +1,7 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.IRepositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Services;
 
@@ -8,18 +9,18 @@ public class PickUpService : IPickupService
 {
     private readonly ILeadAssignmentRepository leadAssignmentRepository;
     private readonly IConsultantProfileRepository consultantProfileRepository;
-    private readonly ILeadAssignmentService leadAssignmentService;
+    private readonly IPushNotificationService pushNotificationService;
     private readonly IUnitOfWork unitOfWork;
 
     public PickUpService(
         ILeadAssignmentRepository leadAssignmentRepository,
         IConsultantProfileRepository consultantProfileRepository,
-        ILeadAssignmentService leadAssignmentService,
+        IPushNotificationService pushNotificationService,
         IUnitOfWork unitOfWork)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.consultantProfileRepository = consultantProfileRepository;
-        this.leadAssignmentService = leadAssignmentService;
+        this.pushNotificationService = pushNotificationService;
         this.unitOfWork = unitOfWork;
     }
 
@@ -68,9 +69,7 @@ public class PickUpService : IPickupService
 
         var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
 
-        await leadAssignmentService.NotifyRealtimeLeadTakenAsync(
-            leadAssignmentId,
-            consultantProfileId);
+        await NotifyRealtimeLeadTakenAsync(leadAssignmentId, consultantProfileId);
 
         return new PickupLeadResult
         {
@@ -79,5 +78,29 @@ public class PickUpService : IPickupService
             ConsultantProfileId = consultantProfileId,
             CallDeadlineAt = lead?.CallDeadlineAt
         };
+    }
+
+    private async Task NotifyRealtimeLeadTakenAsync(
+        long leadAssignmentId,
+        long pickedByConsultantProfileId)
+    {
+        var consultants = await consultantProfileRepository.GetAll()
+            .Where(x => !x.IsDeleted && x.IsCompleteProfile)
+            .ToListAsync();
+
+        foreach (var consultant in consultants)
+        {
+            await pushNotificationService.SendAsync(
+                consultant.UserId,
+                string.Empty,
+                string.Empty,
+                new Dictionary<string, string>
+                {
+                    ["type"] = "RealtimeLeadTaken",
+                    ["leadId"] = leadAssignmentId.ToString(),
+                    ["pickedByConsultantId"] = pickedByConsultantProfileId.ToString(),
+                    ["silent"] = "true"
+                });
+        }
     }
 }

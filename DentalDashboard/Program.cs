@@ -1,4 +1,6 @@
 using DentalDashboard.ApplicationService;
+using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.BackgroundServices;
 using DentalDashboard.Domain;
 using DentalDashboard.Infrastracture.Context;
@@ -88,6 +90,7 @@ builder.Services.AddScoped<DentalDashboard.Services.UsersExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.LeadsExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.ConsultantsExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.ReservationsExportService>();
+builder.Services.AddScoped<ILeadAssignmentLimitService, LeadAssignmentLimitService>();
 
 builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
 

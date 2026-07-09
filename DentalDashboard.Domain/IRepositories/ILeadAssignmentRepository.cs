@@ -1,6 +1,7 @@
 ﻿using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.IRepositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Domain.IRepositories
 {
@@ -20,5 +21,7 @@ namespace DentalDashboard.Domain.IRepositories
         Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId);
         Task<Dictionary<long, int>> GetDailyAssignedOfflineLeadCountsAsync(IEnumerable<long> consultantProfileIds, DateTime day);
         Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync();
+        Task<int> GetTodayPickupCountAsync(long consultantProfileId);
+        Task<bool> TryPickupLeadAsync(long leadAssignmentId,long consultantProfileId,CancellationToken cancellationToken);
     }
 }

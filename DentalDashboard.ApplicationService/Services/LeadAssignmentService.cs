@@ -366,52 +366,123 @@ namespace DentalDashboard.ApplicationService.Services
                 consultants.Count);
         }
 
-        public async Task AssignRealTimeLeadsAsync(IReadOnlyCollection<long>? excludedConsultantIds = null)
+        public async Task AssignRealTimeLeadsAsync(
+            IReadOnlyCollection<long>? excludedConsultantIds = null)
         {
+            // 1- مشاورهای آنلاین و آماده
+            var consultants = await consultantProfileRepository
+                .GetOnlineConsultantsReadyForRealTimeAsync();
 
-            await PromoteUnassignedOfflineLeadsToRealtimeAsync();
 
-            var consultants = await consultantProfileRepository.GetOnlineConsultantsReadyForRealTimeAsync();
             if (excludedConsultantIds is { Count: > 0 })
-            { 
+            {
                 var excluded = excludedConsultantIds.ToHashSet();
+
                 consultants = consultants
                     .Where(x => !excluded.Contains(x.Id))
                     .ToList();
             }
 
-            if (!consultants.Any()) 
+
+            if (!consultants.Any())
             {
                 logger.LogInformation(
-                    "AssignRealTimeLeadsAsync skipped: no online consultants ready (check IsOnline, pending offline/active realtime leads)");
+                    "Realtime dispatch skipped: no online consultants");
+
                 return;
             }
 
-            var leads = await leadAssignmentRepository.GetUnassignedRealTimeLeadsAsync(consultants.Count);
+
+            // 2- حذف مشاورهایی که سقف 10 Pickup روزانه را پر کرده‌اند
+            var availableConsultants = new List<ConsultantProfile>();
+
+            foreach (var consultant in consultants)
+            {
+                var pickupCount = await leadAssignmentRepository
+                    .GetTodayPickupCountAsync(consultant.Id);
+
+
+                if (pickupCount < 10)
+                {
+                    availableConsultants.Add(consultant);
+                }
+            }
+
+
+            if (!availableConsultants.Any())
+            {
+                logger.LogInformation(
+                    "Realtime dispatch skipped: no consultant capacity");
+
+                return;
+            }
+
+
+            // 3- گروه بندی بر اساس Score
+            var consultantGroups =
+                GroupConsultantsByScore(availableConsultants);
+
+
+            // 4- گرفتن لیدهایی که آماده Dispatch هستند
+            var leads = await leadAssignmentRepository
+                .GetUnassignedRealTimeLeadsAsync(1);
+
+
             if (!leads.Any())
             {
-                logger.LogInformation("AssignRealTimeLeadsAsync skipped: realtime queue is empty");
-                return; 
+                logger.LogInformation(
+                    "Realtime dispatch skipped: no pending realtime leads");
+
+                return;
             }
 
-            leadAssignmentStrategy.Assign(leads, consultants);
 
-            var assignedLeadTimes = leads
-                .Where(l => l.ConsultantProfileId.HasValue)
-                .GroupBy(l => l.ConsultantProfileId!.Value)
-                .ToDictionary(g => g.Key, g => g.First().AssignedAt ?? DateTime.Now);
-
-            foreach (var consultant in consultants.Where(x => assignedLeadTimes.ContainsKey(x.Id)))
+            foreach (var lead in leads)
             {
-                consultant.IsOnline = false;
-                consultant.LastOfflineAt = assignedLeadTimes[consultant.Id];
+                // اگر همه گروه‌ها تست شده باشند دیگر ارسال نکن
+                if (lead.DispatchLevel >= consultantGroups.Count)
+                    continue;
+
+
+                var targetGroup = consultantGroups[lead.DispatchLevel];
+
+
+                if (!targetGroup.Any())
+                {
+                    lead.DispatchLevel++;
+                    continue;
+                }
+
+
+                foreach (var consultant in targetGroup)
+                {
+                    await pushNotificationService.SendAsync(
+                        consultant.UserId,
+                        "لید جدید",
+                        "یک لید جدید برای دریافت وجود دارد",
+                        new Dictionary<string, string>
+                        {
+                            ["leadId"] = lead.Id.ToString(),
+                            ["type"] = "RealtimeLead"
+                        });
+                }
+
+
+                // رفتن برای گروه بعدی بعد از 10 ثانیه
+                lead.DispatchLevel++;
+
+                lead.LastDispatchAt = DateTime.UtcNow;
+
+                lead.NotificationSent = true;
             }
+
 
             await leadAssignmentRepository.SaveChange();
-            //await SendAssignedLeadNotificationsAsync();
+
+
             logger.LogInformation(
-                "AssignRealTimeLeadsAsync assigned {LeadCount} realtime leads",
-                leads.Count(l => l.ConsultantProfileId.HasValue));
+                "Realtime dispatch completed. Leads: {count}",
+                leads.Count);
         }
 
         public async Task<ExpireLeadRequeueResult> ExpireAndRequeueRealTimeLeadAsync(
@@ -611,6 +682,32 @@ namespace DentalDashboard.ApplicationService.Services
                         ["count"] = count.ToString(),
                     });
             }
+        }
+        private List<List<ConsultantProfile>> GroupConsultantsByScore(
+    List<ConsultantProfile> consultants)
+        {
+            return new List<List<ConsultantProfile>>
+    {
+        consultants
+            .Where(x => x.CurrentScore > 75)
+            .OrderByDescending(x => x.CurrentScore)
+            .ToList(),
+
+        consultants
+            .Where(x => x.CurrentScore > 50 && x.CurrentScore <= 75)
+            .OrderByDescending(x => x.CurrentScore)
+            .ToList(),
+
+        consultants
+            .Where(x => x.CurrentScore >= 25 && x.CurrentScore <= 50)
+            .OrderByDescending(x => x.CurrentScore)
+            .ToList(),
+
+        consultants
+            .Where(x => x.CurrentScore < 25)
+            .OrderByDescending(x => x.CurrentScore)
+            .ToList()
+    };
         }
 
 

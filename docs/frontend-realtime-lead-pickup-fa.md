@@ -13,10 +13,6 @@ cursor/realtime-lead-pickup-alerts-fca0
 مسیر لوکال شما:
 `D:\DentalDashboard\DentalDashboardFront\drsaeedMoghadamFront`
 
-## چرا `git switch` خطا داد؟
-
-برنچ فقط commit محلی بود و به GitHub push نشده بود.
-
 ## دستورات (PowerShell)
 
 ```powershell
@@ -26,21 +22,28 @@ git checkout main
 git pull origin main
 git checkout -b cursor/realtime-lead-pickup-alerts-fca0
 
-# اعمال patch از بکند (نسخه v2 با فیکس نوتیف):
+# اعمال patch از بکند (نسخه v3):
 git apply D:\DentalDashboard\DentalClinicDashboaardBackend\docs\patches\drsaeed-realtime-lead-pickup-frontend.patch
 
 git add -A
 git status
-git commit -m "Fix realtime and offline push notifications"
+git commit -m "Fix offline and realtime push notifications (v3)"
 git push -u origin cursor/realtime-lead-pickup-alerts-fca0
 ```
 
-## فیکس‌های نسخه v2
+## فیکس‌های نسخه v3
 
-1. مسیر `offline_leads` در service worker جدا و بدون تداخل با realtime
-2. لید آنلاین بدون چک API قبل از نمایش overlay (چک فقط هنگام کلیک برداریدش)
-3. خطای API `CanPickupLead` دیگر نوتیف را مخفی نمی‌کند
-4. `handleForegroundMessage` برای RealtimeLead مستقیماً overlay را باز می‌کند
+1. مسیر `offline_leads` در service worker دقیقاً مثل `main` برگردانده شد (inline، بدون refactor مشترک)
+2. هندلر foreground آفلاین از realtime جدا شد (`dispatchConsultantPushMessage`)
+3. `RealtimeLead` در service worker و overlay پشتیبانی می‌شود
+4. `SW_VERSION` به `2026-07-09-realtime-pickup-v3` تغییر کرد — بعد از deploy حتماً PWA را ببندید و دوباره باز کنید
+
+## بعد از deploy
+
+1. PWA را کامل ببندید (نه فقط refresh)
+2. دوباره باز کنید و یک‌بار «فعال‌سازی نوتیفیکیشن» را بزنید
+3. تست آفلاین: ثبت حضور → باید نوتیف آفلاین بیاید
+4. تست آنلاین: آنلاین شدن → dispatch در DB → باید نوتیف «برداریدش» بیاید
 
 ## لینک PR (بعد از push)
 

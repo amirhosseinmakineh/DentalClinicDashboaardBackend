@@ -351,12 +351,18 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.SaveChange();
 
+            var newlyAssignedCounts = leads
+                .Where(x => x.ConsultantProfileId.HasValue)
+                .GroupBy(x => x.ConsultantProfileId!.Value)
+                .ToDictionary(g => g.Key, g => g.Count());
+
             var updatedOfflineCounts = await leadAssignmentRepository
                 .GetPendingOfflineLeadCountsAsync(consultantIdsForAssignment);
 
 
             await SendAssignedOfflieLeadNotificationsAsync(
                 consultants,
+                newlyAssignedCounts,
                 updatedOfflineCounts);
 
 
@@ -688,20 +694,27 @@ namespace DentalDashboard.ApplicationService.Services
             return eventScore;
         }
 
-        private async Task SendAssignedOfflieLeadNotificationsAsync(IReadOnlyCollection<ConsultantProfile> consultants,IReadOnlyDictionary<long, int> offlineCounts)
+        private async Task SendAssignedOfflieLeadNotificationsAsync(
+            IReadOnlyCollection<ConsultantProfile> consultants,
+            IReadOnlyDictionary<long, int> newlyAssignedCounts,
+            IReadOnlyDictionary<long, int> offlineCounts)
         {
             foreach (var consultant in consultants)
             {
                 if (consultant.UserId == Guid.Empty)
                     continue;
 
+                var newlyAssigned = newlyAssignedCounts
+                    .GetValueOrDefault(consultant.Id);
+
+                if (newlyAssigned <= 0)
+                    continue;
 
                 var count = offlineCounts
                     .GetValueOrDefault(consultant.Id);
 
-
-                if (count == 0)
-                    continue;
+                if (count <= 0)
+                    count = newlyAssigned;
 
 
                 await pushNotificationService.SendAsync(

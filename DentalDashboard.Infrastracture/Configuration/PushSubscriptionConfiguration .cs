@@ -30,9 +30,10 @@ namespace DentalDashboard.Infrastracture.Configuration
                 .HasMaxLength(500);
 
 
-            builder.HasOne<User>()
+            builder.HasOne(x => x.User)
                 .WithMany(x => x.PushSubscriptions)
-                .HasForeignKey(x => x.UserId);
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }

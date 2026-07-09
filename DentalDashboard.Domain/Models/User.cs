@@ -7,6 +7,7 @@ namespace DentalDashboard.Domain.Models
         public User()
         {
             UserRoles = new HashSet<UserRole>();
+            PushSubscriptions = new HashSet<PushSubscription>();
         }
 
         public string FirstName { get; set; } = default!;

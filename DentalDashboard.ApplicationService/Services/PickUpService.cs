@@ -65,7 +65,7 @@ public class PickUpService : IPickupService
             consultant.LastOfflineAt = DateTime.UtcNow;
         }
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync();
 
         var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
 

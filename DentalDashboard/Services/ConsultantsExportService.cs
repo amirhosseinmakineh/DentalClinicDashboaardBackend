@@ -18,7 +18,7 @@ public class ConsultantsExportService
             .Where(x => !x.IsDeleted &&
                         x.User != null &&
                         x.User.UserRoles.Any(ur => ur.Role != null && ur.Role.RoleName == "Consultant"))
-            .OrderByDescending(x => x.CurrentScore).ThenBy(x => x.User!.LastName)
+            .OrderBy(x => x.User!.LastName).ThenBy(x => x.User!.FirstName)
             .ToListAsync(cancellationToken);
 
         var consultantIds = consultants.Select(x => x.Id).ToList();
@@ -53,7 +53,6 @@ public class ConsultantsExportService
                 "نام خانوادگی",
                 "موبایل",
                 "کد ملی",
-                "امتیاز فعلی",
                 "وضعیت آنلاین",
                 "وضعیت حضور",
                 "آخرین بازدید",
@@ -86,7 +85,6 @@ public class ConsultantsExportService
                 consultant.User?.LastName ?? string.Empty,
                 consultant.User?.PhoneNumber ?? string.Empty,
                 consultant.NationalCode,
-                consultant.CurrentScore.ToString(),
                 AdminReportPersianLabels.ToYesNo(consultant.IsOnline),
                 AdminReportPersianLabels.ToYesNo(consultant.IsAvailable),
                 consultant.User?.LastSeenAt.HasValue == true

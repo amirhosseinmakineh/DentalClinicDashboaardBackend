@@ -76,13 +76,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
         }
         private async Task<bool> HasRealTimeLeadBlockerAsync(long consultantProfileId, CancellationToken cancellationToken)
         {
-            return await leadAssignmentRepository.GetAll()
-                .AnyAsync(x => !x.IsDeleted &&
-                               x.ConsultantProfileId == consultantProfileId &&
-                               x.AssignmentType == DentalDashboard.Domain.Enums.LeadAssignmentType.OfflineQueue &&
-                               x.ReportSubmittedAt == null &&
-                               (x.LeadAssignmentState == LeadAssignmentState.New ||
-                                x.LeadAssignmentState == LeadAssignmentState.Assigned), cancellationToken);
+            return await leadAssignmentRepository.HasActiveRealTimeLeadAsync(consultantProfileId);
         }
 
     }

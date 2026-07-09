@@ -36,15 +36,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             if (profile.IsDeleted)
                 throw new InvalidOperationException("پروفایل مشاور حذف شده است");
 
-            var pendingOfflineLeadCount = await leadAssignmentRepository
-                .CountPendingOfflineLeadsAsync(profile.Id);
-
             var hasActiveRealTimeLead = await leadAssignmentRepository.HasActiveRealTimeLeadAsync(profile.Id);
             var isWorkingTime = leadDomainService.IsWorkingTime(DateTime.Now);
 
             var canGoOnline = profile.IsCompleteProfile &&
                               profile.IsAvailable &&
-                              pendingOfflineLeadCount == 0 &&
                               !hasActiveRealTimeLead &&
                               isWorkingTime;
 
@@ -55,13 +51,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 IsOnline = profile.IsOnline,
                 LastOnlineAt = profile.LastOnlineAt,
                 LastOfflineAt = profile.LastOfflineAt,
-                PendingOfflineLeadCount = pendingOfflineLeadCount,
-                CurrentScore = profile.CurrentScore,
                 CanGoOnline = canGoOnline,
                 OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(
                     profile.IsCompleteProfile,
                     profile.IsAvailable,
-                    pendingOfflineLeadCount,
                     hasActiveRealTimeLead,
                     isWorkingTime)
             };
@@ -70,7 +63,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
         private static string? ResolveOnlineStatusBlockReason(
             bool isCompleteProfile,
             bool isAvailable,
-            int pendingOfflineLeadCount,
             bool hasActiveRealTimeLead,
             bool isWorkingTime)
         {
@@ -82,9 +74,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
 
             if (!isAvailable)
                 return "ابتدا حضور خود را ثبت کنید";
-
-            if (pendingOfflineLeadCount > 0)
-                return "ابتدا لیدهای آفلاین خود را تعیین تکلیف کنید";
 
             if (hasActiveRealTimeLead)
                 return "ابتدا تکلیف لید لحظه‌ای قبلی را مشخص کنید";

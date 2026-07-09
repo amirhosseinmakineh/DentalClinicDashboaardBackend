@@ -11,23 +11,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
     public class SetAvailableCommandHandler : ICommandHandler<SetAvailableCommand>
     {
         private readonly IConsultantProfileRepository consultantProfileRepository;
-        private readonly ILeadAssignmentService leadAssignmentService;
         private readonly ILeadDomainService leadDomainService;
         private readonly IAttendanceService attendanceService;
 
         public SetAvailableCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
-            ILeadAssignmentService leadAssignmentService,
             ILeadDomainService leadDomainService,
             IAttendanceService attendanceService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
-            this.leadAssignmentService = leadAssignmentService;
             this.leadDomainService = leadDomainService;
             this.attendanceService = attendanceService;
         }
 
-        public async Task<Result> HandleAsync(SetAvailableCommand command,CancellationToken cancellationToken = default)
+        public async Task<Result> HandleAsync(SetAvailableCommand command, CancellationToken cancellationToken = default)
         {
             var profile = await consultantProfileRepository.GetAll()
                 .FirstOrDefaultAsync(x => x.Id == command.ProfileId, cancellationToken);
@@ -58,8 +55,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                     profile.Id,
                     DateTime.Now,
                     cancellationToken);
-
-                await leadAssignmentService.AssignOfflineLeadsToConsultantAsync(profile.Id);
 
                 return Result.Success("حضور شما ثبت شد");
             }

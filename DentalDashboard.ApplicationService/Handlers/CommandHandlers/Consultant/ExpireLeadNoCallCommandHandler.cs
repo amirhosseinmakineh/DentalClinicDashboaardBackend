@@ -37,7 +37,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 return Result<ExpireLeadNoCallResponse>.Failure("لید یافت نشد");
 
             var profile = await consultantProfileRepository.GetAll()
-                .Include(x => x.ScoreLogs)
                 .FirstOrDefaultAsync(x => x.Id == command.ConsultantProfileId);
             if (profile == null)
                 return Result<ExpireLeadNoCallResponse>.Failure("مشاوری یافت نشد");
@@ -68,16 +67,13 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 LeadAssignmentId = result.LeadAssignmentId,
                 ConsultantProfileId = result.ConsultantProfileId,
                 LeadAssignmentState = result.LeadAssignmentState,
-                DeductedScore = result.EventScore,
-                EventScore = result.EventScore,
-                CurrentScore = result.CurrentScore,
                 IsConsultantOnline = result.IsConsultantOnline,
                 WasRequeued = result.WasRequeued
             };
 
             return Result<ExpireLeadNoCallResponse>.Success(
                 response,
-                "مهلت تماس شما تمام شد، امتیاز کسر شد و لید برای مشاور آنلاین دیگر ارسال شد");
+                "مهلت تماس شما تمام شد و لید برای مشاور آنلاین دیگر ارسال شد");
         }
     }
 }

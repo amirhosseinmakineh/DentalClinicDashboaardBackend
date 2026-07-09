@@ -30,7 +30,6 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IPatientProfileRepository, PatientProfileRepository>();
         services.AddScoped<ILeadAssignmentRepository, LeadAssignmentRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
-        services.AddScoped<IScoreLogRepository, ScoreLogRepository>();
         services.AddScoped<IReservationRepository, ReservationRepository>();
         services.AddScoped<IUserPresenceLogRepository, UserPresenceLogRepository>();
         services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();

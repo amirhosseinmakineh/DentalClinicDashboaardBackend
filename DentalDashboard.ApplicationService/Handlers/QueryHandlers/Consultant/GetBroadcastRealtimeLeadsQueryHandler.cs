@@ -59,15 +59,6 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             };
         }
 
-        if (await leadAssignmentRepository.HasPendingOfflineLeadsAsync(profile.Id))
-        {
-            return new BroadcastRealtimeLeadsResponse
-            {
-                CanReceive = false,
-                BlockReason = "ابتدا لیدهای آفلاین بدون گزارش را تکمیل کنید",
-            };
-        }
-
         if (await leadAssignmentRepository.HasActiveRealTimeLeadAsync(profile.Id))
         {
             return new BroadcastRealtimeLeadsResponse

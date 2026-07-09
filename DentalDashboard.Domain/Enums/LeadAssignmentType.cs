@@ -2,8 +2,7 @@
 {
     public enum LeadAssignmentType
     {
-        RealTime = 1,    
-        OfflineQueue = 2,
+        RealTime = 1,
         ConsultantPatient = 3
     }
 }

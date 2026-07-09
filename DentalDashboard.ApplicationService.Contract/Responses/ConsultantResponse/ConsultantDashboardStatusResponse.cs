@@ -7,8 +7,6 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantRespon
         public bool IsOnline { get; init; }
         public DateTime? LastOnlineAt { get; init; }
         public DateTime? LastOfflineAt { get; init; }
-        public int PendingOfflineLeadCount { get; init; }
-        public int CurrentScore { get; init; }
         public bool CanGoOnline { get; init; }
         public string? OnlineStatusBlockReason { get; init; }
     }

@@ -1,4 +1,5 @@
-﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
+﻿using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
@@ -106,6 +107,25 @@ namespace DentalDashboard.Controllers
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
         }
+
+        [Authorize]
+        [HttpGet("CanPickupLead")]
+        public async Task<IActionResult> CanPickupLead(
+            [FromQuery] long profileId,
+            [FromServices] ILeadAssignmentLimitService leadAssignmentLimitService)
+        {
+            var canPickup = await leadAssignmentLimitService.CanPickupLeadAsync(profileId);
+
+            return Ok(Result<object>.Success(new
+            {
+                canPickup,
+                dailyLimit = 10,
+                message = canPickup
+                    ? null
+                    : "سقف روزانه ۱۰ لید پر شده است. امروز دیگر نمی‌توانید لید بردارید."
+            }));
+        }
+
         [HttpPost("SubmitLeadCallReport")]
         public async Task<IActionResult> SubmitLeadCallReport(SubmitLeadCallReportCommand command)
         {

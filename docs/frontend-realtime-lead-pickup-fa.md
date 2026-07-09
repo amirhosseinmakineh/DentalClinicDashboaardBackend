@@ -26,14 +26,21 @@ git checkout main
 git pull origin main
 git checkout -b cursor/realtime-lead-pickup-alerts-fca0
 
-# اگر patch را از بکند دارید:
+# اعمال patch از بکند (نسخه v2 با فیکس نوتیف):
 git apply D:\DentalDashboard\DentalClinicDashboaardBackend\docs\patches\drsaeed-realtime-lead-pickup-frontend.patch
 
 git add -A
 git status
-git commit -m "Implement realtime lead pickup alerts with Web Push overlay"
+git commit -m "Fix realtime and offline push notifications"
 git push -u origin cursor/realtime-lead-pickup-alerts-fca0
 ```
+
+## فیکس‌های نسخه v2
+
+1. مسیر `offline_leads` در service worker جدا و بدون تداخل با realtime
+2. لید آنلاین بدون چک API قبل از نمایش overlay (چک فقط هنگام کلیک برداریدش)
+3. خطای API `CanPickupLead` دیگر نوتیف را مخفی نمی‌کند
+4. `handleForegroundMessage` برای RealtimeLead مستقیماً overlay را باز می‌کند
 
 ## لینک PR (بعد از push)
 

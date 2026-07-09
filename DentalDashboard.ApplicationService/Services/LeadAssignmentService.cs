@@ -485,6 +485,35 @@ namespace DentalDashboard.ApplicationService.Services
                 leads.Count);
         }
 
+        public async Task NotifyRealtimeLeadTakenAsync(
+            long leadAssignmentId,
+            long pickedByConsultantProfileId)
+        {
+            var consultants = await consultantProfileRepository.GetAll()
+                .Where(x => !x.IsDeleted && x.IsCompleteProfile)
+                .ToListAsync();
+
+            foreach (var consultant in consultants)
+            {
+                await pushNotificationService.SendAsync(
+                    consultant.UserId,
+                    string.Empty,
+                    string.Empty,
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "RealtimeLeadTaken",
+                        ["leadId"] = leadAssignmentId.ToString(),
+                        ["pickedByConsultantId"] = pickedByConsultantProfileId.ToString(),
+                        ["silent"] = "true"
+                    });
+            }
+
+            logger.LogInformation(
+                "Realtime lead taken notification sent for lead {LeadId} to {ConsultantCount} consultants",
+                leadAssignmentId,
+                consultants.Count);
+        }
+
         public async Task<ExpireLeadRequeueResult> ExpireAndRequeueRealTimeLeadAsync(
             LeadAssignment lead,
             ConsultantProfile consultant)
@@ -593,6 +622,9 @@ namespace DentalDashboard.ApplicationService.Services
             lead.CallDeadlineAt = null;
             lead.CallInitiatedAt = null;
             lead.NotificationSent = false;
+            lead.PickUp = false;
+            lead.DispatchLevel = 0;
+            lead.LastDispatchAt = null;
 
             if (leadDomainService.IsWorkingTime(now))
             {

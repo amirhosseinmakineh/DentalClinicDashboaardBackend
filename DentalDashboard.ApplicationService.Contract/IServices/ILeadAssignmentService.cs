@@ -16,5 +16,6 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
         Task<ExpireLeadRequeueResult> ExpireAndRequeueRealTimeLeadAsync(
             LeadAssignment lead,
             ConsultantProfile consultant);
+        Task NotifyRealtimeLeadTakenAsync(long leadAssignmentId, long pickedByConsultantProfileId);
     }
 }

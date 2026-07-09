@@ -14,18 +14,12 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public Task<List<ConsultantProfile>> GetAvailableConsultantsAsync()
         {
-            return GetAvailableConsultantsForOfflineAssignmentAsync();
-        }
-
-        public Task<List<ConsultantProfile>> GetAvailableConsultantsForOfflineAssignmentAsync()
-        {
             return GetAll()
                 .Where(x => !x.IsDeleted &&
                             x.IsCompleteProfile &&
                             x.IsAvailable &&
                             !x.IsOnline)
-                .OrderByDescending(x => x.CurrentScore)
-                .ThenBy(x => x.Id)
+                .OrderBy(x => x.Id)
                 .ToListAsync();
         }
 
@@ -36,15 +30,10 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.IsCompleteProfile &&
                             x.IsAvailable &&
                             x.IsOnline &&
-                            !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                                                        l.ReportSubmittedAt == null &&
-                                                        (l.LeadAssignmentState == LeadAssignmentState.New ||
-                                                         l.LeadAssignmentState == LeadAssignmentState.Assigned)) &&
                             !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.RealTime &&
                                                         l.LeadAssignmentState == LeadAssignmentState.Assigned &&
                                                         l.ReportSubmittedAt == null))
-                .OrderByDescending(x => x.CurrentScore)
-                .ThenBy(x => x.Id)
+                .OrderBy(x => x.Id)
                 .ToListAsync();
         }
 

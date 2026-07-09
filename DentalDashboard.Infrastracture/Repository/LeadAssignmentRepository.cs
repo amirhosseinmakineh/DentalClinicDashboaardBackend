@@ -13,53 +13,6 @@ namespace DentalDashboard.Infrastracture.Repository
         {
         }
 
-        public Task<List<LeadAssignment>> GetPendingOfflineQueueAsync()
-        {
-            return GetPendingOfflineLeadsAsync(100);
-        }
-        private static (DateTime Start, DateTime End) GetOfflineNightRange()
-        {
-            var now = DateTime.Now;
-
-            var start = now.Date.AddDays(-1).AddHours(21);
-            var end = now.Date.AddHours(9);               
-
-            return (start, end);
-        }
-
-        public async Task<List<LeadAssignment>> GetPendingOfflineLeadsAsync(
-        int take)
-        {
-            //var (start, end) = GetOfflineNightRange();
-
-            //return await GetAll()
-            //    .Where(x =>
-            //        !x.IsDeleted &&
-            //        x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-            //        x.ConsultantProfileId == null &&
-            //        x.ReportSubmittedAt == null &&
-            //        x.LeadAssignmentState == LeadAssignmentState.New
-            //        //x.CreatedAt >= start &&
-            //        //x.CreatedAt < end)
-            //    .OrderBy(x => x.CreatedAt)
-            //    .ThenBy(x => x.Id)
-            //    .Take(take)
-            //    .ToListAsync();
-
-            return await GetAll()
-                .Where(x =>
-                    !x.IsDeleted &&
-                    x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                    x.ConsultantProfileId == null &&
-                    x.ReportSubmittedAt == null &&
-                    x.LeadAssignmentState == LeadAssignmentState.New)
-                .OrderBy(x => x.CreatedAt)
-                .ThenBy(x => x.Id)
-                .Take(take)
-                .ToListAsync();
-
-        }
-
         public Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take)
         {
             return GetAll()
@@ -67,7 +20,7 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.AssignmentType == LeadAssignmentType.RealTime &&
                             x.ConsultantProfileId == null &&
                             x.ReportSubmittedAt == null &&
-                            x.LeadAssignmentState == LeadAssignmentState.New && 
+                            x.LeadAssignmentState == LeadAssignmentState.New &&
                             x.PickUp == false)
                 .OrderBy(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
@@ -75,73 +28,6 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ToListAsync();
         }
 
-        public Task<bool> HasPendingOfflineLeadsAsync(long consultantProfileId)
-        {
-            return PendingOfflineLeadsForConsultant(consultantProfileId).AnyAsync();
-        }
-
-        public Task<int> CountPendingOfflineLeadsAsync(long consultantProfileId)
-        {
-            return PendingOfflineLeadsForConsultant(consultantProfileId).CountAsync();
-        }
-
-        public async Task<Dictionary<long, int>> GetPendingOfflineLeadCountsAsync(
-      IEnumerable<long> consultantProfileIds)
-        {
-            var ids = consultantProfileIds.ToHashSet();
-
-            if (!ids.Any())
-                return new Dictionary<long, int>();
-
-            //var (start, end) = GetOfflineNightRange();
-
-            //return await PendingOfflineLeadsQuery()
-            //    .Where(x =>
-            //        x.ConsultantProfileId.HasValue &&
-            //        ids.Contains(x.ConsultantProfileId.Value) &&
-            //        //x.CreatedAt >= start &&
-            //        //x.CreatedAt < end)
-            //    .GroupBy(x => x.ConsultantProfileId!.Value)
-            //    .Select(g => new
-            //    {
-            //        ConsultantProfileId = g.Key,
-            //        Count = g.Count()
-            //    })
-            //    .ToDictionaryAsync(
-            //        x => x.ConsultantProfileId,
-            //        x => x.Count);
-
-            return await PendingOfflineLeadsQuery()
-                .Where(x =>
-                    x.ConsultantProfileId.HasValue &&
-                    ids.Contains(x.ConsultantProfileId.Value))
-                .GroupBy(x => x.ConsultantProfileId!.Value)
-                .Select(g => new
-                {
-                    ConsultantProfileId = g.Key,
-                    Count = g.Count()
-                })
-                .ToDictionaryAsync(
-                    x => x.ConsultantProfileId,
-                    x => x.Count);
-        }
-
-        private IQueryable<LeadAssignment> PendingOfflineLeadsForConsultant(long consultantProfileId)
-        {
-            return PendingOfflineLeadsQuery()
-                .Where(x => x.ConsultantProfileId == consultantProfileId);
-        }
-
-        private IQueryable<LeadAssignment> PendingOfflineLeadsQuery()
-        {
-            return GetAll()
-                .Where(x => !x.IsDeleted &&
-                            x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                            x.ReportSubmittedAt == null &&
-                            (x.LeadAssignmentState == LeadAssignmentState.New ||
-                             x.LeadAssignmentState == LeadAssignmentState.Assigned));
-        }
-        
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
         {
             return GetAll()
@@ -156,7 +42,6 @@ namespace DentalDashboard.Infrastracture.Repository
         {
             return GetAll()
                 .Include(x => x.ConsultantProfile!)
-                .ThenInclude(x => x.ScoreLogs)
                 .Where(x => !x.IsDeleted &&
                             x.AssignmentType == LeadAssignmentType.RealTime &&
                             x.RequiresThreeMinuteCall &&
@@ -168,7 +53,6 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ToListAsync();
         }
 
-
         public Task<int> CountUnassignedRealTimeLeadsAsync()
         {
             return GetAll()
@@ -177,20 +61,6 @@ namespace DentalDashboard.Infrastracture.Repository
                                  x.ConsultantProfileId == null &&
                                  x.ReportSubmittedAt == null &&
                                  x.LeadAssignmentState == LeadAssignmentState.New);
-        }
-
-        public async Task<HashSet<long>> GetConsultantIdsWithPendingOfflineLeadsAsync(IEnumerable<long> consultantProfileIds)
-        {
-            var ids = consultantProfileIds.ToHashSet();
-            if (!ids.Any())
-                return new HashSet<long>();
-
-            return (await PendingOfflineLeadsQuery()
-                    .Where(x => x.ConsultantProfileId.HasValue && ids.Contains(x.ConsultantProfileId.Value))
-                    .Select(x => x.ConsultantProfileId!.Value)
-                    .Distinct()
-                    .ToListAsync())
-                .ToHashSet();
         }
 
         public async Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers)
@@ -212,35 +82,13 @@ namespace DentalDashboard.Infrastracture.Repository
                 .FirstOrDefaultAsync(x => !x.IsDeleted && x.Id == leadAssignmentId && x.ConsultantProfileId == consultantProfileId);
         }
 
-        public async Task<Dictionary<long, int>> GetDailyAssignedOfflineLeadCountsAsync(IEnumerable<long> consultantProfileIds, DateTime day)
-        {
-            var ids = consultantProfileIds.ToHashSet();
-            if (!ids.Any())
-                return new Dictionary<long, int>();
-
-            var startOfDay = day.Date;
-            var endOfDay = startOfDay.AddDays(1);
-
-            return await GetAll()
-                .Where(x => !x.IsDeleted &&
-                                x.ConsultantProfileId.HasValue &&
-                            ids.Contains(x.ConsultantProfileId.Value) &&
-                            x.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                            x.AssignedAt.HasValue &&
-                            x.AssignedAt.Value >= startOfDay &&
-                            x.AssignedAt.Value < endOfDay)
-                .GroupBy(x => x.ConsultantProfileId!.Value)
-                .Select(g => new { ConsultantProfileId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.ConsultantProfileId, x => x.Count);
-        }
-
         public Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync()
         {
             return GetAll()
                 .Include(x => x.ConsultantProfile)
                 .ThenInclude(x => x.User)
                 .Where(x => !x.IsDeleted &&
-                                x.ConsultantProfileId.HasValue &&
+                            x.ConsultantProfileId.HasValue &&
                             !x.NotificationSent &&
                             x.LeadAssignmentState == LeadAssignmentState.Assigned)
                 .OrderBy(x => x.AssignedAt)
@@ -261,6 +109,7 @@ namespace DentalDashboard.Infrastracture.Repository
                     x.AssignedAt >= today &&
                     x.AssignedAt < tomorrow);
         }
+
         public async Task<bool> TryPickupLeadAsync(
             long leadAssignmentId,
             long consultantProfileId,
@@ -279,23 +128,19 @@ namespace DentalDashboard.Infrastracture.Repository
         AND PickUp = 0
     ";
 
-
             var affectedRows = await context.Database
                 .ExecuteSqlRawAsync(
                     sql,
                     new SqlParameter(
                         "@consultantProfileId",
                         consultantProfileId),
-
                     new SqlParameter(
                         "@leadAssignmentId",
                         leadAssignmentId),
-
                     new SqlParameter(
                         "@assignedState",
                         (int)LeadAssignmentState.Assigned)
                 );
-
 
             return affectedRows == 1;
         }

@@ -28,10 +28,8 @@ namespace DentalDashboard.BackgroundServices
                     "ReconcileLeadStates",
                     () => leadAssignmentService.ReconcileMisclassifiedLeadStatesAsync(),
                     stoppingToken);
-                await RunStepAsync("AssignOfflineLeads", () => leadAssignmentService.AssignOfflineLeadsAsync(), stoppingToken);
                 await RunStepAsync("AssignRealTimeLeads", () => leadAssignmentService.AssignRealTimeLeadsAsync(), stoppingToken);
                 await RunStepAsync("ExpireOverdueRealTimeLeads", () => leadAssignmentService.ExpireOverdueRealTimeLeadsAsync(), stoppingToken);
-                await RunStepAsync("EnforceNightShiftClosure", () => leadAssignmentService.EnforceNightShiftClosureAsync(), stoppingToken);
 
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }

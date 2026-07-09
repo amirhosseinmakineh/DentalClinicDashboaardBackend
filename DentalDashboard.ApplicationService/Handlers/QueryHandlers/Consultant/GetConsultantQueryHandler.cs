@@ -48,7 +48,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             var totalCount = await baseQuery.CountAsync(cancellationToken);
 
             var consultants = await baseQuery
-                .OrderByDescending(u => u.ConsultantProfile.CurrentScore)
+                .OrderBy(u => u.LastName).ThenBy(u => u.FirstName)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(u => new ConsultantResponse

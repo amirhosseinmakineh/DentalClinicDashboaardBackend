@@ -51,7 +51,6 @@ public static class AdminReportPersianLabels
     public static string ToPersian(this LeadAssignmentType type) => type switch
     {
         LeadAssignmentType.RealTime => "آنی",
-        LeadAssignmentType.OfflineQueue => "صف آفلاین",
         LeadAssignmentType.ConsultantPatient => "بیمار مشاور",
         _ => "نامشخص"
     };

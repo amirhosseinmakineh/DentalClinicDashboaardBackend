@@ -28,7 +28,7 @@ public static class AdminReportPersianLabels
         LeadAssignmentState.New => "جدید",
         LeadAssignmentState.Assigned => "تخصیص‌یافته",
         LeadAssignmentState.Contacted => "تماس گرفته شده",
-        LeadAssignmentState.Pending => "در انتظار",
+        LeadAssignmentState.Pending => "پیگیری",
         LeadAssignmentState.Converted => "تبدیل شده",
         LeadAssignmentState.Expired => "منقضی شده",
         LeadAssignmentState.Rejected => "رد شده",

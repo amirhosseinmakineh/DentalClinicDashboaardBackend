@@ -152,6 +152,57 @@ namespace DentalDashboard.ApplicationService.Services
                 changed = true;
             }
 
+            var pendingWithoutReport = await leadAssignmentRepository.GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.LeadAssignmentState == LeadAssignmentState.Pending &&
+                            x.ReportSubmittedAt == null)
+                .ToListAsync();
+
+            foreach (var lead in pendingWithoutReport)
+            {
+                lead.LeadAssignmentState = lead.ConsultantProfileId.HasValue
+                    ? LeadAssignmentState.Assigned
+                    : LeadAssignmentState.New;
+                lead.UpdatedAt = now;
+                changed = true;
+            }
+
+            var followUpContactedOfflineLeads = await leadAssignmentRepository.GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                            x.ReportSubmittedAt != null &&
+                            x.LeadAssignmentState == LeadAssignmentState.Contacted &&
+                            x.CallResult != null &&
+                            (x.CallResult == LeadCallResult.NoAnswer ||
+                             x.CallResult == LeadCallResult.NeedFollowUp ||
+                             x.CallResult == LeadCallResult.Busy ||
+                             x.CallResult == LeadCallResult.PatientHungUp))
+                .ToListAsync();
+
+            foreach (var lead in followUpContactedOfflineLeads)
+            {
+                lead.LeadAssignmentState = LeadAssignmentState.Pending;
+                lead.UpdatedAt = now;
+                changed = true;
+            }
+
+            var rejectedContactedOfflineLeads = await leadAssignmentRepository.GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.OfflineQueue &&
+                            x.ReportSubmittedAt != null &&
+                            x.LeadAssignmentState == LeadAssignmentState.Contacted &&
+                            x.CallResult != null &&
+                            (x.CallResult == LeadCallResult.Rejected ||
+                             x.CallResult == LeadCallResult.WrongNumber))
+                .ToListAsync();
+
+            foreach (var lead in rejectedContactedOfflineLeads)
+            {
+                lead.LeadAssignmentState = LeadAssignmentState.Rejected;
+                lead.UpdatedAt = now;
+                changed = true;
+            }
+
             if (!leadDomainService.IsWorkingTime(now))
             {
                 var unassignedRealtimeLeads = await leadAssignmentRepository.GetAll()
@@ -159,8 +210,7 @@ namespace DentalDashboard.ApplicationService.Services
                                 x.AssignmentType == LeadAssignmentType.RealTime &&
                                 x.ConsultantProfileId == null &&
                                 x.ReportSubmittedAt == null &&
-                                (x.LeadAssignmentState == LeadAssignmentState.New ||
-                                 x.LeadAssignmentState == LeadAssignmentState.Pending))
+                                x.LeadAssignmentState == LeadAssignmentState.New)
                     .ToListAsync();
 
                 foreach (var lead in unassignedRealtimeLeads)
@@ -186,8 +236,7 @@ namespace DentalDashboard.ApplicationService.Services
                             x.AssignmentType == LeadAssignmentType.OfflineQueue &&
                             x.ConsultantProfileId == null &&
                             x.ReportSubmittedAt == null &&
-                            (x.LeadAssignmentState == LeadAssignmentState.New ||
-                             x.LeadAssignmentState == LeadAssignmentState.Pending))
+                            x.LeadAssignmentState == LeadAssignmentState.New)
                 .ToListAsync();
 
             if (!leads.Any())

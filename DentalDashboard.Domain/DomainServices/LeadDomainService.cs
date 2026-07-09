@@ -1,7 +1,5 @@
-﻿using DentalDashboard.Domain.Enums;
-using DentalDashboard.Domain.IDomainService;
+﻿using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.Domain.DomainServices
 {
@@ -10,7 +8,7 @@ namespace DentalDashboard.Domain.DomainServices
         private static readonly TimeSpan WorkDayStart = TimeSpan.FromHours(9);
         private static readonly TimeSpan WorkDayEnd = TimeSpan.FromHours(21);
 
-        public IEnumerable<LeadAssignment> GetNewLeads(IEnumerable<LeadAssignment> oldNumbers,IEnumerable<LeadAssignment> newNumbers)
+        public IEnumerable<LeadAssignment> GetNewLeads(IEnumerable<LeadAssignment> oldNumbers, IEnumerable<LeadAssignment> newNumbers)
         {
             var oldPhoneNumbers = oldNumbers
                 .Select(x => x.PhoneNumber)
@@ -18,13 +16,6 @@ namespace DentalDashboard.Domain.DomainServices
 
             return newNumbers
                 .Where(x => !oldPhoneNumbers.Contains(x.PhoneNumber));
-        }
-
-        public LeadAssignmentType DetermineAssignmentType(DateTime now, bool hasOnlineConsultant)
-        {
-            return IsWorkingTime(now)
-                ? LeadAssignmentType.RealTime
-                : LeadAssignmentType.OfflineQueue;
         }
 
         public bool IsWorkingTime(DateTime now)

@@ -8,7 +8,6 @@ namespace DentalDashboard.Infrastracture.Configuration
     {
         public void Configure(EntityTypeBuilder<ConsultantProfile> builder)
         {
-            builder.HasIndex(x => x.CurrentScore);
         }
     }
 }

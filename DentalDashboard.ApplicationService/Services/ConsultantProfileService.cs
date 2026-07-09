@@ -1,5 +1,4 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;
@@ -10,16 +9,13 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly IConsultantProfileRepository repository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
-        private readonly ILeadAssignmentService leadAssignmentService;
 
         public ConsultantProfileService(
             IConsultantProfileRepository repository,
-            ILeadAssignmentRepository leadAssignmentRepository,
-            ILeadAssignmentService leadAssignmentService)
+            ILeadAssignmentRepository leadAssignmentRepository)
         {
             this.repository = repository;
             this.leadAssignmentRepository = leadAssignmentRepository;
-            this.leadAssignmentService = leadAssignmentService;
         }
 
         public async Task<long?> EnsureProfileExistsAsync(Guid userId)
@@ -78,13 +74,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (isOnline)
             {
-                var hasPendingOfflineLeads =
-                    await leadAssignmentRepository
-                        .HasPendingOfflineLeadsAsync(consultantProfileId);
-
-                if (hasPendingOfflineLeads)
-                    throw new InvalidOperationException("ابتدا لیدهای آفلاین خود را بررسی کنید.");
-
                 var hasActiveRealTimeLead =
                     await leadAssignmentRepository
                         .HasActiveRealTimeLeadAsync(consultantProfileId);
@@ -99,16 +88,9 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 consultant.IsOnline = false;
                 consultant.LastOfflineAt = DateTime.Now;
-
-                await leadAssignmentService.AssignOfflineLeadsToConsultantAsync(consultantProfileId);
             }
 
             await repository.SaveChange();
-        }
-
-        public Task AssignOfflineQueueAsync()
-        {
-            return leadAssignmentService.AssignOfflineLeadsAsync();
         }
 
         public async Task SetPresentStatusAsync(long consultantProfileId, bool isPresent)
@@ -128,8 +110,6 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 consultant.IsAvailable = true;
                 consultant.WorkStartTime = DateTime.Now.TimeOfDay;
-
-                await leadAssignmentService.AssignOfflineLeadsToConsultantAsync(consultantProfileId);
             }
             else
             {

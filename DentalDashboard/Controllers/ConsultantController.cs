@@ -161,6 +161,14 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpGet("GetBroadcastRealtimeLeads")]
+        public async Task<IActionResult> GetBroadcastRealtimeLeads(
+            [FromQuery] GetBroadcastRealtimeLeadsQuery query)
+        {
+            var result = await queryDispatcher.DispatchAsync(query);
+            return Ok(Result<object>.Success(result));
+        }
+
         [HttpPost("CreateConsultantPatientLead")]
         public async Task<IActionResult> CreateConsultantPatientLead(AddConsultantPatientLeadCommand command)
         {

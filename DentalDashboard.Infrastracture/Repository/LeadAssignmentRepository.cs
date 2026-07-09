@@ -24,9 +24,8 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.AssignmentType == LeadAssignmentType.OfflineQueue &&
                             x.ConsultantProfileId == null &&
                             x.ReportSubmittedAt == null &&
-                            (x.LeadAssignmentState == LeadAssignmentState.New ||
-                             x.LeadAssignmentState == LeadAssignmentState.Pending))
-                .OrderBy(x => x.CreatedAt)
+                            (x.LeadAssignmentState == LeadAssignmentState.New))
+                .OrderByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)
                 .ToListAsync();

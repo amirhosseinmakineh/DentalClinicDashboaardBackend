@@ -39,6 +39,7 @@ namespace DentalDashboard.Domain.Models
 
         public ICollection<UserRole> UserRoles { get; set; }
         public ICollection<ScoreLog> ScoreLogs { get; set; }
+        public ICollection<PushSubscription> PushSubscriptions { get; set; }
 
 
         #endregion

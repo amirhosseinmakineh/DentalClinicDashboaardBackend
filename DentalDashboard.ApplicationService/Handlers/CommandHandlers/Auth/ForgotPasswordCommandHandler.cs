@@ -61,23 +61,23 @@ public class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswordComman
         userRepository.Update(user);
         await userRepository.SaveChange();
 
-        var pushSent = await pushNotificationService.SendAsync(
-            user.Id,
-            PasswordChangedNotificationTitle,
-            PasswordChangedNotificationBody,
-            new Dictionary<string, string>
-            {
-                ["type"] = "password_changed",
-                ["phoneNumber"] = user.PhoneNumber
-            },
-            cancellationToken);
+        //var pushSent = await pushNotificationService.SendAsync(
+        //    user.Id,
+        //    PasswordChangedNotificationTitle,
+        //    PasswordChangedNotificationBody,
+        //    new Dictionary<string, string>
+        //    {
+        //        ["type"] = "password_changed",
+        //        ["phoneNumber"] = user.PhoneNumber
+        //    },
+        //    cancellationToken);
 
-        if (!pushSent)
-        {
-            logger.LogWarning(
-                "Password-changed push was not delivered for user {UserId}. Ensure the user logged in on this device, granted notification permission, and Web Push VAPID keys are configured.",
-                user.Id);
-        }
+        //if (!pushSent)
+        //{
+        //    logger.LogWarning(
+        //        "Password-changed push was not delivered for user {UserId}. Ensure the user logged in on this device, granted notification permission, and Web Push VAPID keys are configured.",
+        //        user.Id);
+        //}
 
         return Result<ForgotPasswordResponse>.Success(
             new ForgotPasswordResponse { UserId = user.Id },

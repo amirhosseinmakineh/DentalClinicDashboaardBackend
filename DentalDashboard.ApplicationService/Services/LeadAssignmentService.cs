@@ -13,6 +13,7 @@ namespace DentalDashboard.ApplicationService.Services
     public class LeadAssignmentService : ILeadAssignmentService
     {
         private readonly HttpClient httpClient;
+        private static readonly TimeSpan RealtimeLeadRedispatchInterval = TimeSpan.FromSeconds(10);
         private const string url = "https://landing.yektanet.com/form/report/vSjrtffitGUytcOHgpLvEzttHcMQiELTANXzyAxTIywCuhjUaBzbMSTNFpZpxKuv";
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadDomainService leadDomainService;
@@ -222,13 +223,14 @@ namespace DentalDashboard.ApplicationService.Services
 
 
             var leads = await leadAssignmentRepository
-                .GetRealtimeLeadsForDispatchAsync(1, TimeSpan.FromSeconds(10));
+                .GetRealtimeLeadsForDispatchAsync(1, RealtimeLeadRedispatchInterval);
 
             if (!leads.Any())
             {
                 logger.LogInformation("Realtime dispatch skipped: no pending realtime leads");
                 return;
             }
+
             foreach (var consultant in consultants)
             {
                 if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
@@ -243,18 +245,10 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var lead in leads)
             {
-                foreach (var consultant in availableConsultants)
-                {
-                    await pushNotificationService.SendAsync(
-                        consultant.UserId,
-                        "لید جدید",
-                        "یک لید جدید برای دریافت وجود دارد",
-                        new Dictionary<string, string>
-                        {
-                            ["leadId"] = lead.Id.ToString(),
-                            ["type"] = "RealtimeLead"
-                        });
-                }
+                var isReminder = lead.NotificationSent &&
+                                 lead.LastDispatchAt.HasValue;
+
+                await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
 
                 lead.NotificationSent = true;
                 lead.LastDispatchAt = DateTime.UtcNow;
@@ -265,6 +259,58 @@ namespace DentalDashboard.ApplicationService.Services
             logger.LogInformation(
                 "Realtime dispatch completed. Leads: {count}",
                 leads.Count);
+        }
+
+        private async Task NotifyConsultantsForRealtimeLeadAsync(
+            LeadAssignment lead,
+            IReadOnlyList<ConsultantProfile> consultants,
+            bool isReminder = false)
+        {
+            var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
+
+            foreach (var consultant in consultants)
+            {
+                await pushNotificationService.SendAsync(
+                    consultant.UserId,
+                    title,
+                    body,
+                    new Dictionary<string, string>
+                    {
+                        ["leadId"] = lead.Id.ToString(),
+                        ["type"] = "RealtimeLead",
+                        ["userName"] = lead.UserName ?? string.Empty,
+                        ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
+                        ["isReminder"] = isReminder ? "true" : "false",
+                    });
+            }
+
+            logger.LogInformation(
+                isReminder
+                    ? "Realtime lead reminder sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants"
+                    : "Realtime lead notification sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants",
+                lead.Id,
+                lead.UserName,
+                lead.PhoneNumber,
+                consultants.Count);
+        }
+
+        private static (string Title, string Body) BuildRealtimeLeadNotificationContent(
+            LeadAssignment lead,
+            bool isReminder)
+        {
+            var name = string.IsNullOrWhiteSpace(lead.UserName)
+                ? "نامشخص"
+                : lead.UserName.Trim();
+            var phone = string.IsNullOrWhiteSpace(lead.PhoneNumber)
+                ? "نامشخص"
+                : lead.PhoneNumber.Trim();
+
+            var title = isReminder
+                ? $"یادآوری لید: {name}"
+                : $"لید جدید: {name}";
+            var body = $"شماره تماس: {phone} — جهت دریافت روی اعلان کلیک کنید.";
+
+            return (title, body);
         }
 
         public async Task NotifyRealtimeLeadTakenAsync(

@@ -220,6 +220,15 @@ namespace DentalDashboard.ApplicationService.Services
 
             var availableConsultants = new List<ConsultantProfile>();
 
+
+            var leads = await leadAssignmentRepository
+                .GetRealtimeLeadsForDispatchAsync(1, TimeSpan.FromSeconds(10));
+
+            if (!leads.Any())
+            {
+                logger.LogInformation("Realtime dispatch skipped: no pending realtime leads");
+                return;
+            }
             foreach (var consultant in consultants)
             {
                 if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
@@ -229,15 +238,6 @@ namespace DentalDashboard.ApplicationService.Services
             if (!availableConsultants.Any())
             {
                 logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
-                return;
-            }
-
-            var leads = await leadAssignmentRepository
-                .GetRealtimeLeadsForDispatchAsync(1, TimeSpan.FromSeconds(10));
-
-            if (!leads.Any())
-            {
-                logger.LogInformation("Realtime dispatch skipped: no pending realtime leads");
                 return;
             }
 

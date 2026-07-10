@@ -4,6 +4,7 @@ public sealed class BroadcastRealtimeLeadItemResponse
 {
     public long LeadAssignmentId { get; init; }
     public string? UserName { get; init; }
+    public string? PhoneNumber { get; init; }
     public DateTime CreatedAt { get; init; }
 }
 

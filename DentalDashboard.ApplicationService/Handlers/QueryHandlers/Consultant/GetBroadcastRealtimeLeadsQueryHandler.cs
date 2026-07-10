@@ -93,6 +93,7 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             {
                 LeadAssignmentId = x.Id,
                 UserName = x.UserName,
+                PhoneNumber = x.PhoneNumber,
                 CreatedAt = x.CreatedAt,
             })
             .ToListAsync(cancellationToken);

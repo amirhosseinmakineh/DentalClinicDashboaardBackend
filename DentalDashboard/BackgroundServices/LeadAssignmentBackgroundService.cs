@@ -43,7 +43,11 @@ namespace DentalDashboard.BackgroundServices
                 await step();
                 logger.LogInformation("Lead assignment cycle step completed: {StepName}", stepName);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
             {
                 logger.LogError(ex, "Lead assignment cycle step failed: {StepName}", stepName);
             }

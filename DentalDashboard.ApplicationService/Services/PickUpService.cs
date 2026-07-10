@@ -9,17 +9,20 @@ public class PickUpService : IPickupService
 {
     private readonly ILeadAssignmentRepository leadAssignmentRepository;
     private readonly IConsultantProfileRepository consultantProfileRepository;
+    private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
     private readonly IPushNotificationService pushNotificationService;
     private readonly IUnitOfWork unitOfWork;
 
     public PickUpService(
         ILeadAssignmentRepository leadAssignmentRepository,
         IConsultantProfileRepository consultantProfileRepository,
+        ILeadAssignmentLimitService leadAssignmentLimitService,
         IPushNotificationService pushNotificationService,
         IUnitOfWork unitOfWork)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.consultantProfileRepository = consultantProfileRepository;
+        this.leadAssignmentLimitService = leadAssignmentLimitService;
         this.pushNotificationService = pushNotificationService;
         this.unitOfWork = unitOfWork;
     }
@@ -29,10 +32,7 @@ public class PickUpService : IPickupService
         long consultantProfileId,
         CancellationToken cancellationToken)
     {
-        var todayPickupCount = await leadAssignmentRepository
-            .GetTodayPickupCountAsync(consultantProfileId);
-
-        if (todayPickupCount >= 10)
+        if (!await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId))
         {
             return new PickupLeadResult
             {

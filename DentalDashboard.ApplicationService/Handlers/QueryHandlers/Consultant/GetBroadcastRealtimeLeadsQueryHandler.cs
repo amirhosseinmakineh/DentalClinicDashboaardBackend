@@ -70,10 +70,13 @@ public class GetBroadcastRealtimeLeadsQueryHandler
 
         if (!await leadAssignmentLimitService.CanPickupLeadAsync(profile.Id))
         {
+            var limitStatus = await leadAssignmentLimitService
+                .GetDailyLimitStatusAsync(profile.Id);
+
             return new BroadcastRealtimeLeadsResponse
             {
                 CanReceive = false,
-                BlockReason = "سقف روزانه ۱۰ لید پر شده است",
+                BlockReason = limitStatus.DailyLimitReachedMessage,
             };
         }
 

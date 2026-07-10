@@ -114,15 +114,17 @@ namespace DentalDashboard.Controllers
             [FromQuery] long profileId,
             [FromServices] ILeadAssignmentLimitService leadAssignmentLimitService)
         {
-            var canPickup = await leadAssignmentLimitService.CanPickupLeadAsync(profileId);
+            var limitStatus = await leadAssignmentLimitService
+                .GetDailyLimitStatusAsync(profileId);
 
             return Ok(Result<object>.Success(new
             {
-                canPickup,
-                dailyLimit = 10,
-                message = canPickup
+                canPickup = limitStatus.CanPickup,
+                dailyLimit = limitStatus.EffectiveDailyLimit,
+                todayPickupCount = limitStatus.TodayPickupCount,
+                message = limitStatus.CanPickup
                     ? null
-                    : "سقف روزانه ۱۰ لید پر شده است. امروز دیگر نمی‌توانید لید بردارید."
+                    : limitStatus.DailyLimitReachedMessage
             }));
         }
 

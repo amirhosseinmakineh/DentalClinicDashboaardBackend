@@ -13,11 +13,16 @@ namespace DentalDashboard.Controllers
     {
         private readonly IQueryDispatcher dispatcher;
         private readonly IPickupService pickupService;
+        private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
 
-        public LeadAssignmentController(IQueryDispatcher dispatcher, IPickupService pickupService)
+        public LeadAssignmentController(
+            IQueryDispatcher dispatcher,
+            IPickupService pickupService,
+            ILeadAssignmentLimitService leadAssignmentLimitService)
         {
             this.dispatcher = dispatcher;
             this.pickupService = pickupService;
+            this.leadAssignmentLimitService = leadAssignmentLimitService;
         }
 
         [HttpGet]
@@ -38,19 +43,27 @@ namespace DentalDashboard.Controllers
                 consultantProfileId,
                 cancellationToken);
 
-            return result.Status switch
+            if (result.Status == PickupLeadStatus.Success)
             {
-                PickupLeadStatus.Success => Ok(Result<object>.Success(new
+                return Ok(Result<object>.Success(new
                 {
                     leadAssignmentId = result.LeadAssignmentId,
                     consultantProfileId = result.ConsultantProfileId,
                     callDeadlineAt = result.CallDeadlineAt
-                }, "لید با موفقیت برداشته شد")),
-                PickupLeadStatus.DailyLimitReached => StatusCode(
+                }, "لید با موفقیت برداشته شد"));
+            }
+
+            if (result.Status == PickupLeadStatus.DailyLimitReached)
+            {
+                var limitStatus = await leadAssignmentLimitService
+                    .GetDailyLimitStatusAsync(consultantProfileId);
+
+                return StatusCode(
                     StatusCodes.Status429TooManyRequests,
-                    Result.Failure("سقف روزانه ۱۰ لید پر شده است. امروز دیگر نمی‌توانید لید بردارید.")),
-                _ => Conflict(Result.Failure("این لید قبلاً توسط مشاور دیگری برداشته شده است."))
-            };
+                    Result.Failure(limitStatus.DailyLimitReachedMessage));
+            }
+
+            return Conflict(Result.Failure("این لید قبلاً توسط مشاور دیگری برداشته شده است."));
         }
     }
 }

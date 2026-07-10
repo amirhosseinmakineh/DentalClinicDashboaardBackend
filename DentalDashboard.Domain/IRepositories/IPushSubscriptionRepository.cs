@@ -15,5 +15,9 @@ namespace DentalDashboard.Domain.IRepositories
             string p256dh,
             string auth,
             CancellationToken cancellationToken = default);
+
+        Task DeactivateAllByUserIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default);
     }
 }

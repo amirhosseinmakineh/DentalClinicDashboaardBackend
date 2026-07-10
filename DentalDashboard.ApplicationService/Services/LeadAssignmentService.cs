@@ -41,9 +41,19 @@ namespace DentalDashboard.ApplicationService.Services
 
         public async Task<LeadAssignment[]> LeadsListAsync()
         {
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0");
-
-            var html = await httpClient.GetStringAsync(url);
+            string html;
+            try
+            {
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0");
+                html = await httpClient.GetStringAsync(url);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or TimeoutException)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Failed to fetch leads from landing page; skipping this cycle");
+                return Array.Empty<LeadAssignment>();
+            }
 
             var document = new HtmlDocument();
             document.LoadHtml(html);

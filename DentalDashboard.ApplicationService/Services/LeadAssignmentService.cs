@@ -17,6 +17,7 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadDomainService leadDomainService;
         private readonly IConsultantProfileRepository consultantProfileRepository;
+        private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
         private readonly IPushNotificationService pushNotificationService;
         private readonly ILogger<LeadAssignmentService> logger;
 
@@ -25,6 +26,7 @@ namespace DentalDashboard.ApplicationService.Services
             ILeadAssignmentRepository leadAssignmentRepository,
             ILeadDomainService leadDomainService,
             IConsultantProfileRepository consultantProfileRepository,
+            ILeadAssignmentLimitService leadAssignmentLimitService,
             IPushNotificationService pushNotificationService,
             ILogger<LeadAssignmentService> logger)
         {
@@ -32,6 +34,7 @@ namespace DentalDashboard.ApplicationService.Services
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.leadDomainService = leadDomainService;
             this.consultantProfileRepository = consultantProfileRepository;
+            this.leadAssignmentLimitService = leadAssignmentLimitService;
             this.pushNotificationService = pushNotificationService;
             this.logger = logger;
         }
@@ -171,10 +174,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                var pickupCount = await leadAssignmentRepository
-                    .GetTodayPickupCountAsync(consultant.Id);
-
-                if (pickupCount < 10)
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
                     availableConsultants.Add(consultant);
             }
 

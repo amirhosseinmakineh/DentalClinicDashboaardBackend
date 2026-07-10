@@ -39,55 +39,93 @@ namespace DentalDashboard.ApplicationService.Services
             this.logger = logger;
         }
 
-        public async Task<LeadAssignment[]> LeadsListAsync()
+        public async Task<LeadAssignment[]> LeadsListAsync(
+          CancellationToken cancellationToken = default)
         {
-            string html;
             try
             {
-                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0");
-                html = await httpClient.GetStringAsync(url);
+                if (!httpClient.DefaultRequestHeaders.UserAgent.Any())
+                {
+                    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+                        "Mozilla/5.0");
+                }
+
+                using var response = await httpClient.GetAsync(
+                    url,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken);
+
+                response.EnsureSuccessStatusCode();
+
+                var html = await response.Content.ReadAsStringAsync(
+                    cancellationToken);
+
+                var document = new HtmlDocument();
+                document.LoadHtml(html);
+
+                var rows = document.DocumentNode
+                    .SelectNodes("//table//tr");
+
+                if (rows == null || rows.Count <= 1)
+                    return Array.Empty<LeadAssignment>();
+
+                var leads = new List<LeadAssignment>();
+
+                foreach (var row in rows.Skip(1))
+                {
+                    var cells = row.SelectNodes(".//td");
+
+                    if (cells == null || cells.Count < 10)
+                        continue;
+
+                    var userName = Clean(cells[2].InnerText);
+                    var phoneNumber = Clean(cells[3].InnerText);
+                    var createAtText = Clean(cells[9].InnerText);
+
+                    DateTime.TryParse(
+                        createAtText,
+                        out var createdAt);
+
+                    leads.Add(new LeadAssignment
+                    {
+                        UserName = userName,
+                        PhoneNumber = phoneNumber,
+                        CreatedAt = createdAt
+                    });
+                }
+
+                logger.LogInformation(
+                    "Fetched {Count} leads from landing page",
+                    leads.Count);
+
+                return leads.ToArray();
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or TimeoutException)
+            catch (TaskCanceledException ex)
             {
                 logger.LogWarning(
                     ex,
-                    "Failed to fetch leads from landing page; skipping this cycle");
+                    "Timeout while fetching leads from {Url}",
+                    url);
+
                 return Array.Empty<LeadAssignment>();
             }
-
-            var document = new HtmlDocument();
-            document.LoadHtml(html);
-
-            var rows = document.DocumentNode.SelectNodes("//table//tr");
-
-            if (rows == null)
-                return Array.Empty<LeadAssignment>();
-
-            var leads = new List<LeadAssignment>();
-
-            foreach (var row in rows.Skip(1))
+            catch (HttpRequestException ex)
             {
-                var cells = row.SelectNodes(".//td");
+                logger.LogWarning(
+                    ex,
+                    "HTTP error while fetching leads from {Url}",
+                    url);
 
-                if (cells == null || cells.Count < 4)
-                    continue;
-
-                string userName = Clean(cells[2].InnerText);
-                string phoneNumber = Clean(cells[3].InnerText);
-                string createAt = Clean(cells[9].InnerText);
-
-                DateTime createdAt;
-                DateTime.TryParse(createAt, out createdAt);
-
-                leads.Add(new LeadAssignment
-                {
-                    UserName = userName,
-                    PhoneNumber = phoneNumber,
-                    CreatedAt = createdAt
-                });
+                return Array.Empty<LeadAssignment>();
             }
+            catch (Exception ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Unexpected error while parsing leads");
 
-            return leads.ToArray();
+                return Array.Empty<LeadAssignment>();
+            }
         }
 
         private static string Clean(string value)

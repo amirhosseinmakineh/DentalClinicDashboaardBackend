@@ -36,27 +36,55 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 return Result.Failure("فرمت subscription معتبر نیست");
             }
 
-            var profile = await consultantProfileRepository.GetAll()
-                .Include(x => x.User)
-                .FirstOrDefaultAsync(x => x.Id == command.ProfileId, cancellationToken);
+            try
+            {
+                var profile = await consultantProfileRepository.GetAll()
+                    .Include(x => x.User)
+                    .FirstOrDefaultAsync(x => x.Id == command.ProfileId, cancellationToken);
 
-            if (profile == null || profile.IsDeleted)
-                return Result.Failure("مشاوری یافت نشد");
+                if (profile == null || profile.IsDeleted)
+                    return Result.Failure("مشاوری یافت نشد");
 
-            await pushSubscriptionRepository.UpsertAsync(
-                profile.UserId,
-                endpoint,
-                p256dh,
-                auth,
-                cancellationToken);
+                if (profile.User == null)
+                    return Result.Failure("کاربر مرتبط با پروفایل مشاور یافت نشد");
 
-            profile.User.PushNotificationToken = PushSubscriptionStorage.UpsertSubscription(
-                profile.User.PushNotificationToken,
-                command.DeviceToken.Trim());
-            profile.User.UpdatedAt = DateTime.UtcNow;
-            await consultantProfileRepository.SaveChange();
+                await pushSubscriptionRepository.UpsertAsync(
+                    profile.UserId,
+                    endpoint,
+                    p256dh,
+                    auth,
+                    cancellationToken);
 
-            return Result.Success("توکن نوتیفیکیشن ثبت شد");
+                profile.User.PushNotificationToken = PushSubscriptionStorage.UpsertSubscription(
+                    profile.User.PushNotificationToken,
+                    command.DeviceToken.Trim());
+                profile.User.UpdatedAt = DateTime.UtcNow;
+                await consultantProfileRepository.SaveChange();
+
+                return Result.Success("توکن نوتیفیکیشن ثبت شد");
+            }
+            catch (DbUpdateException ex)
+            {
+                var inner = ex.InnerException?.Message ?? ex.Message;
+                if (inner.Contains("PushSubscriptions", StringComparison.OrdinalIgnoreCase) ||
+                    inner.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Result.Failure(
+                        "جدول PushSubscriptions روی سرور وجود ندارد یا migration اجرا نشده است. بک‌اند را redeploy کنید.");
+                }
+
+                if (inner.Contains("String or binary data would be truncated", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Result.Failure(
+                        "طول subscription از حد مجاز دیتابیس بیشتر است. بک‌اند را به آخرین نسخه به‌روز کنید.");
+                }
+
+                return Result.Failure($"ثبت subscription در دیتابیس انجام نشد: {inner}");
+            }
+            catch (Exception ex)
+            {
+                return Result.Failure($"ثبت subscription انجام نشد: {ex.Message}");
+            }
         }
     }
 }

@@ -28,6 +28,28 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ToListAsync();
         }
 
+        public Task<List<LeadAssignment>> GetRealtimeLeadsForDispatchAsync(
+            int take,
+            TimeSpan redispatchInterval)
+        {
+            var redispatchBefore = DateTime.UtcNow.Subtract(redispatchInterval);
+
+            return GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.RealTime &&
+                            x.ConsultantProfileId == null &&
+                            x.ReportSubmittedAt == null &&
+                            x.LeadAssignmentState == LeadAssignmentState.New &&
+                            !x.PickUp &&
+                            (!x.NotificationSent ||
+                             x.LastDispatchAt == null ||
+                             x.LastDispatchAt < redispatchBefore))
+                .OrderBy(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .Take(take)
+                .ToListAsync();
+        }
+
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
         {
             return GetAll()

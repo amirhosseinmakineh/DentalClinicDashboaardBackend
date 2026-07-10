@@ -14,18 +14,15 @@ public class GetBroadcastRealtimeLeadsQueryHandler
     private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly ILeadAssignmentRepository leadAssignmentRepository;
     private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
-    private readonly ILeadAssignmentService leadAssignmentService;
 
     public GetBroadcastRealtimeLeadsQueryHandler(
         IConsultantProfileRepository consultantProfileRepository,
         ILeadAssignmentRepository leadAssignmentRepository,
-        ILeadAssignmentLimitService leadAssignmentLimitService,
-        ILeadAssignmentService leadAssignmentService)
+        ILeadAssignmentLimitService leadAssignmentLimitService)
     {
         this.consultantProfileRepository = consultantProfileRepository;
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.leadAssignmentLimitService = leadAssignmentLimitService;
-        this.leadAssignmentService = leadAssignmentService;
     }
 
     public async Task<BroadcastRealtimeLeadsResponse> HandleAsync(
@@ -82,8 +79,6 @@ public class GetBroadcastRealtimeLeadsQueryHandler
                 BlockReason = limitStatus.DailyLimitReachedMessage,
             };
         }
-
-        await leadAssignmentService.AssignRealTimeLeadsAsync();
 
         var leads = await leadAssignmentRepository.GetAll()
             .Where(x => !x.IsDeleted &&

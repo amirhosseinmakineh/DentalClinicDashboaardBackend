@@ -92,6 +92,10 @@ builder.Services.AddScoped<DentalDashboard.Services.ConsultantsExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.ReservationsExportService>();
 builder.Services.AddScoped<ILeadAssignmentLimitService, LeadAssignmentLimitService>();
 
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+});
 
 builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
 

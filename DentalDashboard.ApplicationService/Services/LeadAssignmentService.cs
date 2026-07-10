@@ -195,7 +195,7 @@ namespace DentalDashboard.ApplicationService.Services
             }
 
             var leads = await leadAssignmentRepository
-                .GetUnassignedRealTimeLeadsAsync(1);
+                .GetRealtimeLeadsForDispatchAsync(1, TimeSpan.FromSeconds(10));
 
             if (!leads.Any())
             {

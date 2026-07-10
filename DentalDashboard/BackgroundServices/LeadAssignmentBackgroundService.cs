@@ -23,6 +23,18 @@ namespace DentalDashboard.BackgroundServices
                 var leadAssignmentService =
                     scope.ServiceProvider.GetRequiredService<ILeadAssignmentService>();
                 await RunStepAsync("AddLeads", () => leadAssignmentService.AddLeadsAsync(), stoppingToken);
+                await RunStepAsync(
+                    "ReconcileLeadStates",
+                    () => leadAssignmentService.ReconcileMisclassifiedLeadStatesAsync(),
+                    stoppingToken);
+                await RunStepAsync(
+                    "AssignRealTimeLeads",
+                    () => leadAssignmentService.AssignRealTimeLeadsAsync(),
+                    stoppingToken);
+                await RunStepAsync(
+                    "ExpireOverdueRealTimeLeads",
+                    () => leadAssignmentService.ExpireOverdueRealTimeLeadsAsync(),
+                    stoppingToken);
 
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }

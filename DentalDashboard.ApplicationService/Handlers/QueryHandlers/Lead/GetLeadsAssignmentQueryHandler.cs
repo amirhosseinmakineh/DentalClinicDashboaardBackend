@@ -19,18 +19,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
 
         public async Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(GetLeadsQuery query, CancellationToken cancellationToken = default)
         {
-            if (query.LeadAssignmentType == DentalDashboard.Domain.Enums.LeadAssignmentType.RealTime &&
-                await HasRealTimeLeadBlockerAsync(query.ProfileId, cancellationToken))
-            {
-                return new PaginatedResult<LeadsAssignmentItemsResponse>
-                {
-                    Items = new List<LeadsAssignmentItemsResponse>(),
-                    PageNumber = query.PageNumber < 1 ? 1 : query.PageNumber,
-                    PageSize = query.PageSize < 1 ? 10 : query.PageSize,
-                    TotalCount = 0
-                };
-            }
-
             var allLeads = leadAssignmentRepository.GetAll()
                 .Where(x=> !x.IsDeleted && x.ConsultantProfileId == query.ProfileId)
                 .Select(x => new LeadsAssignmentItemsResponse()
@@ -73,10 +61,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             }
 
             return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
-        }
-        private async Task<bool> HasRealTimeLeadBlockerAsync(long consultantProfileId, CancellationToken cancellationToken)
-        {
-            return await leadAssignmentRepository.HasActiveRealTimeLeadAsync(consultantProfileId);
         }
 
     }

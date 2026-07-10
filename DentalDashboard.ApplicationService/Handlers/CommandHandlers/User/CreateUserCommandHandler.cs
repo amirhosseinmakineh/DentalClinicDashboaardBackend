@@ -55,7 +55,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                     Gender = command.Gender,
                     AvatarImageName = command.AvatarImageName,
                     IsActive = false,
-                    IsCompleteProfile = false
+                    IsCompleteProfile = false,
                 };
 
                 await userRepository.AddAsync(user);

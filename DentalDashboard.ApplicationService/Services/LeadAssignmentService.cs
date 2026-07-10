@@ -144,11 +144,11 @@ namespace DentalDashboard.ApplicationService.Services
         public async Task AssignRealTimeLeadsAsync(
             IReadOnlyCollection<long>? excludedConsultantIds = null)
         {
-            if (!leadDomainService.IsWorkingTime(DateTime.Now))
-            {
-                logger.LogInformation("Realtime dispatch skipped: outside working hours");
-                return;
-            }
+            //if (!leadDomainService.IsWorkingTime(DateTime.Now))
+            //{
+            //    logger.LogInformation("Realtime dispatch skipped: outside working hours");
+            //    return;
+            //}
 
             var consultants = await consultantProfileRepository
                 .GetOnlineConsultantsReadyForRealTimeAsync();

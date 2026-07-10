@@ -14,15 +14,18 @@ public class GetBroadcastRealtimeLeadsQueryHandler
     private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly ILeadAssignmentRepository leadAssignmentRepository;
     private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
+    private readonly ILeadAssignmentService leadAssignmentService;
 
     public GetBroadcastRealtimeLeadsQueryHandler(
         IConsultantProfileRepository consultantProfileRepository,
         ILeadAssignmentRepository leadAssignmentRepository,
-        ILeadAssignmentLimitService leadAssignmentLimitService)
+        ILeadAssignmentLimitService leadAssignmentLimitService,
+        ILeadAssignmentService leadAssignmentService)
     {
         this.consultantProfileRepository = consultantProfileRepository;
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.leadAssignmentLimitService = leadAssignmentLimitService;
+        this.leadAssignmentService = leadAssignmentService;
     }
 
     public async Task<BroadcastRealtimeLeadsResponse> HandleAsync(
@@ -80,14 +83,15 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             };
         }
 
+        await leadAssignmentService.AssignRealTimeLeadsAsync();
+
         var leads = await leadAssignmentRepository.GetAll()
             .Where(x => !x.IsDeleted &&
                         x.AssignmentType == LeadAssignmentType.RealTime &&
                         x.ConsultantProfileId == null &&
                         x.ReportSubmittedAt == null &&
                         x.LeadAssignmentState == LeadAssignmentState.New &&
-                        !x.PickUp &&
-                        x.NotificationSent)
+                        !x.PickUp)
             .OrderBy(x => x.CreatedAt)
             .ThenBy(x => x.Id)
             .Select(x => new BroadcastRealtimeLeadItemResponse

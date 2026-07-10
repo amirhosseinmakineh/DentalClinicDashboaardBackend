@@ -17,17 +17,17 @@ namespace DentalDashboard.Infrastracture.Configuration
 
             builder.Property(x => x.Endpoint)
                 .IsRequired()
-                .HasMaxLength(500);
+                .HasMaxLength(2000);
 
 
             builder.Property(x => x.P256dh)
                 .IsRequired()
-                .HasMaxLength(500);
+                .HasMaxLength(512);
 
 
             builder.Property(x => x.Auth)
                 .IsRequired()
-                .HasMaxLength(500);
+                .HasMaxLength(256);
 
 
             builder.HasOne(x => x.User)

@@ -221,16 +221,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             var availableConsultants = new List<ConsultantProfile>();
 
-
-            var leads = await leadAssignmentRepository
-                .GetRealtimeLeadsForDispatchAsync(1, RealtimeLeadRedispatchInterval);
-
-            if (!leads.Any())
-            {
-                logger.LogInformation("Realtime dispatch skipped: no pending realtime leads");
-                return;
-            }
-
             foreach (var consultant in consultants)
             {
                 if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
@@ -243,22 +233,29 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            foreach (var lead in leads)
+            var lead = await leadAssignmentRepository
+                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
+
+            if (lead == null)
             {
-                var isReminder = lead.NotificationSent &&
-                                 lead.LastDispatchAt.HasValue;
-
-                await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
-
-                lead.NotificationSent = true;
-                lead.LastDispatchAt = DateTime.UtcNow;
+                logger.LogInformation(
+                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
+                return;
             }
+
+            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
+
+            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+
+            lead.NotificationSent = true;
+            lead.LastDispatchAt = DateTime.UtcNow;
 
             await leadAssignmentRepository.SaveChange();
 
             logger.LogInformation(
-                "Realtime dispatch completed. Leads: {count}",
-                leads.Count);
+                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
+                lead.Id,
+                isReminder);
         }
 
         private async Task NotifyConsultantsForRealtimeLeadAsync(

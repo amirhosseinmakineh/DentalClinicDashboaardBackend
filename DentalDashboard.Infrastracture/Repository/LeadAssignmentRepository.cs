@@ -50,6 +50,49 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ToListAsync();
         }
 
+        public async Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync()
+        {
+            var baseQuery = GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.RealTime &&
+                            x.ConsultantProfileId == null &&
+                            x.ReportSubmittedAt == null &&
+                            x.LeadAssignmentState == LeadAssignmentState.New &&
+                            !x.PickUp);
+
+            var inFlightLead = await baseQuery
+                .Where(x => x.NotificationSent)
+                .OrderBy(x => x.LastDispatchAt ?? x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .FirstOrDefaultAsync();
+
+            if (inFlightLead != null)
+                return inFlightLead;
+
+            return await baseQuery
+                .Where(x => !x.NotificationSent)
+                .OrderBy(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(
+            TimeSpan redispatchInterval)
+        {
+            var lead = await GetActiveRealtimeBroadcastLeadAsync();
+            if (lead == null)
+                return null;
+
+            if (!lead.NotificationSent)
+                return lead;
+
+            var redispatchBefore = DateTime.UtcNow.Subtract(redispatchInterval);
+            if (lead.LastDispatchAt == null || lead.LastDispatchAt < redispatchBefore)
+                return lead;
+
+            return null;
+        }
+
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
         {
             return GetAll()

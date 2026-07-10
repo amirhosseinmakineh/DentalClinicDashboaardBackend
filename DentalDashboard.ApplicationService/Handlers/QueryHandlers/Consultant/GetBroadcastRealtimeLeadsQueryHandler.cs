@@ -80,23 +80,21 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             };
         }
 
-        var leads = await leadAssignmentRepository.GetAll()
-            .Where(x => !x.IsDeleted &&
-                        x.AssignmentType == LeadAssignmentType.RealTime &&
-                        x.ConsultantProfileId == null &&
-                        x.ReportSubmittedAt == null &&
-                        x.LeadAssignmentState == LeadAssignmentState.New &&
-                        !x.PickUp)
-            .OrderBy(x => x.CreatedAt)
-            .ThenBy(x => x.Id)
-            .Select(x => new BroadcastRealtimeLeadItemResponse
+        var lead = await leadAssignmentRepository
+            .GetActiveRealtimeBroadcastLeadAsync();
+
+        var leads = lead == null
+            ? Array.Empty<BroadcastRealtimeLeadItemResponse>()
+            : new[]
             {
-                LeadAssignmentId = x.Id,
-                UserName = x.UserName,
-                PhoneNumber = x.PhoneNumber,
-                CreatedAt = x.CreatedAt,
-            })
-            .ToListAsync(cancellationToken);
+                new BroadcastRealtimeLeadItemResponse
+                {
+                    LeadAssignmentId = lead.Id,
+                    UserName = lead.UserName,
+                    PhoneNumber = lead.PhoneNumber,
+                    CreatedAt = lead.CreatedAt,
+                },
+            };
 
         return new BroadcastRealtimeLeadsResponse
         {

@@ -8,6 +8,8 @@ namespace DentalDashboard.Domain.IRepositories
         Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId);
         Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take);
         Task<List<LeadAssignment>> GetRealtimeLeadsForDispatchAsync(int take, TimeSpan redispatchInterval);
+        Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync();
+        Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(TimeSpan redispatchInterval);
         Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now);
         Task<int> CountUnassignedRealTimeLeadsAsync();
         Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers);

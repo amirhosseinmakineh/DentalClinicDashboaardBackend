@@ -18,19 +18,22 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly ILeadReportDomainService leadReportDomainService;
         private readonly ILeadDomainService leadDomainService;
         private readonly ILeadAssignmentService leadAssignmentService;
+        private readonly IUserPresenceService presenceService;
 
         public SubmitLeadCallReportCommandHandler(
             ILeadAssignmentRepository leadAssignmentRepository,
             IConsultantProfileRepository consultantProfileRepository,
             ILeadReportDomainService leadReportDomainService,
             ILeadDomainService leadDomainService,
-            ILeadAssignmentService leadAssignmentService)
+            ILeadAssignmentService leadAssignmentService,
+            IUserPresenceService presenceService)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadReportDomainService = leadReportDomainService;
             this.leadDomainService = leadDomainService;
             this.leadAssignmentService = leadAssignmentService;
+            this.presenceService = presenceService;
         }
 
         public async Task<Result<SubmitLeadCallReportResponse>> HandleAsync(SubmitLeadCallReportCommand command, CancellationToken cancellationToken = default)
@@ -109,6 +112,12 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             consultantProfileRepository.Update(profile);
             leadAssignmentRepository.Update(lead);
             await leadAssignmentRepository.SaveChange();
+
+            await presenceService.LogAsync(
+                profile.UserId,
+                UserPresenceEventType.Online,
+                profile.LastOnlineAt,
+                cancellationToken: cancellationToken);
 
             await leadAssignmentService.AssignRealTimeLeadsAsync();
 

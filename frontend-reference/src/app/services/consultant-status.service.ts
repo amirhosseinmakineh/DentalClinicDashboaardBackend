@@ -38,16 +38,12 @@ export class ConsultantStatusService {
 
   getStatus(profileId: number): Observable<ApiResult<ConsultantStatusSnapshot>> {
     return this.http
-      .get<ApiResult<DashboardStatusApiData>>(`${this.apiBaseUrl}/GetDashboardStatus`, {
+      .get<ApiResult<DashboardStatusApiData> | DashboardStatusApiData>(`${this.apiBaseUrl}/GetDashboardStatus`, {
         headers: this.getAuthorizationHeaders(),
         params: new HttpParams().set('ProfileId', profileId)
       })
       .pipe(
-        map((response) => ({
-          isSuccess: response.isSuccess ?? true,
-          message: response.message ?? '',
-          data: this.normalizeStatus(response.data ?? null, this.getStoredStatus(profileId))
-        })),
+        map((response) => this.normalizeGetStatusResponse(response, profileId)),
         tap((result) => {
           if (result.isSuccess && result.data) {
             this.storeStatus(result.data);
@@ -115,6 +111,40 @@ export class ConsultantStatusService {
   private getAuthorizationHeaders(): HttpHeaders {
     const token = this.authSession.getToken();
     return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : new HttpHeaders();
+  }
+
+  private normalizeGetStatusResponse(
+    response: ApiResult<DashboardStatusApiData> | DashboardStatusApiData,
+    profileId: number
+  ): ApiResult<ConsultantStatusSnapshot> {
+    const fallback = this.getStoredStatus(profileId);
+
+    if (this.isWrappedApiResult(response)) {
+      return {
+        isSuccess: response.isSuccess ?? true,
+        message: response.message ?? '',
+        data: this.normalizeStatus(response.data ?? response.Data ?? null, fallback)
+      };
+    }
+
+    return {
+      isSuccess: true,
+      message: '',
+      data: this.normalizeStatus(response, fallback)
+    };
+  }
+
+  private isWrappedApiResult(
+    response: ApiResult<DashboardStatusApiData> | DashboardStatusApiData
+  ): response is ApiResult<DashboardStatusApiData> {
+    return (
+      typeof response === 'object' &&
+      response !== null &&
+      ('isSuccess' in response ||
+        'IsSuccess' in response ||
+        'message' in response ||
+        'Message' in response)
+    );
   }
 
   private normalizeResult(response: ConsultantStatusApiResult, fallback: ConsultantStatusSnapshot): ApiResult<ConsultantStatusSnapshot> {

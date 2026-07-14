@@ -187,6 +187,7 @@ namespace DentalDashboard.Infrastracture.Repository
             PickUp = 1,
             AssignedAt = GETUTCDATE(),
             CallDeadlineAt = DATEADD(MINUTE, 3, GETUTCDATE()),
+            RequiresThreeMinuteCall = 1,
             LeadAssignmentState = @assignedState
         WHERE Id = @leadAssignmentId
         AND ConsultantProfileId IS NULL

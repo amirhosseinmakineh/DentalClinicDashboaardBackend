@@ -69,7 +69,7 @@
           [disabled]="statusState.isLoading || statusState.isSubmittingOnline || statusState.isOnline || !statusState.isAvailable || dashboardStatus?.canGoOnline === false"
           (click)="setOnlineOffline(true)"
         >
-          {{ statusState.isSubmittingOnline ? 'در حال ثبت...' : 'آنلاین هستم' }}
+          {{ statusState.isSubmittingOnline ? 'در حال ثبت...' : 'آفلاین هستم' }}
         </button>
         <button
           type="button"

@@ -28,17 +28,28 @@ type PickupApiResult = ApiResult<{
   };
 };
 
-type CanPickupApiResult = ApiResult<{
-  canPickup: boolean;
-  dailyLimit: number;
+type CanPickupApiPayload = {
+  canPickup?: boolean;
+  CanPickup?: boolean;
+  dailyLimit?: number;
+  DailyLimit?: number;
+  todayPickupCount?: number;
+  TodayPickupCount?: number;
   message?: string | null;
-}> & {
-  Data?: {
-    canPickup: boolean;
-    dailyLimit: number;
-    message?: string | null;
-  };
+  Message?: string | null;
 };
+
+type CanPickupApiResult = ApiResult<CanPickupApiPayload> & {
+  Data?: CanPickupApiPayload;
+};
+
+export type CanPickupLeadStatus = 'allowed' | 'dailyLimitReached' | 'error';
+
+export interface CanPickupLeadResult {
+  status: CanPickupLeadStatus;
+  canPickup: boolean;
+  message?: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class RealtimeLeadPickupService {
@@ -49,15 +60,21 @@ export class RealtimeLeadPickupService {
     private readonly authSession: AuthSessionService
   ) {}
 
-  canPickupLead(profileId: number): Observable<boolean> {
+  canPickupLead(profileId: number): Observable<CanPickupLeadResult> {
     return this.http
       .get<CanPickupApiResult>(`${this.apiBaseUrl}/consultant/CanPickupLead`, {
         headers: this.getAuthorizationHeaders(),
         params: { profileId }
       })
       .pipe(
-        map((response) => response.data?.canPickup ?? response.Data?.canPickup ?? false),
-        catchError(() => of(false))
+        map((response) => this.mapCanPickupResponse(response)),
+        catchError((error: HttpErrorResponse) =>
+          of({
+            status: 'error' as const,
+            canPickup: false,
+            message: this.extractErrorMessage(error)
+          })
+        )
       );
   }
 
@@ -82,6 +99,76 @@ export class RealtimeLeadPickupService {
         })),
         catchError((error: HttpErrorResponse) => of(this.mapPickupError(error)))
       );
+  }
+
+  private mapCanPickupResponse(response: CanPickupApiResult): CanPickupLeadResult {
+    const payload = response.data ?? response.Data;
+    const canPickup = this.toBoolean(
+      payload?.canPickup ?? payload?.CanPickup
+    );
+
+    if (canPickup === null) {
+      return {
+        status: 'error',
+        canPickup: false,
+        message: response.message ?? 'پاسخ سرور برای بررسی سقف لید نامعتبر بود.'
+      };
+    }
+
+    if (!canPickup) {
+      return {
+        status: 'dailyLimitReached',
+        canPickup: false,
+        message:
+          payload?.message ??
+          payload?.Message ??
+          response.message ??
+          'سقف روزانه لید پر شده است. امروز دیگر نمی‌توانید لید بردارید.'
+      };
+    }
+
+    return {
+      status: 'allowed',
+      canPickup: true
+    };
+  }
+
+  private toBoolean(value: unknown): boolean | null {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const normalizedValue = value.trim().toLowerCase();
+
+      if (['true', '1', 'yes'].includes(normalizedValue)) {
+        return true;
+      }
+
+      if (['false', '0', 'no'].includes(normalizedValue)) {
+        return false;
+      }
+    }
+
+    if (typeof value === 'number') {
+      return value === 1 ? true : value === 0 ? false : null;
+    }
+
+    return null;
+  }
+
+  private extractErrorMessage(error: HttpErrorResponse): string {
+    const body = error.error as ApiResult | string | null;
+
+    if (body && typeof body === 'object') {
+      return body.message ?? 'بررسی سقف لید ناموفق بود.';
+    }
+
+    if (typeof body === 'string' && body.trim()) {
+      return body;
+    }
+
+    return error.message || 'بررسی سقف لید ناموفق بود.';
   }
 
   private mapPickupError(error: HttpErrorResponse): PickupLeadResponse {

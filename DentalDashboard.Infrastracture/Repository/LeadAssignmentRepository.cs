@@ -163,16 +163,16 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public async Task<int> GetTodayPickupCountAsync(long consultantProfileId)
         {
-            var today = DateTime.Today;
-            var tomorrow = today.AddDays(1);
+            var todayUtc = DateTime.UtcNow.Date;
+            var tomorrowUtc = todayUtc.AddDays(1);
 
             return await context.LeadAssignments
                 .CountAsync(x =>
                     !x.IsDeleted &&
                     x.ConsultantProfileId == consultantProfileId &&
                     x.PickUp &&
-                    x.AssignedAt >= today &&
-                    x.AssignedAt < tomorrow);
+                    x.AssignedAt >= todayUtc &&
+                    x.AssignedAt < tomorrowUtc);
         }
 
         public async Task<bool> TryPickupLeadAsync(

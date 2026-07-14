@@ -84,6 +84,7 @@ export class RealtimeLeadAlertService implements OnDestroy {
     if (result.status === 'success') {
       this.toastr.success(result.message);
       this.dismissLead(leadId);
+      this.dispatchLeadPickedUpEvent(leadId);
       await this.router.navigate(['/consultant/leadManagment']);
       return;
     }
@@ -199,6 +200,18 @@ export class RealtimeLeadAlertService implements OnDestroy {
 
   private emitAlerts(): void {
     this.alertsSubject.next([...this.activeAlerts.values()]);
+  }
+
+  private dispatchLeadPickedUpEvent(leadId: number): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent('consultant-lead-picked-up', {
+        detail: { leadId }
+      })
+    );
   }
 
   private getProfileId(): number {

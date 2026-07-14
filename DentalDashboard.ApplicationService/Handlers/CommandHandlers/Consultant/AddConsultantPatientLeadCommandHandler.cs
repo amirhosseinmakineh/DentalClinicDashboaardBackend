@@ -76,7 +76,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 SmsSent = false,
                 PatientCity = command.PatientCity?.Trim(),
                 PatientRegion = command.PatientRegion?.Trim(),
-                BusinessName = command.BusinessName?.Trim(),
                 SecondaryPhoneNumber = command.SecondaryPhoneNumber?.Trim(),
                 ReportDescription = command.ReportDescription?.Trim(),
                 IsDeleted = false

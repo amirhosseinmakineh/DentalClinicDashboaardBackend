@@ -80,7 +80,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             lead.ReportDescription = command.ReportDescription;
             lead.PatientCity = command.PatientCity?.Trim();
             lead.PatientRegion = command.PatientRegion?.Trim();
-            lead.BusinessName = command.BusinessName?.Trim();
             lead.AttendanceProbabilityPercent = command.AttendanceProbabilityPercent;
             lead.SecondaryPhoneNumber = command.SecondaryPhoneNumber?.Trim();
             lead.ReportSubmittedAt = now;

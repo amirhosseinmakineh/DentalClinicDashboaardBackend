@@ -47,13 +47,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             var phoneNumber = command.PhoneNumber.Trim();
 
-            if (string.IsNullOrWhiteSpace(command.NationalCode))
-                return Result<CompleteReservationPatientProfileResponse>.Failure("کد ملی بیمار الزامی است");
-
             if (string.IsNullOrWhiteSpace(command.Address))
                 return Result<CompleteReservationPatientProfileResponse>.Failure("آدرس بیمار الزامی است");
 
-            var nationalCode = command.NationalCode.Trim();
             var address = command.Address.Trim();
 
 
@@ -86,7 +82,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 var patientProfile = new PatientProfile
                 {
                     UserId = user.Id,
-                    NationalCode = nationalCode,
+                    NationalCode = string.Empty,
                     Address = address,
                     EmergencyPhoneNumber = command.EmergencyPhoneNumber,
                     InsuranceName = command.InsuranceName,

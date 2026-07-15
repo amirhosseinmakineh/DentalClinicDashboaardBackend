@@ -107,19 +107,29 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
             }
 
-            profile.IsOnline = true;
-            profile.LastOnlineAt = now;
-            consultantProfileRepository.Update(profile);
-            leadAssignmentRepository.Update(lead);
-            await leadAssignmentRepository.SaveChange();
+            var wasOnline = profile.IsOnline;
+            if (wasOnline)
+            {
+                profile.IsOnline = true;
+                profile.LastOnlineAt = now;
+                consultantProfileRepository.Update(profile);
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
 
-            await presenceService.LogAsync(
-                profile.UserId,
-                UserPresenceEventType.Online,
-                profile.LastOnlineAt,
-                cancellationToken: cancellationToken);
+                await presenceService.LogAsync(
+                    profile.UserId,
+                    UserPresenceEventType.Online,
+                    profile.LastOnlineAt,
+                    cancellationToken: cancellationToken);
 
-            await leadAssignmentService.AssignRealTimeLeadsAsync();
+                await leadAssignmentService.AssignRealTimeLeadsAsync();
+            }
+            else
+            {
+                consultantProfileRepository.Update(profile);
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
+            }
 
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
         }

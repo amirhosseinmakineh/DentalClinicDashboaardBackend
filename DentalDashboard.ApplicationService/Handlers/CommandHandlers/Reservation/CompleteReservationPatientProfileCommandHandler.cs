@@ -47,12 +47,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             var phoneNumber = command.PhoneNumber.Trim();
 
-            if (string.IsNullOrWhiteSpace(command.Address))
-                return Result<CompleteReservationPatientProfileResponse>.Failure("آدرس بیمار الزامی است");
-
-            var address = command.Address.Trim();
-
-
             if (reservation.LeadAssignment.PhoneNumber != phoneNumber)
                 return Result<CompleteReservationPatientProfileResponse>.Failure("شماره موبایل بیمار باید با شماره لید رزرو شده یکسان باشد");
 
@@ -83,7 +77,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 {
                     UserId = user.Id,
                     NationalCode = string.Empty,
-                    Address = address,
                     EmergencyPhoneNumber = command.EmergencyPhoneNumber,
                     InsuranceName = command.InsuranceName,
                     Notes = command.Notes,

@@ -6,8 +6,6 @@
 
         public string NationalCode { get; set; } = default!;
 
-        public string Address { get; set; } = default!;
-
         public string? EmergencyPhoneNumber { get; set; }
 
         public string? InsuranceName { get; set; }

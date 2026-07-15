@@ -1,6 +1,7 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
+using DentalDashboard.ApplicationService.Handlers.Helpers;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
@@ -30,11 +31,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (query.ConsultantProfileId.HasValue)
                 reservations = reservations.Where(x => x.ConsultantProfileId == query.ConsultantProfileId.Value);
 
-            if (query.From.HasValue)
-                reservations = reservations.Where(x => x.ReservationAt >= query.From.Value);
-
-            if (query.To.HasValue)
-                reservations = reservations.Where(x => x.ReservationAt <= query.To.Value);
+            reservations = reservations.ApplyReservationAtFilter(query.Date, query.From, query.To);
 
             if (query.AttendanceConfirmationStatus.HasValue)
                 reservations = reservations.Where(x => x.AttendanceConfirmationStatus == query.AttendanceConfirmationStatus.Value);

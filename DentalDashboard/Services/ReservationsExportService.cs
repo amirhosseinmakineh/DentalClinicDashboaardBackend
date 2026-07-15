@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Handlers.Helpers;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Convertor;
@@ -53,11 +54,10 @@ public class ReservationsExportService
         if (consultantProfileId.HasValue)
             query = query.Where(x => x.ConsultantProfileId == consultantProfileId.Value);
 
-        if (from.HasValue)
-            query = query.Where(x => x.ReservationAt >= from.Value);
-
-        if (to.HasValue)
-            query = query.Where(x => x.ReservationAt <= to.Value);
+        query = query.ApplyReservationAtFilter(
+            date: null,
+            from: from,
+            to: to);
 
         return query.OrderByDescending(x => x.ReservationAt).ThenByDescending(x => x.Id);
     }

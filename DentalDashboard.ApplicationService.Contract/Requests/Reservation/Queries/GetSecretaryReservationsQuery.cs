@@ -8,6 +8,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queri
     public class GetSecretaryReservationsQuery : IQuery<PaginatedResult<SecretaryReservationItemResponse>>
     {
         public long? ConsultantProfileId { get; set; }
+        public DateOnly? Date { get; set; }
         public DateTime? From { get; set; }
         public DateTime? To { get; set; }
         public ReservationAttendanceConfirmationStatus? AttendanceConfirmationStatus { get; set; }

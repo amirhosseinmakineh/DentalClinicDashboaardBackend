@@ -48,9 +48,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (!lead.ReportSubmittedAt.HasValue)
                 return Result<SubmitLeadCallReportResponse>.Failure("گزارشی برای ویرایش یافت نشد");
 
-            if (lead.LeadAssignmentState is LeadAssignmentState.Converted or LeadAssignmentState.Rejected or LeadAssignmentState.Expired)
-                return Result<SubmitLeadCallReportResponse>.Failure("ویرایش گزارش این لید امکان‌پذیر نیست");
-
             if (command.AttendanceProbabilityPercent.HasValue &&
                 (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
                 return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");

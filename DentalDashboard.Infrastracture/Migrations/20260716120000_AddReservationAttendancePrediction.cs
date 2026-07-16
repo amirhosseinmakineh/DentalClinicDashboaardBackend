@@ -10,12 +10,13 @@ namespace DentalDashboard.Infrastracture.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "AttendancePrediction",
-                table: "Reservations",
-                type: "nvarchar(500)",
-                maxLength: 500,
-                nullable: true);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('Reservations', 'AttendancePrediction') IS NULL
+                BEGIN
+                    ALTER TABLE Reservations
+                    ADD AttendancePrediction NVARCHAR(500) NULL;
+                END
+                """);
         }
 
         /// <inheritdoc />

@@ -349,6 +349,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<int?>("AttendanceScoreValue")
                         .HasColumnType("int");
 
+                    b.Property<string>("AttendancePrediction")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<DateTime?>("CanceledAt")
                         .HasColumnType("datetime2");
 

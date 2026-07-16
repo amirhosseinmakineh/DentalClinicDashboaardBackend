@@ -78,6 +78,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 ReservationAt = command.ReservationAt,
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                 Description = command.Description,
+                AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
+                    ? null
+                    : command.AttendancePrediction.Trim(),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -97,6 +100,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 PatientRegion = lead.PatientRegion,
                 BusinessName = lead.BusinessName,
                 AttendanceProbabilityPercent = lead.AttendanceProbabilityPercent,
+                AttendancePrediction = reservation.AttendancePrediction,
                 AttendanceConfirmationStatus = reservation.AttendanceConfirmationStatus,
                 PatientName = lead.UserName,
                 PatientPhoneNumber = lead.PhoneNumber

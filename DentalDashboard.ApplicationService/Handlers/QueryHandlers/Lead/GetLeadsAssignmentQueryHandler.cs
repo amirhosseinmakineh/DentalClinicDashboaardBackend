@@ -40,7 +40,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     : leadsQuery.Where(x => x.ReportSubmittedAt == null);
             }
 
-            leadsQuery = leadsQuery.ApplyAssignedAtFilter(query.Date, query.From, query.To);
+            leadsQuery = leadsQuery.ApplyAssignedAtFilter(query);
 
             var allLeads = leadsQuery.Select(x => new LeadsAssignmentItemsResponse()
             {

@@ -10,16 +10,13 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
     public class GetConsultantDashboardStatusQueryHandler : IQueryHandler<GetConsultantDashboardStatusQuery, ConsultantDashboardStatusResponse>
     {
         private readonly IConsultantProfileRepository consultantProfileRepository;
-        private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadDomainService leadDomainService;
 
         public GetConsultantDashboardStatusQueryHandler(
             IConsultantProfileRepository consultantProfileRepository,
-            ILeadAssignmentRepository leadAssignmentRepository,
             ILeadDomainService leadDomainService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
-            this.leadAssignmentRepository = leadAssignmentRepository;
             this.leadDomainService = leadDomainService;
         }
 
@@ -36,13 +33,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             if (profile.IsDeleted)
                 throw new InvalidOperationException("پروفایل مشاور حذف شده است");
 
-            var hasActiveRealTimeLead = await leadAssignmentRepository.HasActiveRealTimeLeadAsync(profile.Id);
-            var isWorkingTime = leadDomainService.IsWorkingTime(DateTime.Now);
+            var isAfterWorkEnd = leadDomainService.IsAfterWorkEnd(DateTime.Now);
 
-            var canGoOnline = profile.IsCompleteProfile &&
-                              profile.IsAvailable &&
-                              !hasActiveRealTimeLead &&
-                              isWorkingTime;
+            var canGoOnline = !isAfterWorkEnd;
 
             return new ConsultantDashboardStatusResponse
             {
@@ -52,31 +45,14 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 LastOnlineAt = profile.LastOnlineAt,
                 LastOfflineAt = profile.LastOfflineAt,
                 CanGoOnline = canGoOnline,
-                OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(
-                    profile.IsCompleteProfile,
-                    profile.IsAvailable,
-                    hasActiveRealTimeLead,
-                    isWorkingTime)
+                OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(isAfterWorkEnd)
             };
         }
 
-        private static string? ResolveOnlineStatusBlockReason(
-            bool isCompleteProfile,
-            bool isAvailable,
-            bool hasActiveRealTimeLead,
-            bool isWorkingTime)
+        private static string? ResolveOnlineStatusBlockReason(bool isAfterWorkEnd)
         {
-            if (!isWorkingTime)
-                return "امکان آنلاین شدن فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد";
-
-            if (!isCompleteProfile)
-                return "پروفایل مشاور کامل نیست";
-
-            if (!isAvailable)
-                return "ابتدا حضور خود را ثبت کنید";
-
-            if (hasActiveRealTimeLead)
-                return "ابتدا تکلیف لید لحظه‌ای قبلی را مشخص کنید";
+            if (isAfterWorkEnd)
+                return "امکان آنلاین شدن بعد از ساعت ۹ شب وجود ندارد";
 
             return null;
         }

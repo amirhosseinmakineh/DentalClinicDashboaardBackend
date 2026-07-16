@@ -30,6 +30,12 @@ namespace DentalDashboard.Domain.DomainServices
             return !IsWorkingTime(now);
         }
 
+        public bool IsAfterWorkEnd(DateTime now)
+        {
+            var iranLocalTime = ToIranLocalTime(now);
+            return iranLocalTime.TimeOfDay >= WorkDayEnd;
+        }
+
         internal static DateTime ToIranLocalTime(DateTime value)
         {
             var utc = value.Kind switch

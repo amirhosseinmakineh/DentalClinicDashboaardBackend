@@ -41,16 +41,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (profile.IsDeleted)
                 return Result.Failure("پروفایل مشاور حذف شده است");
 
-            if (!profile.IsCompleteProfile)
-                return Result.Failure("پروفایل مشاور کامل نیست");
-
-            if (!profile.IsAvailable)
-                return Result.Failure("ابتدا حضور خود را ثبت کنید");
-
             if (command.IsOnline)
             {
-                if (!leadDomainService.IsWorkingTime(DateTime.Now))
-                    return Result.Failure("امکان آنلاین شدن فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد");
+                if (leadDomainService.IsAfterWorkEnd(DateTime.Now))
+                    return Result.Failure("امکان آنلاین شدن بعد از ساعت ۹ شب وجود ندارد");
 
                 profile.IsOnline = true;
                 profile.LastOnlineAt = DateTime.Now;

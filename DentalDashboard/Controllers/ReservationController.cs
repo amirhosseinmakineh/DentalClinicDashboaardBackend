@@ -67,5 +67,20 @@ namespace DentalDashboard.Controllers
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
         }
+
+        [HttpPut]
+        public async Task<IActionResult> UpdateReservation(UpdateReservationCommand command)
+        {
+            var result = await commandDispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
+        [HttpGet("ConsultantPatientProfiles")]
+        public async Task<IActionResult> GetConsultantPatientProfiles(
+            [FromQuery] GetConsultantPatientProfilesQuery query)
+        {
+            var result = await queryDispatcher.DispatchAsync(query);
+            return Ok(result);
+        }
     }
 }

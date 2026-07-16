@@ -61,6 +61,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     PatientRegion = x.LeadAssignment != null ? x.LeadAssignment.PatientRegion : null,
                     BusinessName = x.LeadAssignment != null ? x.LeadAssignment.BusinessName : null,
                     AttendanceProbabilityPercent = x.LeadAssignment != null ? x.LeadAssignment.AttendanceProbabilityPercent : null,
+                    AttendancePrediction = x.AttendancePrediction,
                     AttendanceConfirmationStatus = x.AttendanceConfirmationStatus,
                     ConsultantAttendanceConfirmedAt = x.ConsultantAttendanceConfirmedAt,
                     ConsultantSaysPatientAttended = x.ConsultantSaysPatientAttended,

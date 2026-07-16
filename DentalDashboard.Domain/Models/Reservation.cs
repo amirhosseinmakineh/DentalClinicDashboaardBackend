@@ -21,6 +21,7 @@ public class Reservation : BaseAuditableEntity<long>
     public int? AttendanceScoreValue { get; set; }
     public DateTime? AttendanceScoreAppliedAt { get; set; }
     public string? Description { get; set; }
+    public string? AttendancePrediction { get; set; }
     public bool IsCanceled { get; set; }
     public DateTime? CanceledAt { get; set; }
 }

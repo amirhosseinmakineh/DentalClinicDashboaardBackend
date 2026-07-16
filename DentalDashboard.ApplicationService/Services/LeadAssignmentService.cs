@@ -13,7 +13,7 @@ namespace DentalDashboard.ApplicationService.Services
     public class LeadAssignmentService : ILeadAssignmentService
     {
         private readonly HttpClient httpClient;
-        private static readonly TimeSpan RealtimeLeadRedispatchInterval = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan RealtimeLeadRedispatchInterval = TimeSpan.FromSeconds(6);
         private const string url = "https://landing.yektanet.com/form/report/vSjrtffitGUytcOHgpLvEzttHcMQiELTANXzyAxTIywCuhjUaBzbMSTNFpZpxKuv";
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadDomainService leadDomainService;

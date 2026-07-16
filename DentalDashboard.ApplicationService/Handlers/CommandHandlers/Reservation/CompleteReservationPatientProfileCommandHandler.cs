@@ -45,6 +45,12 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (reservation.PatientUserId.HasValue)
                 return Result<CompleteReservationPatientProfileResponse>.Failure("برای این رزرو قبلا پرونده بیمار تشکیل شده است");
 
+            if (reservation.LeadAssignment == null)
+                return Result<CompleteReservationPatientProfileResponse>.Failure("اطلاعات لید این رزرو یافت نشد");
+
+            if (string.IsNullOrWhiteSpace(command.PhoneNumber))
+                return Result<CompleteReservationPatientProfileResponse>.Failure("شماره موبایل بیمار الزامی است");
+
             var phoneNumber = command.PhoneNumber.Trim();
 
             if (reservation.LeadAssignment.PhoneNumber != phoneNumber)

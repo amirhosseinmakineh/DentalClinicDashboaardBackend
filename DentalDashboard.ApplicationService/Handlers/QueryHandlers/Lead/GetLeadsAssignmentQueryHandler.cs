@@ -3,7 +3,6 @@ using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
-using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
@@ -71,8 +70,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
         }
 
-        private IQueryable<LeadAssignment> ApplyActivityDateFilters(
-            IQueryable<LeadAssignment> leadsQuery,
+        private IQueryable<Domain.Models.LeadAssignment> ApplyActivityDateFilters(
+            IQueryable<Domain.Models.LeadAssignment> leadsQuery,
             GetLeadsQuery query)
         {
             if (!query.FromDate.HasValue && !query.ToDate.HasValue && !query.LeadActivityFilter.HasValue)

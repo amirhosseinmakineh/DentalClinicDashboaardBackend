@@ -13,6 +13,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public string? PatientRegion { get; set; }
         public string? BusinessName { get; set; }
         public int? AttendanceProbabilityPercent { get; set; }
+        public string? AttendancePrediction { get; set; }
         public ReservationAttendanceConfirmationStatus AttendanceConfirmationStatus { get; set; }
         public string PatientName { get; set; } = default!;
         public string PatientPhoneNumber { get; set; } = default!;

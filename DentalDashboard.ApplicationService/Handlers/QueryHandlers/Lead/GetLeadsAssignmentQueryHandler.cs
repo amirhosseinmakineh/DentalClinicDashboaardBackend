@@ -1,7 +1,7 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
-using DentalDashboard.Domain.Enums;
+using DentalDashboard.ApplicationService.Handlers.Helpers;
 using DentalDashboard.Domain.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,7 +40,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     : leadsQuery.Where(x => x.ReportSubmittedAt == null);
             }
 
-            leadsQuery = ApplyActivityDateFilters(leadsQuery, query);
+            leadsQuery = leadsQuery.ApplyAssignedAtFilter(query.Date, query.From, query.To);
 
             var allLeads = leadsQuery.Select(x => new LeadsAssignmentItemsResponse()
             {
@@ -68,51 +68,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             });
 
             return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
-        }
-
-        private IQueryable<Domain.Models.LeadAssignment> ApplyActivityDateFilters(
-            IQueryable<Domain.Models.LeadAssignment> leadsQuery,
-            GetLeadsQuery query)
-        {
-            if (!query.FromDate.HasValue && !query.ToDate.HasValue && !query.LeadActivityFilter.HasValue)
-            {
-                return leadsQuery;
-            }
-
-            var from = query.FromDate?.Date;
-            var toExclusive = query.ToDate?.Date.AddDays(1);
-
-            return query.LeadActivityFilter switch
-            {
-                LeadActivityFilter.Called => leadsQuery.Where(lead =>
-                    lead.CallInitiatedAt != null &&
-                    (!from.HasValue || lead.CallInitiatedAt >= from.Value) &&
-                    (!toExclusive.HasValue || lead.CallInitiatedAt < toExclusive.Value)),
-                LeadActivityFilter.Reported => leadsQuery.Where(lead =>
-                    lead.ReportSubmittedAt != null &&
-                    (!from.HasValue || lead.ReportSubmittedAt >= from.Value) &&
-                    (!toExclusive.HasValue || lead.ReportSubmittedAt < toExclusive.Value)),
-                LeadActivityFilter.Reserved => leadsQuery.Where(lead =>
-                    reservationRepository.GetAll().Any(reservation =>
-                        reservation.LeadAssignmentId == lead.Id &&
-                        !reservation.IsDeleted &&
-                        !reservation.IsCanceled &&
-                        (!from.HasValue || reservation.CreatedAt >= from.Value) &&
-                        (!toExclusive.HasValue || reservation.CreatedAt < toExclusive.Value))),
-                _ => leadsQuery.Where(lead =>
-                    (lead.CallInitiatedAt != null &&
-                     (!from.HasValue || lead.CallInitiatedAt >= from.Value) &&
-                     (!toExclusive.HasValue || lead.CallInitiatedAt < toExclusive.Value)) ||
-                    (lead.ReportSubmittedAt != null &&
-                     (!from.HasValue || lead.ReportSubmittedAt >= from.Value) &&
-                     (!toExclusive.HasValue || lead.ReportSubmittedAt < toExclusive.Value)) ||
-                    reservationRepository.GetAll().Any(reservation =>
-                        reservation.LeadAssignmentId == lead.Id &&
-                        !reservation.IsDeleted &&
-                        !reservation.IsCanceled &&
-                        (!from.HasValue || reservation.CreatedAt >= from.Value) &&
-                        (!toExclusive.HasValue || reservation.CreatedAt < toExclusive.Value)))
-            };
         }
     }
 

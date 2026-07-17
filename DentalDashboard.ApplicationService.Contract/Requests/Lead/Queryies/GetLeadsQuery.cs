@@ -14,6 +14,11 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
         public DateOnly? Date { get; set; }
         public DateTime? From { get; set; }
         public DateTime? To { get; set; }
+
+        // Backward compatibility for deployed frontend builds that still send fromDate/toDate.
+        public DateTime? FromDate { get; set; }
+        public DateTime? ToDate { get; set; }
+
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

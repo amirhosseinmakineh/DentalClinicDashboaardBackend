@@ -48,6 +48,6 @@ public class AdminConsultantsController : ControllerBase
     {
         command.ProfileId = profileId;
         var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
-        return Ok(result);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 }

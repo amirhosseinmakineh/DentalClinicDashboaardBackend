@@ -11,4 +11,7 @@ public static class AttendanceLabels
 
         return date.ToDateTime(time.Value).ToPersianDateTimeString();
     }
+
+    public static bool IsCurrentlyPresent(TimeOnly? checkInTime, TimeOnly? checkOutTime) =>
+        checkInTime.HasValue && !checkOutTime.HasValue;
 }

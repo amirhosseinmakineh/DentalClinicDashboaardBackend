@@ -1,6 +1,7 @@
 ﻿using DentalDashboard.ApplicationService.Contract.Requests.User.Queries.User;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.User;
+using DentalDashboard.ApplicationService.Handlers.Helpers;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +11,14 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
     public class GetUsersQueryHandler : IQueryHandler<GetUsersQuery, PaginatedResult<UserItemResponse>>
     {
         private readonly IUserRepository userRepository;
+        private readonly IAttendanceRepository attendanceRepository;
 
-        public GetUsersQueryHandler(IUserRepository userRepository)
+        public GetUsersQueryHandler(
+            IUserRepository userRepository,
+            IAttendanceRepository attendanceRepository)
         {
             this.userRepository = userRepository;
+            this.attendanceRepository = attendanceRepository;
         }
 
         public async Task<PaginatedResult<UserItemResponse>> HandleAsync(GetUsersQuery query, CancellationToken cancellationToken = default)
@@ -65,14 +70,62 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
                     Gender = user.Gender,
                     CreatedAt = user.CreatedAt,
                     PhoneNumber = user.PhoneNumber,
+                    LastSeenAt = user.LastSeenAt,
                     RoleName = user.UserRoles
                         .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
                         .OrderByDescending(ur => ur.UpdatedAt)
                         .ThenByDescending(ur => ur.Id)
                         .Select(ur => ur.Role!.RoleName)
-                        .FirstOrDefault() ?? string.Empty
+                        .FirstOrDefault() ?? string.Empty,
+                    ConsultantProfileId = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
+                        ? (long?)user.ConsultantProfile.Id
+                        : null,
+                    ConsultantIsOnline = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
+                        ? (bool?)user.ConsultantProfile.IsOnline
+                        : null
                 })
                 .ToListAsync(cancellationToken);
+
+            var consultantProfileIds = items
+                .Where(x => x.ConsultantProfileId.HasValue)
+                .Select(x => x.ConsultantProfileId!.Value)
+                .ToList();
+
+            if (consultantProfileIds.Count > 0)
+            {
+                var today = DateOnly.FromDateTime(DateTime.Now);
+                var todayAttendances = await attendanceRepository.GetAll()
+                    .Where(x => !x.IsDeleted &&
+                                consultantProfileIds.Contains(x.ConsultantProfileId) &&
+                                x.AttendanceDate == today)
+                    .Select(x => new
+                    {
+                        x.ConsultantProfileId,
+                        x.CheckInTime,
+                        x.CheckOutTime
+                    })
+                    .ToListAsync(cancellationToken);
+
+                var attendanceByProfile = todayAttendances
+                    .GroupBy(x => x.ConsultantProfileId)
+                    .ToDictionary(x => x.Key, x => x.First());
+
+                foreach (var item in items)
+                {
+                    if (!item.ConsultantProfileId.HasValue)
+                        continue;
+
+                    if (!attendanceByProfile.TryGetValue(item.ConsultantProfileId.Value, out var attendance))
+                    {
+                        item.ConsultantIsAvailable = false;
+                        continue;
+                    }
+
+                    item.ConsultantIsAvailable = AttendanceLabels.IsCurrentlyPresent(
+                        attendance.CheckInTime,
+                        attendance.CheckOutTime);
+                }
+            }
 
             return new PaginatedResult<UserItemResponse>
             {

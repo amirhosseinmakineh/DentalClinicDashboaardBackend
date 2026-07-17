@@ -9,6 +9,8 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantRespon
         public string LastName { get; set; } = default!;
         public string PhoneNumber { get; set; } = default!;
         public long ProfileId { get; set; }
+        public bool? ConsultantIsOnline { get; set; }
+        public bool? ConsultantIsAvailable { get; set; }
         public PaginatedResult<AttendanceResponse> AttendanceResponse { get; set; }
         public PaginatedResult<LeadsAssignmentItemsResponse> LeadsAssignmentItemsResponse { get; set; }
     }

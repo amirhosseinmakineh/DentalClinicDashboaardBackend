@@ -88,9 +88,6 @@ public class GetUserPresenceOverviewQueryHandler
                     : null,
                 ConsultantIsOnline = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
                     ? (bool?)user.ConsultantProfile.IsOnline
-                    : null,
-                ConsultantIsAvailable = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
-                    ? (bool?)user.ConsultantProfile.IsAvailable
                     : null
             })
             .ToListAsync(cancellationToken);
@@ -139,6 +136,9 @@ public class GetUserPresenceOverviewQueryHandler
 
             attendancesByUser.TryGetValue(user.Id, out var attendance);
 
+            var isCurrentlyPresent = attendance is not null &&
+                AttendanceLabels.IsCurrentlyPresent(attendance.CheckInTime, attendance.CheckOutTime);
+
             DateTime? First(UserPresenceEventType type) =>
                 logs.Where(x => x.EventType == type).Select(x => (DateTime?)x.OccurredAt).Min();
 
@@ -161,7 +161,9 @@ public class GetUserPresenceOverviewQueryHandler
                 IsCurrentlyOnline = UserPresenceLabels.IsCurrentlyOnline(user.LastSeenAt),
                 LastSeenAtPersian = user.LastSeenAt?.ToLocalTime().ToPersianDateTimeString(),
                 ConsultantIsOnline = user.ConsultantIsOnline,
-                ConsultantIsAvailable = user.ConsultantIsAvailable,
+                ConsultantIsAvailable = user.ConsultantProfileId.HasValue
+                    ? isCurrentlyPresent
+                    : null,
                 SelectedDatePersian = selectedDatePersian,
                 FirstLoginAtPersian = First(UserPresenceEventType.Login)?.ToPersianDateTimeString(),
                 LastLogoutAtPersian = Last(UserPresenceEventType.Logout)?.ToPersianDateTimeString(),

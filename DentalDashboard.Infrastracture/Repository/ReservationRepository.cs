@@ -19,6 +19,18 @@ namespace DentalDashboard.Infrastracture.Repository
                                  !x.IsCanceled);
         }
 
+        public Task<int> CountActiveReservationsAtExcludingAsync(
+            long consultantProfileId,
+            DateTime reservationAt,
+            long excludeReservationId)
+        {
+            return GetAll()
+                .CountAsync(x => x.ConsultantProfileId == consultantProfileId &&
+                                 x.ReservationAt == reservationAt &&
+                                 !x.IsCanceled &&
+                                 x.Id != excludeReservationId);
+        }
+
         public Task<bool> HasActiveReservationForLeadAsync(long leadAssignmentId)
         {
             return GetAll()

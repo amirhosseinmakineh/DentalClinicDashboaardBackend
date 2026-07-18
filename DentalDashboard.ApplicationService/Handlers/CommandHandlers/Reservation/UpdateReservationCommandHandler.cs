@@ -25,9 +25,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             UpdateReservationCommand command,
             CancellationToken cancellationToken = default)
         {
-            if (command.ReservationAt <= DateTime.Now)
-                return Result<ReservationItemResponse>.Failure("زمان رزرو باید در آینده باشد");
-
             var reservation = await reservationRepository.GetByIdAsync(command.ReservationId);
             if (reservation == null || reservation.IsDeleted || reservation.IsCanceled)
                 return Result<ReservationItemResponse>.Failure("رزرو فعال یافت نشد");
@@ -67,11 +64,16 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 return Result<ReservationItemResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
             }
 
-            if (reservation.ReservationAt != command.ReservationAt)
+            var reservationTimeChanged = reservation.ReservationAt != command.ReservationAt;
+            if (reservationTimeChanged && command.ReservationAt <= DateTime.Now)
+                return Result<ReservationItemResponse>.Failure("زمان رزرو باید در آینده باشد");
+
+            if (reservationTimeChanged)
             {
-                var sameTimeCount = await reservationRepository.CountActiveReservationsAtAsync(
+                var sameTimeCount = await reservationRepository.CountActiveReservationsAtExcludingAsync(
                     command.ConsultantProfileId,
-                    command.ReservationAt);
+                    command.ReservationAt,
+                    reservation.Id);
                 if (sameTimeCount >= MaxReservationsPerConsultantAtSameTime)
                 {
                     return Result<ReservationItemResponse>.Failure("ظرفیت این بازه زمانی برای مشاور تکمیل است");

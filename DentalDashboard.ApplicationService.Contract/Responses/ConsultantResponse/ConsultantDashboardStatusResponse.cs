@@ -9,5 +9,6 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantRespon
         public DateTime? LastOfflineAt { get; init; }
         public bool CanGoOnline { get; init; }
         public string? OnlineStatusBlockReason { get; init; }
+        public int TodayReservationsCount { get; init; }
     }
 }

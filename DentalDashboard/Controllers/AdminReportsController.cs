@@ -1,4 +1,5 @@
 using DentalDashboard.Services;
+using DentalDashboard.Utilities.Time;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DentalDashboard.Controllers;
@@ -11,6 +12,7 @@ public class AdminReportsController : ControllerBase
     private readonly UsersExportService usersExportService;
     private readonly LeadsExportService leadsExportService;
     private readonly ConsultantsExportService consultantsExportService;
+    private readonly ConsultantsDailySummaryService consultantsDailySummaryService;
     private readonly ReservationsExportService reservationsExportService;
 
     public AdminReportsController(
@@ -18,12 +20,14 @@ public class AdminReportsController : ControllerBase
         UsersExportService usersExportService,
         LeadsExportService leadsExportService,
         ConsultantsExportService consultantsExportService,
+        ConsultantsDailySummaryService consultantsDailySummaryService,
         ReservationsExportService reservationsExportService)
     {
         this.leadCallReportExportService = leadCallReportExportService;
         this.usersExportService = usersExportService;
         this.leadsExportService = leadsExportService;
         this.consultantsExportService = consultantsExportService;
+        this.consultantsDailySummaryService = consultantsDailySummaryService;
         this.reservationsExportService = reservationsExportService;
     }
 
@@ -46,6 +50,17 @@ public class AdminReportsController : ControllerBase
     {
         var file = await consultantsExportService.ExportCsvAsync(cancellationToken);
         return File(file, "text/csv; charset=utf-8", $"consultants-report-{DateTime.Today:yyyyMMdd}.csv");
+    }
+
+    [HttpGet("consultants/daily-summary")]
+    public async Task<IActionResult> GetConsultantsDailySummary(CancellationToken cancellationToken)
+    {
+        var items = await consultantsDailySummaryService.GetTodaySummaryAsync(cancellationToken);
+        return Ok(new
+        {
+            date = IranTimeHelper.TodayInIran().ToString("yyyy-MM-dd"),
+            items
+        });
     }
 
     [HttpGet("lead-call-reports/export")]

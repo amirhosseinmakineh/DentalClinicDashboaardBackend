@@ -1,6 +1,7 @@
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Convertor;
+using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Services;
@@ -44,6 +45,17 @@ public class ConsultantsExportService
             })
             .ToDictionaryAsync(x => x.ConsultantProfileId, cancellationToken);
 
+        var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
+        var todayReservationCounts = await context.Reservations.AsNoTracking()
+            .Where(x => !x.IsDeleted &&
+                        !x.IsCanceled &&
+                        consultantIds.Contains(x.ConsultantProfileId) &&
+                        x.CreatedAt >= todayStartUtc &&
+                        x.CreatedAt < todayEndUtc)
+            .GroupBy(x => x.ConsultantProfileId)
+            .Select(g => new { ConsultantProfileId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ConsultantProfileId, x => x.Count, cancellationToken);
+
         var lines = new List<string>
         {
             CsvExportHelper.JoinRow("بخش خلاصه مشاوران"),
@@ -61,6 +73,7 @@ public class ConsultantsExportService
                 "تعداد کل لیدها",
                 "تعداد رزرو",
                 "تعداد رزرو فعال",
+                "رزروهای امروز",
                 "تعداد تایید حضور مشاور",
                 "تعداد تماس گرفته",
                 "تعداد تماس نگرفته",
@@ -99,6 +112,7 @@ public class ConsultantsExportService
                 leads.Count.ToString(),
                 stats?.TotalReservations.ToString() ?? "0",
                 stats?.ActiveReservations.ToString() ?? "0",
+                todayReservationCounts.GetValueOrDefault(consultant.Id).ToString(),
                 stats?.ConsultantConfirmed.ToString() ?? "0",
                 calledCount.ToString(),
                 notCalledCount.ToString(),
@@ -116,6 +130,7 @@ public class ConsultantsExportService
             "شناسه لید",
             "نام لید",
             "موبایل لید",
+            "تاریخ ایجاد لید",
             "وضعیت لید",
             "نوع تخصیص",
             "تاریخ تخصیص",
@@ -148,13 +163,24 @@ public class ConsultantsExportService
                     lead.Id.ToString(),
                     lead.UserName,
                     lead.PhoneNumber,
+                    DateConvertor.ToPersianDateTimeString(
+                        IranTimeHelper.ToIranLocalTime(lead.CreatedAt)),
                     lead.LeadAssignmentState.ToPersian(),
                     lead.AssignmentType.ToPersian(),
-                    lead.AssignedAt.HasValue ? DateConvertor.ToPersianDateTimeString(lead.AssignedAt.Value) : string.Empty,
+                    lead.AssignedAt.HasValue
+                        ? DateConvertor.ToPersianDateTimeString(
+                            IranTimeHelper.ToIranLocalTime(lead.AssignedAt.Value))
+                        : string.Empty,
                     AdminReportPersianLabels.ToCallStatus(hasCalled),
                     lead.CallResult.HasValue ? lead.CallResult.Value.ToPersian() : string.Empty,
-                    lead.ContactedAt.HasValue ? DateConvertor.ToPersianDateTimeString(lead.ContactedAt.Value) : string.Empty,
-                    lead.ReportSubmittedAt.HasValue ? DateConvertor.ToPersianDateTimeString(lead.ReportSubmittedAt.Value) : string.Empty,
+                    lead.ContactedAt.HasValue
+                        ? DateConvertor.ToPersianDateTimeString(
+                            IranTimeHelper.ToIranLocalTime(lead.ContactedAt.Value))
+                        : string.Empty,
+                    lead.ReportSubmittedAt.HasValue
+                        ? DateConvertor.ToPersianDateTimeString(
+                            IranTimeHelper.ToIranLocalTime(lead.ReportSubmittedAt.Value))
+                        : string.Empty,
                     lead.ReportDescription,
                     lead.PatientCity,
                     lead.PatientRegion,

@@ -49,6 +49,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 leadAssignmentType = x.AssignmentType,
                 PhoneNumber = x.PhoneNumber,
                 UserName = x.UserName,
+                CreatedAt = x.CreatedAt,
                 AssignedAt = x.AssignedAt,
                 CallDeadlineAt = x.CallDeadlineAt,
                 RequiresThreeMinuteCall = x.RequiresThreeMinuteCall,
@@ -117,7 +118,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     LeadAssignmentState = x.LeadAssignmentState,
                     leadAssignmentType = x.AssignmentType,
                     PhoneNumber = x.PhoneNumber,
-                    UserName = x.UserName
+                    UserName = x.UserName,
+                    CreatedAt = x.CreatedAt,
+                    AssignedAt = x.AssignedAt,
+                    ContactedAt = x.ContactedAt,
+                    ReportSubmittedAt = x.ReportSubmittedAt,
                 });
             if (query.leadAssignmentState.HasValue)
             {

@@ -6,6 +6,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
     {
         public string UserName { get; set; } = default!;
         public string PhoneNumber { get; set; } = default!;
+        public DateTime CreatedAt { get; set; }
         public LeadAssignmentState LeadAssignmentState { get; set; }
         public LeadAssignmentType leadAssignmentType { get; set; }
         public bool HasActiveReservation { get; set; }

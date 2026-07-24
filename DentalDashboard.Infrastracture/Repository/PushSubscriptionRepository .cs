@@ -58,5 +58,27 @@ namespace DentalDashboard.Infrastracture.Repository
             await context.PushSubscriptions.AddAsync(created, cancellationToken);
             return created;
         }
+
+        public async Task DeactivateAllByUserIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+            var subscriptions = await context.PushSubscriptions
+                .Where(x => x.UserId == userId && !x.IsDeleted)
+                .ToListAsync(cancellationToken);
+
+            if (subscriptions.Count == 0)
+                return;
+
+            foreach (var subscription in subscriptions)
+            {
+                subscription.IsDeleted = true;
+                subscription.UpdatedAt = now;
+            }
+
+            context.PushSubscriptions.UpdateRange(subscriptions);
+            await context.SaveChangesAsync(cancellationToken);
+        }
     }
 }

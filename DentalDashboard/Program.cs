@@ -69,12 +69,12 @@ builder.Services.AddCors(options =>
     {
         policy
             .WithOrigins(
-                "https://drsaeedmoghadam.com",
-                "https://www.drsaeedmoghadam.com",
-                "http://localhost:4200",
-                "https://drmoghadam.runflare.run",
-                "http://drsaeedmoghadam.com"
-            )
+    "https://drsaeedmoghadam.com",
+    "https://www.drsaeedmoghadam.com",
+    "http://localhost:4200",
+    "https://drmoghadam.runflare.run",
+    "http://drsaeedmoghadam.com"
+)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

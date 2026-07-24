@@ -46,7 +46,12 @@ namespace DentalDashboard.ApplicationService.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == consultantProfileId);
 
-            return profile?.LimitNumber ?? SystemDefaultDailyLimit;
+            if (profile?.LimitNumber is > 0)
+            {
+                return profile.LimitNumber.Value;
+            }
+
+            return SystemDefaultDailyLimit;
         }
     }
 }

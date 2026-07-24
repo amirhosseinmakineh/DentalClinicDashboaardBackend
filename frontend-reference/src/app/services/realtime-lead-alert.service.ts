@@ -72,10 +72,19 @@ export class RealtimeLeadAlertService implements OnDestroy {
       this.emitAlerts();
     }
 
-    const canPickup = await firstValueFrom(this.pickupService.canPickupLead(profileId));
-    if (!canPickup) {
-      this.showDailyLimitNotificationOnce();
+    const canPickupResult = await firstValueFrom(this.pickupService.canPickupLead(profileId));
+    if (canPickupResult.status === 'dailyLimitReached') {
+      this.showDailyLimitNotificationOnce(canPickupResult.message);
       this.dismissLead(leadId);
+      return;
+    }
+
+    if (!canPickupResult.canPickup) {
+      this.toastr.error(canPickupResult.message ?? 'بررسی امکان برداشتن لید ناموفق بود.');
+      if (alert) {
+        alert.isSubmitting = false;
+        this.emitAlerts();
+      }
       return;
     }
 
@@ -165,10 +174,15 @@ export class RealtimeLeadAlertService implements OnDestroy {
       return;
     }
 
-    const canPickup = await firstValueFrom(this.pickupService.canPickupLead(profileId));
-    if (!canPickup) {
-      this.showDailyLimitNotificationOnce();
+    const canPickupResult = await firstValueFrom(this.pickupService.canPickupLead(profileId));
+    if (canPickupResult.status === 'dailyLimitReached') {
+      this.showDailyLimitNotificationOnce(canPickupResult.message);
       await this.webPushService.closeRealtimeLeadNotification(leadId);
+      return;
+    }
+
+    if (!canPickupResult.canPickup) {
+      // Backend already filters consultants before push; treat check failures as transient.
       return;
     }
 

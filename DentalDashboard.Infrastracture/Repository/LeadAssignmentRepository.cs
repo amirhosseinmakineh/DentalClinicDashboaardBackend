@@ -2,6 +2,7 @@
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
+using DentalDashboard.Utilities.Time;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -163,16 +164,23 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public async Task<int> GetTodayPickupCountAsync(long consultantProfileId)
         {
-            var today = DateTime.Today;
-            var tomorrow = today.AddDays(1);
+            // AssignedAt is persisted as UTC (see TryPickupLeadAsync), while the
+            // business definition of "today" is the Iran calendar day. Using the
+            // server's local date here caused leads picked up during the previous
+            // Iran evening to count against the new day's limit on UTC servers.
+            var todayInIran = IranTimeHelper.TodayInIran();
+            var (todayStartUtc, _) =
+                IranTimeHelper.GetIranDayRangeAsUtc(todayInIran);
+            var (tomorrowStartUtc, _) =
+                IranTimeHelper.GetIranDayRangeAsUtc(todayInIran.AddDays(1));
 
             return await context.LeadAssignments
                 .CountAsync(x =>
                     !x.IsDeleted &&
                     x.ConsultantProfileId == consultantProfileId &&
                     x.PickUp &&
-                    x.AssignedAt >= today &&
-                    x.AssignedAt < tomorrow);
+                    x.AssignedAt >= todayStartUtc &&
+                    x.AssignedAt < tomorrowStartUtc);
         }
 
         public async Task<bool> TryPickupLeadAsync(

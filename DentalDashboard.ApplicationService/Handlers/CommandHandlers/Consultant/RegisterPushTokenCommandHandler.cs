@@ -66,8 +66,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             catch (DbUpdateException ex)
             {
                 var inner = ex.InnerException?.Message ?? ex.Message;
-                if (inner.Contains("PushSubscriptions", StringComparison.OrdinalIgnoreCase) ||
-                    inner.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase))
+                if (inner.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase) &&
+                    inner.Contains("PushSubscriptions", StringComparison.OrdinalIgnoreCase))
                 {
                     return Result.Failure(
                         "جدول PushSubscriptions روی سرور وجود ندارد یا migration اجرا نشده است. بک‌اند را redeploy کنید.");

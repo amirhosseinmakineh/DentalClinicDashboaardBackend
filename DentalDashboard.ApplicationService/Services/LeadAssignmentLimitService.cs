@@ -46,7 +46,12 @@ namespace DentalDashboard.ApplicationService.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == consultantProfileId);
 
-            return profile?.LimitNumber ?? SystemDefaultDailyLimit;
+            // Zero was accepted by older versions when the admin form sent its
+            // default numeric value. Treat it as "not configured" rather than
+            // silently blocking the consultant from every lead.
+            return profile?.LimitNumber is > 0
+                ? profile.LimitNumber.Value
+                : SystemDefaultDailyLimit;
         }
     }
 }

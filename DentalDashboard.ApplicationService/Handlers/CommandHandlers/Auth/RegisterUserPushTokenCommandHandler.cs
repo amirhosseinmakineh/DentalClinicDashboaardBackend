@@ -61,6 +61,14 @@ public class RegisterUserPushTokenCommandHandler : ICommandHandler<RegisterUserP
         catch (DbUpdateException ex)
         {
             var inner = ex.InnerException?.Message ?? ex.Message;
+
+            if (inner.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase) &&
+                inner.Contains("PushSubscriptions", StringComparison.OrdinalIgnoreCase))
+            {
+                return Result.Failure(
+                    "جدول PushSubscriptions روی سرور وجود ندارد یا migration اجرا نشده است. بک‌اند را redeploy کنید.");
+            }
+
             return Result.Failure($"ثبت subscription در دیتابیس انجام نشد: {inner}");
         }
         catch (Exception ex)

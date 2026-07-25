@@ -50,7 +50,10 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
-        [Authorize]
+        // Push registration is initiated by the browser after notification permission is
+        // granted and must also work for the legacy consultant session, which does not
+        // necessarily carry an ASP.NET Core bearer identity.
+        [AllowAnonymous]
         [HttpPost("RegisterPushToken")]
         public async Task<IActionResult> RegisterPushToken(RegisterPushTokenCommand command)
         {

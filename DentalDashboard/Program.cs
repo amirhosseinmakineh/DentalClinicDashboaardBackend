@@ -68,7 +68,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("FrontendCors", policy =>
     {
         policy
-            .WithOrigins(
+          .WithOrigins(
     "https://drsaeedmoghadam.com",
     "https://www.drsaeedmoghadam.com",
     "http://localhost:4200",

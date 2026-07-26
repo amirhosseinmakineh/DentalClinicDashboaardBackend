@@ -61,18 +61,22 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.LeadAssignmentState == LeadAssignmentState.New &&
                             !x.PickUp);
 
-            var inFlightLead = await baseQuery
-                .Where(x => x.NotificationSent)
-                .OrderBy(x => x.LastDispatchAt ?? x.CreatedAt)
+            // Always dispatch every newly queued phone number once before sending
+            // reminders for numbers which have already been announced. Previously
+            // an in-flight lead was selected first forever, so it was reminded on
+            // every cycle while later phone numbers never reached the frontend.
+            var undispatchedLead = await baseQuery
+                .Where(x => !x.NotificationSent)
+                .OrderBy(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .FirstOrDefaultAsync();
 
-            if (inFlightLead != null)
-                return inFlightLead;
+            if (undispatchedLead != null)
+                return undispatchedLead;
 
             return await baseQuery
-                .Where(x => !x.NotificationSent)
-                .OrderBy(x => x.CreatedAt)
+                .Where(x => x.NotificationSent)
+                .OrderBy(x => x.LastDispatchAt ?? x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .FirstOrDefaultAsync();
         }

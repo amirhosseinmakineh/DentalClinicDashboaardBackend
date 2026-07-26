@@ -194,7 +194,7 @@ namespace DentalDashboard.ApplicationService.Services
         }
 
         public async Task AssignRealTimeLeadsAsync(
-            IReadOnlyCollection<long>? excludedConsultantIds = null)
+            IReadOnlyCollection<long>? excludedConsultantIds = null) 
         {
             if (!leadDomainService.IsWorkingTime(DateTime.Now))
             {

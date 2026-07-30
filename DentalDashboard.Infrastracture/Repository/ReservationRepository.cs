@@ -16,7 +16,7 @@ namespace DentalDashboard.Infrastracture.Repository
             return GetAll()
                 .CountAsync(x => x.ConsultantProfileId == consultantProfileId &&
                                  x.ReservationAt == reservationAt &&
-                                 !x.IsCanceled);
+                                 !x.IsCanceled && !x.IsDeleted);
         }
 
         public Task<int> CountActiveReservationsAtExcludingAsync(
@@ -28,13 +28,14 @@ namespace DentalDashboard.Infrastracture.Repository
                 .CountAsync(x => x.ConsultantProfileId == consultantProfileId &&
                                  x.ReservationAt == reservationAt &&
                                  !x.IsCanceled &&
+                                 !x.IsDeleted &&
                                  x.Id != excludeReservationId);
         }
 
         public Task<bool> HasActiveReservationForLeadAsync(long leadAssignmentId)
         {
             return GetAll()
-                .AnyAsync(x => x.LeadAssignmentId == leadAssignmentId && !x.IsCanceled);
+                .AnyAsync(x => x.LeadAssignmentId == leadAssignmentId && !x.IsCanceled && !x.IsDeleted);
         }
     }
 }

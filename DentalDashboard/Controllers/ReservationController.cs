@@ -4,6 +4,8 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.Controllers
 {
@@ -76,6 +78,32 @@ namespace DentalDashboard.Controllers
         {
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
+        }
+
+        [HttpPost("SecretaryChangeTime")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> SecretaryChangeTime(SecretaryChangeReservationTimeCommand command)
+        {
+            if (!TryGetAuthenticatedUserId(out var userId))
+                return Ok(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            command.AuthenticatedUserId = userId;
+            return Ok(await commandDispatcher.DispatchAsync(command));
+        }
+
+        [HttpPost("ConfirmSecretaryTimeChange")]
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> ConfirmSecretaryTimeChange(ConfirmSecretaryTimeChangeCommand command)
+        {
+            if (!TryGetAuthenticatedUserId(out var userId))
+                return Ok(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            command.AuthenticatedUserId = userId;
+            return Ok(await commandDispatcher.DispatchAsync(command));
+        }
+
+        private bool TryGetAuthenticatedUserId(out Guid userId)
+        {
+            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
+            return Guid.TryParse(value, out userId);
         }
 
         [HttpGet("ConsultantPatientProfiles")]

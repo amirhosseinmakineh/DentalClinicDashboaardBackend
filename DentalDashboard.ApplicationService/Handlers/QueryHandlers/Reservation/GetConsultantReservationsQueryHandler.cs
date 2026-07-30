@@ -2,6 +2,7 @@ using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
@@ -77,6 +78,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                         x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                     Description = x.Description,
                     IsCanceled = x.IsCanceled
+                    ,IsWaitingForConsultantTimeConfirmation = x.ReservationTimeChanges.Any(c => c.Status == ReservationTimeChangeStatus.PendingConsultantConfirmation)
+                    ,SecretaryTimeChangeNote = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => c.Note).FirstOrDefault()
+                    ,SecretaryChangedReservationAt = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => (DateTime?)c.CreatedAt).FirstOrDefault()
                 })
                 .ToListAsync(cancellationToken);
 

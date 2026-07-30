@@ -4,6 +4,9 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using DentalDashboard.Domain.Models;
+using DentalDashboard.Framwork.IRepositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
@@ -12,13 +15,16 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
         private const int MaxReservationsPerConsultantAtSameTime = 10;
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
+        private readonly IBaseRepository<long, ReservationTimeChange> timeChanges;
 
         public UpdateReservationCommandHandler(
             IReservationRepository reservationRepository,
-            ILeadAssignmentRepository leadAssignmentRepository)
+            ILeadAssignmentRepository leadAssignmentRepository,
+            IBaseRepository<long, ReservationTimeChange> timeChanges)
         {
             this.reservationRepository = reservationRepository;
             this.leadAssignmentRepository = leadAssignmentRepository;
+            this.timeChanges = timeChanges;
         }
 
         public async Task<Result<ReservationItemResponse>> HandleAsync(
@@ -31,6 +37,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             if (reservation.ConsultantProfileId != command.ConsultantProfileId)
                 return Result<ReservationItemResponse>.Failure("این رزرو متعلق به شما نیست");
+
+            if (await timeChanges.GetAll().AnyAsync(x => x.ReservationId == reservation.Id &&
+                    x.Status == ReservationTimeChangeStatus.PendingConsultantConfirmation, cancellationToken))
+                return Result<ReservationItemResponse>.Failure("این رزرو در انتظار تایید تغییر زمان توسط مشاور است");
 
             if (reservation.AttendanceConfirmationStatus is
                 ReservationAttendanceConfirmationStatus.SecretaryApproved or

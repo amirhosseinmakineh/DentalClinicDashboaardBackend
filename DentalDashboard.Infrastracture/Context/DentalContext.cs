@@ -19,6 +19,8 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<Reservation> Reservations => Set<Reservation>();
         public DbSet<UserPresenceLog> UserPresenceLogs => Set<UserPresenceLog>();
         public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+        public DbSet<ReservationTimeChange> ReservationTimeChanges => Set<ReservationTimeChange>();
+        public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

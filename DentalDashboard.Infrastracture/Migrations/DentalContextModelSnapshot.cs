@@ -110,9 +110,6 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -257,20 +254,11 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("EmergencyPhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("InsuranceName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("NationalCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -400,19 +388,6 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool?>("SecretaryApprovedConsultantConfirmation")
                         .HasColumnType("bit");
 
-                    b.Property<DateTime?>("SecretaryReservationReviewedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("SecretaryReservationReviewerUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("SecretaryReservationReviewNote")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<int>("SecretaryReservationReviewStatus")
-                        .HasColumnType("int");
-
                     b.Property<string>("SecretaryReviewNote")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -431,8 +406,6 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("PatientUserId");
 
                     b.HasIndex("LeadAssignmentId", "IsCanceled");
-
-                    b.HasIndex("SecretaryReservationReviewStatus", "IsCanceled", "ReservationAt");
 
                     b.HasIndex("ConsultantProfileId", "ReservationAt", "IsCanceled");
 

@@ -69,7 +69,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     LastName = command.LastName.Trim(),
                     PhoneNumber = phoneNumber,
                     PasswordHash = PasswordHasher.HashPassword(command.PasswordHash),
-                    BirthDate = command.BirthDate,
                     Gender = command.Gender,
                     AvatarImageName = command.AvatarImageName,
                     IsActive = true,
@@ -83,9 +82,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 {
                     UserId = user.Id,
                     NationalCode = string.Empty,
-                    EmergencyPhoneNumber = command.EmergencyPhoneNumber,
-                    InsuranceName = command.InsuranceName,
-                    Notes = command.Notes,
                     CreatedAt = DateTime.UtcNow
                 };
 

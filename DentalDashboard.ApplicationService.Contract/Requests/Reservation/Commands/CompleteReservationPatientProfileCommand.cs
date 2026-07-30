@@ -13,9 +13,5 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public string PasswordHash { get; set; } = default!;
         public string? AvatarImageName { get; set; }
         public Gender Gender { get; set; }
-        public DateTime BirthDate { get; set; }
-        public string? EmergencyPhoneNumber { get; set; }
-        public string? InsuranceName { get; set; }
-        public string? Notes { get; set; }
     }
 }

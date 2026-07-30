@@ -11,10 +11,6 @@ public class Reservation : BaseAuditableEntity<long>
     public Guid? PatientUserId { get; set; }
     public User? PatientUser { get; set; }
     public DateTime ReservationAt { get; set; }
-    public SecretaryReservationReviewStatus SecretaryReservationReviewStatus { get; set; } = SecretaryReservationReviewStatus.Pending;
-    public DateTime? SecretaryReservationReviewedAt { get; set; }
-    public Guid? SecretaryReservationReviewerUserId { get; set; }
-    public string? SecretaryReservationReviewNote { get; set; }
     public ReservationAttendanceConfirmationStatus AttendanceConfirmationStatus { get; set; } = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation;
     public DateTime? ConsultantAttendanceConfirmedAt { get; set; }
     public bool? ConsultantSaysPatientAttended { get; set; }

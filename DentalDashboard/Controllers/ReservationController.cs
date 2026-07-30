@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using DentalDashboard.Framwork.Domain;
+using DentalDashboard.Domain.Enums;
+using DentalDashboard.Services;
 
 namespace DentalDashboard.Controllers
 {
@@ -15,11 +17,13 @@ namespace DentalDashboard.Controllers
     {
         private readonly ICommandDispatcher commandDispatcher;
         private readonly IQueryDispatcher queryDispatcher;
+        private readonly SecretaryDashboardService secretaryDashboardService;
 
-        public ReservationController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher)
+        public ReservationController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher, SecretaryDashboardService secretaryDashboardService)
         {
             this.commandDispatcher = commandDispatcher;
             this.queryDispatcher = queryDispatcher;
+            this.secretaryDashboardService = secretaryDashboardService;
         }
 
         [HttpPost]
@@ -52,11 +56,80 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("SecretaryReservations")]
+        [Authorize(Roles = "Secretary,Admin")]
         public async Task<IActionResult> GetSecretaryReservations([FromQuery] GetSecretaryReservationsQuery query)
         {
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
         }
+
+        [HttpGet("SecretaryDashboard")]
+        [Authorize(Roles = "Secretary,Admin")]
+        public async Task<IActionResult> GetSecretaryDashboard([FromQuery] DateOnly? date, [FromQuery] string? timeZone = "Asia/Tehran", [FromQuery] int listSize = 5, CancellationToken cancellationToken = default)
+        {
+            try { return Ok(Result<SecretaryDashboardDto>.Success(await secretaryDashboardService.GetAsync(date, timeZone, listSize, cancellationToken), "داشبورد منشی دریافت شد")); }
+            catch (TimeZoneNotFoundException) { return BadRequest(Result.Failure("منطقه زمانی معتبر نیست")); }
+        }
+
+        [HttpPost("{reservationId:long}/secretary-confirm")]
+        [Authorize(Roles = "Secretary")]
+        public Task<IActionResult> SecretaryConfirm(long reservationId, SecretaryConfirmRequest request, CancellationToken ct) =>
+            ReviewRequest(reservationId, ReservationRequestStatus.Confirmed, null, request.Note, null, null, ct);
+
+        [HttpPost("{reservationId:long}/secretary-reschedule")]
+        [Authorize(Roles = "Secretary")]
+        public Task<IActionResult> SecretaryReschedule(long reservationId, SecretaryRescheduleRequest request, CancellationToken ct) =>
+            ReviewRequest(reservationId, ReservationRequestStatus.Rescheduled, request.ReservationAt, request.Note, null, null, ct);
+
+        [HttpPost("{reservationId:long}/secretary-reject")]
+        [Authorize(Roles = "Secretary")]
+        public Task<IActionResult> SecretaryReject(long reservationId, SecretaryRejectRequest request, CancellationToken ct) =>
+            ReviewRequest(reservationId, ReservationRequestStatus.Rejected, null, null, request.ReasonCode, request.Reason, ct);
+
+        [HttpPost("{reservationId:long}/patient-confirmation")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> PatientConfirmation(long reservationId, PatientConfirmationRequest request, CancellationToken ct) =>
+            await ExecuteMutation(async actor => await secretaryDashboardService.SetPatientConfirmationAsync(reservationId, actor, request.Confirmed, request.Note, ct));
+
+        [HttpPost("{reservationId:long}/visit-result")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> VisitResult(long reservationId, VisitResultRequest request, CancellationToken ct) =>
+            await ExecuteMutation(async actor => await secretaryDashboardService.SetVisitResultAsync(reservationId, actor, request.VisitResultStatus, request.Note, ct));
+
+        [HttpPost("{reservationId:long}/follow-ups")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> CreateFollowUp(long reservationId, FollowUpRequest request, CancellationToken ct)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            try { var id = await secretaryDashboardService.CreateFollowUpAsync(reservationId, actor, request, ct); return Ok(Result<object>.Success(new { followUpId = id }, "پیگیری ثبت شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        [HttpPut("{reservationId:long}/follow-ups/{followUpId:long}")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> UpdateFollowUp(long reservationId, long followUpId, FollowUpRequest request, CancellationToken ct) =>
+            await ExecuteMutation(async actor => await secretaryDashboardService.UpdateFollowUpAsync(reservationId, followUpId, actor, request, ct));
+
+        private async Task<IActionResult> ReviewRequest(long id, ReservationRequestStatus status, DateTime? at, string? note, int? reasonCode, string? reason, CancellationToken ct)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            try { return Ok(Result<ReservationMutationDto>.Success(await secretaryDashboardService.ReviewAsync(id, actor, status, at, note, reasonCode, reason, ct), "وضعیت درخواست رزرو ثبت شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        private async Task<IActionResult> ExecuteMutation(Func<Guid, Task> action)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            try { await action(actor); return Ok(Result.Success("عملیات با موفقیت انجام شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        private IActionResult MutationError(Exception ex) => ex switch
+        {
+            KeyNotFoundException => NotFound(Result.Failure(ex.Message)),
+            InvalidOperationException => Conflict(Result.Failure(ex.Message)),
+            _ => BadRequest(Result.Failure(ex.Message))
+        };
 
         [HttpPost("ConfirmAttendance")]
         public async Task<IActionResult> ConfirmAttendance(ConfirmReservationAttendanceCommand command)
@@ -114,4 +187,10 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
     }
+
+    public record SecretaryConfirmRequest(string? Note);
+    public record SecretaryRescheduleRequest(DateTime ReservationAt, string? Note);
+    public record SecretaryRejectRequest(int ReasonCode, string Reason);
+    public record PatientConfirmationRequest(bool Confirmed, string? Note);
+    public record VisitResultRequest(VisitResultStatus VisitResultStatus, string? Note);
 }

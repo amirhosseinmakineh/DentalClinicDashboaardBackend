@@ -32,6 +32,10 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public DateTime? AttendanceScoreAppliedAt { get; set; }
         public string? Description { get; set; }
         public bool IsCanceled { get; set; }
+        public ReservationRequestStatus ReservationRequestStatus { get; set; }
+        public VisitResultStatus VisitResultStatus { get; set; }
+        public bool IsConfirmedWithPatient { get; set; }
+        public DateTime? ConfirmedWithPatientAt { get; set; }
         public bool IsWaitingForConsultantTimeConfirmation { get; set; }
         public string? SecretaryTimeChangeNote { get; set; }
         public DateTime? SecretaryChangedReservationAt { get; set; }

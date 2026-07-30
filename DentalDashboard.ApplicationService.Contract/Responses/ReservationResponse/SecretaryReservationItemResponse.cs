@@ -12,6 +12,10 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public Guid? PatientUserId { get; set; }
         public bool RequiresPatientProfile { get; set; }
         public DateTime ReservationAt { get; set; }
+        public SecretaryReservationReviewStatus SecretaryReservationReviewStatus { get; set; }
+        public DateTime? SecretaryReservationReviewedAt { get; set; }
+        public Guid? SecretaryReservationReviewerUserId { get; set; }
+        public string? SecretaryReservationReviewNote { get; set; }
         public string PatientName { get; set; } = default!;
         public string PatientPhoneNumber { get; set; } = default!;
         public string? SecondaryPhoneNumber { get; set; }

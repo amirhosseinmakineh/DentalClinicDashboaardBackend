@@ -33,6 +33,37 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 
             reservations = reservations.ApplyReservationAtFilter(query.Date, query.From, query.To);
 
+            if (query.ReservationRequestStatus.HasValue)
+                reservations = reservations.Where(x => x.ReservationRequestStatus == query.ReservationRequestStatus);
+            if (query.VisitResultStatus.HasValue)
+                reservations = reservations.Where(x => x.VisitResultStatus == query.VisitResultStatus);
+            if (query.IsConfirmedWithPatient.HasValue)
+                reservations = reservations.Where(x => x.IsConfirmedWithPatient == query.IsConfirmedWithPatient);
+            if (!string.IsNullOrWhiteSpace(query.SearchText))
+            {
+                var term = query.SearchText.Trim();
+                reservations = reservations.Where(x => x.LeadAssignment.UserName.Contains(term) ||
+                    x.LeadAssignment.PhoneNumber.Contains(term) ||
+                    (x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName).Contains(term));
+            }
+            if (query.ReservationDate.HasValue)
+            {
+                var zone = ResolveTimeZone(query.TimeZone);
+                var localStart = query.ReservationDate.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+                var start = TimeZoneInfo.ConvertTimeToUtc(localStart, zone);
+                var end = TimeZoneInfo.ConvertTimeToUtc(localStart.AddDays(1), zone);
+                reservations = reservations.Where(x => x.ReservationAt >= start && x.ReservationAt < end);
+            }
+            if (query.FollowUpDueOn.HasValue)
+            {
+                var zone = ResolveTimeZone(query.TimeZone);
+                var localStart = query.FollowUpDueOn.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+                var start = TimeZoneInfo.ConvertTimeToUtc(localStart, zone);
+                var end = TimeZoneInfo.ConvertTimeToUtc(localStart.AddDays(1), zone);
+                reservations = reservations.Where(x => x.FollowUps.Any(f => !f.IsDeleted && f.Status == FollowUpStatus.Pending &&
+                    ((f.ScheduledAt >= start && f.ScheduledAt < end) || (f.ReminderAt >= start && f.ReminderAt < end))));
+            }
+
             if (query.AttendanceConfirmationStatus.HasValue)
                 reservations = reservations.Where(x => x.AttendanceConfirmationStatus == query.AttendanceConfirmationStatus.Value);
 
@@ -83,6 +114,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     AttendanceScoreAppliedAt = x.AttendanceScoreAppliedAt,
                     Description = x.Description,
                     IsCanceled = x.IsCanceled
+                    ,ReservationRequestStatus = x.ReservationRequestStatus
+                    ,VisitResultStatus = x.VisitResultStatus
+                    ,IsConfirmedWithPatient = x.IsConfirmedWithPatient
+                    ,ConfirmedWithPatientAt = x.ConfirmedWithPatientAt
                     ,IsWaitingForConsultantTimeConfirmation = x.ReservationTimeChanges.Any(c => c.Status == ReservationTimeChangeStatus.PendingConsultantConfirmation)
                     ,SecretaryTimeChangeNote = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => c.Note).FirstOrDefault()
                     ,SecretaryChangedReservationAt = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => (DateTime?)c.CreatedAt).FirstOrDefault()
@@ -96,6 +131,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
+        }
+
+        private static TimeZoneInfo ResolveTimeZone(string id)
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById(string.IsNullOrWhiteSpace(id) ? "Asia/Tehran" : id); }
+            catch (TimeZoneNotFoundException) when (id == "Asia/Tehran") { return TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time"); }
         }
     }
 }

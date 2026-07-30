@@ -4,6 +4,7 @@ namespace DentalDashboard.Domain.Models;
 
 public class Reservation : BaseAuditableEntity<long>
 {
+    public ICollection<ReservationTimeChange> ReservationTimeChanges { get; set; } = new List<ReservationTimeChange>();
     public long LeadAssignmentId { get; set; }
     public LeadAssignment LeadAssignment { get; set; } = default!;
     public long ConsultantProfileId { get; set; }

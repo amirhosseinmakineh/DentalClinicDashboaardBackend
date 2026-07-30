@@ -30,5 +30,8 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public bool IsDueForConsultantConfirmation { get; set; }
         public string? Description { get; set; }
         public bool IsCanceled { get; set; }
+        public bool IsWaitingForConsultantTimeConfirmation { get; set; }
+        public string? SecretaryTimeChangeNote { get; set; }
+        public DateTime? SecretaryChangedReservationAt { get; set; }
     }
 }

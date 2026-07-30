@@ -83,6 +83,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     AttendanceScoreAppliedAt = x.AttendanceScoreAppliedAt,
                     Description = x.Description,
                     IsCanceled = x.IsCanceled
+                    ,IsWaitingForConsultantTimeConfirmation = x.ReservationTimeChanges.Any(c => c.Status == ReservationTimeChangeStatus.PendingConsultantConfirmation)
+                    ,SecretaryTimeChangeNote = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => c.Note).FirstOrDefault()
+                    ,SecretaryChangedReservationAt = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => (DateTime?)c.CreatedAt).FirstOrDefault()
                 })
                 .ToListAsync(cancellationToken);
 

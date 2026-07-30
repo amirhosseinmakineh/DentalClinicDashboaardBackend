@@ -6,12 +6,6 @@
 
         public string NationalCode { get; set; } = default!;
 
-        public string? EmergencyPhoneNumber { get; set; }
-
-        public string? InsuranceName { get; set; }
-
-        public string? Notes { get; set; }
-
         #region Relations
 
         public User User { get; set; } = default!;

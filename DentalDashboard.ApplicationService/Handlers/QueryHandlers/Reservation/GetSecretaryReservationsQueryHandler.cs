@@ -36,12 +36,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (query.AttendanceConfirmationStatus.HasValue)
                 reservations = reservations.Where(x => x.AttendanceConfirmationStatus == query.AttendanceConfirmationStatus.Value);
 
-            if (query.ReservationReviewStatus.HasValue)
-                reservations = reservations.Where(x => x.SecretaryReservationReviewStatus == query.ReservationReviewStatus.Value);
-
-            if (query.OnlyPendingReservationReview)
-                reservations = reservations.Where(x => x.SecretaryReservationReviewStatus == SecretaryReservationReviewStatus.Pending);
-
             if (query.OnlyWaitingForSecretaryReview)
                 reservations = reservations.Where(x => x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
                                                        x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
@@ -66,12 +60,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     ConsultantUserId = x.ConsultantProfile.UserId,
                     ConsultantFullName = x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName,
                     PatientUserId = x.PatientUserId,
-                    RequiresPatientProfile = !x.PatientUserId.HasValue,
                     ReservationAt = x.ReservationAt,
-                    SecretaryReservationReviewStatus = x.SecretaryReservationReviewStatus,
-                    SecretaryReservationReviewedAt = x.SecretaryReservationReviewedAt,
-                    SecretaryReservationReviewerUserId = x.SecretaryReservationReviewerUserId,
-                    SecretaryReservationReviewNote = x.SecretaryReservationReviewNote,
                     PatientName = x.LeadAssignment.UserName,
                     PatientPhoneNumber = x.LeadAssignment.PhoneNumber,
                     SecondaryPhoneNumber = x.LeadAssignment.SecondaryPhoneNumber,

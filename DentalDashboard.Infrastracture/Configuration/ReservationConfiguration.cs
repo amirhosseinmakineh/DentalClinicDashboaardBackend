@@ -11,7 +11,6 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.HasIndex(x => new { x.ConsultantProfileId, x.ReservationAt, x.IsCanceled });
             builder.HasIndex(x => new { x.LeadAssignmentId, x.IsCanceled });
             builder.HasIndex(x => x.PatientUserId);
-            builder.HasIndex(x => new { x.SecretaryReservationReviewStatus, x.IsCanceled, x.ReservationAt });
 
             builder.Property(x => x.Description)
                 .HasMaxLength(1000);
@@ -23,9 +22,6 @@ namespace DentalDashboard.Infrastracture.Configuration
                 .HasMaxLength(1000);
 
             builder.Property(x => x.SecretaryReviewNote)
-                .HasMaxLength(1000);
-
-            builder.Property(x => x.SecretaryReservationReviewNote)
                 .HasMaxLength(1000);
 
             builder.HasOne(x => x.ConsultantProfile)

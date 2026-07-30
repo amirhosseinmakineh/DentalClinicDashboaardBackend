@@ -61,9 +61,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     PatientCity = x.LeadAssignment != null ? x.LeadAssignment.PatientCity : null,
                     PatientRegion = x.LeadAssignment != null ? x.LeadAssignment.PatientRegion : null,
                     ProfileCreatedAt = x.PatientUser.PatientProfile!.CreatedAt,
-                    ReservationAt = x.ReservationAt,
-                    InsuranceName = x.PatientUser.PatientProfile.InsuranceName,
-                    EmergencyPhoneNumber = x.PatientUser.PatientProfile.EmergencyPhoneNumber
+                    ReservationAt = x.ReservationAt
                 })
                 .ToListAsync(cancellationToken);
 

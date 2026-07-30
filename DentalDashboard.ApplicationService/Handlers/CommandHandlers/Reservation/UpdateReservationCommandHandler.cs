@@ -39,9 +39,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 return Result<ReservationItemResponse>.Failure("پس از بررسی منشی امکان ویرایش رزرو وجود ندارد");
             }
 
-            if (reservation.SecretaryReservationReviewStatus != SecretaryReservationReviewStatus.Pending)
-                return Result<ReservationItemResponse>.Failure("پس از بررسی رزرو توسط منشی امکان ویرایش آن وجود ندارد");
-
             var lead = await leadAssignmentRepository.GetByIdAndConsultantAsync(
                 reservation.LeadAssignmentId,
                 command.ConsultantProfileId);

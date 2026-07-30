@@ -3,6 +3,7 @@ using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DentalDashboard.Controllers
 {
@@ -27,6 +28,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost("CompletePatientProfile")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> CompletePatientProfile(CompleteReservationPatientProfileCommand command)
         {
             var result = await commandDispatcher.DispatchAsync(command);
@@ -68,14 +70,8 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
-        [HttpPost("ReviewSecretaryReservation")]
-        public async Task<IActionResult> ReviewSecretaryReservation(ReviewSecretaryReservationCommand command)
-        {
-            var result = await commandDispatcher.DispatchAsync(command);
-            return Ok(result);
-        }
-
         [HttpPut]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> UpdateReservation(UpdateReservationCommand command)
         {
             var result = await commandDispatcher.DispatchAsync(command);

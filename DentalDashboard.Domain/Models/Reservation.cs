@@ -14,19 +14,23 @@ public class Reservation : BaseAuditableEntity<long>
     public Guid? PatientUserId { get; set; }
     public User? PatientUser { get; set; }
     public DateTime ReservationAt { get; set; }
+    public DateTime InitialReservationAt { get; set; }
     public ReservationRequestStatus ReservationRequestStatus { get; set; } = ReservationRequestStatus.PendingSecretaryReview;
     public VisitResultStatus VisitResultStatus { get; set; } = VisitResultStatus.Pending;
-    public bool IsConfirmedWithPatient { get; set; }
+    public bool? IsConfirmedWithPatient { get; set; }
     public DateTime? ConfirmedWithPatientAt { get; set; }
+    public Guid? ConfirmedWithPatientByUserId { get; set; }
     public string? PatientConfirmationNote { get; set; }
     public DateTime? RequestReviewedAt { get; set; }
     public Guid? RequestReviewedByUserId { get; set; }
     public string? RequestReviewNote { get; set; }
     public int? RejectionReasonCode { get; set; }
     public string? RejectionReason { get; set; }
+    public string? CancellationReason { get; set; }
     public DateTime? VisitResultRecordedAt { get; set; }
     public Guid? VisitResultRecordedByUserId { get; set; }
     public string? VisitResultNote { get; set; }
+    public DateTime LastActivityAt { get; set; }
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     public ReservationAttendanceConfirmationStatus AttendanceConfirmationStatus { get; set; } = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation;
     public DateTime? ConsultantAttendanceConfirmedAt { get; set; }
@@ -43,4 +47,6 @@ public class Reservation : BaseAuditableEntity<long>
     public string? AttendancePrediction { get; set; }
     public bool IsCanceled { get; set; }
     public DateTime? CanceledAt { get; set; }
+    public ICollection<ReservationContactLog> ContactLogs { get; set; } = new List<ReservationContactLog>();
+    public ICollection<ReservationNote> Notes { get; set; } = new List<ReservationNote>();
 }

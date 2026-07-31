@@ -8,4 +8,6 @@ public class SecretaryReservationActivity : BaseAuditableEntity<long>
     public User ActorUser { get; set; } = default!;
     public string ActivityType { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string? PreviousValue { get; set; }
+    public string? NewValue { get; set; }
 }

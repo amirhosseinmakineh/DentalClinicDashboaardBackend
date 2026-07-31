@@ -11,6 +11,9 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public string ConsultantFullName { get; set; } = default!;
         public Guid? PatientUserId { get; set; }
         public DateTime ReservationAt { get; set; }
+        public DateTime InitialReservationAt { get; set; }
+        public DateTime RequestCreatedAt { get; set; }
+        public DateTime LastActivityAt { get; set; }
         public string PatientName { get; set; } = default!;
         public string PatientPhoneNumber { get; set; } = default!;
         public string? SecondaryPhoneNumber { get; set; }
@@ -34,10 +37,15 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public bool IsCanceled { get; set; }
         public ReservationRequestStatus ReservationRequestStatus { get; set; }
         public VisitResultStatus VisitResultStatus { get; set; }
-        public bool IsConfirmedWithPatient { get; set; }
+        public bool? IsConfirmedWithPatient { get; set; }
         public DateTime? ConfirmedWithPatientAt { get; set; }
         public bool IsWaitingForConsultantTimeConfirmation { get; set; }
         public string? SecretaryTimeChangeNote { get; set; }
         public DateTime? SecretaryChangedReservationAt { get; set; }
+        public int CallCount { get; set; }
+        public DateTime? LastFollowUpAt { get; set; }
+        public string? LastContactResult { get; set; }
+        public string? RejectionReason { get; set; }
+        public string? CancellationReason { get; set; }
     }
 }

@@ -10,6 +10,9 @@ public class SecretaryReservationActivityConfiguration : IEntityTypeConfiguratio
     {
         builder.Property(x => x.ActivityType).HasMaxLength(80).IsRequired();
         builder.Property(x => x.Description).HasMaxLength(1000).IsRequired();
+        builder.Property(x => x.PreviousValue).HasMaxLength(2000);
+        builder.Property(x => x.NewValue).HasMaxLength(2000);
+        builder.HasIndex(x => new { x.ReservationId, x.CreatedAt });
         builder.HasIndex(x => x.CreatedAt);
         builder.HasOne(x => x.Reservation).WithMany(x => x.SecretaryActivities)
             .HasForeignKey(x => x.ReservationId).OnDelete(DeleteBehavior.Cascade);

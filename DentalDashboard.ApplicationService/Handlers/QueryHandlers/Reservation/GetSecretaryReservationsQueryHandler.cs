@@ -21,7 +21,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
         public async Task<PaginatedResult<SecretaryReservationItemResponse>> HandleAsync(GetSecretaryReservationsQuery query, CancellationToken cancellationToken = default)
         {
             var pageNumber = query.PageNumber <= 0 ? 1 : query.PageNumber;
-            var pageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 100);
+            var pageSize = new[] { 10, 20, 50 }.Contains(query.PageSize) ? query.PageSize : 20;
 
             var reservations = reservationRepository.GetAll().AsNoTracking();
 
@@ -45,6 +45,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                 reservations = reservations.Where(x => x.LeadAssignment.UserName.Contains(term) ||
                     x.LeadAssignment.PhoneNumber.Contains(term) ||
                     (x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName).Contains(term));
+            }
+            if (!string.IsNullOrWhiteSpace(query.ConsultantName))
+            {
+                var consultant = query.ConsultantName.Trim();
+                reservations = reservations.Where(x => (x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName).Contains(consultant));
             }
             if (query.ReservationDate.HasValue)
             {
@@ -78,9 +83,17 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
 
             var totalCount = await reservations.CountAsync(cancellationToken);
+            var ascending = string.Equals(query.SortDirection, "asc", StringComparison.OrdinalIgnoreCase);
+            reservations = (query.SortBy?.ToLowerInvariant(), ascending) switch
+            {
+                ("reservationat", true) => reservations.OrderBy(x => x.ReservationAt).ThenBy(x => x.Id),
+                ("reservationat", false) => reservations.OrderByDescending(x => x.ReservationAt).ThenByDescending(x => x.Id),
+                ("reservationrequeststatus", true) => reservations.OrderBy(x => x.ReservationRequestStatus).ThenBy(x => x.Id),
+                ("reservationrequeststatus", false) => reservations.OrderByDescending(x => x.ReservationRequestStatus).ThenByDescending(x => x.Id),
+                ("requestcreatedat", true) => reservations.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id),
+                _ => reservations.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
+            };
             var items = await reservations
-                .OrderByDescending(x => x.ReservationAt)
-                .ThenByDescending(x => x.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(x => new SecretaryReservationItemResponse
@@ -92,6 +105,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     ConsultantFullName = x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName,
                     PatientUserId = x.PatientUserId,
                     ReservationAt = x.ReservationAt,
+                    InitialReservationAt = x.InitialReservationAt,
+                    RequestCreatedAt = x.CreatedAt,
+                    LastActivityAt = x.LastActivityAt,
                     PatientName = x.LeadAssignment.UserName,
                     PatientPhoneNumber = x.LeadAssignment.PhoneNumber,
                     SecondaryPhoneNumber = x.LeadAssignment.SecondaryPhoneNumber,
@@ -121,6 +137,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     ,IsWaitingForConsultantTimeConfirmation = x.ReservationTimeChanges.Any(c => c.Status == ReservationTimeChangeStatus.PendingConsultantConfirmation)
                     ,SecretaryTimeChangeNote = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => c.Note).FirstOrDefault()
                     ,SecretaryChangedReservationAt = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => (DateTime?)c.CreatedAt).FirstOrDefault()
+                    ,CallCount = x.ContactLogs.Count(c => !c.IsDeleted)
+                    ,LastContactResult = x.ContactLogs.Where(c => !c.IsDeleted).OrderByDescending(c => c.CreatedAt).Select(c => c.Result.ToString()).FirstOrDefault()
+                    ,LastFollowUpAt = x.FollowUps.Where(f => !f.IsDeleted).OrderByDescending(f => f.CreatedAt).Select(f => (DateTime?)f.ScheduledAt).FirstOrDefault()
+                    ,RejectionReason = x.RejectionReason
+                    ,CancellationReason = x.CancellationReason
                 })
                 .ToListAsync(cancellationToken);
 

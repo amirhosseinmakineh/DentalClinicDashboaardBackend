@@ -23,6 +23,9 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
         public DbSet<ReservationFollowUp> ReservationFollowUps => Set<ReservationFollowUp>();
         public DbSet<SecretaryReservationActivity> SecretaryReservationActivities => Set<SecretaryReservationActivity>();
+        public DbSet<ReservationContactLog> ReservationContactLogs => Set<ReservationContactLog>();
+        public DbSet<ReservationNote> ReservationNotes => Set<ReservationNote>();
+        public DbSet<ReservationNotificationOutbox> ReservationNotificationOutbox => Set<ReservationNotificationOutbox>();
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

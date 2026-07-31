@@ -21,6 +21,9 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queri
         public DateOnly? ReservationDate { get; set; }
         public bool? IsConfirmedWithPatient { get; set; }
         public string? SearchText { get; set; }
+        public string? ConsultantName { get; set; }
+        public string? SortBy { get; set; }
+        public string SortDirection { get; set; } = "desc";
         public string TimeZone { get; set; } = "Asia/Tehran";
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;

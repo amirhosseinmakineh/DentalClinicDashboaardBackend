@@ -79,7 +79,7 @@ namespace DentalDashboard.Controllers
         [HttpPost("{reservationId:long}/secretary-reschedule")]
         [Authorize(Roles = "Secretary")]
         public Task<IActionResult> SecretaryReschedule(long reservationId, SecretaryRescheduleRequest request, CancellationToken ct) =>
-            ReviewRequest(reservationId, ReservationRequestStatus.Rescheduled, request.ReservationAt, request.Note, null, null, ct);
+            ReviewRequest(reservationId, ReservationRequestStatus.Rescheduled, request.ReservationAt, request.Note, null, request.Reason, ct);
 
         [HttpPost("{reservationId:long}/secretary-reject")]
         [Authorize(Roles = "Secretary")]
@@ -105,6 +105,34 @@ namespace DentalDashboard.Controllers
             catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
         }
 
+        [HttpPost("{reservationId:long}/contacts")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> AddContact(long reservationId, ContactRequest request, CancellationToken ct)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            try { return Ok(Result<object>.Success(new { callCount = await secretaryDashboardService.AddContactAsync(reservationId, actor, request, ct) }, "تماس ثبت شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        [HttpPost("{reservationId:long}/notes")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> AddNote(long reservationId, ReservationNoteRequest request, CancellationToken ct)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            try { return Ok(Result<object>.Success(new { noteId = await secretaryDashboardService.AddNoteAsync(reservationId, actor, request.Note, ct) }, "یادداشت ثبت شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        [HttpPost("{reservationId:long}/cancel")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> Cancel(long reservationId, ReservationCancelRequest request, CancellationToken ct) =>
+            await ExecuteMutation(actor => secretaryDashboardService.CancelAsync(reservationId, actor, request.Reason, ct));
+
+        [HttpGet("{reservationId:long}/history")]
+        [Authorize(Roles = "Secretary,Admin")]
+        public async Task<IActionResult> History(long reservationId, CancellationToken ct) =>
+            Ok(Result<List<HistoryItemDto>>.Success(await secretaryDashboardService.HistoryAsync(reservationId, ct), "تاریخچه دریافت شد"));
+
         [HttpPut("{reservationId:long}/follow-ups/{followUpId:long}")]
         [Authorize(Roles = "Secretary")]
         public async Task<IActionResult> UpdateFollowUp(long reservationId, long followUpId, FollowUpRequest request, CancellationToken ct) =>
@@ -126,9 +154,21 @@ namespace DentalDashboard.Controllers
 
         private IActionResult MutationError(Exception ex) => ex switch
         {
-            KeyNotFoundException => NotFound(Result.Failure(ex.Message)),
-            InvalidOperationException => Conflict(Result.Failure(ex.Message)),
-            _ => BadRequest(Result.Failure(ex.Message))
+            KeyNotFoundException => NotFound(Result.Failure(ErrorMessage(ex.Message), ex.Message)),
+            InvalidOperationException => Conflict(Result.Failure(ErrorMessage(ex.Message), ex.Message)),
+            _ => BadRequest(Result.Failure(ErrorMessage(ex.Message), ex.Message))
+        };
+
+        private static string ErrorMessage(string code) => code switch
+        {
+            "RESERVATION_NOT_FOUND" => "رزرو یافت نشد",
+            "RESERVATION_ALREADY_REVIEWED" => "درخواست رزرو قبلاً بررسی شده است",
+            "RESERVATION_TIME_CONFLICT" => "زمان انتخاب‌شده دارای تداخل است",
+            "RESERVATION_TIME_IN_PAST" => "زمان انتخاب‌شده در گذشته است",
+            "FOLLOW_UP_TIME_IN_PAST" => "زمان پیگیری معتبر نیست",
+            "VISIT_RESULT_TOO_EARLY" => "ثبت نتیجه پیش از سررسید رزرو ممکن نیست",
+            "CONCURRENCY_CONFLICT" => "رزرو هم‌زمان توسط کاربر دیگری تغییر کرده است",
+            _ => code
         };
 
         [HttpPost("ConfirmAttendance")]
@@ -189,8 +229,10 @@ namespace DentalDashboard.Controllers
     }
 
     public record SecretaryConfirmRequest(string? Note);
-    public record SecretaryRescheduleRequest(DateTime ReservationAt, string? Note);
+    public record SecretaryRescheduleRequest(DateTime ReservationAt, string Reason, string? Note);
     public record SecretaryRejectRequest(int ReasonCode, string Reason);
     public record PatientConfirmationRequest(bool Confirmed, string? Note);
     public record VisitResultRequest(VisitResultStatus VisitResultStatus, string? Note);
+    public record ReservationNoteRequest(string Note);
+    public record ReservationCancelRequest(string Reason);
 }

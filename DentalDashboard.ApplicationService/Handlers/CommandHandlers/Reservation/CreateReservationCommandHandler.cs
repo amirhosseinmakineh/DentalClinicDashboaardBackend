@@ -76,6 +76,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 LeadAssignmentId = lead.Id,
                 ConsultantProfileId = command.ConsultantProfileId,
                 ReservationAt = command.ReservationAt,
+                InitialReservationAt = command.ReservationAt,
+                LastActivityAt = DateTime.UtcNow,
+                ReservationRequestStatus = ReservationRequestStatus.PendingSecretaryReview,
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                 Description = command.Description,
                 AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)

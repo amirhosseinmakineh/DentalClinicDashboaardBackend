@@ -6,5 +6,7 @@ public enum ReservationRequestStatus
     Confirmed = 2,
     Rescheduled = 3,
     Rejected = 4,
-    Canceled = 5
+    Canceled = 5,
+    WaitingPatientConfirmation = 6,
+    NeedsFollowUp = 7
 }

@@ -13,4 +13,8 @@ public class ReservationFollowUp : BaseAuditableEntity<long>
     public string Reason { get; set; } = string.Empty;
     public Guid? AssignedSecretaryUserId { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public Guid CreatedByUserId { get; set; }
+    public Guid? CompletedByUserId { get; set; }
+    public string? Result { get; set; }
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }

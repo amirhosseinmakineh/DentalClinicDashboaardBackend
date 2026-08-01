@@ -13,5 +13,6 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.User
         public bool IsCompleteProfile { get; set; }
         public Gender Gender { get; set; }
         public DateTime CreatedAt { get; set; }
+        public ConsultantLevel? ConsultantLevel { get; set; }
     }
 }

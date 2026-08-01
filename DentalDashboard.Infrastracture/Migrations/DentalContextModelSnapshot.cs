@@ -97,6 +97,11 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool>("IsOnline")
                         .HasColumnType("bit");
 
+                    b.Property<byte>("ConsultantLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((byte)2);
+
                     b.Property<DateTime?>("LastOfflineAt")
                         .HasColumnType("datetime2");
 
@@ -127,7 +132,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("ConsultantProfiles");
+                    b.ToTable("ConsultantProfiles", t =>
+                        {
+                            t.HasCheckConstraint("CK_ConsultantProfiles_ConsultantLevel", "[ConsultantLevel] IN (1, 2, 3)");
+                        });
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignment", b =>

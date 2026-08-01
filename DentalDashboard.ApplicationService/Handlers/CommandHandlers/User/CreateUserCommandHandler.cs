@@ -2,6 +2,7 @@
 using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.CreateUser;
 using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
@@ -65,6 +66,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 if (command.RoleName == "Consultant")
                 {
                     await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                    var consultantLevel = command.ConsultantLevel ?? ConsultantLevel.Seller;
+                    await consultantProfileService.SetConsultantLevelAsync(user.Id, consultantLevel);
                 }
 
                 await unitOfWork.CommitAsync();
@@ -73,6 +76,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                     Id = user.Id,
                     IsActive = user.IsActive,
                     RoleName = command.RoleName,
+                    ConsultantLevel = command.RoleName == "Consultant"
+                        ? command.ConsultantLevel ?? ConsultantLevel.Seller
+                        : null,
                 };
 
                 return Result<CreateUserResponse>.Success(response,"ثبت کاربر جدید با موفقیت انجام شد");

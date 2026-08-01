@@ -68,7 +68,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     .Any(r => r.LeadAssignmentId == x.Id && !r.IsCanceled)
             });
 
-            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
+            return await LeadAssignmentPagination.ToPaginatedResultAsync(
+                allLeads,
+                query.PageNumber,
+                query.PageSize,
+                cancellationToken,
+                orderByAssignedAt: true);
         }
     }
 
@@ -78,13 +83,16 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             IQueryable<LeadsAssignmentItemsResponse> query,
             int pageNumber,
             int pageSize,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            bool orderByAssignedAt = false)
         {
             var normalizedPageNumber = pageNumber < 1 ? 1 : pageNumber;
             var normalizedPageSize = pageSize < 1 ? 10 : pageSize;
             var totalCount = await query.CountAsync(cancellationToken);
-            var items = await query
-                .OrderByDescending(x => x.Id)
+            var orderedQuery = orderByAssignedAt
+                ? query.OrderByDescending(x => x.AssignedAt).ThenByDescending(x => x.Id)
+                : query.OrderByDescending(x => x.Id);
+            var items = await orderedQuery
                 .Skip((normalizedPageNumber - 1) * normalizedPageSize)
                 .Take(normalizedPageSize)
                 .ToListAsync(cancellationToken);

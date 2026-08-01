@@ -21,6 +21,9 @@ public class LastSeenTrackingMiddleware
     {
         await next(context);
 
+        if (IsLogoutRequest(context))
+            return;
+
         if (context.User.Identity?.IsAuthenticated != true)
             return;
 
@@ -43,5 +46,12 @@ public class LastSeenTrackingMiddleware
 
         if (updated > 0)
             LastPersistedAt[userId] = now;
+    }
+
+    private static bool IsLogoutRequest(HttpContext context)
+    {
+        return context.Request.Path.StartsWithSegments(
+            "/Auth/Logout",
+            StringComparison.OrdinalIgnoreCase);
     }
 }

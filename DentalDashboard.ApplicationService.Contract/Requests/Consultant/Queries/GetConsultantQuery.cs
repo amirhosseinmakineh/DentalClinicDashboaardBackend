@@ -17,6 +17,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Consultant.Querie
         public string? Description { get; set; }
         public LeadAssignmentState? LeadAssignmentState { get; set; }
         public LeadAssignmentType? leadAssignmentType { get; set; }
+        public ConsultantLevel? ConsultantLevel { get; set; }
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

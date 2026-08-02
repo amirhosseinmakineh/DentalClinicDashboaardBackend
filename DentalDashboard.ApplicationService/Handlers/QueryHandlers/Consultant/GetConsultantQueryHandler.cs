@@ -45,6 +45,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             if (!string.IsNullOrWhiteSpace(query.LastName))
                 baseQuery = baseQuery.Where(u => u.LastName.Contains(query.LastName));
 
+            if (query.ConsultantLevel.HasValue)
+                baseQuery = baseQuery.Where(u =>
+                    u.ConsultantProfile!.ConsultantLevel == query.ConsultantLevel.Value);
+
             var totalCount = await baseQuery.CountAsync(cancellationToken);
 
             var consultants = await baseQuery
@@ -57,6 +61,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                     LastName = u.LastName,
                     PhoneNumber = u.PhoneNumber,
                     ProfileId = u.ConsultantProfile.Id,
+                    ConsultantLevel = u.ConsultantProfile.ConsultantLevel,
                     Id = u.Id
                 })
                 .ToListAsync(cancellationToken);

@@ -2,6 +2,7 @@
 using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.UpddateUser;
 using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -66,20 +67,37 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 {
                     await roleService.SetUserRole(user.Id, command.RoleName);
 
-                    if (command.RoleName == "Consultant")
+                }
+
+                if (command.RoleName == "Consultant")
+                {
+                    await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+
+                    if (command.ConsultantLevel.HasValue)
                     {
-                        await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                        await consultantProfileService.SetConsultantLevelAsync(
+                            user.Id,
+                            command.ConsultantLevel.Value);
                     }
                 }
 
                 await userRepository.SaveChange();
+
+                var consultantLevel = command.RoleName == "Consultant"
+                    ? await userRepository.GetAll()
+                        .Where(x => x.Id == user.Id && x.ConsultantProfile != null && !x.ConsultantProfile.IsDeleted)
+                        .Select(x => (ConsultantLevel?)x.ConsultantProfile!.ConsultantLevel)
+                        .FirstOrDefaultAsync(cancellationToken)
+                    : null;
+
                 await unitOfWork.CommitAsync();
                 var response = new UpdateUserResponse()
                 {
                     FirstName = user.FirstName,
                     LastName = user.LastName,
                     IsActive = user.IsActive,
-                    RoleName = command.RoleName
+                    RoleName = command.RoleName,
+                    ConsultantLevel = consultantLevel
                 };
                 return Result<UpdateUserResponse>.Success(response,"ویرایش کاربر با موفقیت انجام شد");
             }

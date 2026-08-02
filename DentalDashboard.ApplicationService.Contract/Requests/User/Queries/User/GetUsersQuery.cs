@@ -14,6 +14,7 @@ public class GetUsersQuery : IQuery<PaginatedResult<UserItemResponse>>
     public Gender? Gender { get; set; }
     public bool? IsCompleteName { get; set; }
     public bool? IsActive { get; set; }
+    public ConsultantLevel? ConsultantLevel { get; set; }
     public DateTime? CreateDate { get; set; }
     public DateTime? UpdateDate { get; set; }
     public DateTime? DeleteDate { get; set; }

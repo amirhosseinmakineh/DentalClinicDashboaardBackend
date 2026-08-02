@@ -1,4 +1,5 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;
@@ -90,6 +91,23 @@ namespace DentalDashboard.ApplicationService.Services
                 consultant.LastOfflineAt = DateTime.Now;
             }
 
+            await repository.SaveChange();
+        }
+
+        public async Task SetConsultantLevelAsync(Guid userId, ConsultantLevel consultantLevel)
+        {
+            if (!Enum.IsDefined(consultantLevel))
+                throw new ArgumentOutOfRangeException(nameof(consultantLevel), "سطح مشاور نامعتبر است.");
+
+            var consultant = await repository.GetAll()
+                .FirstOrDefaultAsync(x => x.UserId == userId && !x.IsDeleted);
+
+            if (consultant is null)
+                throw new InvalidOperationException("پروفایل مشاور پیدا نشد.");
+
+            consultant.ConsultantLevel = consultantLevel;
+            consultant.UpdatedAt = DateTime.UtcNow;
+            repository.Update(consultant);
             await repository.SaveChange();
         }
 

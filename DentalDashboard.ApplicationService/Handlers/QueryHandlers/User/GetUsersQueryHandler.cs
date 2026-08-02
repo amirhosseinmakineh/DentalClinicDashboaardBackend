@@ -46,6 +46,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
             if (query.IsActive.HasValue)
                 users = users.Where(x => x.IsActive == query.IsActive.Value);
 
+            if (query.ConsultantLevel.HasValue)
+                users = users.Where(x =>
+                    x.ConsultantProfile != null &&
+                    !x.ConsultantProfile.IsDeleted &&
+                    x.ConsultantProfile.ConsultantLevel == query.ConsultantLevel.Value);
+
             if (query.IsCompleteName.HasValue)
                 users = users.Where(x => x.IsCompleteProfile == query.IsCompleteName.Value);
 
@@ -64,6 +70,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
                     IsCompleteProfile = user.IsCompleteProfile,
                     Gender = user.Gender,
                     CreatedAt = user.CreatedAt,
+                    ConsultantLevel = user.ConsultantProfile != null && !user.ConsultantProfile.IsDeleted
+                        ? user.ConsultantProfile.ConsultantLevel
+                        : null,
                     PhoneNumber = user.PhoneNumber,
                     RoleName = user.UserRoles
                         .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)

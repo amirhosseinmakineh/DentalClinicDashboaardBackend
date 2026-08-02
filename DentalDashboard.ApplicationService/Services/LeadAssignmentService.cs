@@ -14,7 +14,7 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly HttpClient httpClient;
         private static readonly TimeSpan RealtimeLeadRedispatchInterval = TimeSpan.FromSeconds(6);
-        private const string url = "https://landing.yektanet.com/form/report/vSjrtffitGUytcOHgpLvEzttHcMQiELTANXzyAxTIywCuhjUaBzbMSTNFpZpxKuv";
+        private const string url = "https://docs.google.com/spreadsheets/d/1VvgKqW-53obpDHR-b1bHRVvW2VXjHj0cjXcDsxve2w8/edit?pli=1&gid=626178936#gid=626178936";
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadDomainService leadDomainService;
         private readonly IConsultantProfileRepository consultantProfileRepository;
@@ -41,7 +41,7 @@ namespace DentalDashboard.ApplicationService.Services
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync(
-          CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -64,27 +64,101 @@ namespace DentalDashboard.ApplicationService.Services
                 var document = new HtmlDocument();
                 document.LoadHtml(html);
 
-                var rows = document.DocumentNode
-                    .SelectNodes("//table//tr");
+                var tables = document.DocumentNode
+                    .SelectNodes("//table");
 
-                if (rows == null || rows.Count <= 1)
+                if (tables == null || tables.Count == 0)
+                {
+                    logger.LogWarning(
+                        "No table found in landing page HTML");
+
                     return Array.Empty<LeadAssignment>();
+                }
+
+                logger.LogInformation(
+                    "Found {TableCount} tables in landing page",
+                    tables.Count);
+
+                var selectedTable = tables
+                    .OrderByDescending(table =>
+                        table.SelectNodes(".//tr")?.Count ?? 0)
+                    .First();
+
+                var rows = selectedTable.SelectNodes(".//tr");
+
+                if (rows == null || rows.Count <= 3)
+                {
+                    logger.LogWarning(
+                        "No valid lead rows found in selected table");
+
+                    return Array.Empty<LeadAssignment>();
+                }
+
+                logger.LogInformation(
+                    "Selected table contains {RowCount} rows",
+                    rows.Count);
 
                 var leads = new List<LeadAssignment>();
 
-                foreach (var row in rows.Skip(1))
+                var addedPhoneNumbers = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase);
+
+                foreach (var row in rows.Skip(3))
                 {
-                    var cells = row.SelectNodes(".//td");
+
+                    var cells = row.SelectNodes("./td");
 
                     if (cells == null || cells.Count < 10)
                         continue;
 
-                    var userName = Clean(cells[2].InnerText);
-                    var phoneNumber = Clean(cells[3].InnerText);
-                    var createAtText = Clean(cells[9].InnerText);
+                    var phoneNumber = Clean(cells[8].InnerText);
+
+                    if (string.IsNullOrWhiteSpace(phoneNumber))
+                        continue;
+                    phoneNumber = new string(
+                        phoneNumber
+                            .Where(char.IsDigit)
+                            .ToArray());
+
+                    if (string.IsNullOrWhiteSpace(phoneNumber))
+                        continue;
+
+                    if (phoneNumber.StartsWith("0098"))
+                    {
+                        phoneNumber = "0" + phoneNumber[4..];
+                    }
+                    else if (phoneNumber.StartsWith("98"))
+                    {
+                        phoneNumber = "0" + phoneNumber[2..];
+                    }
+                    else if (!phoneNumber.StartsWith("0"))
+                    {
+                        phoneNumber = "0" + phoneNumber;
+                    }
+                    if (phoneNumber.Length != 11 ||
+                        !phoneNumber.StartsWith("09"))
+                    {
+                        logger.LogWarning(
+                            "Invalid phone number skipped: {PhoneNumber}",
+                            phoneNumber);
+
+                        continue;
+                    }
+
+                    if (!addedPhoneNumbers.Add(phoneNumber))
+                    {
+                        logger.LogDebug(
+                            "Duplicate phone number skipped: {PhoneNumber}",
+                            phoneNumber);
+
+                        continue;
+                    }
+
+                    var userName = Clean(cells[7].InnerText);
+                    var createdAtText = Clean(cells[1].InnerText);
 
                     DateTime.TryParse(
-                        createAtText,
+                        createdAtText,
                         out var createdAt);
 
                     leads.Add(new LeadAssignment
@@ -96,7 +170,7 @@ namespace DentalDashboard.ApplicationService.Services
                 }
 
                 logger.LogInformation(
-                    "Fetched {Count} leads from landing page",
+                    "Fetched {Count} unique leads from landing page",
                     leads.Count);
 
                 return leads.ToArray();
@@ -123,7 +197,7 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 logger.LogError(
                     ex,
-                    "Unexpected error while parsing leads");
+                    "Unexpected error while fetching or parsing leads");
 
                 return Array.Empty<LeadAssignment>();
             }

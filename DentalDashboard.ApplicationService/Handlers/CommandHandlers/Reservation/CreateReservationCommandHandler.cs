@@ -1,5 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;

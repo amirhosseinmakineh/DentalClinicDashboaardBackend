@@ -32,12 +32,12 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.IsOnline &&
                             !x.CallAssignments.Any(l => !l.IsDeleted &&
                                                         l.ReportSubmittedAt == null &&
-                                                        l.CallInitiatedAt == null &&
                                                         l.LeadAssignmentState != LeadAssignmentState.Expired &&
                                                         l.LeadAssignmentState != LeadAssignmentState.Rejected) &&
                             x.CallAssignments.Count(l => !l.IsDeleted &&
                                                          l.ReportSubmittedAt != null &&
-                                                         l.CallResult == DentalDashboard.Domain.Enums.LeadCallResult.NeedFollowUp &&
+                                                         l.CallResult.HasValue &&
+                                                         l.CallResult.Value == global::LeadCallResult.NeedFollowUp &&
                                                          l.LeadAssignmentState == LeadAssignmentState.Pending) <= 10 &&
                             !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.RealTime &&
                                                         l.LeadAssignmentState == LeadAssignmentState.Assigned &&

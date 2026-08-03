@@ -11,6 +11,6 @@ public sealed record ConsultantLeadWorkloadStatus
     public bool BlocksNewLeads => HasUncalledWithoutReport || HasTooManyFollowUps;
 
     public string? BlockMessage => BlocksNewLeads
-        ? $"شما {UncalledWithoutReportCount} شماره بدون تماس و گزارش و {FollowUpCount} مورد در حالت پیگیری دارید. تا زمان تعیین تکلیف این موارد، شماره جدیدی به شما اختصاص داده نمی‌شود."
+        ? $"شما {UncalledWithoutReportCount} شماره بدون گزارش و {FollowUpCount} مورد در حالت پیگیری دارید. تا زمان تعیین تکلیف این موارد، شماره جدیدی به شما اختصاص داده نمی‌شود."
         : null;
 }

@@ -35,6 +35,24 @@ public class PickUpService : IPickupService
         long consultantProfileId,
         CancellationToken cancellationToken)
     {
+        var consultant = await consultantProfileRepository.GetAll()
+            .FirstOrDefaultAsync(
+                x => x.Id == consultantProfileId && !x.IsDeleted,
+                cancellationToken);
+
+        if (consultant == null ||
+            !consultant.IsCompleteProfile ||
+            !consultant.IsAvailable ||
+            !consultant.IsOnline)
+        {
+            return new PickupLeadResult
+            {
+                Status = PickupLeadStatus.WorkloadBlocked,
+                ConsultantProfileId = consultantProfileId,
+                Message = "برای دریافت لید باید حاضر و آنلاین باشید"
+            };
+        }
+
         var workload = await workloadService.GetStatusAsync(consultantProfileId, cancellationToken);
         if (workload.BlocksNewLeads)
         {
@@ -70,14 +88,8 @@ public class PickUpService : IPickupService
             };
         }
 
-        var consultant = await consultantProfileRepository
-            .GetByIdAsync(consultantProfileId);
-
-        if (consultant != null)
-        {
-            consultant.IsOnline = false;
-            consultant.LastOfflineAt = DateTime.UtcNow;
-        }
+        consultant.IsOnline = false;
+        consultant.LastOfflineAt = DateTime.UtcNow;
 
         await unitOfWork.SaveChangesAsync();
 

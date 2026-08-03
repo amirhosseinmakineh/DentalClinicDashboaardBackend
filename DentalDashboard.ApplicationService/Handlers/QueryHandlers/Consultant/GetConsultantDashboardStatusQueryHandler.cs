@@ -1,5 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
@@ -13,15 +14,21 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadDomainService leadDomainService;
+        private readonly IConsultantLeadWorkloadService workloadService;
+        private readonly IPushNotificationService pushNotificationService;
 
         public GetConsultantDashboardStatusQueryHandler(
             IConsultantProfileRepository consultantProfileRepository,
             IReservationRepository reservationRepository,
-            ILeadDomainService leadDomainService)
+            ILeadDomainService leadDomainService,
+            IConsultantLeadWorkloadService workloadService,
+            IPushNotificationService pushNotificationService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
             this.reservationRepository = reservationRepository;
             this.leadDomainService = leadDomainService;
+            this.workloadService = workloadService;
+            this.pushNotificationService = pushNotificationService;
         }
 
         public async Task<ConsultantDashboardStatusResponse> HandleAsync(
@@ -38,8 +45,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 throw new InvalidOperationException("پروفایل مشاور حذف شده است");
 
             var isAfterWorkEnd = leadDomainService.IsAfterWorkEnd(DateTime.Now);
+            var workload = await workloadService.GetStatusAsync(profile.Id, cancellationToken);
 
-            var canGoOnline = !isAfterWorkEnd;
+            var canGoOnline = !isAfterWorkEnd && !workload.BlocksNewLeads;
             var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
             var todayReservationsCount = await reservationRepository.GetAll()
                 .AsNoTracking()
@@ -51,6 +59,20 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                          x.CreatedAt < todayEndUtc,
                     cancellationToken);
 
+            if (workload.BlocksNewLeads)
+            {
+                await pushNotificationService.SendAsync(
+                    profile.UserId,
+                    "تعیین تکلیف شماره‌های قبلی",
+                    workload.BlockMessage!,
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "ConsultantLeadWorkloadBlocked",
+                        ["route"] = "/consultant/leads"
+                    },
+                    cancellationToken);
+            }
+
             return new ConsultantDashboardStatusResponse
             {
                 ProfileId = profile.Id,
@@ -59,15 +81,27 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 LastOnlineAt = profile.LastOnlineAt,
                 LastOfflineAt = profile.LastOfflineAt,
                 CanGoOnline = canGoOnline,
-                OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(isAfterWorkEnd),
-                TodayReservationsCount = todayReservationsCount
+                OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(isAfterWorkEnd, workload),
+                TodayReservationsCount = todayReservationsCount,
+                PendingReportCount = workload.PendingReportCount,
+                UncalledWithoutReportCount = workload.UncalledWithoutReportCount,
+                FollowUpCount = workload.FollowUpCount,
+                MaximumAllowedFollowUps = ConsultantLeadWorkloadStatus.MaximumAllowedFollowUps,
+                IsNewLeadBlocked = workload.BlocksNewLeads,
+                ShouldShowWorkloadNotification = workload.BlocksNewLeads,
+                WorkloadNotificationMessage = workload.BlockMessage
             };
         }
 
-        private static string? ResolveOnlineStatusBlockReason(bool isAfterWorkEnd)
+        private static string? ResolveOnlineStatusBlockReason(
+            bool isAfterWorkEnd,
+            ConsultantLeadWorkloadStatus workload)
         {
             if (isAfterWorkEnd)
                 return "امکان آنلاین شدن بعد از ساعت ۹ شب وجود ندارد";
+
+            if (workload.BlocksNewLeads)
+                return workload.BlockMessage;
 
             return null;
         }

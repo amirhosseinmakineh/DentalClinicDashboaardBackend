@@ -63,6 +63,13 @@ namespace DentalDashboard.Controllers
                     Result.Failure(limitStatus.DailyLimitReachedMessage));
             }
 
+            if (result.Status == PickupLeadStatus.WorkloadBlocked)
+            {
+                return StatusCode(
+                    StatusCodes.Status423Locked,
+                    Result.Failure(result.Message!));
+            }
+
             return Conflict(Result.Failure("این لید قبلاً توسط مشاور دیگری برداشته شده است."));
         }
     }

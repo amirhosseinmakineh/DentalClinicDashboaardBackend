@@ -15,17 +15,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly ILeadAssignmentService leadAssignmentService;
         private readonly ILeadDomainService leadDomainService;
         private readonly IUserPresenceService presenceService;
+        private readonly IConsultantLeadWorkloadService workloadService;
 
         public SetOnlineOfflineCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentService leadAssignmentService,
             ILeadDomainService leadDomainService,
-            IUserPresenceService presenceService)
+            IUserPresenceService presenceService,
+            IConsultantLeadWorkloadService workloadService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadAssignmentService = leadAssignmentService;
             this.leadDomainService = leadDomainService;
             this.presenceService = presenceService;
+            this.workloadService = workloadService;
         }
 
         public async Task<Result> HandleAsync(
@@ -43,6 +46,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
             if (command.IsOnline)
             {
+                var workload = await workloadService.GetStatusAsync(profile.Id, cancellationToken);
+                if (workload.BlocksNewLeads)
+                    return Result.Failure(workload.BlockMessage!);
+
                 if (leadDomainService.IsAfterWorkEnd(DateTime.Now))
                     return Result.Failure("امکان آنلاین شدن بعد از ساعت ۹ شب وجود ندارد");
 

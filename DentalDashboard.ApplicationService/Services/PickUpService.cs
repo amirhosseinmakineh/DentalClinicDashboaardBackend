@@ -12,19 +12,22 @@ public class PickUpService : IPickupService
     private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
     private readonly IPushNotificationService pushNotificationService;
     private readonly IUnitOfWork unitOfWork;
+    private readonly IConsultantLeadWorkloadService workloadService;
 
     public PickUpService(
         ILeadAssignmentRepository leadAssignmentRepository,
         IConsultantProfileRepository consultantProfileRepository,
         ILeadAssignmentLimitService leadAssignmentLimitService,
         IPushNotificationService pushNotificationService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IConsultantLeadWorkloadService workloadService)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.consultantProfileRepository = consultantProfileRepository;
         this.leadAssignmentLimitService = leadAssignmentLimitService;
         this.pushNotificationService = pushNotificationService;
         this.unitOfWork = unitOfWork;
+        this.workloadService = workloadService;
     }
 
     public async Task<PickupLeadResult> PickupLeadAsync(
@@ -32,6 +35,17 @@ public class PickUpService : IPickupService
         long consultantProfileId,
         CancellationToken cancellationToken)
     {
+        var workload = await workloadService.GetStatusAsync(consultantProfileId, cancellationToken);
+        if (workload.BlocksNewLeads)
+        {
+            return new PickupLeadResult
+            {
+                Status = PickupLeadStatus.WorkloadBlocked,
+                ConsultantProfileId = consultantProfileId,
+                Message = workload.BlockMessage
+            };
+        }
+
         if (!await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId))
         {
             return new PickupLeadResult

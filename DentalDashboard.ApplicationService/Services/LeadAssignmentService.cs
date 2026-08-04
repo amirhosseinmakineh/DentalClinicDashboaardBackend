@@ -1,3 +1,5 @@
+using CsvHelper;
+using CsvHelper.Configuration;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
@@ -6,7 +8,10 @@ using DentalDashboard.Domain.Models;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Formats.Asn1;
+using System.Globalization;
 using System.Net;
+using System.Net.Http;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -43,6 +48,21 @@ namespace DentalDashboard.ApplicationService.Services
         public async Task<LeadAssignment[]> LeadsListAsync(
             CancellationToken cancellationToken = default)
         {
+            const string spreadsheetId =
+                "1VvgKqW-53obpDHR-b1bHRVvW2VXjHj0cjXcDsxve2w8";
+
+            const string sheetGid = "626178936";
+
+            const string query =
+                "select A,I,J where J is not null";
+
+            var htmlUrl =
+                $"https://docs.google.com/spreadsheets/d/{spreadsheetId}/gviz/tq" +
+                $"?gid={sheetGid}" +
+                $"&headers=2" +
+                $"&tqx=out:html" +
+                $"&tq={Uri.EscapeDataString(query)}";
+
             try
             {
                 if (!httpClient.DefaultRequestHeaders.UserAgent.Any())
@@ -52,7 +72,7 @@ namespace DentalDashboard.ApplicationService.Services
                 }
 
                 using var response = await httpClient.GetAsync(
-                    url,
+                    htmlUrl,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
 
@@ -64,38 +84,19 @@ namespace DentalDashboard.ApplicationService.Services
                 var document = new HtmlDocument();
                 document.LoadHtml(html);
 
-                var tables = document.DocumentNode
-                    .SelectNodes("//table");
+                var rows = document.DocumentNode
+                    .SelectNodes("//table//tr");
 
-                if (tables == null || tables.Count == 0)
+                if (rows == null || rows.Count == 0)
                 {
                     logger.LogWarning(
-                        "No table found in landing page HTML");
+                        "No rows found in Google Sheet");
 
                     return Array.Empty<LeadAssignment>();
                 }
 
                 logger.LogInformation(
-                    "Found {TableCount} tables in landing page",
-                    tables.Count);
-
-                var selectedTable = tables
-                    .OrderByDescending(table =>
-                        table.SelectNodes(".//tr")?.Count ?? 0)
-                    .First();
-
-                var rows = selectedTable.SelectNodes(".//tr");
-
-                if (rows == null || rows.Count <= 3)
-                {
-                    logger.LogWarning(
-                        "No valid lead rows found in selected table");
-
-                    return Array.Empty<LeadAssignment>();
-                }
-
-                logger.LogInformation(
-                    "Selected table contains {RowCount} rows",
+                    "Google Sheet returned {RowCount} rows",
                     rows.Count);
 
                 var leads = new List<LeadAssignment>();
@@ -103,63 +104,98 @@ namespace DentalDashboard.ApplicationService.Services
                 var addedPhoneNumbers = new HashSet<string>(
                     StringComparer.OrdinalIgnoreCase);
 
+                var emptyCount = 0;
+                var duplicateCount = 0;
+                var invalidStructureCount = 0;
+
                 foreach (var row in rows.Skip(3))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     var cells = row.SelectNodes("./td");
 
-                    if (cells == null || cells.Count < 10)
+                    if (cells == null || cells.Count < 3)
+                    {
+                        invalidStructureCount++;
                         continue;
+                    }
 
-                    var phoneNumber = Clean(cells[8].InnerText);
+                    /*
+                     * چون Query فقط A,I,J را انتخاب کرده:
+                     *
+                     * cells[0] = ستون A = DateTime
+                     * cells[1] = ستون I = نام و نام خانوادگی
+                     * cells[2] = ستون J = شماره تماس
+                     */
 
-                    if (string.IsNullOrWhiteSpace(phoneNumber))
+                    var createdAtText = Clean(
+                        HtmlEntity.DeEntitize(cells[0].InnerText));
+
+                    var userName = Clean(
+                        HtmlEntity.DeEntitize(cells[1].InnerText));
+
+                    var rawPhoneNumber = Clean(
+                        HtmlEntity.DeEntitize(cells[2].InnerText));
+
+                    logger.LogDebug(
+                        "Row values => Date: {Date}, Name: {Name}, Phone: {Phone}",
+                        createdAtText,
+                        userName,
+                        rawPhoneNumber);
+
+                    if (string.IsNullOrWhiteSpace(rawPhoneNumber))
+                    {
+                        emptyCount++;
                         continue;
-                    phoneNumber = new string(
-                        phoneNumber
+                    }
+
+                    rawPhoneNumber = ConvertToEnglishDigits(
+                        rawPhoneNumber);
+
+                    var phoneNumber = new string(
+                        rawPhoneNumber
                             .Where(char.IsDigit)
                             .ToArray());
 
                     if (string.IsNullOrWhiteSpace(phoneNumber))
+                    {
+                        emptyCount++;
                         continue;
+                    }
 
-                    if (phoneNumber.StartsWith("0098"))
-                    {
-                        phoneNumber = "0" + phoneNumber[4..];
-                    }
-                    else if (phoneNumber.StartsWith("98"))
-                    {
-                        phoneNumber = "0" + phoneNumber[2..];
-                    }
-                    else if (!phoneNumber.StartsWith("0"))
+                    if (!phoneNumber.StartsWith("0"))
                     {
                         phoneNumber = "0" + phoneNumber;
-                    }
-                    if (phoneNumber.Length != 11 ||
-                        !phoneNumber.StartsWith("09"))
-                    {
-                        logger.LogWarning(
-                            "Invalid phone number skipped: {PhoneNumber}",
-                            phoneNumber);
-
-                        continue;
                     }
 
                     if (!addedPhoneNumbers.Add(phoneNumber))
                     {
+                        duplicateCount++;
+
                         logger.LogDebug(
-                            "Duplicate phone number skipped: {PhoneNumber}",
+                            "Duplicate phone skipped: {PhoneNumber}",
                             phoneNumber);
 
                         continue;
                     }
 
-                    var userName = Clean(cells[7].InnerText);
-                    var createdAtText = Clean(cells[1].InnerText);
+                    DateTime createdAt;
 
-                    DateTime.TryParse(
-                        createdAtText,
-                        out var createdAt);
+                    if (!DateTime.TryParse(
+                            createdAtText,
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None,
+                            out createdAt))
+                    {
+                        if (!DateTime.TryParse(
+                                createdAtText,
+                                CultureInfo.CurrentCulture,
+                                DateTimeStyles.None,
+                                out createdAt))
+                        {
+                            createdAt = DateTime.UtcNow;
+                        }
+                    }
 
                     leads.Add(new LeadAssignment
                     {
@@ -170,26 +206,40 @@ namespace DentalDashboard.ApplicationService.Services
                 }
 
                 logger.LogInformation(
-                    "Fetched {Count} unique leads from landing page",
-                    leads.Count);
+                    "Google Sheet completed. " +
+                    "Rows: {Rows}, " +
+                    "Unique leads: {LeadCount}, " +
+                    "Empty phones: {EmptyCount}, " +
+                    "Duplicates: {DuplicateCount}, " +
+                    "Invalid structure rows: {InvalidStructureCount}",
+                    rows.Count,
+                    leads.Count,
+                    emptyCount,
+                    duplicateCount,
+                    invalidStructureCount);
 
                 return leads.ToArray();
             }
             catch (TaskCanceledException ex)
+                when (!cancellationToken.IsCancellationRequested)
             {
                 logger.LogWarning(
                     ex,
-                    "Timeout while fetching leads from {Url}",
-                    url);
+                    "Timeout while fetching Google Sheet from {Url}",
+                    htmlUrl);
 
                 return Array.Empty<LeadAssignment>();
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (HttpRequestException ex)
             {
                 logger.LogWarning(
                     ex,
-                    "HTTP error while fetching leads from {Url}",
-                    url);
+                    "HTTP error while fetching Google Sheet from {Url}",
+                    htmlUrl);
 
                 return Array.Empty<LeadAssignment>();
             }
@@ -197,10 +247,38 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 logger.LogError(
                     ex,
-                    "Unexpected error while fetching or parsing leads");
+                    "Unexpected error while reading Google Sheet");
 
                 return Array.Empty<LeadAssignment>();
             }
+        }
+
+        private static string ConvertToEnglishDigits(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            return value
+                .Replace('۰', '0')
+                .Replace('۱', '1')
+                .Replace('۲', '2')
+                .Replace('۳', '3')
+                .Replace('۴', '4')
+                .Replace('۵', '5')
+                .Replace('۶', '6')
+                .Replace('۷', '7')
+                .Replace('۸', '8')
+                .Replace('۹', '9')
+                .Replace('٠', '0')
+                .Replace('١', '1')
+                .Replace('٢', '2')
+                .Replace('٣', '3')
+                .Replace('٤', '4')
+                .Replace('٥', '5')
+                .Replace('٦', '6')
+                .Replace('٧', '7')
+                .Replace('٨', '8')
+                .Replace('٩', '9');
         }
 
         private static string Clean(string value)

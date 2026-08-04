@@ -24,7 +24,6 @@ public sealed class ConsultantLeadWorkloadService : IConsultantLeadWorkloadServi
 
         var uncalledWithoutReportCount = await leads.CountAsync(
             x => x.ReportSubmittedAt == null &&
-                 x.CallInitiatedAt == null &&
                  x.LeadAssignmentState != LeadAssignmentState.Expired &&
                  x.LeadAssignmentState != LeadAssignmentState.Rejected,
             cancellationToken);

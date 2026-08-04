@@ -32,7 +32,6 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.IsOnline &&
                             !x.CallAssignments.Any(l => !l.IsDeleted &&
                                                         l.ReportSubmittedAt == null &&
-                                                        l.CallInitiatedAt == null &&
                                                         l.LeadAssignmentState != LeadAssignmentState.Expired &&
                                                         l.LeadAssignmentState != LeadAssignmentState.Rejected) &&
                             x.CallAssignments.Count(l => !l.IsDeleted &&

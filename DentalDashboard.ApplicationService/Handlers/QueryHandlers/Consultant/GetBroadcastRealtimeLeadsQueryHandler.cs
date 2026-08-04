@@ -14,15 +14,18 @@ public class GetBroadcastRealtimeLeadsQueryHandler
     private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly ILeadAssignmentRepository leadAssignmentRepository;
     private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
+    private readonly IConsultantLeadWorkloadService workloadService;
 
     public GetBroadcastRealtimeLeadsQueryHandler(
         IConsultantProfileRepository consultantProfileRepository,
         ILeadAssignmentRepository leadAssignmentRepository,
-        ILeadAssignmentLimitService leadAssignmentLimitService)
+        ILeadAssignmentLimitService leadAssignmentLimitService,
+        IConsultantLeadWorkloadService workloadService)
     {
         this.consultantProfileRepository = consultantProfileRepository;
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.leadAssignmentLimitService = leadAssignmentLimitService;
+        this.workloadService = workloadService;
     }
 
     public async Task<BroadcastRealtimeLeadsResponse> HandleAsync(
@@ -65,6 +68,16 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             {
                 CanReceive = false,
                 BlockReason = "شما یک لید لحظه‌ای فعال دارید",
+            };
+        }
+
+        var workload = await workloadService.GetStatusAsync(profile.Id, cancellationToken);
+        if (workload.BlocksNewLeads)
+        {
+            return new BroadcastRealtimeLeadsResponse
+            {
+                CanReceive = false,
+                BlockReason = workload.BlockMessage,
             };
         }
 

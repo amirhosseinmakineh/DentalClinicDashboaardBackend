@@ -13,6 +13,8 @@ namespace DentalDashboard.Infrastracture.Configuration
                 .HasConversion<byte>()
                 .HasDefaultValue(ConsultantLevel.Seller);
 
+            builder.HasIndex(x => new { x.ConsultantLevel, x.TestStartedAt, x.TestCompletedAt });
+
             builder.ToTable(table => table.HasCheckConstraint(
                 "CK_ConsultantProfiles_ConsultantLevel",
                 "[ConsultantLevel] IN (1, 2, 3)"));

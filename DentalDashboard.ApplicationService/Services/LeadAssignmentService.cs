@@ -443,6 +443,42 @@ namespace DentalDashboard.ApplicationService.Services
                 consultants.Count);
         }
 
+        public async Task BroadcastTestLeadAsync(
+            LeadAssignment lead,
+            IReadOnlyList<ConsultantProfile> consultants,
+            bool isReminder,
+            CancellationToken cancellationToken = default)
+        {
+            var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
+
+            foreach (var consultant in consultants)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await pushNotificationService.SendAsync(
+                    consultant.UserId,
+                    title,
+                    body,
+                    new Dictionary<string, string>
+                    {
+                        ["leadId"] = lead.Id.ToString(),
+                        ["type"] = "RealtimeLead",
+                        ["userName"] = lead.UserName ?? string.Empty,
+                        ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
+                        ["isReminder"] = isReminder ? "true" : "false"
+                    });
+            }
+
+            lead.NotificationSent = true;
+            lead.LastDispatchAt = DateTime.UtcNow;
+            await leadAssignmentRepository.SaveChange();
+
+            logger.LogInformation(
+                "Burned TEST lead {LeadId} broadcast to {ConsultantCount} eligible TEST consultants. Reminder: {IsReminder}",
+                lead.Id,
+                consultants.Count,
+                isReminder);
+        }
+
         private static (string Title, string Body) BuildRealtimeLeadNotificationContent(
             LeadAssignment lead,
             bool isReminder)

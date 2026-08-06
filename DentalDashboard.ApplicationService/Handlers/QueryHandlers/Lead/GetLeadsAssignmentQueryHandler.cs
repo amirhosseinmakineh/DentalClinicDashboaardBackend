@@ -3,6 +3,7 @@ using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.ApplicationService.Handlers.Helpers;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
@@ -21,7 +22,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
         public async Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(GetLeadsQuery query, CancellationToken cancellationToken = default)
         {
             var leadsQuery = leadAssignmentRepository.GetAll()
-                .Where(x => !x.IsDeleted && x.ConsultantProfileId == query.ProfileId);
+                .Where(x => x.ConsultantProfileId == query.ProfileId &&
+                            (!x.IsDeleted || x.ConsultantProfile!.ConsultantLevel == ConsultantLevel.Test));
 
             if (query.leadAssignmentState.HasValue)
             {

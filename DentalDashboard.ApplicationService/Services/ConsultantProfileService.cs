@@ -106,6 +106,12 @@ namespace DentalDashboard.ApplicationService.Services
                 throw new InvalidOperationException("پروفایل مشاور پیدا نشد.");
 
             consultant.ConsultantLevel = consultantLevel;
+            if (consultantLevel == ConsultantLevel.Test)
+            {
+                consultant.TestStartedAt ??= DateTime.UtcNow;
+                consultant.TestCompletedAt = null;
+                consultant.TestPassed = null;
+            }
             consultant.UpdatedAt = DateTime.UtcNow;
             repository.Update(consultant);
             await repository.SaveChange();

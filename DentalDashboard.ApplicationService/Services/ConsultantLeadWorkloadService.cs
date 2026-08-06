@@ -20,7 +20,7 @@ public sealed class ConsultantLeadWorkloadService : IConsultantLeadWorkloadServi
     {
         var leads = leadAssignmentRepository.GetAll()
             .AsNoTracking()
-            .Where(x => !x.IsDeleted && x.ConsultantProfileId == consultantProfileId);
+            .Where(x => x.ConsultantProfileId == consultantProfileId);
 
         var uncalledWithoutReportCount = await leads.CountAsync(
             x => x.ReportSubmittedAt == null &&

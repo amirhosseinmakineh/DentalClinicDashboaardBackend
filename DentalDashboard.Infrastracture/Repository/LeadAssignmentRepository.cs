@@ -149,7 +149,9 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId)
         {
             return GetAll()
-                .FirstOrDefaultAsync(x => !x.IsDeleted && x.Id == leadAssignmentId && x.ConsultantProfileId == consultantProfileId);
+                .FirstOrDefaultAsync(x => x.Id == leadAssignmentId &&
+                                          x.ConsultantProfileId == consultantProfileId &&
+                                          (!x.IsDeleted || x.ConsultantProfile!.ConsultantLevel == ConsultantLevel.Test));
         }
 
         public Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync()
@@ -180,7 +182,6 @@ namespace DentalDashboard.Infrastracture.Repository
 
             return await context.LeadAssignments
                 .CountAsync(x =>
-                    !x.IsDeleted &&
                     x.ConsultantProfileId == consultantProfileId &&
                     x.PickUp &&
                     x.AssignedAt >= todayStartUtc &&
@@ -192,8 +193,11 @@ namespace DentalDashboard.Infrastracture.Repository
             long consultantProfileId,
             CancellationToken cancellationToken)
         {
+            var todayInIran = IranTimeHelper.TodayInIran();
+            var (todayStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(todayInIran);
+            var (tomorrowStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(todayInIran.AddDays(1));
             var sql = @"
-        UPDATE LeadAssignments
+	        UPDATE LeadAssignments
         SET
             ConsultantProfileId = @consultantProfileId,
             PickUp = 1,
@@ -201,13 +205,40 @@ namespace DentalDashboard.Infrastracture.Repository
             CallDeadlineAt = DATEADD(MINUTE, 3, GETUTCDATE()),
             LeadAssignmentState = @assignedState
         WHERE Id = @leadAssignmentId
-        AND ConsultantProfileId IS NULL
-        AND PickUp = 0
-    ";
+	        AND ConsultantProfileId IS NULL
+	        AND PickUp = 0
+	        AND AssignmentType = @realTimeType
+	        AND LeadAssignmentState = @newState
+	        AND ReportSubmittedAt IS NULL
+	        AND EXISTS (
+	            SELECT 1
+	            FROM ConsultantProfiles c
+	            INNER JOIN Users u ON u.Id = c.UserId
+	            WHERE c.Id = @consultantProfileId
+	              AND c.IsDeleted = 0
+	              AND c.IsCompleteProfile = 1
+	              AND c.IsAvailable = 1
+	              AND c.IsOnline = 1
+	              AND u.IsActive = 1
+	              AND (
+	                  (c.ConsultantLevel <> @testLevel AND LeadAssignments.IsDeleted = 0)
+	                  OR
+	                  (c.ConsultantLevel = @testLevel
+	                   AND LeadAssignments.IsDeleted = 1
+	                   AND c.TestStartedAt IS NOT NULL
+	                   AND DATEDIFF(day, CAST(DATEADD(minute, 210, c.TestStartedAt) AS date),
+	                                    CAST(DATEADD(minute, 210, GETUTCDATE()) AS date)) BETWEEN 0 AND 4
+	                   AND (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
+	                        WHERE daily.ConsultantProfileId = c.Id
+	                          AND daily.PickUp = 1
+	                          AND daily.AssignedAt >= @todayStartUtc
+	                          AND daily.AssignedAt < @tomorrowStartUtc) < 20)
+	              )
+	        )
+	    ";
 
-            var affectedRows = await context.Database
-                .ExecuteSqlRawAsync(
-                    sql,
+            var parameters = new object[]
+            {
                     new SqlParameter(
                         "@consultantProfileId",
                         consultantProfileId),
@@ -216,10 +247,36 @@ namespace DentalDashboard.Infrastracture.Repository
                         leadAssignmentId),
                     new SqlParameter(
                         "@assignedState",
-                        (int)LeadAssignmentState.Assigned)
-                );
+                        (int)LeadAssignmentState.Assigned),
+                    new SqlParameter("@testLevel", (byte)ConsultantLevel.Test),
+                    new SqlParameter("@realTimeType", (int)LeadAssignmentType.RealTime),
+                    new SqlParameter("@newState", (int)LeadAssignmentState.New),
+                    new SqlParameter("@todayStartUtc", todayStartUtc),
+                    new SqlParameter("@tomorrowStartUtc", tomorrowStartUtc)
+            };
+            var affectedRows = await context.Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
 
             return affectedRows == 1;
+        }
+
+        public async Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval)
+        {
+            var redispatchBefore = DateTime.UtcNow.Subtract(redispatchInterval);
+            var query = GetAll().Where(x => x.IsDeleted &&
+                                            x.AssignmentType == LeadAssignmentType.RealTime &&
+                                            x.ConsultantProfileId == null &&
+                                            x.ReportSubmittedAt == null &&
+                                            x.LeadAssignmentState == LeadAssignmentState.New &&
+                                            !x.PickUp);
+
+            var fresh = await query.Where(x => !x.NotificationSent)
+                .OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
+            if (fresh != null)
+                return fresh;
+
+            return await query.Where(x => x.NotificationSent &&
+                                          (x.LastDispatchAt == null || x.LastDispatchAt < redispatchBefore))
+                .OrderBy(x => x.LastDispatchAt ?? x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Services
@@ -49,6 +50,9 @@ namespace DentalDashboard.ApplicationService.Services
             // Zero was accepted by older versions when the admin form sent its
             // default numeric value. Treat it as "not configured" rather than
             // silently blocking the consultant from every lead.
+            if (profile?.ConsultantLevel == ConsultantLevel.Test)
+                return 20;
+
             return profile?.LimitNumber is > 0
                 ? profile.LimitNumber.Value
                 : SystemDefaultDailyLimit;

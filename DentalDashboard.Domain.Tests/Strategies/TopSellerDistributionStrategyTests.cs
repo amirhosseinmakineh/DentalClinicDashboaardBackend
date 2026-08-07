@@ -1,5 +1,6 @@
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Strategies;
+using Xunit;
 
 namespace DentalDashboard.Domain.Tests.Strategies;
 

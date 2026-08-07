@@ -1,4 +1,5 @@
 using DentalDashboard.Domain.Models;
+using Xunit;
 
 namespace DentalDashboard.Domain.Tests.Models;
 

@@ -231,68 +231,173 @@ namespace DentalDashboard.Infrastracture.Repository
             var sellerPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.Seller);
             var topSellerPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.TopSeller);
             var sql = @"
-	        UPDATE LeadAssignments
-        SET
-            ConsultantProfileId = @consultantProfileId,
-            PickUp = 1,
-            AssignedAt = GETUTCDATE(),
-            CallDeadlineAt = DATEADD(MINUTE, 3, GETUTCDATE()),
-            LeadAssignmentState = @assignedState
-        WHERE Id = @leadAssignmentId
-	        AND ConsultantProfileId IS NULL
-	        AND PickUp = 0
-	        AND AssignmentType = @realTimeType
-	        AND LeadAssignmentState = @newState
-	        AND ReportSubmittedAt IS NULL
-	        AND EXISTS (
-	            SELECT 1
-	            FROM ConsultantProfiles c
-	            INNER JOIN Users u ON u.Id = c.UserId
-	            WHERE c.Id = @consultantProfileId
-	              AND c.IsDeleted = 0
-	              AND c.IsCompleteProfile = 1
-	              AND c.IsAvailable = 1
-	              AND c.IsOnline = 1
-	              AND u.IsActive = 1
-	              AND (
-	                  (c.ConsultantLevel = @topSellerLevel
-	                   AND c.TopSellerStartedAt IS NOT NULL
-	                   AND LeadAssignments.IsDeleted = 0
-	                   AND (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
-	                        WHERE daily.ConsultantProfileId = c.Id AND daily.PickUp = 1
-	                          AND daily.IsDeleted = 0 AND daily.AssignedAt >= @todayStartUtc
-	                          AND daily.AssignedAt < @tomorrowStartUtc) < @topSellerRealTimeLimit)
-	                  OR
-	                  (c.ConsultantLevel = @sellerLevel
-	                   AND c.SellerStartedAt IS NOT NULL
-	                   AND (
-	                       (LeadAssignments.IsDeleted = 0 AND
-	                        (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
-	                         WHERE daily.ConsultantProfileId = c.Id AND daily.PickUp = 1
-	                           AND daily.IsDeleted = 0 AND daily.AssignedAt >= @todayStartUtc
-	                           AND daily.AssignedAt < @tomorrowStartUtc) < @sellerRealTimeLimit)
-	                       OR
-	                       (LeadAssignments.IsDeleted = 1 AND
-	                        (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
-	                         WHERE daily.ConsultantProfileId = c.Id AND daily.PickUp = 1
-	                           AND daily.IsDeleted = 1 AND daily.AssignedAt >= @todayStartUtc
-	                           AND daily.AssignedAt < @tomorrowStartUtc) < @sellerBurnedLimit)
-	                   ))
-	                  OR
-	                  (c.ConsultantLevel = @testLevel
-	                   AND LeadAssignments.IsDeleted = 1
-	                   AND c.TestStartedAt IS NOT NULL
-	                   AND DATEDIFF(day, CAST(DATEADD(minute, 210, c.TestStartedAt) AS date),
-	                                    CAST(DATEADD(minute, 210, GETUTCDATE()) AS date)) BETWEEN 0 AND 4
-	                   AND (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
-	                        WHERE daily.ConsultantProfileId = c.Id
-	                          AND daily.PickUp = 1
-	                          AND daily.IsDeleted = 1
-	                          AND daily.AssignedAt >= @todayStartUtc
-	                          AND daily.AssignedAt < @tomorrowStartUtc) < @testBurnedLimit)
-	              )
-	        )
-	    ";
+UPDATE LeadAssignments
+SET
+    ConsultantProfileId = @consultantProfileId,
+    PickUp = 1,
+    AssignedAt = GETUTCDATE(),
+    CallDeadlineAt = DATEADD(MINUTE, 3, GETUTCDATE()),
+    LeadAssignmentState = @assignedState
+WHERE
+    Id = @leadAssignmentId
+    AND ConsultantProfileId IS NULL
+    AND PickUp = 0
+    AND AssignmentType = @realTimeType
+    AND LeadAssignmentState = @newState
+    AND ReportSubmittedAt IS NULL
+
+    AND EXISTS
+    (
+        SELECT 1
+        FROM ConsultantProfiles AS c
+        INNER JOIN Users AS u
+            ON u.Id = c.UserId
+
+        WHERE
+            c.Id = @consultantProfileId
+            AND c.IsDeleted = 0
+            AND c.IsCompleteProfile = 1
+            AND c.IsAvailable = 1
+            AND c.IsOnline = 1
+            AND u.IsActive = 1
+
+            AND
+            (
+                ------------------------------------------------------------
+                -- Top Seller
+                ------------------------------------------------------------
+                (
+                    c.ConsultantLevel = @topSellerLevel
+                    AND c.TopSellerStartedAt IS NOT NULL
+                    AND LeadAssignments.IsDeleted = 0
+
+                    AND
+                    (
+                        SELECT COUNT(1)
+                        FROM LeadAssignments AS daily
+                             WITH (UPDLOCK, HOLDLOCK)
+
+                        WHERE
+                            daily.ConsultantProfileId = c.Id
+                            AND daily.PickUp = 1
+                            AND daily.IsDeleted = 0
+                            AND daily.AssignedAt >= @todayStartUtc
+                            AND daily.AssignedAt < @tomorrowStartUtc
+                    ) < @topSellerRealTimeLimit
+                )
+
+                OR
+
+                ------------------------------------------------------------
+                -- Seller
+                ------------------------------------------------------------
+                (
+                    c.ConsultantLevel = @sellerLevel
+                    AND c.SellerStartedAt IS NOT NULL
+
+                    AND
+                    (
+                        ----------------------------------------------------
+                        -- Seller / RealTime
+                        ----------------------------------------------------
+                        (
+                            LeadAssignments.IsDeleted = 0
+
+                            AND
+                            (
+                                SELECT COUNT(1)
+                                FROM LeadAssignments AS daily
+                                     WITH (UPDLOCK, HOLDLOCK)
+
+                                WHERE
+                                    daily.ConsultantProfileId = c.Id
+                                    AND daily.PickUp = 1
+                                    AND daily.IsDeleted = 0
+                                    AND daily.AssignedAt >= @todayStartUtc
+                                    AND daily.AssignedAt < @tomorrowStartUtc
+                            ) < @sellerRealTimeLimit
+                        )
+
+                        OR
+
+                        ----------------------------------------------------
+                        -- Seller / Burned
+                        ----------------------------------------------------
+                        (
+                            LeadAssignments.IsDeleted = 1
+
+                            AND
+                            (
+                                SELECT COUNT(1)
+                                FROM LeadAssignments AS daily
+                                     WITH (UPDLOCK, HOLDLOCK)
+
+                                WHERE
+                                    daily.ConsultantProfileId = c.Id
+                                    AND daily.PickUp = 1
+                                    AND daily.IsDeleted = 1
+                                    AND daily.AssignedAt >= @todayStartUtc
+                                    AND daily.AssignedAt < @tomorrowStartUtc
+                            ) < @sellerBurnedLimit
+                        )
+                    )
+                )
+
+                OR
+
+                ------------------------------------------------------------
+                -- Test Consultant
+                ------------------------------------------------------------
+                (
+                    c.ConsultantLevel = @testLevel
+                    AND LeadAssignments.IsDeleted = 1
+                    AND c.TestStartedAt IS NOT NULL
+
+                    AND
+                    DATEDIFF
+                    (
+                        DAY,
+
+                        CAST
+                        (
+                            DATEADD
+                            (
+                                MINUTE,
+                                210,
+                                CAST(c.TestStartedAt AS datetime2)
+                            )
+                            AS date
+                        ),
+
+                        CAST
+                        (
+                            DATEADD
+                            (
+                                MINUTE,
+                                210,
+                                CAST(GETUTCDATE() AS datetime2)
+                            )
+                            AS date
+                        )
+                    ) BETWEEN 0 AND 4
+
+                    AND
+                    (
+                        SELECT COUNT(1)
+                        FROM LeadAssignments AS daily
+                             WITH (UPDLOCK, HOLDLOCK)
+
+                        WHERE
+                            daily.ConsultantProfileId = c.Id
+                            AND daily.PickUp = 1
+                            AND daily.IsDeleted = 1
+                            AND daily.AssignedAt >= @todayStartUtc
+                            AND daily.AssignedAt < @tomorrowStartUtc
+                    ) < @testBurnedLimit
+                )
+            )
+    );
+";
 
             var parameters = new object[]
             {

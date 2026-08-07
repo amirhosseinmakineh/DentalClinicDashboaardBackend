@@ -8,7 +8,7 @@ namespace DentalDashboard.BackgroundServices;
 
 public sealed class TopSellerConsultantBackgroundService : BackgroundService
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(10);
     private readonly IServiceScopeFactory scopeFactory;
     private readonly ILogger<TopSellerConsultantBackgroundService> logger;
 

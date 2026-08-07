@@ -1,4 +1,5 @@
 ﻿using DentalDashboard.Domain.Models;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.IRepositories;
 
 namespace DentalDashboard.Domain.IRepositories
@@ -10,5 +11,16 @@ namespace DentalDashboard.Domain.IRepositories
         Task<bool> HasOnlineConsultantAsync();
         Task<List<ConsultantProfile>> GetTestConsultantsReadyForDistributionAsync();
         Task<List<ConsultantProfile>> GetTestConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore);
+        Task<List<ConsultantProfile>> GetActiveSellerConsultantsAsync();
+        Task<List<ConsultantProfile>> GetSellerConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore);
+        Task<bool> TryCompleteSellerEvaluationAsync(long consultantProfileId, DateTime evaluatedAt);
+        Task<List<ConsultantProfile>> GetActiveTopSellerConsultantsAsync();
+        Task<List<ConsultantProfile>> GetTopSellerConsultantsReadyForEvaluationAsync(DateTime startedBefore);
+        Task<bool> TryCompleteTopSellerEvaluationAsync(
+            long consultantProfileId,
+            DateTime periodStart,
+            DateTime evaluatedAt,
+            DateTime nextPeriodStart,
+            TopSellerRewardLevel rewardLevel);
     }
 }

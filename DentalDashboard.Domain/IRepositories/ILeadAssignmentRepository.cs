@@ -6,6 +6,9 @@ namespace DentalDashboard.Domain.IRepositories
     public interface ILeadAssignmentRepository : IBaseRepository<long, LeadAssignment>
     {
         Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId);
+        Task<bool> HasUnreportedLeadAsync(
+            long consultantProfileId,
+            CancellationToken cancellationToken = default);
         Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take);
         Task<List<LeadAssignment>> GetRealtimeLeadsForDispatchAsync(int take, TimeSpan redispatchInterval);
         Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync();
@@ -18,5 +21,9 @@ namespace DentalDashboard.Domain.IRepositories
         Task<int> GetTodayPickupCountAsync(long consultantProfileId);
         Task<bool> TryPickupLeadAsync(long leadAssignmentId, long consultantProfileId, CancellationToken cancellationToken);
         Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval);
+        Task<(int NewLeadCount, int BurnedLeadCount)> GetSellerDailyAllocationCountAsync(
+            long consultantProfileId, CancellationToken cancellationToken = default);
+        Task<int> GetTodayAssignmentCountAsync(
+            long consultantProfileId, bool burned, CancellationToken cancellationToken = default);
     }
 }

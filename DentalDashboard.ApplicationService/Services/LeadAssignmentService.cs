@@ -375,8 +375,20 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                var limit = await leadAssignmentLimitService.GetDailyLimitStatusAsync(consultant.Id);
+                if (limit.CanPickup)
+                {
                     availableConsultants.Add(consultant);
+                    logger.LogDebug(
+                        "Consultant {ConsultantId} with role {Role} eligible for realtime lead; assigned {AssignedToday}/{DailyLimit}",
+                        consultant.Id, consultant.ConsultantLevel, limit.TodayPickupCount, limit.EffectiveDailyLimit);
+                }
+                else
+                {
+                    logger.LogInformation(
+                        "Consultant {ConsultantId} with role {Role} reached realtime daily limit {AssignedToday}/{DailyLimit}",
+                        consultant.Id, consultant.ConsultantLevel, limit.TodayPickupCount, limit.EffectiveDailyLimit);
+                }
             }
 
             if (!availableConsultants.Any())
@@ -397,7 +409,16 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+            var notifiedCount = await NotifyConsultantsForRealtimeLeadAsync(
+                lead, availableConsultants, isReminder);
+
+            if (notifiedCount == 0)
+            {
+                logger.LogInformation(
+                    "Realtime notification skipped for lead {LeadId}: every consultant has an unreported lead",
+                    lead.Id);
+                return;
+            }
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -410,15 +431,23 @@ namespace DentalDashboard.ApplicationService.Services
                 isReminder);
         }
 
-        private async Task NotifyConsultantsForRealtimeLeadAsync(
+        private async Task<int> NotifyConsultantsForRealtimeLeadAsync(
             LeadAssignment lead,
             IReadOnlyList<ConsultantProfile> consultants,
             bool isReminder = false)
         {
             var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
 
+            var notifiedCount = 0;
             foreach (var consultant in consultants)
             {
+                if (await leadAssignmentRepository.HasUnreportedLeadAsync(consultant.Id))
+                {
+                    logger.LogInformation(
+                        "Realtime notification suppressed for {ConsultantId}: an assignment has no report",
+                        consultant.Id);
+                    continue;
+                }
                 await pushNotificationService.SendAsync(
                     consultant.UserId,
                     title,
@@ -431,6 +460,7 @@ namespace DentalDashboard.ApplicationService.Services
                         ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
                         ["isReminder"] = isReminder ? "true" : "false",
                     });
+                notifiedCount++;
             }
 
             logger.LogInformation(
@@ -440,20 +470,31 @@ namespace DentalDashboard.ApplicationService.Services
                 lead.Id,
                 lead.UserName,
                 lead.PhoneNumber,
-                consultants.Count);
+                notifiedCount);
+            return notifiedCount;
         }
 
-        public async Task BroadcastTestLeadAsync(
+        public async Task BroadcastBurnedLeadAsync(
             LeadAssignment lead,
             IReadOnlyList<ConsultantProfile> consultants,
+            string audience,
             bool isReminder,
             CancellationToken cancellationToken = default)
         {
             var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
 
+            var notifiedCount = 0;
             foreach (var consultant in consultants)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (await leadAssignmentRepository.HasUnreportedLeadAsync(
+                        consultant.Id, cancellationToken))
+                {
+                    logger.LogInformation(
+                        "Burned lead notification suppressed for {ConsultantId}: an assignment has no report",
+                        consultant.Id);
+                    continue;
+                }
                 await pushNotificationService.SendAsync(
                     consultant.UserId,
                     title,
@@ -466,16 +507,21 @@ namespace DentalDashboard.ApplicationService.Services
                         ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
                         ["isReminder"] = isReminder ? "true" : "false"
                     });
+                notifiedCount++;
             }
+
+            if (notifiedCount == 0)
+                return;
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
             await leadAssignmentRepository.SaveChange();
 
             logger.LogInformation(
-                "Burned TEST lead {LeadId} broadcast to {ConsultantCount} eligible TEST consultants. Reminder: {IsReminder}",
+                "Burned lead {LeadId} broadcast to {ConsultantCount} eligible {Audience} consultants. Reminder: {IsReminder}",
                 lead.Id,
-                consultants.Count,
+                notifiedCount,
+                audience,
                 isReminder);
         }
 

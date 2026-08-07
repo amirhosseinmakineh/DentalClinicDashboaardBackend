@@ -5,6 +5,7 @@ using DentalDashboard.ApplicationService.Handlers.Helpers;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Domain.Strategies;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
 {
@@ -21,9 +22,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
 
         public async Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(GetLeadsQuery query, CancellationToken cancellationToken = default)
         {
+            var burnedLevels = Enum.GetValues<ConsultantLevel>()
+                .Where(x => ConsultantDistributionPolicyResolver.Resolve(x).AllowsBurned)
+                .ToArray();
             var leadsQuery = leadAssignmentRepository.GetAll()
                 .Where(x => x.ConsultantProfileId == query.ProfileId &&
-                            (!x.IsDeleted || x.ConsultantProfile!.ConsultantLevel == ConsultantLevel.Test));
+                            (!x.IsDeleted || burnedLevels.Contains(x.ConsultantProfile!.ConsultantLevel)));
 
             if (query.leadAssignmentState.HasValue)
             {

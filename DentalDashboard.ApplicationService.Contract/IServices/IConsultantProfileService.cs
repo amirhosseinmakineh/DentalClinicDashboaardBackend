@@ -8,5 +8,6 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
         Task SetConsultantLevelAsync(Guid userId, ConsultantLevel consultantLevel);
         Task SetOnlineStatusAsync(long consultantProfileId, bool isOnline);
         Task SetPresentStatusAsync(long consultantProfileId, bool isPresent);
+        Task DeactivateConsultantAsync(long consultantProfileId);
     }
 }

@@ -64,7 +64,20 @@ public class PickUpService : IPickupService
             };
         }
 
-        if (!await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId))
+        if (await leadAssignmentRepository.HasUnreportedLeadAsync(
+                consultantProfileId, cancellationToken))
+        {
+            return new PickupLeadResult
+            {
+                Status = PickupLeadStatus.WorkloadBlocked,
+                ConsultantProfileId = consultantProfileId,
+                Message = "ابتدا گزارش شماره قبلی را ثبت کنید"
+            };
+        }
+
+        var requestedLead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
+        if (requestedLead == null ||
+            !await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId, requestedLead.IsDeleted))
         {
             return new PickupLeadResult
             {

@@ -108,6 +108,12 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("LastOnlineAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("SellerEvaluatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SellerStartedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("LimitNumber")
                         .HasColumnType("int");
 
@@ -142,6 +148,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsUnique();
 
                     b.HasIndex("ConsultantLevel", "TestStartedAt", "TestCompletedAt");
+
+                    b.HasIndex("ConsultantLevel", "SellerStartedAt", "SellerEvaluatedAt");
 
                     b.ToTable("ConsultantProfiles", t =>
                         {

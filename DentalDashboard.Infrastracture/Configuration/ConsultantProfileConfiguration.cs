@@ -14,6 +14,7 @@ namespace DentalDashboard.Infrastracture.Configuration
                 .HasDefaultValue(ConsultantLevel.Seller);
 
             builder.HasIndex(x => new { x.ConsultantLevel, x.TestStartedAt, x.TestCompletedAt });
+            builder.HasIndex(x => new { x.ConsultantLevel, x.SellerStartedAt, x.SellerEvaluatedAt });
 
             builder.ToTable(table => table.HasCheckConstraint(
                 "CK_ConsultantProfiles_ConsultantLevel",

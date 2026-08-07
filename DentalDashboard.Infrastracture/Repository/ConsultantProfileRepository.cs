@@ -83,5 +83,23 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.TestCompletedAt == null)
                 .OrderBy(x => x.Id).ToListAsync();
         }
+
+        public Task<List<ConsultantProfile>> GetActiveSellerConsultantsAsync() => GetAll()
+            .Include(x => x.User)
+            .Where(x => !x.IsDeleted && x.User.IsActive && x.IsCompleteProfile &&
+                        x.IsAvailable && x.IsOnline && x.ConsultantLevel == ConsultantLevel.Seller &&
+                        x.SellerStartedAt != null)
+            .OrderBy(x => x.Id).ToListAsync();
+
+        public Task<List<ConsultantProfile>> GetSellerConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore) =>
+            GetAll().Include(x => x.User)
+                .Where(x => !x.IsDeleted && x.ConsultantLevel == ConsultantLevel.Seller &&
+                            x.SellerStartedAt != null && x.SellerStartedAt < evaluationStartedBefore &&
+                            x.SellerEvaluatedAt == null)
+                .OrderBy(x => x.Id).ToListAsync();
+
+        public async Task<bool> TryCompleteSellerEvaluationAsync(long consultantProfileId, DateTime evaluatedAt) =>
+            await GetAll().Where(x => x.Id == consultantProfileId && x.SellerEvaluatedAt == null)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.SellerEvaluatedAt, evaluatedAt)) == 1;
     }
 }

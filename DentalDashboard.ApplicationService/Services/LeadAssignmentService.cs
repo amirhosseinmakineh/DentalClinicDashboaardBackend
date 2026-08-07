@@ -443,9 +443,10 @@ namespace DentalDashboard.ApplicationService.Services
                 consultants.Count);
         }
 
-        public async Task BroadcastTestLeadAsync(
+        public async Task BroadcastBurnedLeadAsync(
             LeadAssignment lead,
             IReadOnlyList<ConsultantProfile> consultants,
+            string audience,
             bool isReminder,
             CancellationToken cancellationToken = default)
         {
@@ -473,9 +474,10 @@ namespace DentalDashboard.ApplicationService.Services
             await leadAssignmentRepository.SaveChange();
 
             logger.LogInformation(
-                "Burned TEST lead {LeadId} broadcast to {ConsultantCount} eligible TEST consultants. Reminder: {IsReminder}",
+                "Burned lead {LeadId} broadcast to {ConsultantCount} eligible {Audience} consultants. Reminder: {IsReminder}",
                 lead.Id,
                 consultants.Count,
+                audience,
                 isReminder);
         }
 

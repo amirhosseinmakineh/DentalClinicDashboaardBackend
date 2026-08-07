@@ -67,7 +67,7 @@ public sealed class ProcessTestConsultantsCommandHandler : ICommandHandler<Proce
             return Result.Success("No burned lead is ready for TEST distribution.");
 
         var reminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
-        await leadService.BroadcastTestLeadAsync(lead, eligible, reminder, cancellationToken);
+        await leadService.BroadcastBurnedLeadAsync(lead, eligible, "TEST", reminder, cancellationToken);
         return Result.Success("Burned lead broadcast to eligible TEST consultants.");
     }
 }

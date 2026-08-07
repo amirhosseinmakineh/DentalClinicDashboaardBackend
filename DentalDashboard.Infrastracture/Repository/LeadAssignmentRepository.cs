@@ -109,6 +109,16 @@ namespace DentalDashboard.Infrastracture.Repository
                                x.LeadAssignmentState == LeadAssignmentState.Assigned);
         }
 
+        public Task<bool> HasUnreportedLeadAsync(
+            long consultantProfileId,
+            CancellationToken cancellationToken = default)
+        {
+            return GetAll().AnyAsync(x =>
+                x.ConsultantProfileId == consultantProfileId &&
+                x.ReportSubmittedAt == null,
+                cancellationToken);
+        }
+
         public Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now)
         {
             return GetAll()
@@ -254,6 +264,11 @@ namespace DentalDashboard.Infrastracture.Repository
 	              AND c.IsAvailable = 1
 	              AND c.IsOnline = 1
 	              AND u.IsActive = 1
+	              AND NOT EXISTS (
+	                  SELECT 1
+	                  FROM LeadAssignments outstanding WITH (UPDLOCK, HOLDLOCK)
+	                  WHERE outstanding.ConsultantProfileId = c.Id
+	                    AND outstanding.ReportSubmittedAt IS NULL)
 	              AND (
 	                  (c.ConsultantLevel = @topSellerLevel
 	                   AND c.TopSellerStartedAt IS NOT NULL

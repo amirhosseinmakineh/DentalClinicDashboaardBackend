@@ -59,13 +59,13 @@ public sealed class EvaluateTopSellerConsultantsCommandHandler :
             });
             if (!decision.IsReadyForWeeklyEvaluation)
                 continue;
-            await unitOfWork.BeginTransactionAsync();
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
             try
             {
                 if (!await consultants.TryCompleteTopSellerEvaluationAsync(
                         consultant.Id, periodStart, nowUtc, periodEnd, decision.RewardLevel))
                 {
-                    await unitOfWork.RollbackAsync();
+                    await unitOfWork.RollbackAsync(CancellationToken.None);
                     continue;
                 }
 
@@ -81,11 +81,12 @@ public sealed class EvaluateTopSellerConsultantsCommandHandler :
                         "TopSeller {ConsultantId} remained TopSeller with {SuccessfulPatients} patients and reward {RewardLevel}",
                         consultant.Id, successful, decision.RewardLevel);
                 }
-                await unitOfWork.CommitAsync();
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
             }
             catch
             {
-                await unitOfWork.RollbackAsync();
+                await unitOfWork.RollbackAsync(CancellationToken.None);
                 throw;
             }
         }

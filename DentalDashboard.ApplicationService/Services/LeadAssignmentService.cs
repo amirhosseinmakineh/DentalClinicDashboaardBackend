@@ -397,7 +397,18 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+            var notificationDelivered = await NotifyConsultantsForRealtimeLeadAsync(
+                lead,
+                availableConsultants,
+                isReminder);
+
+            if (!notificationDelivered)
+            {
+                logger.LogWarning(
+                    "Realtime dispatch for lead {LeadId} was not persisted because no push notification was delivered",
+                    lead.Id);
+                return;
+            }
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -410,16 +421,17 @@ namespace DentalDashboard.ApplicationService.Services
                 isReminder);
         }
 
-        private async Task NotifyConsultantsForRealtimeLeadAsync(
+        private async Task<bool> NotifyConsultantsForRealtimeLeadAsync(
             LeadAssignment lead,
             IReadOnlyList<ConsultantProfile> consultants,
             bool isReminder = false)
         {
             var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
+            var deliveredCount = 0;
 
             foreach (var consultant in consultants)
             {
-                await pushNotificationService.SendAsync(
+                var delivered = await pushNotificationService.SendAsync(
                     consultant.UserId,
                     title,
                     body,
@@ -431,16 +443,22 @@ namespace DentalDashboard.ApplicationService.Services
                         ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
                         ["isReminder"] = isReminder ? "true" : "false",
                     });
+
+                if (delivered)
+                    deliveredCount++;
             }
 
             logger.LogInformation(
                 isReminder
-                    ? "Realtime lead reminder sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants"
-                    : "Realtime lead notification sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants",
+                    ? "Realtime lead reminder delivered for lead {LeadId} ({UserName}, {PhoneNumber}) to {DeliveredCount} of {ConsultantCount} consultants"
+                    : "Realtime lead notification delivered for lead {LeadId} ({UserName}, {PhoneNumber}) to {DeliveredCount} of {ConsultantCount} consultants",
                 lead.Id,
                 lead.UserName,
                 lead.PhoneNumber,
+                deliveredCount,
                 consultants.Count);
+
+            return deliveredCount > 0;
         }
 
         public async Task BroadcastTestLeadAsync(

@@ -13,26 +13,66 @@ public class UnitOfWork : IUnitOfWork
         _context = context;
     }
 
-    private IDbContextTransaction _transaction;
+    private IDbContextTransaction? _transaction;
 
-    public async Task BeginTransactionAsync()
+    public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
-        _transaction = await _context.Database.BeginTransactionAsync();
+        if (_transaction is not null)
+            throw new InvalidOperationException("A transaction is already active for this unit of work.");
+
+        _transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
     }
 
-    public async Task<int> SaveChangesAsync()
+    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.SaveChangesAsync();
+        return _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task CommitAsync()
+    public async Task CommitAsync(CancellationToken cancellationToken = default)
     {
-        await _context.SaveChangesAsync();
-        await _transaction.CommitAsync();
+        var transaction = _transaction ?? throw new InvalidOperationException("No transaction is active.");
+        try
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally
+        {
+            await transaction.DisposeAsync();
+            _transaction = null;
+        }
     }
 
-    public async Task RollbackAsync()
+    public async Task RollbackAsync(CancellationToken cancellationToken = default)
     {
-        await _transaction.RollbackAsync();
+        if (_transaction is null)
+            return;
+
+        var transaction = _transaction;
+        try
+        {
+            await transaction.RollbackAsync(cancellationToken);
+        }
+        finally
+        {
+            await transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_transaction is null)
+            return;
+
+        var transaction = _transaction;
+        _transaction = null;
+        try
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+        }
+        finally
+        {
+            await transaction.DisposeAsync();
+        }
     }
 }

@@ -60,15 +60,16 @@ public class SecretaryChangeReservationTimeCommandHandler : ICommandHandler<Secr
             Title = "زمان رزرو توسط منشی تغییر کرد", Body = "زمان رزرو بیمار به تاریخ و ساعت جدید تغییر کرده است",
             ReservationId = reservation.Id, Route = "/consultant-dashboard?section=reservations", CreatedAt = now };
 
-        await unitOfWork.BeginTransactionAsync();
+        await unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
             reservation.ReservationAt = command.NewReservationAt; reservation.UpdatedAt = now; reservations.Update(reservation);
-            await changes.AddAsync(change); await notifications.AddAsync(notification); await unitOfWork.CommitAsync();
+            await changes.AddAsync(change); await notifications.AddAsync(notification); await unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.CommitAsync(cancellationToken);
         }
         catch (Exception)
         {
-            await unitOfWork.RollbackAsync();
+            await unitOfWork.RollbackAsync(CancellationToken.None);
             return Result<ReservationTimeChangeResponse>.Failure("ثبت تغییر زمان رزرو انجام نشد");
         }
 

@@ -109,6 +109,16 @@ namespace DentalDashboard.Infrastracture.Repository
                                x.LeadAssignmentState == LeadAssignmentState.Assigned);
         }
 
+        public Task<bool> HasUnreportedLeadAsync(
+            long consultantProfileId,
+            CancellationToken cancellationToken = default)
+        {
+            return GetAll().AnyAsync(x =>
+                x.ConsultantProfileId == consultantProfileId &&
+                x.ReportSubmittedAt == null,
+                cancellationToken);
+        }
+
         public Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now)
         {
             return GetAll()

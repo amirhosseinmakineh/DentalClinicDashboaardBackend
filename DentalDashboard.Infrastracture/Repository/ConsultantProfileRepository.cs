@@ -32,18 +32,12 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.IsCompleteProfile &&
                             x.IsAvailable &&
                             x.IsOnline &&
-                            !x.CallAssignments.Any(l => !l.IsDeleted &&
-                                                        l.ReportSubmittedAt == null &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Expired &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Rejected) &&
+                            !x.CallAssignments.Any(l => l.ReportSubmittedAt == null) &&
                             x.CallAssignments.Count(l => !l.IsDeleted &&
                                                          l.ReportSubmittedAt != null &&
                                                          l.CallResult.HasValue &&
                                                          l.CallResult.Value == LeadCallResult.NeedFollowUp &&
-                                                         l.LeadAssignmentState == LeadAssignmentState.Pending) <= 10 &&
-                            !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.RealTime &&
-                                                        l.LeadAssignmentState == LeadAssignmentState.Assigned &&
-                                                        l.ReportSubmittedAt == null))
+                                                         l.LeadAssignmentState == LeadAssignmentState.Pending) <= 10)
                 .OrderBy(x => x.Id)
                 .ToListAsync();
         }
@@ -65,9 +59,7 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.ConsultantLevel == ConsultantLevel.Test &&
                             x.TestStartedAt != null && x.TestCompletedAt == null &&
                             !x.CallAssignments.Any(l => l.ConsultantProfileId == x.Id &&
-                                                        l.ReportSubmittedAt == null &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Expired &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Rejected) &&
+                                                        l.ReportSubmittedAt == null) &&
                             x.CallAssignments.Count(l => l.ConsultantProfileId == x.Id &&
                                                          l.ReportSubmittedAt != null &&
                                                          l.CallResult == LeadCallResult.NeedFollowUp &&
@@ -88,7 +80,8 @@ namespace DentalDashboard.Infrastracture.Repository
             .Include(x => x.User)
             .Where(x => !x.IsDeleted && x.User.IsActive && x.IsCompleteProfile &&
                         x.IsAvailable && x.IsOnline && x.ConsultantLevel == ConsultantLevel.Seller &&
-                        x.SellerStartedAt != null)
+                        x.SellerStartedAt != null &&
+                        !x.CallAssignments.Any(l => l.ReportSubmittedAt == null))
             .OrderBy(x => x.Id).ToListAsync();
 
         public Task<List<ConsultantProfile>> GetSellerConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore) =>
@@ -106,7 +99,8 @@ namespace DentalDashboard.Infrastracture.Repository
             .Include(x => x.User)
             .Where(x => !x.IsDeleted && x.User.IsActive && x.IsCompleteProfile &&
                         x.IsAvailable && x.IsOnline && x.ConsultantLevel == ConsultantLevel.TopSeller &&
-                        x.TopSellerStartedAt != null)
+                        x.TopSellerStartedAt != null &&
+                        !x.CallAssignments.Any(l => l.ReportSubmittedAt == null))
             .OrderBy(x => x.Id).ToListAsync();
 
         public Task<List<ConsultantProfile>> GetTopSellerConsultantsReadyForEvaluationAsync(DateTime startedBefore) =>

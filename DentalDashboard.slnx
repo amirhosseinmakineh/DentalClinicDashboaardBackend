@@ -10,4 +10,5 @@
   </Folder>
 
   <Project Path="DentalDashboard/DentalDashboard.csproj" />
+  <Project Path="DentalDashboard.Domain.Tests/DentalDashboard.Domain.Tests.csproj" />
 </Solution>

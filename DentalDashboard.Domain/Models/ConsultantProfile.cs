@@ -23,6 +23,9 @@ public class ConsultantProfile : BaseAuditableEntity<long>
     public DateTime? LastOfflineAt { get; set; }
     public int? LimitNumber { get; set; }
     public ConsultantLevel ConsultantLevel { get; set; } = ConsultantLevel.Seller;
+    public DateTime? TestStartedAt { get; set; }
+    public DateTime? TestCompletedAt { get; set; }
+    public bool? TestPassed { get; set; }
 
     public User User { get; set; } = default!;
     public ICollection<LeadAssignment> CallAssignments { get; set; }

@@ -111,6 +111,15 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<int?>("LimitNumber")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("TestCompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("TestPassed")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("TestStartedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("NationalCode")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -131,6 +140,8 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("UserId")
                         .IsUnique();
+
+                    b.HasIndex("ConsultantLevel", "TestStartedAt", "TestCompletedAt");
 
                     b.ToTable("ConsultantProfiles", t =>
                         {
@@ -239,11 +250,15 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("ConsultantProfileId");
 
+                    b.HasIndex("ConsultantProfileId", "AssignedAt", "PickUp");
+
                     b.HasIndex("PhoneNumber");
 
                     b.HasIndex("ReportSubmittedAt");
 
                     b.HasIndex("AssignmentType", "LeadAssignmentState", "ConsultantProfileId");
+
+                    b.HasIndex("IsDeleted", "AssignmentType", "LeadAssignmentState", "ConsultantProfileId", "PickUp");
 
                     b.ToTable("LeadAssignments");
                 });

@@ -13,5 +13,10 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
             LeadAssignment lead,
             ConsultantProfile consultant);
         Task NotifyRealtimeLeadTakenAsync(long leadAssignmentId, long pickedByConsultantProfileId);
+        Task BroadcastTestLeadAsync(
+            LeadAssignment lead,
+            IReadOnlyList<ConsultantProfile> consultants,
+            bool isReminder,
+            CancellationToken cancellationToken = default);
     }
 }

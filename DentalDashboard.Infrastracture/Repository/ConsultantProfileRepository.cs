@@ -15,7 +15,8 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<List<ConsultantProfile>> GetAvailableConsultantsAsync()
         {
             return GetAll()
-                .Where(x => !x.IsDeleted &&
+                .Where(x => !x.IsDeleted && x.User.IsActive &&
+                            x.ConsultantLevel != ConsultantLevel.Test &&
                             x.IsCompleteProfile &&
                             x.IsAvailable &&
                             !x.IsOnline)
@@ -26,7 +27,8 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<List<ConsultantProfile>> GetOnlineConsultantsReadyForRealTimeAsync()
         {
             return GetAll()
-                .Where(x => !x.IsDeleted &&
+                .Where(x => !x.IsDeleted && x.User.IsActive &&
+                            x.ConsultantLevel != ConsultantLevel.Test &&
                             x.IsCompleteProfile &&
                             x.IsAvailable &&
                             x.IsOnline &&
@@ -53,6 +55,33 @@ namespace DentalDashboard.Infrastracture.Repository
                                x.IsCompleteProfile &&
                                x.IsAvailable &&
                                x.IsOnline);
+        }
+
+        public Task<List<ConsultantProfile>> GetTestConsultantsReadyForDistributionAsync()
+        {
+            return GetAll().Include(x => x.User)
+                .Where(x => !x.IsDeleted && x.User.IsActive && x.IsCompleteProfile &&
+                            x.IsAvailable && x.IsOnline &&
+                            x.ConsultantLevel == ConsultantLevel.Test &&
+                            x.TestStartedAt != null && x.TestCompletedAt == null &&
+                            !x.CallAssignments.Any(l => l.ConsultantProfileId == x.Id &&
+                                                        l.ReportSubmittedAt == null &&
+                                                        l.LeadAssignmentState != LeadAssignmentState.Expired &&
+                                                        l.LeadAssignmentState != LeadAssignmentState.Rejected) &&
+                            x.CallAssignments.Count(l => l.ConsultantProfileId == x.Id &&
+                                                         l.ReportSubmittedAt != null &&
+                                                         l.CallResult == LeadCallResult.NeedFollowUp &&
+                                                         l.LeadAssignmentState == LeadAssignmentState.Pending) <= 10)
+                .OrderBy(x => x.Id).ToListAsync();
+        }
+
+        public Task<List<ConsultantProfile>> GetTestConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore)
+        {
+            return GetAll().Include(x => x.User)
+                .Where(x => !x.IsDeleted && x.ConsultantLevel == ConsultantLevel.Test &&
+                            x.TestStartedAt != null && x.TestStartedAt < evaluationStartedBefore &&
+                            x.TestCompletedAt == null)
+                .OrderBy(x => x.Id).ToListAsync();
         }
     }
 }

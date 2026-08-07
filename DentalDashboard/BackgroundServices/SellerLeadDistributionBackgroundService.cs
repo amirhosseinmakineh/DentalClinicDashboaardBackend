@@ -29,11 +29,9 @@ public sealed class SellerLeadDistributionBackgroundService : BackgroundService
                 var commands = scope.ServiceProvider.GetRequiredService<ICommandDispatcher>();
                 var sellers = await queries.DispatchAsync<IReadOnlyList<ActiveSellerConsultantResponse>>(
                     new GetActiveSellerConsultantsQuery(), stoppingToken);
-                foreach (var seller in sellers)
-                {
-                    try { await commands.DispatchAsync(new DistributeSellerLeadsCommand(seller.ConsultantId), stoppingToken); }
-                    catch (Exception ex) { logger.LogError(ex, "Seller distribution failed for {ConsultantId}", seller.ConsultantId); }
-                }
+                await commands.DispatchAsync(
+                    new DistributeSellerLeadsCommand(sellers.Select(x => x.ConsultantId).ToArray()),
+                    stoppingToken);
                 await commands.DispatchAsync(new EvaluateSellerConsultantsCommand(), stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }

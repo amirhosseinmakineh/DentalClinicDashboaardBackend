@@ -25,26 +25,31 @@ public sealed class DistributeSellerLeadsCommandHandler : ICommandHandler<Distri
     public async Task<Result> HandleAsync(DistributeSellerLeadsCommand command,
         CancellationToken cancellationToken = default)
     {
-        var seller = (await consultants.GetActiveSellerConsultantsAsync())
-            .SingleOrDefault(x => x.Id == command.ConsultantId);
-        if (seller == null)
-            return Result.Success("Seller is no longer eligible.");
-        var allocation = await leads.GetSellerDailyAllocationCountAsync(seller.Id, cancellationToken);
-        var decision = strategy.Decide(new SellerConsultantContext
+        var requestedIds = command.ConsultantIds.ToHashSet();
+        var activeSellers = (await consultants.GetActiveSellerConsultantsAsync())
+            .Where(x => requestedIds.Contains(x.Id));
+        var eligible = new List<DentalDashboard.Domain.Models.ConsultantProfile>();
+        foreach (var seller in activeSellers)
         {
-            SellerStartedAt = IranTimeHelper.ToIranLocalTime(seller.SellerStartedAt!.Value),
-            CurrentTime = IranTimeHelper.IranLocalNow,
-            AssignedNewLeadToday = allocation.NewLeadCount,
-            AssignedBurnedLeadToday = allocation.BurnedLeadCount,
-            IsActive = seller.User.IsActive, IsAvailable = seller.IsAvailable, IsOnline = seller.IsOnline
-        });
-        if (!decision.CanReceiveBurnedLead)
-            return Result.Success("Seller burned-lead quota is unavailable.");
+            var allocation = await leads.GetSellerDailyAllocationCountAsync(seller.Id, cancellationToken);
+            var decision = strategy.Decide(new SellerConsultantContext
+            {
+                SellerStartedAt = IranTimeHelper.ToIranLocalTime(seller.SellerStartedAt!.Value),
+                CurrentTime = IranTimeHelper.IranLocalNow,
+                AssignedNewLeadToday = allocation.NewLeadCount,
+                AssignedBurnedLeadToday = allocation.BurnedLeadCount,
+                IsActive = seller.User.IsActive, IsAvailable = seller.IsAvailable, IsOnline = seller.IsOnline
+            });
+            if (decision.CanReceiveBurnedLead)
+                eligible.Add(seller);
+        }
+        if (eligible.Count == 0)
+            return Result.Success("No Seller currently has burned-lead capacity.");
 
         var lead = await leads.GetCurrentBurnedLeadForDispatchAsync(RedispatchInterval);
         if (lead == null)
             return Result.Success("No burned lead is ready for Seller distribution.");
-        await assignmentService.BroadcastTestLeadAsync(lead, new[] { seller },
+        await assignmentService.BroadcastBurnedLeadAsync(lead, eligible, "SELLER",
             lead.NotificationSent && lead.LastDispatchAt.HasValue, cancellationToken);
         return Result.Success("Burned lead broadcast through the existing assignment pipeline.");
     }

@@ -375,8 +375,20 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                var limit = await leadAssignmentLimitService.GetDailyLimitStatusAsync(consultant.Id);
+                if (limit.CanPickup)
+                {
                     availableConsultants.Add(consultant);
+                    logger.LogDebug(
+                        "Consultant {ConsultantId} with role {Role} eligible for realtime lead; assigned {AssignedToday}/{DailyLimit}",
+                        consultant.Id, consultant.ConsultantLevel, limit.TodayPickupCount, limit.EffectiveDailyLimit);
+                }
+                else
+                {
+                    logger.LogInformation(
+                        "Consultant {ConsultantId} with role {Role} reached realtime daily limit {AssignedToday}/{DailyLimit}",
+                        consultant.Id, consultant.ConsultantLevel, limit.TodayPickupCount, limit.EffectiveDailyLimit);
+                }
             }
 
             if (!availableConsultants.Any())
@@ -443,9 +455,10 @@ namespace DentalDashboard.ApplicationService.Services
                 consultants.Count);
         }
 
-        public async Task BroadcastTestLeadAsync(
+        public async Task BroadcastBurnedLeadAsync(
             LeadAssignment lead,
             IReadOnlyList<ConsultantProfile> consultants,
+            string audience,
             bool isReminder,
             CancellationToken cancellationToken = default)
         {
@@ -473,9 +486,10 @@ namespace DentalDashboard.ApplicationService.Services
             await leadAssignmentRepository.SaveChange();
 
             logger.LogInformation(
-                "Burned TEST lead {LeadId} broadcast to {ConsultantCount} eligible TEST consultants. Reminder: {IsReminder}",
+                "Burned lead {LeadId} broadcast to {ConsultantCount} eligible {Audience} consultants. Reminder: {IsReminder}",
                 lead.Id,
                 consultants.Count,
+                audience,
                 isReminder);
         }
 

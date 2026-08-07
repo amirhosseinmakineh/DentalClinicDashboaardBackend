@@ -3,6 +3,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Time;
+using DentalDashboard.Domain.Strategies;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -148,10 +149,13 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId)
         {
+            var burnedLevels = Enum.GetValues<ConsultantLevel>()
+                .Where(x => ConsultantDistributionPolicyResolver.Resolve(x).AllowsBurned)
+                .ToArray();
             return GetAll()
                 .FirstOrDefaultAsync(x => x.Id == leadAssignmentId &&
                                           x.ConsultantProfileId == consultantProfileId &&
-                                          (!x.IsDeleted || x.ConsultantProfile!.ConsultantLevel == ConsultantLevel.Test));
+                                          (!x.IsDeleted || burnedLevels.Contains(x.ConsultantProfile!.ConsultantLevel)));
         }
 
         public Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync()
@@ -188,6 +192,33 @@ namespace DentalDashboard.Infrastracture.Repository
                     x.AssignedAt < tomorrowStartUtc);
         }
 
+        public async Task<(int NewLeadCount, int BurnedLeadCount)> GetSellerDailyAllocationCountAsync(
+            long consultantProfileId, CancellationToken cancellationToken = default)
+        {
+            var today = IranTimeHelper.TodayInIran();
+            var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(today);
+            var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(1));
+            var counts = await context.LeadAssignments
+                .Where(x => x.ConsultantProfileId == consultantProfileId && x.PickUp &&
+                            x.AssignedAt >= start && x.AssignedAt < end)
+                .GroupBy(_ => 1)
+                .Select(g => new { New = g.Count(x => !x.IsDeleted), Burned = g.Count(x => x.IsDeleted) })
+                .SingleOrDefaultAsync(cancellationToken);
+            return counts == null ? (0, 0) : (counts.New, counts.Burned);
+        }
+
+        public async Task<int> GetTodayAssignmentCountAsync(
+            long consultantProfileId, bool burned, CancellationToken cancellationToken = default)
+        {
+            var today = IranTimeHelper.TodayInIran();
+            var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(today);
+            var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(1));
+            return await context.LeadAssignments.CountAsync(x =>
+                x.ConsultantProfileId == consultantProfileId && x.PickUp &&
+                x.IsDeleted == burned && x.AssignedAt >= start && x.AssignedAt < end,
+                cancellationToken);
+        }
+
         public async Task<bool> TryPickupLeadAsync(
             long leadAssignmentId,
             long consultantProfileId,
@@ -196,6 +227,9 @@ namespace DentalDashboard.Infrastracture.Repository
             var todayInIran = IranTimeHelper.TodayInIran();
             var (todayStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(todayInIran);
             var (tomorrowStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(todayInIran.AddDays(1));
+            var testPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.Test);
+            var sellerPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.Seller);
+            var topSellerPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.TopSeller);
             var sql = @"
 	        UPDATE LeadAssignments
         SET
@@ -221,7 +255,29 @@ namespace DentalDashboard.Infrastracture.Repository
 	              AND c.IsOnline = 1
 	              AND u.IsActive = 1
 	              AND (
-	                  (c.ConsultantLevel <> @testLevel AND LeadAssignments.IsDeleted = 0)
+	                  (c.ConsultantLevel = @topSellerLevel
+	                   AND c.TopSellerStartedAt IS NOT NULL
+	                   AND LeadAssignments.IsDeleted = 0
+	                   AND (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
+	                        WHERE daily.ConsultantProfileId = c.Id AND daily.PickUp = 1
+	                          AND daily.IsDeleted = 0 AND daily.AssignedAt >= @todayStartUtc
+	                          AND daily.AssignedAt < @tomorrowStartUtc) < @topSellerRealTimeLimit)
+	                  OR
+	                  (c.ConsultantLevel = @sellerLevel
+	                   AND c.SellerStartedAt IS NOT NULL
+	                   AND (
+	                       (LeadAssignments.IsDeleted = 0 AND
+	                        (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
+	                         WHERE daily.ConsultantProfileId = c.Id AND daily.PickUp = 1
+	                           AND daily.IsDeleted = 0 AND daily.AssignedAt >= @todayStartUtc
+	                           AND daily.AssignedAt < @tomorrowStartUtc) < @sellerRealTimeLimit)
+	                       OR
+	                       (LeadAssignments.IsDeleted = 1 AND
+	                        (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
+	                         WHERE daily.ConsultantProfileId = c.Id AND daily.PickUp = 1
+	                           AND daily.IsDeleted = 1 AND daily.AssignedAt >= @todayStartUtc
+	                           AND daily.AssignedAt < @tomorrowStartUtc) < @sellerBurnedLimit)
+	                   ))
 	                  OR
 	                  (c.ConsultantLevel = @testLevel
 	                   AND LeadAssignments.IsDeleted = 1
@@ -231,8 +287,9 @@ namespace DentalDashboard.Infrastracture.Repository
 	                   AND (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
 	                        WHERE daily.ConsultantProfileId = c.Id
 	                          AND daily.PickUp = 1
+	                          AND daily.IsDeleted = 1
 	                          AND daily.AssignedAt >= @todayStartUtc
-	                          AND daily.AssignedAt < @tomorrowStartUtc) < 20)
+	                          AND daily.AssignedAt < @tomorrowStartUtc) < @testBurnedLimit)
 	              )
 	        )
 	    ";
@@ -249,6 +306,12 @@ namespace DentalDashboard.Infrastracture.Repository
                         "@assignedState",
                         (int)LeadAssignmentState.Assigned),
                     new SqlParameter("@testLevel", (byte)ConsultantLevel.Test),
+                    new SqlParameter("@sellerLevel", (byte)ConsultantLevel.Seller),
+                    new SqlParameter("@topSellerLevel", (byte)ConsultantLevel.TopSeller),
+                    new SqlParameter("@testBurnedLimit", testPolicy.BurnedDailyLimit),
+                    new SqlParameter("@sellerRealTimeLimit", sellerPolicy.RealTimeDailyLimit),
+                    new SqlParameter("@sellerBurnedLimit", sellerPolicy.BurnedDailyLimit),
+                    new SqlParameter("@topSellerRealTimeLimit", topSellerPolicy.RealTimeDailyLimit),
                     new SqlParameter("@realTimeType", (int)LeadAssignmentType.RealTime),
                     new SqlParameter("@newState", (int)LeadAssignmentState.New),
                     new SqlParameter("@todayStartUtc", todayStartUtc),

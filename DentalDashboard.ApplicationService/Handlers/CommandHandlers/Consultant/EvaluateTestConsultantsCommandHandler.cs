@@ -7,6 +7,7 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant;
 
@@ -16,18 +17,21 @@ public sealed class EvaluateTestConsultantsCommandHandler : ICommandHandler<Eval
     private readonly ILeadAssignmentRepository leadRepository;
     private readonly IReservationRepository reservationRepository;
     private readonly IConsultantProfileService consultantProfileService;
+    private readonly ILogger<EvaluateTestConsultantsCommandHandler> logger;
     private readonly TestConsultantStrategy strategy = new(TestConsultantPolicy.Default);
 
     public EvaluateTestConsultantsCommandHandler(
         IConsultantProfileRepository consultantRepository,
         ILeadAssignmentRepository leadRepository,
         IReservationRepository reservationRepository,
-        IConsultantProfileService consultantProfileService)
+        IConsultantProfileService consultantProfileService,
+        ILogger<EvaluateTestConsultantsCommandHandler> logger)
     {
         this.consultantRepository = consultantRepository;
         this.leadRepository = leadRepository;
         this.reservationRepository = reservationRepository;
         this.consultantProfileService = consultantProfileService;
+        this.logger = logger;
     }
 
     public async Task<Result> HandleAsync(EvaluateTestConsultantsCommand command, CancellationToken cancellationToken = default)
@@ -38,14 +42,16 @@ public sealed class EvaluateTestConsultantsCommandHandler : ICommandHandler<Eval
 
         foreach (var consultant in candidates)
         {
-            var confirmedPatients = await reservationRepository.GetAll().AsNoTracking().CountAsync(
-                x => !x.IsDeleted && !x.IsCanceled && x.ConsultantProfileId == consultant.Id &&
-                     x.LeadAssignment.AssignedAt >= consultant.TestStartedAt &&
-                     x.ConsultantSaysPatientAttended == true &&
-                     x.SecretaryApprovedConsultantConfirmation == true &&
-                     x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryApproved,
-                cancellationToken);
-            var assignedToday = await leadRepository.GetTodayPickupCountAsync(consultant.Id);
+            var periodEnd = consultant.TestStartedAt!.Value.AddDays(10);
+            var confirmedPatients = await reservationRepository.GetAll().AsNoTracking()
+                .Where(x => !x.IsDeleted && !x.IsCanceled && x.ConsultantProfileId == consultant.Id &&
+                            x.LeadAssignment.AssignedAt >= consultant.TestStartedAt &&
+                            x.LeadAssignment.AssignedAt < periodEnd &&
+                            x.ConsultantSaysPatientAttended == true &&
+                            x.SecretaryApprovedConsultantConfirmation == true &&
+                            x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryApproved)
+                .Select(x => x.LeadAssignmentId).Distinct().CountAsync(cancellationToken);
+            var assignedToday = await leadRepository.GetTodayAssignmentCountAsync(consultant.Id, burned: true, cancellationToken);
             var decision = strategy.Decide(new TestConsultantContext
             {
                 TestStartedAt = IranTimeHelper.ToIranLocalTime(consultant.TestStartedAt!.Value),
@@ -64,9 +70,10 @@ public sealed class EvaluateTestConsultantsCommandHandler : ICommandHandler<Eval
             consultant.TestPassed = decision.HasPassed;
             if (!decision.HasPassed)
             {
-                consultant.IsAvailable = false;
-                consultant.IsOnline = false;
-                consultant.User.IsActive = false;
+                await consultantProfileService.DeactivateConsultantAsync(consultant.Id);
+                logger.LogWarning(
+                    "TEST consultant {ConsultantId} failed evaluation and account/dashboard was disabled",
+                    consultant.Id);
             }
 
             consultantRepository.Update(consultant);

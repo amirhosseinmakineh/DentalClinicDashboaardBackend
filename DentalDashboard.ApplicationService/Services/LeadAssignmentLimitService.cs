@@ -1,7 +1,9 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.Strategies;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -11,51 +13,59 @@ namespace DentalDashboard.ApplicationService.Services
 
         private readonly ILeadAssignmentRepository _repository;
         private readonly IConsultantProfileRepository _consultantProfileRepository;
+        private readonly ILogger<LeadAssignmentLimitService> logger;
 
         public LeadAssignmentLimitService(
             ILeadAssignmentRepository repository,
-            IConsultantProfileRepository consultantProfileRepository)
+            IConsultantProfileRepository consultantProfileRepository,
+            ILogger<LeadAssignmentLimitService> logger)
         {
             _repository = repository;
             _consultantProfileRepository = consultantProfileRepository;
+            this.logger = logger;
         }
 
         public int DefaultDailyLimit => SystemDefaultDailyLimit;
 
         public async Task<bool> CanPickupLeadAsync(long consultantProfileId)
         {
-            var status = await GetDailyLimitStatusAsync(consultantProfileId);
-            return status.CanPickup;
+            return await CanPickupLeadAsync(consultantProfileId, burned: false);
+        }
+
+        public async Task<bool> CanPickupLeadAsync(long consultantProfileId, bool burned)
+        {
+            var profile = await _consultantProfileRepository.GetAll().AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == consultantProfileId && !x.IsDeleted);
+            if (profile == null)
+                return false;
+            var policy = ConsultantDistributionPolicyResolver.Resolve(profile.ConsultantLevel);
+            var limit = burned ? policy.BurnedDailyLimit : policy.RealTimeDailyLimit;
+            if (limit <= 0)
+                return false;
+            var count = await _repository.GetTodayAssignmentCountAsync(consultantProfileId, burned);
+            return count < limit;
         }
 
         public async Task<ConsultantDailyLimitStatus> GetDailyLimitStatusAsync(long consultantProfileId)
         {
-            var effectiveLimit = await GetEffectiveDailyLimitAsync(consultantProfileId);
-            var count = await _repository.GetTodayPickupCountAsync(consultantProfileId);
+            var profile = await _consultantProfileRepository.GetAll().AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == consultantProfileId && !x.IsDeleted);
+            if (profile == null)
+                return new ConsultantDailyLimitStatus { EffectiveDailyLimit = 0, TodayPickupCount = 0, CanPickup = false };
+
+            var policy = ConsultantDistributionPolicyResolver.Resolve(profile.ConsultantLevel);
+            var count = await _repository.GetTodayAssignmentCountAsync(consultantProfileId, burned: false);
+            logger.LogDebug(
+                "Role-based lead limits resolved for {ConsultantId}: {Role}, realtime {RealTimeLimit}, burned {BurnedLimit}, assigned {AssignedToday}",
+                consultantProfileId, profile.ConsultantLevel, policy.RealTimeDailyLimit,
+                policy.BurnedDailyLimit, count);
 
             return new ConsultantDailyLimitStatus
             {
-                EffectiveDailyLimit = effectiveLimit,
+                EffectiveDailyLimit = policy.RealTimeDailyLimit,
                 TodayPickupCount = count,
-                CanPickup = count < effectiveLimit
+                CanPickup = policy.AllowsRealTime && count < policy.RealTimeDailyLimit
             };
-        }
-
-        private async Task<int> GetEffectiveDailyLimitAsync(long consultantProfileId)
-        {
-            var profile = await _consultantProfileRepository.GetAll()
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == consultantProfileId);
-
-            // Zero was accepted by older versions when the admin form sent its
-            // default numeric value. Treat it as "not configured" rather than
-            // silently blocking the consultant from every lead.
-            if (profile?.ConsultantLevel == ConsultantLevel.Test)
-                return 20;
-
-            return profile?.LimitNumber is > 0
-                ? profile.LimitNumber.Value
-                : SystemDefaultDailyLimit;
         }
     }
 }

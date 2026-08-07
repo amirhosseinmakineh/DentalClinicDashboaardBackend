@@ -6,5 +6,8 @@ public sealed record SellerConsultantPolicy(
     int EvaluationDays,
     int GoldConfirmedPatientThreshold)
 {
-    public static SellerConsultantPolicy Default { get; } = new(10, 30, 10, 3);
+    public static SellerConsultantPolicy Default { get; } = new(
+        ConsultantDistributionPolicyResolver.Resolve(DentalDashboard.Domain.Enums.ConsultantLevel.Seller).RealTimeDailyLimit,
+        ConsultantDistributionPolicyResolver.Resolve(DentalDashboard.Domain.Enums.ConsultantLevel.Seller).BurnedDailyLimit,
+        10, 3);
 }

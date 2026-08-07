@@ -6,5 +6,7 @@ public sealed record TestConsultantPolicy(
     int TotalTestDays,
     int RequiredConfirmedPatients)
 {
-    public static TestConsultantPolicy Default { get; } = new(20, 5, 10, 1);
+    public static TestConsultantPolicy Default { get; } = new(
+        ConsultantDistributionPolicyResolver.Resolve(DentalDashboard.Domain.Enums.ConsultantLevel.Test).BurnedDailyLimit,
+        5, 10, 1);
 }

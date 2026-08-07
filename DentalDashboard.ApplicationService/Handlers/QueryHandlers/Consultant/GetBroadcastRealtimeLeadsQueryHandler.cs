@@ -93,7 +93,8 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             };
         }
 
-        if (!await leadAssignmentLimitService.CanPickupLeadAsync(profile.Id))
+        if (profile.ConsultantLevel != ConsultantLevel.Test &&
+            !await leadAssignmentLimitService.CanPickupLeadAsync(profile.Id))
         {
             var limitStatus = await leadAssignmentLimitService
                 .GetDailyLimitStatusAsync(profile.Id);
@@ -117,7 +118,8 @@ public class GetBroadcastRealtimeLeadsQueryHandler
                 };
             }
 
-            var assignedToday = await leadAssignmentRepository.GetTodayPickupCountAsync(profile.Id);
+            var assignedToday = await leadAssignmentRepository.GetTodayAssignmentCountAsync(
+                profile.Id, burned: true, cancellationToken);
             var decision = new TestConsultantStrategy(TestConsultantPolicy.Default).Decide(new TestConsultantContext
             {
                 TestStartedAt = IranTimeHelper.ToIranLocalTime(profile.TestStartedAt.Value),

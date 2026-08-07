@@ -126,6 +126,20 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("TestStartedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("TopSellerLastEvaluatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("TopSellerLastEvaluatedPeriodStart")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte>("TopSellerRewardLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((byte)0);
+
+                    b.Property<DateTime?>("TopSellerStartedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("NationalCode")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -150,6 +164,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("ConsultantLevel", "TestStartedAt", "TestCompletedAt");
 
                     b.HasIndex("ConsultantLevel", "SellerStartedAt", "SellerEvaluatedAt");
+
+                    b.HasIndex("ConsultantLevel", "TopSellerStartedAt", "TopSellerLastEvaluatedPeriodStart");
 
                     b.ToTable("ConsultantProfiles", t =>
                         {

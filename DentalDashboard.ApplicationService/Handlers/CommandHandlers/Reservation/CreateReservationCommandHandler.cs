@@ -4,6 +4,7 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using DentalDashboard.Domain.Strategies;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
@@ -31,7 +32,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 return Result<CreateReservationResponse>.Failure("مشاور یافت نشد");
 
             var lead = await leadAssignmentRepository.GetByIdAndConsultantAsync(command.LeadAssignmentId, command.ConsultantProfileId);
-            if (lead == null || (lead.IsDeleted && consultant.ConsultantLevel != ConsultantLevel.Test))
+            var policy = ConsultantDistributionPolicyResolver.Resolve(consultant.ConsultantLevel);
+            if (lead == null || (lead.IsDeleted && !policy.AllowsBurned))
                 return Result<CreateReservationResponse>.Failure("لید برای این مشاور یافت نشد");
 
             if (lead.ReportSubmittedAt == null || (lead.CallResult != LeadCallResult.Contacted && lead.CallResult != LeadCallResult.Converted))

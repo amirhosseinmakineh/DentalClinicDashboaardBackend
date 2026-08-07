@@ -99,10 +99,14 @@ builder.Services.Configure<HostOptions>(options =>
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
 });
 
-builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
+// Legacy/default distribution disabled in favor of the role-based
+// TEST/SELLER/TOPSELLER distribution flow. Source is intentionally retained.
+// builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
+builder.Services.AddHostedService<RoleBasedLeadDistributionBackgroundService>();
 builder.Services.AddHostedService<AddLeadBackgroundService>();
 builder.Services.AddHostedService<TestConsultantBackgroundService>();
 builder.Services.AddHostedService<SellerLeadDistributionBackgroundService>();
+builder.Services.AddHostedService<TopSellerConsultantBackgroundService>();
 
 builder.Services.AddInfrastructure(
     builder.Configuration);

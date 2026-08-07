@@ -64,7 +64,9 @@ public class PickUpService : IPickupService
             };
         }
 
-        if (!await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId))
+        var requestedLead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
+        if (requestedLead == null ||
+            !await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId, requestedLead.IsDeleted))
         {
             return new PickupLeadResult
             {

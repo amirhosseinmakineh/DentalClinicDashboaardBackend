@@ -375,8 +375,20 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                var limit = await leadAssignmentLimitService.GetDailyLimitStatusAsync(consultant.Id);
+                if (limit.CanPickup)
+                {
                     availableConsultants.Add(consultant);
+                    logger.LogDebug(
+                        "Consultant {ConsultantId} with role {Role} eligible for realtime lead; assigned {AssignedToday}/{DailyLimit}",
+                        consultant.Id, consultant.ConsultantLevel, limit.TodayPickupCount, limit.EffectiveDailyLimit);
+                }
+                else
+                {
+                    logger.LogInformation(
+                        "Consultant {ConsultantId} with role {Role} reached realtime daily limit {AssignedToday}/{DailyLimit}",
+                        consultant.Id, consultant.ConsultantLevel, limit.TodayPickupCount, limit.EffectiveDailyLimit);
+                }
             }
 
             if (!availableConsultants.Any())

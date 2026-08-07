@@ -44,7 +44,7 @@ public sealed class ProcessTestConsultantsCommandHandler : ICommandHandler<Proce
 
         foreach (var consultant in consultants)
         {
-            var assignedToday = await leadRepository.GetTodayPickupCountAsync(consultant.Id);
+            var assignedToday = await leadRepository.GetTodayAssignmentCountAsync(consultant.Id, burned: true, cancellationToken);
             var decision = strategy.Decide(new TestConsultantContext
             {
                 TestStartedAt = IranTimeHelper.ToIranLocalTime(consultant.TestStartedAt!.Value),

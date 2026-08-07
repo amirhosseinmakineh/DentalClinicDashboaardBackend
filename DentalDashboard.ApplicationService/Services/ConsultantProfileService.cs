@@ -3,6 +3,7 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Utilities.Time;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -118,6 +119,29 @@ namespace DentalDashboard.ApplicationService.Services
                 consultant.SellerStartedAt = DateTime.UtcNow;
                 consultant.SellerEvaluatedAt = null;
             }
+            else if (consultantLevel == ConsultantLevel.TopSeller)
+            {
+                var (startUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
+                consultant.TopSellerStartedAt = startUtc;
+                consultant.TopSellerLastEvaluatedPeriodStart = null;
+                consultant.TopSellerLastEvaluatedAt = null;
+                consultant.TopSellerRewardLevel = TopSellerRewardLevel.None;
+            }
+            consultant.UpdatedAt = DateTime.UtcNow;
+            repository.Update(consultant);
+            await repository.SaveChange();
+        }
+
+        public async Task DeactivateConsultantAsync(long consultantProfileId)
+        {
+            var consultant = await repository.GetAll().Include(x => x.User)
+                .FirstOrDefaultAsync(x => x.Id == consultantProfileId && !x.IsDeleted);
+            if (consultant == null)
+                return;
+
+            // Idempotent cooperation/dashboard deactivation. Login already rejects
+            // inactive users and distribution queries require all three flags.
+            consultant.DeactivateCooperation();
             consultant.UpdatedAt = DateTime.UtcNow;
             repository.Update(consultant);
             await repository.SaveChange();

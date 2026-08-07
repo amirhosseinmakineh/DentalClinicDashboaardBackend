@@ -90,6 +90,15 @@ public class PickUpService : IPickupService
         bool pickedUp;
         try
         {
+            // Keep the write-lock order consistent with report submission:
+            // ConsultantProfiles first, then LeadAssignments. The previous
+            // reverse order (atomic pickup SQL first, consultant SaveChanges
+            // second) could block/deadlock with EF batches that update the
+            // consultant before the lead.
+            consultant.IsOnline = false;
+            consultant.LastOfflineAt = DateTime.UtcNow;
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
             pickedUp = await leadAssignmentRepository.TryPickupLeadAsync(
                 leadAssignmentId, consultantProfileId, cancellationToken);
 
@@ -103,10 +112,6 @@ public class PickUpService : IPickupService
                 };
             }
 
-            consultant.IsOnline = false;
-            consultant.LastOfflineAt = DateTime.UtcNow;
-
-            await unitOfWork.SaveChangesAsync(cancellationToken);
             await unitOfWork.CommitAsync(cancellationToken);
         }
         catch

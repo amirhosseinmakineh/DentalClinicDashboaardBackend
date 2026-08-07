@@ -86,25 +86,34 @@ public class PickUpService : IPickupService
             };
         }
 
-        var pickedUp = await leadAssignmentRepository
-            .TryPickupLeadAsync(
-                leadAssignmentId,
-                consultantProfileId,
-                cancellationToken);
-
-        if (!pickedUp)
+        await unitOfWork.BeginTransactionAsync(cancellationToken);
+        bool pickedUp;
+        try
         {
-            return new PickupLeadResult
+            pickedUp = await leadAssignmentRepository.TryPickupLeadAsync(
+                leadAssignmentId, consultantProfileId, cancellationToken);
+
+            if (!pickedUp)
             {
-                Status = PickupLeadStatus.AlreadyTaken,
-                LeadAssignmentId = leadAssignmentId
-            };
+                await unitOfWork.RollbackAsync(CancellationToken.None);
+                return new PickupLeadResult
+                {
+                    Status = PickupLeadStatus.AlreadyTaken,
+                    LeadAssignmentId = leadAssignmentId
+                };
+            }
+
+            consultant.IsOnline = false;
+            consultant.LastOfflineAt = DateTime.UtcNow;
+
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.CommitAsync(cancellationToken);
         }
-
-        consultant.IsOnline = false;
-        consultant.LastOfflineAt = DateTime.UtcNow;
-
-        await unitOfWork.SaveChangesAsync();
+        catch
+        {
+            await unitOfWork.RollbackAsync(CancellationToken.None);
+            throw;
+        }
 
         var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
 

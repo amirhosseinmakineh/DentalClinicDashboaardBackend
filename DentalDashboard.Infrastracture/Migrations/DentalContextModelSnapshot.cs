@@ -274,7 +274,7 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("ConsultantProfileId");
 
-                    b.HasIndex("ConsultantProfileId", "AssignedAt", "PickUp");
+                    b.HasIndex("ConsultantProfileId", "PickUp", "IsDeleted", "AssignedAt");
 
                     b.HasIndex("ConsultantProfileId", "ReportSubmittedAt");
 

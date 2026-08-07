@@ -19,7 +19,15 @@ namespace DentalDashboard.Infrastracture.Configuration
 
             builder.HasIndex(x => x.CallDeadlineAt);
             builder.HasIndex(x => x.ReportSubmittedAt);
-            builder.HasIndex(x => new { x.ConsultantProfileId, x.AssignedAt, x.PickUp });
+            // Supports the serializable daily-limit predicate used by atomic pickup.
+            // Keeping equality columns first narrows HOLDLOCK range locks to one consultant/bucket.
+            builder.HasIndex(x => new
+            {
+                x.ConsultantProfileId,
+                x.PickUp,
+                x.IsDeleted,
+                x.AssignedAt
+            });
             builder.HasIndex(x => new { x.ConsultantProfileId, x.ReportSubmittedAt });
             builder.HasIndex(x => new
             {

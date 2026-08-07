@@ -34,16 +34,23 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
             var userRoles = await userRoleRepository.FindAsync(x => x.UserId == command.UserId);
 
             await unitOfWork.BeginTransactionAsync(cancellationToken);
-
-            foreach (var userRole in userRoles)
+            try
             {
-                userRoleRepository.Delete(userRole);
+                foreach (var userRole in userRoles)
+                {
+                    userRoleRepository.Delete(userRole);
+                }
+
+                userRepository.Delete(user);
+
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
             }
-
-            userRepository.Delete(user);
-
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            await unitOfWork.CommitAsync(cancellationToken);
+            catch
+            {
+                await unitOfWork.RollbackAsync(CancellationToken.None);
+                throw;
+            }
 
             return Result<object>.Success(true,"حذف کاربر با موفقیت انجام شد");
         }

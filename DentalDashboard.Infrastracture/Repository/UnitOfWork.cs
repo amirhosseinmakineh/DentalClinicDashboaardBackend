@@ -75,4 +75,21 @@ public class UnitOfWork : IUnitOfWork
             await transaction.DisposeAsync();
         }
     }
+
+    public void Dispose()
+    {
+        if (_transaction is null)
+            return;
+
+        var transaction = _transaction;
+        _transaction = null;
+        try
+        {
+            transaction.Rollback();
+        }
+        finally
+        {
+            transaction.Dispose();
+        }
+    }
 }

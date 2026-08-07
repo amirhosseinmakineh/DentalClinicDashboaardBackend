@@ -108,9 +108,15 @@ namespace DentalDashboard.ApplicationService.Services
             consultant.ConsultantLevel = consultantLevel;
             if (consultantLevel == ConsultantLevel.Test)
             {
-                consultant.TestStartedAt ??= DateTime.UtcNow;
+                // Returning from Seller starts a fresh TEST evaluation window.
+                consultant.TestStartedAt = DateTime.UtcNow;
                 consultant.TestCompletedAt = null;
                 consultant.TestPassed = null;
+            }
+            else if (consultantLevel == ConsultantLevel.Seller)
+            {
+                consultant.SellerStartedAt = DateTime.UtcNow;
+                consultant.SellerEvaluatedAt = null;
             }
             consultant.UpdatedAt = DateTime.UtcNow;
             repository.Update(consultant);

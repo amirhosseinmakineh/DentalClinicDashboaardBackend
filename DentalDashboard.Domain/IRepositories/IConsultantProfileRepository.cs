@@ -10,5 +10,8 @@ namespace DentalDashboard.Domain.IRepositories
         Task<bool> HasOnlineConsultantAsync();
         Task<List<ConsultantProfile>> GetTestConsultantsReadyForDistributionAsync();
         Task<List<ConsultantProfile>> GetTestConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore);
+        Task<List<ConsultantProfile>> GetActiveSellerConsultantsAsync();
+        Task<List<ConsultantProfile>> GetSellerConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore);
+        Task<bool> TryCompleteSellerEvaluationAsync(long consultantProfileId, DateTime evaluatedAt);
     }
 }

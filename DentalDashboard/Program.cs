@@ -102,6 +102,7 @@ builder.Services.Configure<HostOptions>(options =>
 builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<AddLeadBackgroundService>();
 builder.Services.AddHostedService<TestConsultantBackgroundService>();
+builder.Services.AddHostedService<SellerLeadDistributionBackgroundService>();
 
 builder.Services.AddInfrastructure(
     builder.Configuration);

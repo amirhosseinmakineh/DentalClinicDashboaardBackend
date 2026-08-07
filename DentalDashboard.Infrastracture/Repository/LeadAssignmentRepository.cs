@@ -188,6 +188,21 @@ namespace DentalDashboard.Infrastracture.Repository
                     x.AssignedAt < tomorrowStartUtc);
         }
 
+        public async Task<(int NewLeadCount, int BurnedLeadCount)> GetSellerDailyAllocationCountAsync(
+            long consultantProfileId, CancellationToken cancellationToken = default)
+        {
+            var today = IranTimeHelper.TodayInIran();
+            var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(today);
+            var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(1));
+            var counts = await context.LeadAssignments
+                .Where(x => x.ConsultantProfileId == consultantProfileId && x.PickUp &&
+                            x.AssignedAt >= start && x.AssignedAt < end)
+                .GroupBy(_ => 1)
+                .Select(g => new { New = g.Count(x => !x.IsDeleted), Burned = g.Count(x => x.IsDeleted) })
+                .SingleOrDefaultAsync(cancellationToken);
+            return counts == null ? (0, 0) : (counts.New, counts.Burned);
+        }
+
         public async Task<bool> TryPickupLeadAsync(
             long leadAssignmentId,
             long consultantProfileId,
@@ -221,7 +236,23 @@ namespace DentalDashboard.Infrastracture.Repository
 	              AND c.IsOnline = 1
 	              AND u.IsActive = 1
 	              AND (
-	                  (c.ConsultantLevel <> @testLevel AND LeadAssignments.IsDeleted = 0)
+	                  (c.ConsultantLevel = @topSellerLevel AND LeadAssignments.IsDeleted = 0)
+	                  OR
+	                  (c.ConsultantLevel = @sellerLevel
+	                   AND c.SellerStartedAt IS NOT NULL
+	                   AND (
+	                       (LeadAssignments.IsDeleted = 0 AND
+	                        (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
+	                         WHERE daily.ConsultantProfileId = c.Id AND daily.PickUp = 1
+	                           AND daily.IsDeleted = 0 AND daily.AssignedAt >= @todayStartUtc
+	                           AND daily.AssignedAt < @tomorrowStartUtc) < 10)
+	                       OR
+	                       (LeadAssignments.IsDeleted = 1 AND
+	                        (SELECT COUNT(1) FROM LeadAssignments daily WITH (UPDLOCK, HOLDLOCK)
+	                         WHERE daily.ConsultantProfileId = c.Id AND daily.PickUp = 1
+	                           AND daily.IsDeleted = 1 AND daily.AssignedAt >= @todayStartUtc
+	                           AND daily.AssignedAt < @tomorrowStartUtc) < 30)
+	                   ))
 	                  OR
 	                  (c.ConsultantLevel = @testLevel
 	                   AND LeadAssignments.IsDeleted = 1
@@ -249,6 +280,8 @@ namespace DentalDashboard.Infrastracture.Repository
                         "@assignedState",
                         (int)LeadAssignmentState.Assigned),
                     new SqlParameter("@testLevel", (byte)ConsultantLevel.Test),
+                    new SqlParameter("@sellerLevel", (byte)ConsultantLevel.Seller),
+                    new SqlParameter("@topSellerLevel", (byte)ConsultantLevel.TopSeller),
                     new SqlParameter("@realTimeType", (int)LeadAssignmentType.RealTime),
                     new SqlParameter("@newState", (int)LeadAssignmentState.New),
                     new SqlParameter("@todayStartUtc", todayStartUtc),

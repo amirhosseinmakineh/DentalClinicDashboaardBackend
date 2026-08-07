@@ -86,25 +86,39 @@ public class PickUpService : IPickupService
             };
         }
 
-        var pickedUp = await leadAssignmentRepository
-            .TryPickupLeadAsync(
-                leadAssignmentId,
-                consultantProfileId,
-                cancellationToken);
-
-        if (!pickedUp)
+        await unitOfWork.BeginTransactionAsync(cancellationToken);
+        bool pickedUp;
+        try
         {
-            return new PickupLeadResult
+            // Keep the write-lock order consistent with report submission:
+            // ConsultantProfiles first, then LeadAssignments. The previous
+            // reverse order (atomic pickup SQL first, consultant SaveChanges
+            // second) could block/deadlock with EF batches that update the
+            // consultant before the lead.
+            consultant.IsOnline = false;
+            consultant.LastOfflineAt = DateTime.UtcNow;
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            pickedUp = await leadAssignmentRepository.TryPickupLeadAsync(
+                leadAssignmentId, consultantProfileId, cancellationToken);
+
+            if (!pickedUp)
             {
-                Status = PickupLeadStatus.AlreadyTaken,
-                LeadAssignmentId = leadAssignmentId
-            };
+                await unitOfWork.RollbackAsync(CancellationToken.None);
+                return new PickupLeadResult
+                {
+                    Status = PickupLeadStatus.AlreadyTaken,
+                    LeadAssignmentId = leadAssignmentId
+                };
+            }
+
+            await unitOfWork.CommitAsync(cancellationToken);
         }
-
-        consultant.IsOnline = false;
-        consultant.LastOfflineAt = DateTime.UtcNow;
-
-        await unitOfWork.SaveChangesAsync();
+        catch
+        {
+            await unitOfWork.RollbackAsync(CancellationToken.None);
+            throw;
+        }
 
         var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
 

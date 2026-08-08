@@ -21,7 +21,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Role
             {
                 role.IsDeleted = true;
                 roleRepository.Update(role);
-                await roleRepository.SaveChange();
+                await roleRepository.SaveChange(cancellationToken);
                 return Result<string>.Success("نقش با موفقیت حذف شد");
             }
             else

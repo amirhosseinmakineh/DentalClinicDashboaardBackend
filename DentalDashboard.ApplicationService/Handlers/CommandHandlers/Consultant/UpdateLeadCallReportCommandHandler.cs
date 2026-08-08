@@ -76,7 +76,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             lead.LeadAssignmentState = leadReportDomainService.MapCallResultToState(command.CallResult);
 
             leadAssignmentRepository.Update(lead);
-            await leadAssignmentRepository.SaveChange();
+            await leadAssignmentRepository.SaveChange(cancellationToken);
 
             return Result<SubmitLeadCallReportResponse>.Success(new SubmitLeadCallReportResponse
             {

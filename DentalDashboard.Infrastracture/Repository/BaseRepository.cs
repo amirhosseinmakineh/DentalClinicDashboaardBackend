@@ -101,9 +101,9 @@ namespace DentalDashboard.Infrastracture.Repository
             return await DbSet.CountAsync();
         }
 
-        public Task SaveChange()
+        public Task SaveChange(CancellationToken cancellationToken = default)
         {
-            return context.SaveChangesAsync();
+            return context.SaveChangesAsync(cancellationToken);
         }
     }
 }

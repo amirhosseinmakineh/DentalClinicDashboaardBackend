@@ -25,7 +25,7 @@ namespace DentalDashboard.Framwork.IRepositories
         Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate);
 
         Task<int> CountAsync();
-        Task SaveChange();
+        Task SaveChange(CancellationToken cancellationToken = default);
         IQueryable<TEntity> GetAll();
     }
 }

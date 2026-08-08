@@ -42,7 +42,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             reservation.UpdatedAt = DateTime.UtcNow;
 
             reservationRepository.Update(reservation);
-            await reservationRepository.SaveChange();
+            await reservationRepository.SaveChange(cancellationToken);
 
             return Result.Success("تایید حضور بیمار ثبت شد و در انتظار بررسی منشی است");
         }

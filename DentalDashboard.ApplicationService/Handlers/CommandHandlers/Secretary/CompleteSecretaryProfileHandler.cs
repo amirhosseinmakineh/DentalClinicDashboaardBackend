@@ -56,7 +56,7 @@ public class CompleteSecretaryProfileHandler : ICommandHandler<CompleteSecretary
         user.IsCompleteProfile = command.IsCompleteProfile;
         user.UpdatedAt = DateTime.UtcNow;
         userRepository.Update(user);
-        await userRepository.SaveChange();
+        await userRepository.SaveChange(cancellationToken);
 
         return Result<string>.Success(user.Id.ToString(), "اطلاعات منشی با موفقیت تکمیل شد");
     }

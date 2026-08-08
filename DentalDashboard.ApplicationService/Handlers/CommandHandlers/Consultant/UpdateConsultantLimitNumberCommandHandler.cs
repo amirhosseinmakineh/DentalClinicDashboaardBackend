@@ -45,7 +45,7 @@ public class UpdateConsultantLimitNumberCommandHandler
         profile.LimitNumber = command.LimitNumber;
 
         consultantProfileRepository.Update(profile);
-        await consultantProfileRepository.SaveChange();
+        await consultantProfileRepository.SaveChange(cancellationToken);
 
         var limitStatus = await leadAssignmentLimitService
             .GetDailyLimitStatusAsync(profile.Id);

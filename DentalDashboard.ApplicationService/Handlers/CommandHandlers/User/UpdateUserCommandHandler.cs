@@ -81,7 +81,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                     }
                 }
 
-                await userRepository.SaveChange();
+                await userRepository.SaveChange(cancellationToken);
 
                 var consultantLevel = command.RoleName == "Consultant"
                     ? await userRepository.GetAll()

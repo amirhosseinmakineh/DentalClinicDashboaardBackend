@@ -70,7 +70,7 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
         user.LastSeenAt = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
         userRepository.Update(user);
-        await userRepository.SaveChange();
+        await userRepository.SaveChange(cancellationToken);
 
         await presenceService.LogAsync(
             user.Id,

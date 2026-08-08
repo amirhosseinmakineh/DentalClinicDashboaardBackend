@@ -268,7 +268,10 @@ WHERE
             AND c.IsDeleted = 0
             AND c.IsCompleteProfile = 1
             AND c.IsAvailable = 1
-            AND c.IsOnline = 1
+            -- PickUpService atomically reserves the consultant (online ->
+            -- offline) first in this same transaction. This gives every flow
+            -- the same ConsultantProfiles -> LeadAssignments lock order.
+            AND c.IsOnline = 0
             AND u.IsActive = 1
 
             AND

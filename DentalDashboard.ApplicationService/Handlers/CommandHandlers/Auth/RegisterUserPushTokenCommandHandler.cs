@@ -54,7 +54,7 @@ public class RegisterUserPushTokenCommandHandler : ICommandHandler<RegisterUserP
                 command.DeviceToken.Trim());
             user.UpdatedAt = DateTime.UtcNow;
             userRepository.Update(user);
-            await pushSubscriptionRepository.SaveChange();
+            await pushSubscriptionRepository.SaveChange(cancellationToken);
 
             return Result.Success("توکن نوتیفیکیشن ثبت شد");
         }

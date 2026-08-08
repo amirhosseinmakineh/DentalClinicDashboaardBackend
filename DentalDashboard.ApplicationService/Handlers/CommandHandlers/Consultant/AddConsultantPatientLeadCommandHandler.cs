@@ -82,7 +82,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             };
 
             await leadAssignmentRepository.AddAsync(lead);
-            await leadAssignmentRepository.SaveChange();
+            await leadAssignmentRepository.SaveChange(cancellationToken);
 
             return Result<AddConsultantPatientLeadResponse>.Success(new AddConsultantPatientLeadResponse
             {

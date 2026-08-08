@@ -49,7 +49,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 profile.LastOfflineAt = DateTime.Now;
 
                 consultantProfileRepository.Update(profile);
-                await consultantProfileRepository.SaveChange();
+                await consultantProfileRepository.SaveChange(cancellationToken);
 
                 await attendanceService.RecordCheckInAsync(
                     profile.Id,
@@ -66,7 +66,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             profile.LastOfflineAt = DateTime.Now;
 
             consultantProfileRepository.Update(profile);
-            await consultantProfileRepository.SaveChange();
+            await consultantProfileRepository.SaveChange(cancellationToken);
 
             await attendanceService.RecordCheckOutAsync(
                 profile.Id,

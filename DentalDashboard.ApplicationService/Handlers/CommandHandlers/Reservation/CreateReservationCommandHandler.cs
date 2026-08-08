@@ -91,7 +91,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             };
 
             await reservationRepository.AddAsync(reservation);
-            await reservationRepository.SaveChange();
+            await reservationRepository.SaveChange(cancellationToken);
 
             return Result<CreateReservationResponse>.Success(new CreateReservationResponse
             {

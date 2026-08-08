@@ -46,7 +46,7 @@ public class RegisterCommandHandler : ICommandHandler<RegisterCommand, RegisterR
             return Result<RegisterResponse>.Failure("کاربری با این شماره موبایل قبلاً ثبت شده است");
         }
 
-        await unitOfWork.BeginTransactionAsync();
+        await unitOfWork.BeginTransactionAsync(cancellationToken);
 
         try
         {
@@ -68,7 +68,8 @@ public class RegisterCommandHandler : ICommandHandler<RegisterCommand, RegisterR
 
             await userRepository.AddAsync(user);
             await roleService.AddRoleToUser(user.Id, DefaultRoleName);
-            await unitOfWork.CommitAsync();
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.CommitAsync(cancellationToken);
 
             return Result<RegisterResponse>.Success(
                 new RegisterResponse
@@ -80,7 +81,7 @@ public class RegisterCommandHandler : ICommandHandler<RegisterCommand, RegisterR
         }
         catch (Exception ex)
         {
-            await unitOfWork.RollbackAsync();
+            await unitOfWork.RollbackAsync(CancellationToken.None);
             return Result<RegisterResponse>.Failure($"خطا در ثبت نام: {ex.Message}");
         }
     }

@@ -59,7 +59,7 @@ public class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswordComman
         user.PasswordHash = PasswordHasher.HashPassword(command.NewPasswordHash);
         user.UpdatedAt = DateTime.UtcNow;
         userRepository.Update(user);
-        await userRepository.SaveChange();
+        await userRepository.SaveChange(cancellationToken);
 
         //var pushSent = await pushNotificationService.SendAsync(
         //    user.Id,

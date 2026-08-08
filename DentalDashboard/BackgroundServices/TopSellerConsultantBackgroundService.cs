@@ -24,7 +24,7 @@ public sealed class TopSellerConsultantBackgroundService : BackgroundService
         {
             try
             {
-                using var scope = scopeFactory.CreateScope();
+                await using var scope = scopeFactory.CreateAsyncScope();
                 var queries = scope.ServiceProvider.GetRequiredService<IQueryDispatcher>();
                 var commands = scope.ServiceProvider.GetRequiredService<ICommandDispatcher>();
                 var active = await queries.DispatchAsync<IReadOnlyList<ActiveTopSellerConsultantResponse>>(

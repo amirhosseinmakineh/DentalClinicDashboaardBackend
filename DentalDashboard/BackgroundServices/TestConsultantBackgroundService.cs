@@ -23,7 +23,7 @@ public sealed class TestConsultantBackgroundService : BackgroundService
         {
             try
             {
-                using var scope = scopeFactory.CreateScope();
+                await using var scope = scopeFactory.CreateAsyncScope();
                 var dispatcher = scope.ServiceProvider.GetRequiredService<ICommandDispatcher>();
                 await dispatcher.DispatchAsync(new ProcessTestConsultantsCommand(), stoppingToken);
                 await dispatcher.DispatchAsync(new EvaluateTestConsultantsCommand(), stoppingToken);

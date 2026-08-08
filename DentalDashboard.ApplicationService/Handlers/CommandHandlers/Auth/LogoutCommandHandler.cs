@@ -40,7 +40,7 @@ public class LogoutCommandHandler : ICommandHandler<LogoutCommand>
             consultantProfile.IsOnline = false;
             consultantProfile.LastOfflineAt = loggedOutAt;
             consultantProfileRepository.Update(consultantProfile);
-            await consultantProfileRepository.SaveChange();
+            await consultantProfileRepository.SaveChange(cancellationToken);
         }
 
         await presenceService.LogAsync(

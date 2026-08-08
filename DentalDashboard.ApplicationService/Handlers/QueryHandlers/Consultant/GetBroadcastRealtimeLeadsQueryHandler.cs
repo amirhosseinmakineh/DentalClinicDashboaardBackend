@@ -147,6 +147,15 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             lead = await leadAssignmentRepository.GetActiveRealtimeBroadcastLeadAsync();
         }
 
+        // The lead can be picked between the initial selection and response
+        // projection. Never return a stale tracked/broadcast item that already
+        // has an owner.
+        if (lead != null && !await leadAssignmentRepository.IsAvailableForPickupAsync(
+                lead.Id, cancellationToken))
+        {
+            lead = null;
+        }
+
         var leads = lead == null
             ? Array.Empty<BroadcastRealtimeLeadItemResponse>()
             : new[]

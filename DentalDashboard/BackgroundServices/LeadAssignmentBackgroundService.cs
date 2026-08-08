@@ -19,7 +19,7 @@ namespace DentalDashboard.BackgroundServices
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                using var scope = scopeFactory.CreateScope();
+                await using var scope = scopeFactory.CreateAsyncScope();
                 var leadAssignmentService =
                     scope.ServiceProvider.GetRequiredService<ILeadAssignmentService>();
                // await RunStepAsync("AssignRealTimeLeads", () => leadAssignmentService.AssignRealTimeLeadsAsync(), stoppingToken);

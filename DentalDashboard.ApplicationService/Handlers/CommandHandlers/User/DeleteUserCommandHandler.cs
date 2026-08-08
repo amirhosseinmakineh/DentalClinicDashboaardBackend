@@ -24,8 +24,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
         public async Task<Result<object>> HandleAsync(DeleteUserCommand command,CancellationToken cancellationToken = default)
         {
-            await unitOfWork.BeginTransactionAsync();
-
             var user = await userRepository.GetByIdAsync(command.UserId);
 
             if (user == null)
@@ -35,14 +33,24 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
             var userRoles = await userRoleRepository.FindAsync(x => x.UserId == command.UserId);
 
-            foreach (var userRole in userRoles)
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+            try
             {
-                userRoleRepository.Delete(userRole);
+                foreach (var userRole in userRoles)
+                {
+                    userRoleRepository.Delete(userRole);
+                }
+
+                userRepository.Delete(user);
+
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
             }
-
-            userRepository.Delete(user);
-
-            await unitOfWork.CommitAsync();
+            catch
+            {
+                await unitOfWork.RollbackAsync(CancellationToken.None);
+                throw;
+            }
 
             return Result<object>.Success(true,"حذف کاربر با موفقیت انجام شد");
         }

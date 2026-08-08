@@ -32,7 +32,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
             UpdateUserCommand command,
             CancellationToken cancellationToken = default)
         {
-            await unitOfWork.BeginTransactionAsync();
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
 
             try
             {
@@ -40,7 +40,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 if (user == null)
                 {
-                    await unitOfWork.RollbackAsync();
+                    await unitOfWork.RollbackAsync(CancellationToken.None);
                     return Result<UpdateUserResponse>.Failure("کاربر یافت نشد");
                 }
 
@@ -81,7 +81,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                     }
                 }
 
-                await userRepository.SaveChange();
+                await userRepository.SaveChange(cancellationToken);
 
                 var consultantLevel = command.RoleName == "Consultant"
                     ? await userRepository.GetAll()
@@ -90,7 +90,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                         .FirstOrDefaultAsync(cancellationToken)
                     : null;
 
-                await unitOfWork.CommitAsync();
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
                 var response = new UpdateUserResponse()
                 {
                     FirstName = user.FirstName,
@@ -103,7 +104,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
             }
             catch (Exception ex)
             {
-                await unitOfWork.RollbackAsync();
+                await unitOfWork.RollbackAsync(CancellationToken.None);
                 return Result<UpdateUserResponse>.Failure($"خطا در ویرایش کاربر: {ex.Message}");
             }
         }

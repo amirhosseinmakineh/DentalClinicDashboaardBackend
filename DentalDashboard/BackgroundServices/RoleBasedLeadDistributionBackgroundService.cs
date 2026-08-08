@@ -21,7 +21,7 @@ public sealed class RoleBasedLeadDistributionBackgroundService : BackgroundServi
         {
             try
             {
-                using var scope = scopeFactory.CreateScope();
+                await using var scope = scopeFactory.CreateAsyncScope();
                 var commands = scope.ServiceProvider.GetRequiredService<ICommandDispatcher>();
                 await commands.DispatchAsync(new ProcessRoleBasedRealtimeLeadsCommand(), stoppingToken);
             }

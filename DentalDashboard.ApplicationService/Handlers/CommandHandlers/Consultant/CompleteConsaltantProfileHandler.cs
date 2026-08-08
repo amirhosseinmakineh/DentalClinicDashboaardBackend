@@ -116,7 +116,7 @@ public class CompleteConsaltantProfileHandler : ICommandHandler<CompleteConsulta
         user.UpdatedAt = DateTime.UtcNow;
         userRepository.Update(user);
 
-        await consultantProfileRepository.SaveChange();
+        await consultantProfileRepository.SaveChange(cancellationToken);
 
         return Result<long>.Success(profile.Id, "اطلاعات مشاور با موفقیت تکمیل شد");
     }

@@ -37,7 +37,7 @@ public class ConfirmSecretaryTimeChangeCommandHandler : ICommandHandler<ConfirmS
 
         change.Status = ReservationTimeChangeStatus.Confirmed; change.ConfirmedAt = DateTime.UtcNow;
         change.ConfirmedByConsultantProfileId = command.ConsultantProfileId; change.UpdatedAt = change.ConfirmedAt;
-        changes.Update(change); await changes.SaveChange();
+        changes.Update(change); await changes.SaveChange(cancellationToken);
         return Result<ReservationTimeChangeResponse>.Success(Response(reservation, change), "زمان جدید رزرو تایید شد");
     }
 

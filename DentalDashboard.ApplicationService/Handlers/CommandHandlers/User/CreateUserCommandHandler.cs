@@ -33,18 +33,19 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
         public async Task<Result<CreateUserResponse>> HandleAsync(CreateUserCommand command,CancellationToken cancellationToken = default)
         {
-            await unitOfWork.BeginTransactionAsync();
+            var exists = await userRepository.ExistsAsync(
+                x => x.PhoneNumber == command.PhoneNumber);
+
+            if (exists)
+            {
+                return Result<CreateUserResponse>.Failure(
+                    "کاربری با این شماره موبایل قبلاً ثبت شده است");
+            }
+
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
 
             try
             {
-                var exists = await userRepository.ExistsAsync(
-                    x => x.PhoneNumber == command.PhoneNumber);
-
-                if (exists)
-                {
-                    return Result<CreateUserResponse>.Failure(
-                        "کاربری با این شماره موبایل قبلاً ثبت شده است");
-                }
 
                 var user = new Domain.Models.User
                 {
@@ -70,7 +71,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                     await consultantProfileService.SetConsultantLevelAsync(user.Id, consultantLevel);
                 }
 
-                await unitOfWork.CommitAsync();
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
                 var response = new CreateUserResponse()
                 {
                     Id = user.Id,
@@ -85,7 +87,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
             }
             catch (Exception ex)
             {
-                await unitOfWork.RollbackAsync();
+                await unitOfWork.RollbackAsync(CancellationToken.None);
                 return Result<CreateUserResponse>.Failure($"خطا در ایجاد کاربر: {ex.Message}");
             }
         }

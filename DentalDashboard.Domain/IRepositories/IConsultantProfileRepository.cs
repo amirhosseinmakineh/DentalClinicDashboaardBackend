@@ -9,6 +9,10 @@ namespace DentalDashboard.Domain.IRepositories
         Task<List<ConsultantProfile>> GetAvailableConsultantsAsync();
         Task<List<ConsultantProfile>> GetOnlineConsultantsReadyForRealTimeAsync();
         Task<bool> HasOnlineConsultantAsync();
+        Task<bool> TryReserveForPickupAsync(
+            long consultantProfileId,
+            DateTime reservedAtUtc,
+            CancellationToken cancellationToken);
         Task<List<ConsultantProfile>> GetTestConsultantsReadyForDistributionAsync();
         Task<List<ConsultantProfile>> GetTestConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore);
         Task<List<ConsultantProfile>> GetActiveSellerConsultantsAsync();

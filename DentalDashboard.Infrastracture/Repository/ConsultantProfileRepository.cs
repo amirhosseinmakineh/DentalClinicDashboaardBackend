@@ -51,6 +51,22 @@ namespace DentalDashboard.Infrastracture.Repository
                                x.IsOnline);
         }
 
+        public async Task<bool> TryReserveForPickupAsync(
+            long consultantProfileId,
+            DateTime reservedAtUtc,
+            CancellationToken cancellationToken) =>
+            await GetAll()
+                .Where(x => x.Id == consultantProfileId &&
+                            !x.IsDeleted &&
+                            x.IsCompleteProfile &&
+                            x.IsAvailable &&
+                            x.IsOnline &&
+                            x.User.IsActive)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(x => x.IsOnline, false)
+                    .SetProperty(x => x.LastOfflineAt, reservedAtUtc),
+                    cancellationToken) == 1;
+
         public Task<List<ConsultantProfile>> GetTestConsultantsReadyForDistributionAsync()
         {
             return GetAll().Include(x => x.User)

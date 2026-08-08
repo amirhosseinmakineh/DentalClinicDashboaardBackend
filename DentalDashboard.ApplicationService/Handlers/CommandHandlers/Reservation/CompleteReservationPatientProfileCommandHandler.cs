@@ -59,7 +59,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (await userRepository.ExistsAsync(x => x.PhoneNumber == phoneNumber))
                 return Result<CompleteReservationPatientProfileResponse>.Failure("کاربری با این شماره موبایل قبلاً ثبت شده است");
 
-            await unitOfWork.BeginTransactionAsync();
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
             try
             {
                 var user = new Domain.Models.User
@@ -90,7 +90,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 reservation.UpdatedAt = DateTime.UtcNow;
                 reservationRepository.Update(reservation);
 
-                await unitOfWork.CommitAsync();
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
 
                 return Result<CompleteReservationPatientProfileResponse>.Success(new CompleteReservationPatientProfileResponse
                 {
@@ -108,7 +109,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             }
             catch (Exception ex)
             {
-                await unitOfWork.RollbackAsync();
+                await unitOfWork.RollbackAsync(CancellationToken.None);
                 return Result<CompleteReservationPatientProfileResponse>.Failure($"خطا در تشکیل پرونده بیمار: {ex.Message}");
             }
         }

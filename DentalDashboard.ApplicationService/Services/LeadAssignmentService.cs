@@ -26,6 +26,7 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
         private readonly IPushNotificationService pushNotificationService;
         private readonly ILogger<LeadAssignmentService> logger;
+        private readonly IUnitOfWork unitOfWork;
 
         public LeadAssignmentService(
             HttpClient httpClient,
@@ -34,7 +35,8 @@ namespace DentalDashboard.ApplicationService.Services
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentLimitService leadAssignmentLimitService,
             IPushNotificationService pushNotificationService,
-            ILogger<LeadAssignmentService> logger)
+            ILogger<LeadAssignmentService> logger,
+            IUnitOfWork unitOfWork)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -43,6 +45,7 @@ namespace DentalDashboard.ApplicationService.Services
             this.leadAssignmentLimitService = leadAssignmentLimitService;
             this.pushNotificationService = pushNotificationService;
             this.logger = logger;
+            this.unitOfWork = unitOfWork;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync(
@@ -577,7 +580,17 @@ namespace DentalDashboard.ApplicationService.Services
             LeadAssignment lead,
             ConsultantProfile consultant)
         {
-            await ExpireAndRequeueRealTimeLeadInternalAsync(lead, consultant);
+            await unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await ExpireAndRequeueRealTimeLeadInternalAsync(lead, consultant);
+                await unitOfWork.CommitAsync();
+            }
+            catch
+            {
+                await unitOfWork.RollbackAsync(CancellationToken.None);
+                throw;
+            }
 
             return new ExpireLeadRequeueResult
             {
@@ -598,33 +611,53 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
 
             var failedConsultantIds = new HashSet<long>();
-
-            foreach (var lead in expiredLeads)
+            await unitOfWork.BeginTransactionAsync();
+            try
             {
-                if (lead.ConsultantProfile == null)
+                var affectedConsultants = new List<ConsultantProfile>();
+
+                foreach (var lead in expiredLeads)
                 {
+                    if (lead.ConsultantProfile == null)
+                    {
+                        ResetLeadQueue(lead);
+                        continue;
+                    }
+
+                    var consultant = lead.ConsultantProfile;
+                    failedConsultantIds.Add(consultant.Id);
+                    affectedConsultants.Add(consultant);
+
                     ResetLeadQueue(lead);
-                    continue;
                 }
 
-                var consultant = lead.ConsultantProfile;
-                failedConsultantIds.Add(consultant.Id);
+                // Acquire lead-row locks before consultant-row locks. This is
+                // the same order used by pickup and report submission.
+                await leadAssignmentRepository.SaveChange();
 
-                ResetLeadQueue(lead);
-
-                if (leadDomainService.IsWorkingTime(now))
+                foreach (var consultant in affectedConsultants)
                 {
-                    consultant.IsOnline = true;
-                    consultant.LastOnlineAt = now;
+                    if (leadDomainService.IsWorkingTime(now))
+                    {
+                        consultant.IsOnline = true;
+                        consultant.LastOnlineAt = now;
+                    }
+                    else
+                    {
+                        consultant.IsOnline = false;
+                        consultant.LastOfflineAt = now;
+                    }
                 }
-                else
-                {
-                    consultant.IsOnline = false;
-                    consultant.LastOfflineAt = now;
-                }
+
+                await leadAssignmentRepository.SaveChange();
+
+                await unitOfWork.CommitAsync();
             }
-
-            await leadAssignmentRepository.SaveChange();
+            catch
+            {
+                await unitOfWork.RollbackAsync(CancellationToken.None);
+                throw;
+            }
 
             if (leadDomainService.IsWorkingTime(now))
                 await AssignRealTimeLeadsAsync(failedConsultantIds);
@@ -654,6 +687,9 @@ namespace DentalDashboard.ApplicationService.Services
 
             ResetLeadQueue(lead);
 
+            leadAssignmentRepository.Update(lead);
+            await leadAssignmentRepository.SaveChange();
+
             if (leadDomainService.IsWorkingTime(now))
             {
                 consultant.IsOnline = true;
@@ -665,7 +701,6 @@ namespace DentalDashboard.ApplicationService.Services
                 consultant.LastOfflineAt = now;
             }
 
-            leadAssignmentRepository.Update(lead);
             consultantProfileRepository.Update(consultant);
             await leadAssignmentRepository.SaveChange();
 

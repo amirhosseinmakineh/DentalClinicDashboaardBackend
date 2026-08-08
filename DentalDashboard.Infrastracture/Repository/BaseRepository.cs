@@ -74,7 +74,15 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public void Update(TEntity entity)
         {
-            DbSet.Update(entity);
+            // Queries from this repository are tracking by default. Calling
+            // DbSet.Update for an already tracked entity marks every mapped
+            // column as modified, producing unnecessarily wide UPDATEs and
+            // increasing lock/index maintenance work. DetectChanges will mark
+            // only the properties that actually changed.
+            if (context.Entry(entity).State == EntityState.Detached)
+            {
+                DbSet.Update(entity);
+            }
         }
 
         public void Delete(TEntity entity)

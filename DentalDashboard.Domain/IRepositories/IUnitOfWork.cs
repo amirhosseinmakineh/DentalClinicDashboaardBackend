@@ -1,8 +1,8 @@
 ﻿namespace DentalDashboard.Domain.IRepositories;
-public interface IUnitOfWork
+public interface IUnitOfWork : IDisposable, IAsyncDisposable
 {
-    Task BeginTransactionAsync();
-    Task CommitAsync();
-    Task RollbackAsync();
-    Task<int> SaveChangesAsync();
+    Task BeginTransactionAsync(CancellationToken cancellationToken = default);
+    Task CommitAsync(CancellationToken cancellationToken = default);
+    Task RollbackAsync(CancellationToken cancellationToken = default);
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

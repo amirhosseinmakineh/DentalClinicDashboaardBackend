@@ -77,7 +77,7 @@ public sealed class EvaluateTestConsultantsCommandHandler : ICommandHandler<Eval
             }
 
             consultantRepository.Update(consultant);
-            await consultantRepository.SaveChange();
+            await consultantRepository.SaveChange(cancellationToken);
 
             if (decision.HasPassed)
                 await consultantProfileService.SetConsultantLevelAsync(consultant.UserId, ConsultantLevel.Seller);

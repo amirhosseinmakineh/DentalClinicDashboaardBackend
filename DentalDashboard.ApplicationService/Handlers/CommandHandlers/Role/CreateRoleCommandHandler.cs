@@ -34,7 +34,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Role
                     UpdatedAt = null,
                 };
                 await roleRepository.AddAsync(role);
-                await roleRepository.SaveChange();
+                await roleRepository.SaveChange(cancellationToken);
                 var response = new CreateRoleResponse()
                 {
                     RoleName = command.RoleName,

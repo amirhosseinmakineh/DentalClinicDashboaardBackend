@@ -22,7 +22,7 @@ public class AddLeadBackgroundService : BackgroundService
         {
             try
             {
-                using var scope = scopeFactory.CreateScope();
+                await using var scope = scopeFactory.CreateAsyncScope();
 
                 var leadService =
                     scope.ServiceProvider

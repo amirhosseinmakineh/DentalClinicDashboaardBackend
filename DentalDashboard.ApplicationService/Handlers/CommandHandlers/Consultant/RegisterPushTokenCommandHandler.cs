@@ -59,7 +59,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                     profile.User.PushNotificationToken,
                     command.DeviceToken.Trim());
                 profile.User.UpdatedAt = DateTime.UtcNow;
-                await consultantProfileRepository.SaveChange();
+                await consultantProfileRepository.SaveChange(cancellationToken);
 
                 return Result.Success("توکن نوتیفیکیشن ثبت شد");
             }

@@ -241,6 +241,16 @@ namespace DentalDashboard.Infrastracture.Repository
             var sellerPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.Seller);
             var topSellerPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.TopSeller);
             var sql = @"
+DECLARE @applicationLockResult int;
+EXEC @applicationLockResult = sys.sp_getapplock
+    @Resource = @pickupLockResource,
+    @LockMode = 'Exclusive',
+    @LockOwner = 'Transaction',
+    @LockTimeout = 10000;
+
+IF @applicationLockResult < 0
+    THROW 51000, 'Unable to acquire the consultant pickup allocation lock.', 1;
+
 UPDATE LeadAssignments
 SET
     ConsultantProfileId = @consultantProfileId,
@@ -285,7 +295,6 @@ WHERE
                     (
                         SELECT COUNT(1)
                         FROM LeadAssignments AS daily
-                             WITH (UPDLOCK, HOLDLOCK)
 
                         WHERE
                             daily.ConsultantProfileId = c.Id
@@ -317,7 +326,6 @@ WHERE
                             (
                                 SELECT COUNT(1)
                                 FROM LeadAssignments AS daily
-                                     WITH (UPDLOCK, HOLDLOCK)
 
                                 WHERE
                                     daily.ConsultantProfileId = c.Id
@@ -340,7 +348,6 @@ WHERE
                             (
                                 SELECT COUNT(1)
                                 FROM LeadAssignments AS daily
-                                     WITH (UPDLOCK, HOLDLOCK)
 
                                 WHERE
                                     daily.ConsultantProfileId = c.Id
@@ -395,7 +402,6 @@ WHERE
                     (
                         SELECT COUNT(1)
                         FROM LeadAssignments AS daily
-                             WITH (UPDLOCK, HOLDLOCK)
 
                         WHERE
                             daily.ConsultantProfileId = c.Id
@@ -417,6 +423,9 @@ WHERE
                     new SqlParameter(
                         "@leadAssignmentId",
                         leadAssignmentId),
+                    new SqlParameter(
+                        "@pickupLockResource",
+                        $"DentalDashboard:LeadPickup:{consultantProfileId}"),
                     new SqlParameter(
                         "@assignedState",
                         (int)LeadAssignmentState.Assigned),

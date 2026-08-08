@@ -109,7 +109,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             reservation.UpdatedAt = DateTime.UtcNow;
 
             reservationRepository.Update(reservation);
-            await reservationRepository.SaveChange();
+            await reservationRepository.SaveChange(cancellationToken);
 
             return Result<ReservationItemResponse>.Success(new ReservationItemResponse
             {

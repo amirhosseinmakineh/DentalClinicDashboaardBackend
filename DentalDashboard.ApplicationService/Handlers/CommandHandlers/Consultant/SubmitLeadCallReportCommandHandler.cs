@@ -96,9 +96,15 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             lead.ContactedAt = now;
             lead.LeadAssignmentState = leadReportDomainService.MapCallResultToState(command.CallResult);
 
+            // Persist the lead before touching ConsultantProfiles. Pickup uses
+            // the same LeadAssignments -> ConsultantProfiles lock order. This
+            // prevents a pickup transaction holding the consultant row while
+            // waiting for a lead row, which was the blocker observed in SQL
+            // Server (LCK_M_X behind the pickup session).
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
             if (lead.AssignmentType == LeadAssignmentType.ConsultantPatient)
             {
-                await unitOfWork.SaveChangesAsync(cancellationToken);
                 return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
             }
 
@@ -124,10 +130,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                     cancellationToken: cancellationToken);
 
                 await leadAssignmentService.AssignRealTimeLeadsAsync();
-            }
-            else
-            {
-                await unitOfWork.SaveChangesAsync(cancellationToken);
             }
 
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");

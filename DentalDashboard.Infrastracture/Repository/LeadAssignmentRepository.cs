@@ -449,6 +449,18 @@ WHERE
             return affectedRows == 1;
         }
 
+        public Task<bool> IsAvailableForPickupAsync(
+            long leadAssignmentId,
+            CancellationToken cancellationToken = default) =>
+            GetAll().AsNoTracking().AnyAsync(x =>
+                x.Id == leadAssignmentId &&
+                x.AssignmentType == LeadAssignmentType.RealTime &&
+                x.ConsultantProfileId == null &&
+                x.ReportSubmittedAt == null &&
+                x.LeadAssignmentState == LeadAssignmentState.New &&
+                !x.PickUp,
+                cancellationToken);
+
         public async Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval)
         {
             var redispatchBefore = DateTime.UtcNow.Subtract(redispatchInterval);

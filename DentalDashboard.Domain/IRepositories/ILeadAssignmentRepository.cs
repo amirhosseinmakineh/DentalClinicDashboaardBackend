@@ -20,6 +20,9 @@ namespace DentalDashboard.Domain.IRepositories
         Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync();
         Task<int> GetTodayPickupCountAsync(long consultantProfileId);
         Task<bool> TryPickupLeadAsync(long leadAssignmentId, long consultantProfileId, CancellationToken cancellationToken);
+        Task<bool> IsAvailableForPickupAsync(
+            long leadAssignmentId,
+            CancellationToken cancellationToken = default);
         Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval);
         Task<(int NewLeadCount, int BurnedLeadCount)> GetSellerDailyAllocationCountAsync(
             long consultantProfileId, CancellationToken cancellationToken = default);

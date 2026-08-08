@@ -444,6 +444,14 @@ namespace DentalDashboard.ApplicationService.Services
             var notifiedCount = 0;
             foreach (var consultant in consultants)
             {
+                if (!await leadAssignmentRepository.IsAvailableForPickupAsync(lead.Id))
+                {
+                    logger.LogInformation(
+                        "Realtime broadcast stopped for lead {LeadId}: lead is no longer unassigned",
+                        lead.Id);
+                    break;
+                }
+
                 if (await leadAssignmentRepository.HasUnreportedLeadAsync(consultant.Id))
                 {
                     logger.LogInformation(
@@ -490,6 +498,15 @@ namespace DentalDashboard.ApplicationService.Services
             foreach (var consultant in consultants)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (!await leadAssignmentRepository.IsAvailableForPickupAsync(
+                        lead.Id, cancellationToken))
+                {
+                    logger.LogInformation(
+                        "Burned lead broadcast stopped for lead {LeadId}: lead is no longer unassigned",
+                        lead.Id);
+                    break;
+                }
+
                 if (await leadAssignmentRepository.HasUnreportedLeadAsync(
                         consultant.Id, cancellationToken))
                 {

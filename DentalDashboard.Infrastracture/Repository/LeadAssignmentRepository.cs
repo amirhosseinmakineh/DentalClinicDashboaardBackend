@@ -44,7 +44,7 @@ namespace DentalDashboard.Infrastracture.Repository
                             (!x.NotificationSent ||
                              x.LastDispatchAt == null ||
                              x.LastDispatchAt < redispatchBefore))
-                .OrderBy(x => x.CreatedAt)
+                .OrderByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)
                 .ToListAsync();
@@ -62,7 +62,7 @@ namespace DentalDashboard.Infrastracture.Repository
 
             var inFlightLead = await baseQuery
                 .Where(x => x.NotificationSent)
-                .OrderBy(x => x.LastDispatchAt ?? x.CreatedAt)
+                .OrderByDescending(x =>  x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .FirstOrDefaultAsync();
 
@@ -71,7 +71,7 @@ namespace DentalDashboard.Infrastracture.Repository
 
             return await baseQuery
                 .Where(x => !x.NotificationSent)
-                .OrderBy(x => x.CreatedAt)
+                .OrderByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .FirstOrDefaultAsync();
         }

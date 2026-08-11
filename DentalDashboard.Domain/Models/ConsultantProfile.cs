@@ -1,3 +1,5 @@
+using DentalDashboard.Domain.Enums;
+
 namespace DentalDashboard.Domain.Models;
 
 public class ConsultantProfile : BaseAuditableEntity<long>
@@ -20,7 +22,7 @@ public class ConsultantProfile : BaseAuditableEntity<long>
     public DateTime? LastOnlineAt { get; set; }
     public DateTime? LastOfflineAt { get; set; }
     public int? LimitNumber { get; set; }
-
+    public ConsultantRole ConsultantRole { get; set; }
     public User User { get; set; } = default!;
     public ICollection<LeadAssignment> CallAssignments { get; set; }
     public ICollection<Attendance> Attendances { get; set; }

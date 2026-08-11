@@ -1,4 +1,6 @@
-﻿namespace DentalDashboard.ApplicationService.Contract.IServices
+﻿using DentalDashboard.ApplicationService.Contract.Dtos.Consultant;
+
+namespace DentalDashboard.ApplicationService.Contract.IServices
 {
     public interface IConsultantProfileService
     {

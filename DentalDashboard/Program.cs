@@ -98,7 +98,10 @@ builder.Services.Configure<HostOptions>(options =>
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
 });
 
-builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
+//builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
+builder.Services.AddHostedService<TestConsultantLeadAssignmentBackgroundService>();
+builder.Services.AddHostedService<SellerConsultantLeadAssignmentBackgroundService>();
+builder.Services.AddHostedService<TopSellerConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<AddLeadBackgroundService>();
 
 builder.Services.AddInfrastructure(

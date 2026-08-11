@@ -438,5 +438,191 @@ namespace DentalDashboard.ApplicationService.Services
             if (leadDomainService.IsWorkingTime(now))
                 await AssignRealTimeLeadsAsync(new[] { failedConsultantId });
         }
+
+        public async Task AssignLeadToTestConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
+        {
+            //if (!leadDomainService.IsWorkingTime(DateTime.Now))
+            //{
+            //    logger.LogInformation("Realtime dispatch skipped: outside working hours");
+            //    return;
+            //}
+
+            var consultants = await consultantProfileRepository
+                .GetAvailableAndOnnlineTestConsultant();
+
+            if (excludedConsultantIds is { Count: > 0 })
+            {
+                var excluded = excludedConsultantIds.ToHashSet();
+                consultants = consultants
+                    .Where(x => !excluded.Contains(x.Id))
+                    .ToList();
+            }
+            if (!consultants.Any())
+            {
+                logger.LogInformation("Realtime dispatch skipped: no online consultants");
+                return;
+            }
+
+            var availableConsultants = new List<ConsultantProfile>();
+
+            foreach (var consultant in consultants)
+            {
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                    availableConsultants.Add(consultant);
+            }
+
+            if (!availableConsultants.Any())
+            {
+                logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
+                return;
+            }
+
+            var lead = await leadAssignmentRepository
+                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
+
+            if (lead == null)
+            {
+                logger.LogInformation(
+                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
+                return;
+            }
+
+            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
+
+            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+
+            lead.NotificationSent = true;
+            lead.LastDispatchAt = DateTime.UtcNow;
+
+            await leadAssignmentRepository.SaveChange();
+
+            logger.LogInformation(
+                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
+                lead.Id,
+                isReminder);
+        }
+
+        public async Task AssignLeadToSellerConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
+        {
+            if (!leadDomainService.IsWorkingTime(DateTime.Now))
+            {
+                logger.LogInformation("Realtime dispatch skipped: outside working hours");
+                return;
+            }
+
+            var consultants = await consultantProfileRepository
+                .GetAvailableAndOnnlineSellerConsultant();
+            if (excludedConsultantIds is { Count: > 0 })
+            {
+                var excluded = excludedConsultantIds.ToHashSet();
+                consultants = consultants
+                    .Where(x => !excluded.Contains(x.Id))
+                    .ToList();
+            }
+            if (!consultants.Any())
+            {
+                logger.LogInformation("Realtime dispatch skipped: no online consultants");
+                return;
+            }
+            var availableConsultants = new List<ConsultantProfile>();
+
+            foreach (var consultant in consultants)
+            {
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                    availableConsultants.Add(consultant);
+            }
+
+            if (!availableConsultants.Any())
+            {
+                logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
+                return;
+            }
+
+            var lead = await leadAssignmentRepository
+                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
+
+            if (lead == null)
+            {
+                logger.LogInformation(
+                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
+                return;
+            }
+
+            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
+
+            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+
+            lead.NotificationSent = true;
+            lead.LastDispatchAt = DateTime.UtcNow;
+
+            await leadAssignmentRepository.SaveChange();
+
+            logger.LogInformation(
+                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
+                lead.Id,
+                isReminder);
+        }
+
+        public async Task AssignLeadToTopSellertConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
+        {
+            if (!leadDomainService.IsWorkingTime(DateTime.Now))
+            {
+                logger.LogInformation("Realtime dispatch skipped: outside working hours");
+                return;
+            }
+
+
+            var consultants = await consultantProfileRepository
+                .GetAvailableAndOnnlineTopSellerConsultant();
+            if (excludedConsultantIds is { Count: > 0 })
+            {
+                var excluded = excludedConsultantIds.ToHashSet();
+                consultants = consultants
+                    .Where(x => !excluded.Contains(x.Id))
+                    .ToList();
+            }
+            if (!consultants.Any())
+            {
+                logger.LogInformation("Realtime dispatch skipped: no online consultants");
+                return;
+            }
+            var availableConsultants = new List<ConsultantProfile>();
+
+            foreach (var consultant in consultants)
+            {
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                    availableConsultants.Add(consultant);
+            }
+
+            if (!availableConsultants.Any())
+            {
+                logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
+                return;
+            }
+
+            var lead = await leadAssignmentRepository
+                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
+
+            if (lead == null)
+            {
+                logger.LogInformation(
+                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
+                return;
+            }
+
+            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
+
+            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+
+            lead.NotificationSent = true;
+            lead.LastDispatchAt = DateTime.UtcNow;
+
+            await leadAssignmentRepository.SaveChange();
+
+            logger.LogInformation(
+                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
+                lead.Id,
+                isReminder);
+        }
     }
 }

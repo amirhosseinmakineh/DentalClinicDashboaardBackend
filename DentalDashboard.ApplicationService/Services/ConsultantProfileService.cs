@@ -1,4 +1,5 @@
-﻿using DentalDashboard.ApplicationService.Contract.IServices;
+﻿using DentalDashboard.ApplicationService.Contract.Dtos.Consultant;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;

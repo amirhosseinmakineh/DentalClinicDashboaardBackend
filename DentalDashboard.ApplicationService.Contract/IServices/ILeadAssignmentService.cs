@@ -1,4 +1,5 @@
-﻿using DentalDashboard.Domain.Models;
+﻿using DentalDashboard.ApplicationService.Contract.Dtos.Consultant;
+using DentalDashboard.Domain.Models;
 
 namespace DentalDashboard.ApplicationService.Contract.IServices
 {
@@ -13,5 +14,8 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
             LeadAssignment lead,
             ConsultantProfile consultant);
         Task NotifyRealtimeLeadTakenAsync(long leadAssignmentId, long pickedByConsultantProfileId);
+        Task AssignLeadToTestConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null);
+        Task AssignLeadToSellerConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null);
+        Task AssignLeadToTopSellertConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null);
     }
 }

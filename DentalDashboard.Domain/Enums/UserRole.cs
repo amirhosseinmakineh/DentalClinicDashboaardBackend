@@ -12,4 +12,10 @@
         Male = 1,
         Female = 2
     }
+    public enum ConsultantRole
+    {
+        Test = 1 ,
+        Seller,
+        TopSeller
+    }
 }

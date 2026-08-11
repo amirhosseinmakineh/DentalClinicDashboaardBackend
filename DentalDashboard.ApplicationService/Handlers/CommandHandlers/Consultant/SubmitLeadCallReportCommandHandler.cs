@@ -38,7 +38,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
         public async Task<Result<SubmitLeadCallReportResponse>> HandleAsync(SubmitLeadCallReportCommand command, CancellationToken cancellationToken = default)
         {
-            var lead = await leadAssignmentRepository.GetByIdAndConsultantAsync(command.LeadAssignmentId, command.ConsultantProfileId);
+            var lead = await  leadAssignmentRepository.GetByIdAndConsultantAsync(command.LeadAssignmentId, command.ConsultantProfileId);
             if (lead == null)
                 return Result<SubmitLeadCallReportResponse>.Failure("لید یافت نشد");
 

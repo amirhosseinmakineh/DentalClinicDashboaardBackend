@@ -441,14 +441,16 @@ namespace DentalDashboard.ApplicationService.Services
 
         public async Task AssignLeadToTestConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
         {
-            //if (!leadDomainService.IsWorkingTime(DateTime.Now))
-            //{
-            //    logger.LogInformation("Realtime dispatch skipped: outside working hours");
-            //    return;
-            //}
+            if (!leadDomainService.IsWorkingTime(DateTime.Now))
+            {
+                logger.LogInformation("Realtime dispatch skipped: outside working hours");
+                return;
+            }
 
             var consultants = await consultantProfileRepository
                 .GetAvailableAndOnnlineTestConsultant();
+
+            excludedConsultantIds = await ManageExcludeConsultants();
 
             if (excludedConsultantIds is { Count: > 0 })
             {
@@ -512,6 +514,9 @@ namespace DentalDashboard.ApplicationService.Services
 
             var consultants = await consultantProfileRepository
                 .GetAvailableAndOnnlineSellerConsultant();
+
+            excludedConsultantIds = await ManageExcludeConsultants();
+
             if (excludedConsultantIds is { Count: > 0 })
             {
                 var excluded = excludedConsultantIds.ToHashSet();
@@ -574,12 +579,14 @@ namespace DentalDashboard.ApplicationService.Services
 
             var consultants = await consultantProfileRepository
                 .GetAvailableAndOnnlineTopSellerConsultant();
+            excludedConsultantIds = await ManageExcludeConsultants();
             if (excludedConsultantIds is { Count: > 0 })
             {
                 var excluded = excludedConsultantIds.ToHashSet();
                 consultants = consultants
                     .Where(x => !excluded.Contains(x.Id))
                     .ToList();
+
             }
             if (!consultants.Any())
             {
@@ -623,6 +630,52 @@ namespace DentalDashboard.ApplicationService.Services
                 "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
                 lead.Id,
                 isReminder);
+        }
+        private async Task<IReadOnlyCollection<long>> ManageExcludeConsultants()
+        {
+            var excludeConsultants = new List<long>();
+
+            var consultants = await consultantProfileRepository
+                .GetAll()
+                .Include(x => x.CallAssignments)
+                .ToListAsync();
+
+            foreach (var consultant in consultants)
+            {
+                var pendingLeadsCount = consultant.CallAssignments.Count(x =>
+                    x.LeadAssignmentState == LeadAssignmentState.Pending);
+                var unSubmitReportLead = consultant.CallAssignments.Where(x=> x.ConsultantProfileId == consultant.Id && x.ReportSubmittedAt == null).Count();
+
+                if (pendingLeadsCount >= 10)
+                {
+                    excludeConsultants.Add(consultant.Id);
+
+                    await pushNotificationService.SendAsync(
+                        consultant.UserId,
+                        "خطا در گرفتن شماره جدید",
+                        "شما ۱۰ شماره در حال پیگیری دارید. لطفاً ابتدا پیگیری شماره‌های فعلی را انجام دهید؛ تا آن زمان شماره جدیدی برای شما ارسال نمی‌شود.",
+                        new Dictionary<string, string>
+                        {
+                            ["type"] = "PendingLeadLimit",
+                            ["pendingCount"] = pendingLeadsCount.ToString()
+                        });
+                }
+                if(unSubmitReportLead >= 1)
+                {
+                    excludeConsultants.Add(consultant.Id);
+                    await pushNotificationService.SendAsync(
+                       consultant.UserId,
+                       "خطا در گرفتن شماره جدید",
+                       "شما 1 شماره گزارش ثبت نکرده دارید. لطفاً ابتدا شماره را تماس گرفته و گزارش ثبت کنید.  تا آن زمان شماره جدیدی برای شما ارسال نمی‌شود.",
+                       new Dictionary<string, string>
+                       {
+                           ["type"] = "UnSubmitReportLeadLimit",
+                           ["ubSubmitCount"] = unSubmitReportLead.ToString()
+                       });
+                }
+            }
+
+            return excludeConsultants;
         }
     }
 }

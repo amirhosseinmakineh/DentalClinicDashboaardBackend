@@ -60,7 +60,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 return Result<SubmitLeadCallReportResponse>.Failure("گزارش این لید قبلا ثبت شده است");
 
             if (command.AttendanceProbabilityPercent.HasValue && (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
-                return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
+                return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا 10 باشد");
 
             var isSuccessfulCall = command.CallResult == LeadCallResult.Contacted ||
                                    command.CallResult == LeadCallResult.Converted;

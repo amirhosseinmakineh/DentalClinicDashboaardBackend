@@ -84,7 +84,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             var normalizedPageSize = pageSize < 1 ? 10 : pageSize;
             var totalCount = await query.CountAsync(cancellationToken);
             var items = await query
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.AssignedAt.HasValue)
+                .ThenByDescending(x => x.AssignedAt)
+                .ThenByDescending(x => x.Id)
                 .Skip((normalizedPageNumber - 1) * normalizedPageSize)
                 .Take(normalizedPageSize)
                 .ToListAsync(cancellationToken);

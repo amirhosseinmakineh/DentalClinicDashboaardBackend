@@ -45,6 +45,28 @@ public sealed record DailyReservationsReport(
     DailyReservationsReportSummary Summary,
     IReadOnlyList<DailyReservationReportItem> Items);
 
+internal sealed record DailyReservationReportRow(
+    long ReservationId,
+    long LeadAssignmentId,
+    long ConsultantProfileId,
+    string ConsultantFullName,
+    string ConsultantPhoneNumber,
+    string PatientName,
+    string PatientPhoneNumber,
+    string? SecondaryPhoneNumber,
+    string? PatientCity,
+    string? PatientRegion,
+    string? BusinessName,
+    int? AttendanceProbabilityPercent,
+    DateTime ReservationAt,
+    DateTime CreatedAt,
+    ReservationRequestStatus RequestStatus,
+    VisitResultStatus VisitResultStatus,
+    bool? IsConfirmedWithPatient,
+    bool IsCanceled,
+    string? CancellationReason,
+    string? Description);
+
 public class DailyReservationsReportService(DentalContext context)
 {
     public async Task<DailyReservationsReport> GetAsync(
@@ -55,10 +77,13 @@ public class DailyReservationsReportService(DentalContext context)
     {
         var reportDate = date ?? IranTimeHelper.TodayInIran();
         var query = BuildQuery(reportDate, consultantProfileId, requestStatus);
-        var items = await Project(query)
+        // Materialize database fields first. Persian label methods are intentionally
+        // evaluated in memory because EF Core cannot translate them to SQL.
+        var rows = await Project(query)
             .OrderByDescending(x => x.CreatedAt)
             .ThenByDescending(x => x.ReservationId)
             .ToListAsync(cancellationToken);
+        var items = rows.Select(ToReportItem).ToList();
 
         return new DailyReservationsReport(
             reportDate,
@@ -134,8 +159,8 @@ public class DailyReservationsReportService(DentalContext context)
         return query;
     }
 
-    private static IQueryable<DailyReservationReportItem> Project(IQueryable<Domain.Models.Reservation> query) =>
-        query.Select(x => new DailyReservationReportItem(
+    private static IQueryable<DailyReservationReportRow> Project(IQueryable<Domain.Models.Reservation> query) =>
+        query.Select(x => new DailyReservationReportRow(
             x.Id,
             x.LeadAssignmentId,
             x.ConsultantProfileId,
@@ -151,13 +176,35 @@ public class DailyReservationsReportService(DentalContext context)
             x.ReservationAt,
             x.CreatedAt,
             x.ReservationRequestStatus,
-            ToPersian(x.ReservationRequestStatus),
             x.VisitResultStatus,
-            ToPersian(x.VisitResultStatus),
             x.IsConfirmedWithPatient,
             x.IsCanceled,
             x.CancellationReason,
             x.Description));
+
+    private static DailyReservationReportItem ToReportItem(DailyReservationReportRow row) => new(
+        row.ReservationId,
+        row.LeadAssignmentId,
+        row.ConsultantProfileId,
+        row.ConsultantFullName,
+        row.ConsultantPhoneNumber,
+        row.PatientName,
+        row.PatientPhoneNumber,
+        row.SecondaryPhoneNumber,
+        row.PatientCity,
+        row.PatientRegion,
+        row.BusinessName,
+        row.AttendanceProbabilityPercent,
+        row.ReservationAt,
+        row.CreatedAt,
+        row.RequestStatus,
+        ToPersian(row.RequestStatus),
+        row.VisitResultStatus,
+        ToPersian(row.VisitResultStatus),
+        row.IsConfirmedWithPatient,
+        row.IsCanceled,
+        row.CancellationReason,
+        row.Description);
 
     private static string ToPersian(ReservationRequestStatus status) => status switch
     {

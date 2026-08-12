@@ -31,6 +31,38 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (query.ConsultantProfileId.HasValue)
                 reservations = reservations.Where(x => x.ConsultantProfileId == query.ConsultantProfileId.Value);
 
+            if (!string.IsNullOrEmpty(query.ConsultantName))
+            {
+                reservations = reservations
+                    .Include(x => x.ConsultantProfile)
+                    .ThenInclude(x => x.User)
+                    .Where(x =>
+                        x.ConsultantProfile.User.FirstName.Contains(query.ConsultantName) ||
+                        x.ConsultantProfile.User.LastName.Contains(query.ConsultantName) ||
+                        (x.ConsultantProfile.User.FirstName + " " +
+                         x.ConsultantProfile.User.LastName)
+                            .Contains(query.ConsultantName));
+            }
+            if (!string.IsNullOrWhiteSpace(query.SearchText))
+            {
+                var searchText = query.SearchText.Trim();
+
+                reservations = reservations
+                    .Include(x => x.PatientUser)
+                    .Where(x =>
+                        (x.PatientUser.FirstName != null &&
+                         x.PatientUser.FirstName.Contains(searchText)) ||
+
+                        (x.PatientUser.LastName != null &&
+                         x.PatientUser.LastName.Contains(searchText)) ||
+
+                        (x.PatientUser.PhoneNumber != null &&
+                         x.PatientUser.PhoneNumber.Contains(searchText)) ||
+
+                        ((x.PatientUser.FirstName ?? "") + " " +
+                         (x.PatientUser.LastName ?? "")).Contains(searchText));
+            }
+
             reservations = reservations.ApplyReservationAtFilter(query.Date, query.From, query.To);
 
             if (query.AttendanceConfirmationStatus.HasValue)

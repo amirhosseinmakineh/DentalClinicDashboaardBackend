@@ -83,9 +83,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 {
                     UserId = user.Id,
                     NationalCode = string.Empty,
-                    EmergencyPhoneNumber = command.EmergencyPhoneNumber,
-                    InsuranceName = command.InsuranceName,
-                    Notes = command.Notes,
                     CreatedAt = DateTime.UtcNow
                 };
 

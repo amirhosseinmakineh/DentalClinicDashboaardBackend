@@ -51,10 +51,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             if (command.AttendanceProbabilityPercent.HasValue &&
                 (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
-                return Result<CreateReservationResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
+                return Result<CreateReservationResponse>.Failure("احتمال حضور باید بین ۰ تا 10 باشد");
 
             lead.PatientCity = patientCity;
             lead.PatientRegion = patientRegion;
+
 
             if (!string.IsNullOrWhiteSpace(command.SecondaryPhoneNumber))
                 lead.SecondaryPhoneNumber = command.SecondaryPhoneNumber.Trim();
@@ -81,7 +82,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
                     ? null
                     : command.AttendancePrediction.Trim(),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                InitialReservationAt = DateTime.UtcNow,
+                LastActivityAt = DateTime.UtcNow,
             };
 
             await reservationRepository.AddAsync(reservation);
@@ -103,7 +106,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 AttendancePrediction = reservation.AttendancePrediction,
                 AttendanceConfirmationStatus = reservation.AttendanceConfirmationStatus,
                 PatientName = lead.UserName,
-                PatientPhoneNumber = lead.PhoneNumber
+                PatientPhoneNumber = lead.PhoneNumber,
+
+
             }, "رزرو با موفقیت ثبت شد");
         }
     }

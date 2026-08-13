@@ -83,7 +83,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     ? null
                     : command.AttendancePrediction.Trim(),
                 CreatedAt = DateTime.UtcNow,
-                InitialReservationAt = DateTime.UtcNow,
+                InitialReservationAt = command.ReservationAt,
                 LastActivityAt = DateTime.UtcNow,
             };
 

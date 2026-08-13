@@ -1,5 +1,6 @@
 using DentalDashboard.Services;
 using DentalDashboard.Utilities.Time;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DentalDashboard.Controllers;
@@ -14,6 +15,7 @@ public class AdminReportsController : ControllerBase
     private readonly ConsultantsExportService consultantsExportService;
     private readonly ConsultantsDailySummaryService consultantsDailySummaryService;
     private readonly ReservationsExportService reservationsExportService;
+    private readonly DailyReservationsReportService dailyReservationsReportService;
 
     public AdminReportsController(
         LeadCallReportExportService leadCallReportExportService,
@@ -21,7 +23,8 @@ public class AdminReportsController : ControllerBase
         LeadsExportService leadsExportService,
         ConsultantsExportService consultantsExportService,
         ConsultantsDailySummaryService consultantsDailySummaryService,
-        ReservationsExportService reservationsExportService)
+        ReservationsExportService reservationsExportService,
+        DailyReservationsReportService dailyReservationsReportService)
     {
         this.leadCallReportExportService = leadCallReportExportService;
         this.usersExportService = usersExportService;
@@ -29,6 +32,34 @@ public class AdminReportsController : ControllerBase
         this.consultantsExportService = consultantsExportService;
         this.consultantsDailySummaryService = consultantsDailySummaryService;
         this.reservationsExportService = reservationsExportService;
+        this.dailyReservationsReportService = dailyReservationsReportService;
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("daily-reservations")]
+    public async Task<IActionResult> GetDailyReservations(
+        [FromQuery] DateOnly? date,
+        [FromQuery] long? consultantProfileId,
+        [FromQuery] DailyReservationRequestStatus? requestStatus,
+        CancellationToken cancellationToken)
+    {
+        var report = await dailyReservationsReportService.GetAsync(
+            date, consultantProfileId, requestStatus, cancellationToken);
+        return Ok(report);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("daily-reservations/export")]
+    public async Task<IActionResult> ExportDailyReservations(
+        [FromQuery] DateOnly? date,
+        [FromQuery] long? consultantProfileId,
+        [FromQuery] DailyReservationRequestStatus? requestStatus,
+        CancellationToken cancellationToken)
+    {
+        var reportDate = date ?? IranTimeHelper.TodayInIran();
+        var file = await dailyReservationsReportService.ExportCsvAsync(
+            reportDate, consultantProfileId, requestStatus, cancellationToken);
+        return File(file, "text/csv; charset=utf-8", $"daily-reservations-{reportDate:yyyyMMdd}.csv");
     }
 
     [HttpGet("users/export")]

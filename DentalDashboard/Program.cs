@@ -91,6 +91,7 @@ builder.Services.AddScoped<DentalDashboard.Services.LeadsExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.ConsultantsExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.ConsultantsDailySummaryService>();
 builder.Services.AddScoped<DentalDashboard.Services.ReservationsExportService>();
+builder.Services.AddScoped<DentalDashboard.Services.DailyReservationsReportService>();
 builder.Services.AddScoped<ILeadAssignmentLimitService, LeadAssignmentLimitService>();
 
 builder.Services.Configure<HostOptions>(options =>

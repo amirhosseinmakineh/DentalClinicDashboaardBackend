@@ -1,6 +1,7 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.AspNetCore.Mvc;
@@ -56,7 +57,7 @@ namespace DentalDashboard.Controllers
             if (result.Status == PickupLeadStatus.DailyLimitReached)
             {
                 var limitStatus = await leadAssignmentLimitService
-                    .GetDailyLimitStatusAsync(consultantProfileId);
+                    .GetDailyLimitStatusAsync(consultantProfileId, LeadLimitType.Realtime);
 
                 return StatusCode(
                     StatusCodes.Status429TooManyRequests,

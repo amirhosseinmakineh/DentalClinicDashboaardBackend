@@ -68,10 +68,10 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             };
         }
 
-        if (!await leadAssignmentLimitService.CanPickupLeadAsync(profile.Id))
+        if (!await leadAssignmentLimitService.CanPickupLeadAsync(profile.Id, LeadLimitType.Realtime))
         {
             var limitStatus = await leadAssignmentLimitService
-                .GetDailyLimitStatusAsync(profile.Id);
+                .GetDailyLimitStatusAsync(profile.Id, LeadLimitType.Realtime);
 
             return new BroadcastRealtimeLeadsResponse
             {

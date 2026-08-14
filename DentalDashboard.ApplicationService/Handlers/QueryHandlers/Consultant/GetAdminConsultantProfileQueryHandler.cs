@@ -1,7 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +34,7 @@ public class GetAdminConsultantProfileQueryHandler
             throw new InvalidOperationException("مشاوری یافت نشد");
 
         var limitStatus = await leadAssignmentLimitService
-            .GetDailyLimitStatusAsync(profile.Id, LeadLimitType.Burnt);
+            .GetDailyLimitsStatusAsync(profile.Id);
 
         return new AdminConsultantProfileResponse
         {
@@ -57,8 +56,7 @@ public class GetAdminConsultantProfileQueryHandler
             LastOnlineAt = profile.LastOnlineAt,
             LastOfflineAt = profile.LastOfflineAt,
             LimitNumber = profile.LimitNumber,
-            EffectiveDailyLimit = limitStatus.EffectiveDailyLimit,
-            TodayPickupCount = limitStatus.TodayPickupCount
+            DailyLimits = limitStatus
         };
     }
 }

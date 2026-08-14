@@ -58,6 +58,34 @@ namespace DentalDashboard.ApplicationService.Services
             };
         }
 
+        public async Task<ConsultantDailyLimitsStatus> GetDailyLimitsStatusAsync(long consultantProfileId)
+        {
+            var role = await _consultantProfileRepository
+                .GetAll()
+                .AsNoTracking()
+                .Where(x => x.Id == consultantProfileId)
+                .Select(x => (ConsultantRole?)x.ConsultantRole)
+                .FirstOrDefaultAsync();
+
+            return role switch
+            {
+                ConsultantRole.Test => new ConsultantDailyLimitsStatus
+                {
+                    Burnt = await GetDailyLimitStatusAsync(consultantProfileId, LeadLimitType.Burnt)
+                },
+                ConsultantRole.Seller => new ConsultantDailyLimitsStatus
+                {
+                    Realtime = await GetDailyLimitStatusAsync(consultantProfileId, LeadLimitType.Realtime),
+                    Burnt = await GetDailyLimitStatusAsync(consultantProfileId, LeadLimitType.Burnt)
+                },
+                ConsultantRole.TopSeller => new ConsultantDailyLimitsStatus
+                {
+                    Realtime = await GetDailyLimitStatusAsync(consultantProfileId, LeadLimitType.Realtime)
+                },
+                _ => new ConsultantDailyLimitsStatus()
+            };
+        }
+
         private async Task<int> GetEffectiveDailyLimitAsync(long consultantProfileId, LeadLimitType leadType)
         {
             var profile = await _consultantProfileRepository

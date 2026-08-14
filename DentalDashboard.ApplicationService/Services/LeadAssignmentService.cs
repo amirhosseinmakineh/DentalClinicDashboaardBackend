@@ -606,7 +606,7 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 await leadAssignmentLimitService.SetTopSellerConsultantLimit(consultant.Id);
 
-                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id, LeadLimitType.Burnt))
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id, LeadLimitType.Realtime))
                     availableConsultants.Add(consultant);
             }
 

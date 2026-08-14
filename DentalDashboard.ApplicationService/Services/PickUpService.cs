@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,12 +33,29 @@ public class PickUpService : IPickupService
         long consultantProfileId,
         CancellationToken cancellationToken)
     {
-        if (!await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId))
+        var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
+        if (lead == null)
+        {
+            return new PickupLeadResult
+            {
+                Status = PickupLeadStatus.AlreadyTaken,
+                LeadAssignmentId = leadAssignmentId
+            };
+        }
+
+        var leadType = lead.IsDeleted
+            ? LeadLimitType.Burnt
+            : LeadLimitType.Realtime;
+
+        if (!await leadAssignmentLimitService.CanPickupLeadAsync(
+                consultantProfileId,
+                leadType))
         {
             return new PickupLeadResult
             {
                 Status = PickupLeadStatus.DailyLimitReached,
-                ConsultantProfileId = consultantProfileId
+                ConsultantProfileId = consultantProfileId,
+                LeadType = leadType
             };
         }
 
@@ -67,7 +85,7 @@ public class PickUpService : IPickupService
 
         await unitOfWork.SaveChangesAsync();
 
-        var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
+        lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
 
         await NotifyRealtimeLeadTakenAsync(leadAssignmentId, consultantProfileId);
 

@@ -115,17 +115,9 @@ namespace DentalDashboard.Controllers
             [FromServices] ILeadAssignmentLimitService leadAssignmentLimitService)
         {
             var limitStatus = await leadAssignmentLimitService
-                .GetDailyLimitStatusAsync(profileId);
+                .GetDailyLimitsStatusAsync(profileId);
 
-            return Ok(Result<object>.Success(new
-            {
-                canPickup = limitStatus.CanPickup,
-                dailyLimit = limitStatus.EffectiveDailyLimit,
-                todayPickupCount = limitStatus.TodayPickupCount,
-                message = limitStatus.CanPickup
-                    ? null
-                    : limitStatus.DailyLimitReachedMessage
-            }));
+            return Ok(Result<ConsultantDailyLimitsStatus>.Success(limitStatus));
         }
 
         [HttpPost("SubmitLeadCallReport")]

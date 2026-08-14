@@ -8,6 +8,7 @@ public class ConsultantProfile : BaseAuditableEntity<long>
     {
         CallAssignments = new HashSet<LeadAssignment>();
         Attendances = new HashSet<Attendance>();
+        RoleEvaluations = new HashSet<ConsultantRoleEvaluation>();
     }
 
     public Guid UserId { get; set; }
@@ -25,6 +26,10 @@ public class ConsultantProfile : BaseAuditableEntity<long>
     public ConsultantRole ConsultantRole { get; set; }
     public User User { get; set; } = default!;
     public DateTime? RoleStartedAt { get; set; }
+    public DateTime? NextRoleEvaluationAt { get; set; }
+    public ConsultantEvaluationResult? LastEvaluationResult { get; set; }
+    public DateTime? LastEvaluatedAt { get; set; }
     public ICollection<LeadAssignment> CallAssignments { get; set; }
     public ICollection<Attendance> Attendances { get; set; }
+    public ICollection<ConsultantRoleEvaluation> RoleEvaluations { get; set; }
 }

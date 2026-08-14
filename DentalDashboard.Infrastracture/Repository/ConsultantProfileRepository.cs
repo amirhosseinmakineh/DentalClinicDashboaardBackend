@@ -3,13 +3,17 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Domain.RolePolicies;
 
 namespace DentalDashboard.Infrastracture.Repository
 {
     public class ConsultantProfileRepository : BaseRepository<long, ConsultantProfile>, IConsultantProfileRepository
     {
-        public ConsultantProfileRepository(DentalContext context) : base(context)
+        private readonly IConsultantRolePolicyProvider policyProvider;
+
+        public ConsultantProfileRepository(DentalContext context, IConsultantRolePolicyProvider policyProvider) : base(context)
         {
+            this.policyProvider = policyProvider;
         }
 
         public  Task<List<ConsultantProfile>> GetAvailableAndOnnlineSellerConsultant()
@@ -25,7 +29,8 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public Task<List<ConsultantProfile>> GetAvailableAndOnnlineTestConsultant()
         {
-            var fiveDaysAgo = DateTime.UtcNow.AddDays(-5);
+            var receptionPeriod = policyProvider.Get(ConsultantRole.Test).LeadReceptionPeriod!.Value;
+            var oldestEligibleStart = DateTime.UtcNow - receptionPeriod;
 
             return GetAll()
                 .Where(x =>
@@ -34,7 +39,7 @@ namespace DentalDashboard.Infrastracture.Repository
                     x.IsCompleteProfile &&
                     x.ConsultantRole == ConsultantRole.Test &&
                     x.RoleStartedAt.HasValue &&
-                    x.RoleStartedAt.Value > fiveDaysAgo)
+                    x.RoleStartedAt.Value > oldestEligibleStart)
                 .ToListAsync();
         }
 

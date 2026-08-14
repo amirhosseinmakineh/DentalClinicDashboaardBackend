@@ -4,6 +4,7 @@ using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Domain.RolePolicies;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant;
 
@@ -11,13 +12,16 @@ public class CompleteConsaltantProfileHandler : ICommandHandler<CompleteConsulta
 {
     private readonly IUserRepository userRepository;
     private readonly IConsultantProfileRepository consultantProfileRepository;
+    private readonly IConsultantRolePolicyProvider rolePolicyProvider;
 
     public CompleteConsaltantProfileHandler(
         IUserRepository userRepository,
-        IConsultantProfileRepository consultantProfileRepository)
+        IConsultantProfileRepository consultantProfileRepository,
+        IConsultantRolePolicyProvider rolePolicyProvider)
     {
         this.userRepository = userRepository;
         this.consultantProfileRepository = consultantProfileRepository;
+        this.rolePolicyProvider = rolePolicyProvider;
     }
 
     public async Task<Result<long>> HandleAsync(
@@ -83,6 +87,7 @@ public class CompleteConsaltantProfileHandler : ICommandHandler<CompleteConsulta
 
         if (profile is null)
         {
+            var roleStartedAt = DateTime.UtcNow;
             profile = new ConsultantProfile
             {
                 Address = command.Address.Trim(),
@@ -98,7 +103,11 @@ public class CompleteConsaltantProfileHandler : ICommandHandler<CompleteConsulta
                 Notes = null,
                 WorkStartTime = TimeSpan.Zero,
                 WorkEndTime = TimeSpan.Zero,
-                UserId = user.Id
+                UserId = user.Id,
+                ConsultantRole = DentalDashboard.Domain.Enums.ConsultantRole.Test,
+                RoleStartedAt = roleStartedAt,
+                NextRoleEvaluationAt = roleStartedAt + rolePolicyProvider
+                    .Get(DentalDashboard.Domain.Enums.ConsultantRole.Test).EvaluationPeriod
             };
 
             await consultantProfileRepository.AddAsync(profile);

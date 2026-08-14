@@ -23,4 +23,5 @@ public record AdminConsultantProfileResponse
     public DateTime? LastOfflineAt { get; init; }
     public int? LimitNumber { get; init; }
     public ConsultantDailyLimitsStatus DailyLimits { get; init; } = new();
+    public ConsultantRoleEvaluationStatus RoleEvaluation { get; init; } = default!;
 }

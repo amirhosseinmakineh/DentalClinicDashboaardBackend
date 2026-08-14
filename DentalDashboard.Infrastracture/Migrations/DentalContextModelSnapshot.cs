@@ -103,6 +103,12 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("LastOfflineAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("LastEvaluationResult")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastEvaluatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("LastOnlineAt")
                         .HasColumnType("datetime2");
 
@@ -115,6 +121,12 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("NextRoleEvaluationAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("RoleStartedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -134,6 +146,31 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsUnique();
 
                     b.ToTable("ConsultantProfiles");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.ConsultantRoleEvaluation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    b.Property<long>("ConsultantProfileId").HasColumnType("bigint");
+                    b.Property<DateTime>("CreatedAt").HasColumnType("datetime2");
+                    b.Property<DateTime?>("DeletedAt").HasColumnType("datetime2");
+                    b.Property<DateTime>("EvaluatedAt").HasColumnType("datetime2");
+                    b.Property<int>("EvaluatedRole").HasColumnType("int");
+                    b.Property<bool>("IsDeleted").HasColumnType("bit");
+                    b.Property<DateTime>("PeriodEndedAt").HasColumnType("datetime2");
+                    b.Property<DateTime>("PeriodStartedAt").HasColumnType("datetime2");
+                    b.Property<int>("Result").HasColumnType("int");
+                    b.Property<int?>("ResultingRole").HasColumnType("int");
+                    b.Property<int>("RewardLevel").HasColumnType("int");
+                    b.Property<int>("SuccessfulPatientCount").HasColumnType("int");
+                    b.Property<DateTime?>("UpdatedAt").HasColumnType("datetime2");
+                    b.HasKey("Id");
+                    b.HasIndex("ConsultantProfileId", "PeriodStartedAt").IsUnique();
+                    b.ToTable("ConsultantRoleEvaluations");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignment", b =>
@@ -623,6 +660,17 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.Models.ConsultantRoleEvaluation", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.ConsultantProfile", "ConsultantProfile")
+                        .WithMany("RoleEvaluations")
+                        .HasForeignKey("ConsultantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConsultantProfile");
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignment", b =>
                 {
                     b.HasOne("DentalDashboard.Domain.Models.ConsultantProfile", "ConsultantProfile")
@@ -715,6 +763,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("Attendances");
 
                     b.Navigation("CallAssignments");
+
+                    b.Navigation("RoleEvaluations");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.Role", b =>

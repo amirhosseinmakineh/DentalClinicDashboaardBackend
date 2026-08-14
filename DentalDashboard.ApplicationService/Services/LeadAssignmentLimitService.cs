@@ -2,6 +2,7 @@
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Domain.RolePolicies;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -9,12 +10,15 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly ILeadAssignmentRepository _repository;
         private readonly IConsultantProfileRepository _consultantProfileRepository;
+        private readonly IConsultantRolePolicyProvider _policyProvider;
         public LeadAssignmentLimitService(
             ILeadAssignmentRepository repository,
-            IConsultantProfileRepository consultantProfileRepository)
+            IConsultantProfileRepository consultantProfileRepository,
+            IConsultantRolePolicyProvider policyProvider)
         {
             _repository = repository;
             _consultantProfileRepository = consultantProfileRepository;
+            _policyProvider = policyProvider;
         }
 
         public async Task<bool> CanPickupLeadAsync(long consultantProfileId, LeadLimitType leadType)
@@ -86,22 +90,18 @@ namespace DentalDashboard.ApplicationService.Services
         {
             var profile = await _consultantProfileRepository
                 .GetAll()
+                .Include(x => x.User)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == consultantProfileId);
 
             if (profile == null)
                 return 0;
 
-            return (profile.ConsultantRole, leadType) switch
-            {
-                (ConsultantRole.Test, LeadLimitType.Realtime) => 0,
-                (ConsultantRole.Test, LeadLimitType.Burnt) => 20,
-                (ConsultantRole.Seller, LeadLimitType.Realtime) => 10,
-                (ConsultantRole.Seller, LeadLimitType.Burnt) => 20,
-                (ConsultantRole.TopSeller, LeadLimitType.Realtime) => 20,
-                (ConsultantRole.TopSeller, LeadLimitType.Burnt) => 0,
-                _ => 0
-            };
+            if (!profile.User.IsActive || profile.IsDeleted)
+                return 0;
+
+            var periodStartedAt = profile.RoleStartedAt ?? profile.CreatedAt;
+            return _policyProvider.GetDailyLimit(profile.ConsultantRole, leadType, periodStartedAt, DateTime.UtcNow);
         }
     }
 }

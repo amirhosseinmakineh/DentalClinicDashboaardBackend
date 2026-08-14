@@ -104,6 +104,7 @@ builder.Services.AddHostedService<TestConsultantLeadAssignmentBackgroundService>
 builder.Services.AddHostedService<SellerConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<TopSellerConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<AddLeadBackgroundService>();
+builder.Services.AddHostedService<ConsultantRoleEvaluationBackgroundService>();
 
 builder.Services.AddInfrastructure(
     builder.Configuration);

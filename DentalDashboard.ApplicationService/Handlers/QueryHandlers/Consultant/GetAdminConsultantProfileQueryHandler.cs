@@ -12,13 +12,16 @@ public class GetAdminConsultantProfileQueryHandler
 {
     private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
+    private readonly IConsultantRoleEvaluationService roleEvaluationService;
 
     public GetAdminConsultantProfileQueryHandler(
         IConsultantProfileRepository consultantProfileRepository,
-        ILeadAssignmentLimitService leadAssignmentLimitService)
+        ILeadAssignmentLimitService leadAssignmentLimitService,
+        IConsultantRoleEvaluationService roleEvaluationService)
     {
         this.consultantProfileRepository = consultantProfileRepository;
         this.leadAssignmentLimitService = leadAssignmentLimitService;
+        this.roleEvaluationService = roleEvaluationService;
     }
 
     public async Task<AdminConsultantProfileResponse> HandleAsync(
@@ -56,7 +59,8 @@ public class GetAdminConsultantProfileQueryHandler
             LastOnlineAt = profile.LastOnlineAt,
             LastOfflineAt = profile.LastOfflineAt,
             LimitNumber = profile.LimitNumber,
-            DailyLimits = limitStatus
+            DailyLimits = limitStatus,
+            RoleEvaluation = await roleEvaluationService.GetStatusAsync(profile.Id, cancellationToken)
         };
     }
 }

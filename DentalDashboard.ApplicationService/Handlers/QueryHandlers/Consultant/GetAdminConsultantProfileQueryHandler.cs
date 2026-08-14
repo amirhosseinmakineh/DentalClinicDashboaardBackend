@@ -34,7 +34,7 @@ public class GetAdminConsultantProfileQueryHandler
             throw new InvalidOperationException("مشاوری یافت نشد");
 
         var limitStatus = await leadAssignmentLimitService
-            .GetDailyLimitStatusAsync(profile.Id);
+            .GetDailyLimitsStatusAsync(profile.Id);
 
         return new AdminConsultantProfileResponse
         {
@@ -56,8 +56,7 @@ public class GetAdminConsultantProfileQueryHandler
             LastOnlineAt = profile.LastOnlineAt,
             LastOfflineAt = profile.LastOfflineAt,
             LimitNumber = profile.LimitNumber,
-            EffectiveDailyLimit = limitStatus.EffectiveDailyLimit,
-            TodayPickupCount = limitStatus.TodayPickupCount
+            DailyLimits = limitStatus
         };
     }
 }

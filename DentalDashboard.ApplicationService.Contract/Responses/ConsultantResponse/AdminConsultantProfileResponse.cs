@@ -1,5 +1,7 @@
 namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
 
+using DentalDashboard.ApplicationService.Contract.IServices;
+
 public record AdminConsultantProfileResponse
 {
     public long ProfileId { get; init; }
@@ -20,6 +22,5 @@ public record AdminConsultantProfileResponse
     public DateTime? LastOnlineAt { get; init; }
     public DateTime? LastOfflineAt { get; init; }
     public int? LimitNumber { get; init; }
-    public int EffectiveDailyLimit { get; init; }
-    public int TodayPickupCount { get; init; }
+    public ConsultantDailyLimitsStatus DailyLimits { get; init; } = new();
 }

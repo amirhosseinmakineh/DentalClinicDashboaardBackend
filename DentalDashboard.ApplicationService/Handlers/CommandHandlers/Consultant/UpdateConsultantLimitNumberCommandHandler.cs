@@ -48,14 +48,13 @@ public class UpdateConsultantLimitNumberCommandHandler
         await consultantProfileRepository.SaveChange();
 
         var limitStatus = await leadAssignmentLimitService
-            .GetDailyLimitStatusAsync(profile.Id);
+            .GetDailyLimitsStatusAsync(profile.Id);
 
         return Result<ConsultantLimitUpdateResponse>.Success(
             new ConsultantLimitUpdateResponse
             {
                 LimitNumber = profile.LimitNumber,
-                EffectiveDailyLimit = limitStatus.EffectiveDailyLimit,
-                TodayPickupCount = limitStatus.TodayPickupCount
+                DailyLimits = limitStatus
             },
             "محدودیت دریافت شماره با موفقیت ذخیره شد");
     }

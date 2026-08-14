@@ -6,6 +6,7 @@ public record ConsultantDailyLimitStatus
     public int TodayPickupCount { get; init; }
     public bool CanPickup { get; init; }
 
-    public string DailyLimitReachedMessage =>
-        $"سقف روزانه {EffectiveDailyLimit} لید پر شده است. امروز دیگر نمی‌توانید لید بردارید.";
+    public string? DailyLimitReachedMessage => CanPickup
+        ? null
+        : $"سقف روزانه {EffectiveDailyLimit} لید پر شده است. امروز دیگر نمی‌توانید لید بردارید.";
 }

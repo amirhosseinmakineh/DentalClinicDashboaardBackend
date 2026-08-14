@@ -245,8 +245,16 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            await NotifyConsultantsForRealtimeLeadAsync(
+            var notificationSent = await NotifyConsultantsForRealtimeLeadAsync(
                 lead, availableConsultants, LeadLimitType.Realtime, isReminder);
+
+            if (!notificationSent)
+            {
+                logger.LogWarning(
+                    "Realtime lead {LeadId} was not delivered to any consultant subscription",
+                    lead.Id);
+                return;
+            }
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -259,7 +267,7 @@ namespace DentalDashboard.ApplicationService.Services
                 isReminder);
         }
 
-        private async Task NotifyConsultantsForRealtimeLeadAsync(
+        private async Task<bool> NotifyConsultantsForRealtimeLeadAsync(
             LeadAssignment lead,
             IReadOnlyList<ConsultantProfile> consultants,
             LeadLimitType leadType,
@@ -267,9 +275,10 @@ namespace DentalDashboard.ApplicationService.Services
         {
             var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
 
+            var delivered = false;
             foreach (var consultant in consultants)
             {
-                await pushNotificationService.SendAsync(
+                var sent = await pushNotificationService.SendAsync(
                     consultant.UserId,
                     title,
                     body,
@@ -284,16 +293,27 @@ namespace DentalDashboard.ApplicationService.Services
                         ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
                         ["isReminder"] = isReminder ? "true" : "false",
                     });
+
+                delivered |= sent;
             }
 
-            logger.LogInformation(
-                isReminder
-                    ? "Realtime lead reminder sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants"
-                    : "Realtime lead notification sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants",
-                lead.Id,
-                lead.UserName,
-                lead.PhoneNumber,
-                consultants.Count);
+            if (delivered)
+            {
+                logger.LogInformation(
+                    "{LeadType} lead notification delivered for lead {LeadId} to at least one of {ConsultantCount} consultants",
+                    leadType,
+                    lead.Id,
+                    consultants.Count);
+            }
+            else
+            {
+                logger.LogWarning(
+                    "{LeadType} lead notification was not delivered for lead {LeadId}; check active subscriptions and VAPID configuration",
+                    leadType,
+                    lead.Id);
+            }
+
+            return delivered;
         }
 
         private static (string Title, string Body) BuildRealtimeLeadNotificationContent(
@@ -496,8 +516,11 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            await NotifyConsultantsForRealtimeLeadAsync(
+            var notificationSent = await NotifyConsultantsForRealtimeLeadAsync(
                 lead, availableConsultants, LeadLimitType.Burnt, isReminder);
+
+            if (!notificationSent)
+                return;
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -556,8 +579,11 @@ namespace DentalDashboard.ApplicationService.Services
 
                 var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-                await NotifyConsultantsForRealtimeLeadAsync(
+                var notificationSent = await NotifyConsultantsForRealtimeLeadAsync(
                     lead, availableConsultants, leadType, isReminder);
+
+                if (!notificationSent)
+                    continue;
 
                 lead.NotificationSent = true;
                 lead.LastDispatchAt = DateTime.UtcNow;
@@ -623,8 +649,11 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            await NotifyConsultantsForRealtimeLeadAsync(
+            var notificationSent = await NotifyConsultantsForRealtimeLeadAsync(
                 lead, availableConsultants, LeadLimitType.Realtime, isReminder);
+
+            if (!notificationSent)
+                return;
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;

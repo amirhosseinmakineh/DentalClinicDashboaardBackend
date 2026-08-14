@@ -95,7 +95,7 @@ namespace DentalDashboard.Infrastracture.Repository
         public async Task<LeadAssignment?> GetCurrentRealtimeLeadForTestConsultanntDispatchAsync(
             TimeSpan redispatchInterval)
         {
-            var lead = await GetActiveRealtimeBroadcastLeadForTestConnsultantAsync();
+            var lead = await GetActiveRealtimeBroadcastLeadAsync();
             if (lead == null)
                 return null;
 

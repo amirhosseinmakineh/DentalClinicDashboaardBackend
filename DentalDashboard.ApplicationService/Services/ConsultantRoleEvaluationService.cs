@@ -5,11 +5,13 @@ using DentalDashboard.Domain.Models;
 using DentalDashboard.Domain.RolePolicies;
 using DentalDashboard.Framwork.IRepositories;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 
 namespace DentalDashboard.ApplicationService.Services;
 
 public sealed class ConsultantRoleEvaluationService : IConsultantRoleEvaluationService
 {
+    private static readonly ConcurrentDictionary<long, SemaphoreSlim> ConsultantLocks = new();
     private readonly IConsultantProfileRepository profiles;
     private readonly IReservationRepository reservations;
     private readonly IBaseRepository<long, ConsultantRoleEvaluation> evaluations;
@@ -50,12 +52,17 @@ public sealed class ConsultantRoleEvaluationService : IConsultantRoleEvaluationS
             ?? throw new InvalidOperationException("مشاور یافت نشد");
         var start = profile.RoleStartedAt ?? profile.CreatedAt;
         var next = profile.NextRoleEvaluationAt ?? start + policies.Get(profile.ConsultantRole).EvaluationPeriod;
+        var now = DateTime.UtcNow;
         return new ConsultantRoleEvaluationStatus
         {
             CurrentRole = profile.ConsultantRole,
             PeriodStartedAt = start,
             NextEvaluationAt = next,
-            SuccessfulPatientCount = await CountSuccessfulPatientsAsync(profile.Id, start, DateTime.UtcNow, cancellationToken),
+            SuccessfulPatientCount = await CountSuccessfulPatientsAsync(
+                profile.Id,
+                start,
+                now < next ? now : next,
+                cancellationToken),
             LastEvaluationResult = profile.LastEvaluationResult,
             LastEvaluatedAt = profile.LastEvaluatedAt
         };
@@ -63,6 +70,21 @@ public sealed class ConsultantRoleEvaluationService : IConsultantRoleEvaluationS
 
     private async Task EvaluateAsync(long id, DateTime now, CancellationToken cancellationToken)
     {
+        var consultantLock = ConsultantLocks.GetOrAdd(id, static _ => new SemaphoreSlim(1, 1));
+        await consultantLock.WaitAsync(cancellationToken);
+        try
+        {
+            await EvaluateInsideLockAsync(id, now, cancellationToken);
+        }
+        finally
+        {
+            consultantLock.Release();
+        }
+    }
+
+    private async Task EvaluateInsideLockAsync(long id, DateTime now, CancellationToken cancellationToken)
+    {
+        DateTime? evaluatedPeriodStart = null;
         await unitOfWork.BeginTransactionAsync();
         try
         {
@@ -75,6 +97,7 @@ public sealed class ConsultantRoleEvaluationService : IConsultantRoleEvaluationS
             }
 
             var start = profile.RoleStartedAt ?? profile.CreatedAt;
+            evaluatedPeriodStart = start;
             var policy = policies.Get(profile.ConsultantRole);
             var end = profile.NextRoleEvaluationAt ?? start + policy.EvaluationPeriod;
             if (now < end || await evaluations.GetAll().AnyAsync(
@@ -93,22 +116,22 @@ public sealed class ConsultantRoleEvaluationService : IConsultantRoleEvaluationS
 
             var successful = await CountSuccessfulPatientsAsync(id, start, end, cancellationToken);
             var oldRole = profile.ConsultantRole;
-            var (newRole, result, reward) = Decide(oldRole, successful, policy);
+            var decision = policies.Evaluate(oldRole, successful);
 
             await evaluations.AddAsync(new ConsultantRoleEvaluation
             {
                 ConsultantProfileId = id,
                 EvaluatedRole = oldRole,
-                ResultingRole = result == ConsultantEvaluationResult.Deactivated ? null : newRole,
+                ResultingRole = decision.Deactivate ? null : decision.ResultingRole,
                 PeriodStartedAt = start,
                 PeriodEndedAt = end,
                 EvaluatedAt = now,
                 SuccessfulPatientCount = successful,
-                Result = result,
-                RewardLevel = reward
+                Result = decision.Result,
+                RewardLevel = decision.RewardLevel
             });
 
-            if (result == ConsultantEvaluationResult.Deactivated)
+            if (decision.Deactivate)
             {
                 profile.User.IsActive = false;
                 profile.IsAvailable = false;
@@ -117,15 +140,29 @@ public sealed class ConsultantRoleEvaluationService : IConsultantRoleEvaluationS
             }
             else
             {
-                profile.ConsultantRole = newRole;
-                profile.RoleStartedAt = now;
-                profile.NextRoleEvaluationAt = now + policies.Get(newRole).EvaluationPeriod;
+                profile.ConsultantRole = decision.ResultingRole;
+                profile.RoleStartedAt = end;
+                profile.NextRoleEvaluationAt = end + policies.Get(decision.ResultingRole).EvaluationPeriod;
             }
 
-            profile.LastEvaluationResult = result;
+            profile.LastEvaluationResult = decision.Result;
             profile.LastEvaluatedAt = now;
             profile.UpdatedAt = now;
             await unitOfWork.CommitAsync();
+        }
+        catch (DbUpdateException)
+        {
+            await unitOfWork.RollbackAsync();
+
+            // Another application instance may have committed this exact period
+            // after our initial check. The unique index is the final arbiter.
+            if (evaluatedPeriodStart.HasValue &&
+                await evaluations.GetAll().AsNoTracking().AnyAsync(
+                    x => x.ConsultantProfileId == id && x.PeriodStartedAt == evaluatedPeriodStart.Value,
+                    cancellationToken))
+                return;
+
+            throw;
         }
         catch
         {
@@ -135,31 +172,6 @@ public sealed class ConsultantRoleEvaluationService : IConsultantRoleEvaluationS
     }
 
     private Task<int> CountSuccessfulPatientsAsync(long id, DateTime start, DateTime end, CancellationToken cancellationToken) =>
-        reservations.GetAll().AsNoTracking()
-            .Where(x => x.ConsultantProfileId == id && !x.IsDeleted && !x.IsCanceled && x.PatientUserId.HasValue &&
-                        x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryApproved &&
-                        x.SecretaryReviewedAt >= start && x.SecretaryReviewedAt < end)
-            .Select(x => x.PatientUserId!.Value)
-            .Distinct()
-            .CountAsync(cancellationToken);
+        SuccessfulPatientAttribution.CountAsync(reservations.GetAll(), id, start, end, cancellationToken);
 
-    private static (ConsultantRole Role, ConsultantEvaluationResult Result, int Reward) Decide(
-        ConsultantRole role, int successful, ConsultantRolePolicy policy) => role switch
-        {
-            ConsultantRole.Test when successful >= policy.PromotionThreshold =>
-                (ConsultantRole.Seller, ConsultantEvaluationResult.PromotedToSeller, 0),
-            ConsultantRole.Test => (ConsultantRole.Test, ConsultantEvaluationResult.Deactivated, 0),
-            ConsultantRole.Seller when successful >= policy.PromotionThreshold =>
-                (ConsultantRole.TopSeller, ConsultantEvaluationResult.PromotedToTopSeller, 0),
-            ConsultantRole.Seller when successful < policy.DemotionThreshold =>
-                (ConsultantRole.Test, ConsultantEvaluationResult.DemotedToTest, 0),
-            ConsultantRole.Seller => (ConsultantRole.Seller, ConsultantEvaluationResult.RemainedSeller, 0),
-            ConsultantRole.TopSeller when successful < policy.DemotionThreshold =>
-                (ConsultantRole.Seller, ConsultantEvaluationResult.DemotedToSeller, 0),
-            ConsultantRole.TopSeller when successful >= policy.HigherRewardThreshold =>
-                (ConsultantRole.TopSeller, ConsultantEvaluationResult.TopSellerHigherReward, 2),
-            ConsultantRole.TopSeller when successful >= policy.RewardThreshold =>
-                (ConsultantRole.TopSeller, ConsultantEvaluationResult.TopSellerReward, 1),
-            _ => (ConsultantRole.TopSeller, ConsultantEvaluationResult.RemainedTopSeller, 0)
-        };
 }

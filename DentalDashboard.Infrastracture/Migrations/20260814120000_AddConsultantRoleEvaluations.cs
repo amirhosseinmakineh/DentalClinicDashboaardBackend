@@ -1,11 +1,14 @@
 using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using DentalDashboard.Infrastracture.Context;
 
 #nullable disable
 
 namespace DentalDashboard.Infrastracture.Migrations;
 
 [Migration("20260814120000_AddConsultantRoleEvaluations")]
+[DbContext(typeof(DentalContext))]
 public partial class AddConsultantRoleEvaluations : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
@@ -33,6 +36,24 @@ public partial class AddConsultantRoleEvaluations : Migration
             table: "ConsultantProfiles",
             type: "datetime2",
             nullable: true);
+
+        // Existing consultants must start from a deployment baseline. Using their
+        // historical CreatedAt would make them immediately due on the first run.
+        migrationBuilder.Sql(
+            """
+            DECLARE @Baseline datetime2 = SYSUTCDATETIME();
+
+            UPDATE [ConsultantProfiles]
+            SET [RoleStartedAt] = COALESCE([RoleStartedAt], @Baseline),
+                [NextRoleEvaluationAt] = COALESCE(
+                    [NextRoleEvaluationAt],
+                    DATEADD(day,
+                        CASE [ConsultantRole]
+                            WHEN 3 THEN 7
+                            ELSE 10
+                        END,
+                        COALESCE([RoleStartedAt], @Baseline)));
+            """);
 
         migrationBuilder.CreateTable(
             name: "ConsultantRoleEvaluations",

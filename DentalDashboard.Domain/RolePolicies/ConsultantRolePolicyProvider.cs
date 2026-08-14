@@ -25,4 +25,29 @@ public sealed class ConsultantRolePolicyProvider : IConsultantRolePolicyProvider
 
         return leadType == LeadLimitType.Realtime ? policy.RealtimeDailyLimit : policy.BurntDailyLimit;
     }
+
+    public ConsultantRoleEvaluationDecision Evaluate(ConsultantRole role, int successfulPatientCount)
+    {
+        var policy = Get(role);
+        return role switch
+        {
+            ConsultantRole.Test when successfulPatientCount >= policy.PromotionThreshold =>
+                new(ConsultantRole.Seller, ConsultantEvaluationResult.PromotedToSeller, 0, false),
+            ConsultantRole.Test =>
+                new(ConsultantRole.Test, ConsultantEvaluationResult.Deactivated, 0, true),
+            ConsultantRole.Seller when successfulPatientCount >= policy.PromotionThreshold =>
+                new(ConsultantRole.TopSeller, ConsultantEvaluationResult.PromotedToTopSeller, 0, false),
+            ConsultantRole.Seller when successfulPatientCount < policy.DemotionThreshold =>
+                new(ConsultantRole.Test, ConsultantEvaluationResult.DemotedToTest, 0, false),
+            ConsultantRole.Seller =>
+                new(ConsultantRole.Seller, ConsultantEvaluationResult.RemainedSeller, 0, false),
+            ConsultantRole.TopSeller when successfulPatientCount < policy.DemotionThreshold =>
+                new(ConsultantRole.Seller, ConsultantEvaluationResult.DemotedToSeller, 0, false),
+            ConsultantRole.TopSeller when successfulPatientCount >= policy.HigherRewardThreshold =>
+                new(ConsultantRole.TopSeller, ConsultantEvaluationResult.TopSellerHigherReward, 2, false),
+            ConsultantRole.TopSeller when successfulPatientCount >= policy.RewardThreshold =>
+                new(ConsultantRole.TopSeller, ConsultantEvaluationResult.TopSellerReward, 1, false),
+            _ => new(ConsultantRole.TopSeller, ConsultantEvaluationResult.RemainedTopSeller, 0, false)
+        };
+    }
 }

@@ -223,7 +223,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id, LeadLimitType.Realtime))
                     availableConsultants.Add(consultant);
             }
 
@@ -245,7 +245,8 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+            await NotifyConsultantsForRealtimeLeadAsync(
+                lead, availableConsultants, LeadLimitType.Realtime, isReminder);
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -261,6 +262,7 @@ namespace DentalDashboard.ApplicationService.Services
         private async Task NotifyConsultantsForRealtimeLeadAsync(
             LeadAssignment lead,
             IReadOnlyList<ConsultantProfile> consultants,
+            LeadLimitType leadType,
             bool isReminder = false)
         {
             var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
@@ -274,7 +276,10 @@ namespace DentalDashboard.ApplicationService.Services
                     new Dictionary<string, string>
                     {
                         ["leadId"] = lead.Id.ToString(),
+                        // The frontend notification handlers currently subscribe to
+                        // the RealtimeLead event name for every pickup notification.
                         ["type"] = "RealtimeLead",
+                        ["leadLimitType"] = leadType.ToString(),
                         ["userName"] = lead.UserName ?? string.Empty,
                         ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
                         ["isReminder"] = isReminder ? "true" : "false",
@@ -469,9 +474,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                await leadAssignmentLimitService.SetTestConsultantLimit(consultant.Id);
-
-                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id, LeadLimitType.Burnt))
                     availableConsultants.Add(consultant);
             }
 
@@ -482,7 +485,7 @@ namespace DentalDashboard.ApplicationService.Services
             }
 
             var lead = await leadAssignmentRepository
-                .GetCurrentRealtimeLeadForTestConsultanntDispatchAsync(RealtimeLeadRedispatchInterval);
+                .GetCurrentLeadForDispatchAsync(LeadLimitType.Burnt, RealtimeLeadRedispatchInterval);
 
             if (lead == null)
             {
@@ -493,7 +496,8 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+            await NotifyConsultantsForRealtimeLeadAsync(
+                lead, availableConsultants, LeadLimitType.Burnt, isReminder);
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -531,46 +535,39 @@ namespace DentalDashboard.ApplicationService.Services
                 logger.LogInformation("Realtime dispatch skipped: no online consultants");
                 return;
             }
-            var availableConsultants = new List<ConsultantProfile>();
-
-            foreach (var consultant in consultants)
+            foreach (var leadType in new[] { LeadLimitType.Realtime, LeadLimitType.Burnt })
             {
-                await leadAssignmentLimitService.SetSellerConsultantLimit(consultant.Id);
+                var availableConsultants = new List<ConsultantProfile>();
 
-                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
-                    availableConsultants.Add(consultant);
-            }
+                foreach (var consultant in consultants)
+                {
+                    if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id, leadType))
+                        availableConsultants.Add(consultant);
+                }
 
-            if (!availableConsultants.Any())
-            {
-                logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
-                return;
-            }
+                if (!availableConsultants.Any())
+                    continue;
 
-            var newLead = await leadAssignmentRepository
-                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
+                var lead = await leadAssignmentRepository
+                    .GetCurrentLeadForDispatchAsync(leadType, RealtimeLeadRedispatchInterval);
 
-            if (newLead == null)
-            {
-                logger.LogInformation(
-                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
-                return;
-            }
-            else
-            {
+                if (lead == null)
+                    continue;
 
-                var isReminder = newLead.NotificationSent && newLead.LastDispatchAt.HasValue;
+                var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-                await NotifyConsultantsForRealtimeLeadAsync(newLead, availableConsultants, isReminder);
+                await NotifyConsultantsForRealtimeLeadAsync(
+                    lead, availableConsultants, leadType, isReminder);
 
-                newLead.NotificationSent = true;
-                newLead.LastDispatchAt = DateTime.UtcNow;
+                lead.NotificationSent = true;
+                lead.LastDispatchAt = DateTime.UtcNow;
 
                 await leadAssignmentRepository.SaveChange();
 
                 logger.LogInformation(
-                    "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
-                    newLead.Id,
+                    "{LeadType} dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
+                    leadType,
+                    lead.Id,
                     isReminder);
             }
         }
@@ -604,9 +601,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                await leadAssignmentLimitService.SetTopSellerConsultantLimit(consultant.Id);
-
-                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id, LeadLimitType.Realtime))
                     availableConsultants.Add(consultant);
             }
 
@@ -628,7 +623,8 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+            await NotifyConsultantsForRealtimeLeadAsync(
+                lead, availableConsultants, LeadLimitType.Realtime, isReminder);
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;

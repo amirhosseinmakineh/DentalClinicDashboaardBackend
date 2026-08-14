@@ -1,5 +1,7 @@
 namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 
+using DentalDashboard.Domain.Enums;
+
 public enum PickupLeadStatus
 {
     Success = 1,
@@ -13,4 +15,5 @@ public sealed class PickupLeadResult
     public long? LeadAssignmentId { get; init; }
     public long? ConsultantProfileId { get; init; }
     public DateTime? CallDeadlineAt { get; init; }
+    public LeadLimitType? LeadType { get; init; }
 }

@@ -92,10 +92,31 @@ namespace DentalDashboard.Infrastracture.Repository
 
             return null;
         }
-        public async Task<LeadAssignment?> GetCurrentRealtimeLeadForTestConsultanntDispatchAsync(
+        public async Task<LeadAssignment?> GetCurrentLeadForDispatchAsync(
+            LeadLimitType leadType,
             TimeSpan redispatchInterval)
         {
-            var lead = await GetActiveRealtimeBroadcastLeadForTestConnsultantAsync();
+            var query = GetAll()
+                .Where(x =>
+                    x.ConsultantProfileId == null &&
+                    x.ReportSubmittedAt == null &&
+                    x.LeadAssignmentState == LeadAssignmentState.New &&
+                    !x.PickUp);
+
+            query = leadType switch
+            {
+                LeadLimitType.Realtime => query.Where(x =>
+                    !x.IsDeleted && x.AssignmentType == LeadAssignmentType.RealTime),
+                LeadLimitType.Burnt => query.Where(x => x.IsDeleted),
+                _ => query.Where(x => false)
+            };
+
+            var lead = await query
+                .OrderByDescending(x => x.NotificationSent)
+                .ThenByDescending(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .FirstOrDefaultAsync();
+
             if (lead == null)
                 return null;
 
@@ -177,18 +198,27 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ToListAsync();
         }
 
-        public async Task<int> GetTodayPickupCountAsync(long consultantProfileId)
+        public async Task<int> GetTodayPickupCountAsync(long consultantProfileId, LeadLimitType leadType)
         {
-            var today = DateTime.Today;
+            var today = DateTime.UtcNow.Date;
             var tomorrow = today.AddDays(1);
 
-            return await context.LeadAssignments
-                .CountAsync(x =>
-                    !x.IsDeleted &&
+            var query = context.LeadAssignments
+                .AsNoTracking()
+                .Where(x =>
                     x.ConsultantProfileId == consultantProfileId &&
                     x.PickUp &&
                     x.AssignedAt >= today &&
                     x.AssignedAt < tomorrow);
+
+            query = leadType switch
+            {
+                LeadLimitType.Realtime => query.Where(x => !x.IsDeleted),
+                LeadLimitType.Burnt => query.Where(x => x.IsDeleted),
+                _ => query.Where(x => false)
+            };
+
+            return await query.CountAsync();
         }
 
         public async Task<bool> TryPickupLeadAsync(

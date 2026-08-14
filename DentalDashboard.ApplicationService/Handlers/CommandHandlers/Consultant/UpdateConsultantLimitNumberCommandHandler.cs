@@ -1,6 +1,7 @@
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -48,7 +49,7 @@ public class UpdateConsultantLimitNumberCommandHandler
         await consultantProfileRepository.SaveChange();
 
         var limitStatus = await leadAssignmentLimitService
-            .GetDailyLimitStatusAsync(profile.Id);
+            .GetDailyLimitStatusAsync(profile.Id, LeadLimitType.Burnt);
 
         return Result<ConsultantLimitUpdateResponse>.Success(
             new ConsultantLimitUpdateResponse

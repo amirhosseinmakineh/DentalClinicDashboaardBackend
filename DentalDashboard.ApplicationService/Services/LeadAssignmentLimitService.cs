@@ -21,7 +21,7 @@ namespace DentalDashboard.ApplicationService.Services
 
         public int DefaultDailyLimit => SystemDefaultDailyLimit;
 
-        public async Task<bool> CanPickupLeadAsync(long consultantProfileId,LeadAssignmentType leadType)
+        public async Task<bool> CanPickupLeadAsync(long consultantProfileId, LeadLimitType leadType)
         {
             var status = await GetDailyLimitStatusAsync(
                 consultantProfileId,
@@ -30,11 +30,21 @@ namespace DentalDashboard.ApplicationService.Services
             return status.CanPickup;
         }
 
-        public async Task<ConsultantDailyLimitStatus> GetDailyLimitStatusAsync(long consultantProfileId,LeadAssignmentType leadType)
+        public async Task<ConsultantDailyLimitStatus> GetDailyLimitStatusAsync(long consultantProfileId, LeadLimitType leadType)
         {
             var effectiveLimit = await GetEffectiveDailyLimitAsync(
                 consultantProfileId,
                 leadType);
+
+            if (effectiveLimit <= 0)
+            {
+                return new ConsultantDailyLimitStatus
+                {
+                    EffectiveDailyLimit = effectiveLimit,
+                    TodayPickupCount = 0,
+                    CanPickup = false
+                };
+            }
 
             var count = await _repository.GetTodayPickupCountAsync(
                 consultantProfileId,
@@ -48,7 +58,7 @@ namespace DentalDashboard.ApplicationService.Services
             };
         }
 
-        private async Task<int> GetEffectiveDailyLimitAsync(long consultantProfileId,LeadAssignmentType leadType)
+        private async Task<int> GetEffectiveDailyLimitAsync(long consultantProfileId, LeadLimitType leadType)
         {
             var profile = await _consultantProfileRepository
                 .GetAll()
@@ -58,10 +68,14 @@ namespace DentalDashboard.ApplicationService.Services
             if (profile == null)
                 return 0;
 
-            return leadType switch
+            return (profile.ConsultantRole, leadType) switch
             {
-                LeadAssignmentType.RealTime => 10,
-                LeadAssignmentType.Burnt => profile.LimitNumber ?? SystemDefaultDailyLimit,
+                (ConsultantRole.Test, LeadLimitType.Realtime) => 0,
+                (ConsultantRole.Test, LeadLimitType.Burnt) => 20,
+                (ConsultantRole.Seller, LeadLimitType.Realtime) => 10,
+                (ConsultantRole.Seller, LeadLimitType.Burnt) => 30,
+                (ConsultantRole.TopSeller, LeadLimitType.Realtime) => 20,
+                (ConsultantRole.TopSeller, LeadLimitType.Burnt) => 0,
                 _ => 0
             };
         }

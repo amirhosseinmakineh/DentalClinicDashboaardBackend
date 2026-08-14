@@ -3,6 +3,7 @@ using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -115,7 +116,7 @@ namespace DentalDashboard.Controllers
             [FromServices] ILeadAssignmentLimitService leadAssignmentLimitService)
         {
             var limitStatus = await leadAssignmentLimitService
-                .GetDailyLimitStatusAsync(profileId);
+                .GetDailyLimitStatusAsync(profileId, LeadLimitType.Burnt);
 
             return Ok(Result<object>.Success(new
             {

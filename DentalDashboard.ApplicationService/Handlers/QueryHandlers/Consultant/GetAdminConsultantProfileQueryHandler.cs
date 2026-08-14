@@ -1,6 +1,7 @@
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
@@ -34,7 +35,7 @@ public class GetAdminConsultantProfileQueryHandler
             throw new InvalidOperationException("مشاوری یافت نشد");
 
         var limitStatus = await leadAssignmentLimitService
-            .GetDailyLimitStatusAsync(profile.Id);
+            .GetDailyLimitStatusAsync(profile.Id, LeadLimitType.Burnt);
 
         return new AdminConsultantProfileResponse
         {

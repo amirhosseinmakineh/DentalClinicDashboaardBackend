@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,7 +33,9 @@ public class PickUpService : IPickupService
         long consultantProfileId,
         CancellationToken cancellationToken)
     {
-        if (!await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId))
+        if (!await leadAssignmentLimitService.CanPickupLeadAsync(
+                consultantProfileId,
+                LeadLimitType.Realtime))
         {
             return new PickupLeadResult
             {

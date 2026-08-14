@@ -7,5 +7,8 @@
         Task<bool> CanPickupLeadAsync(long consultantProfileId);
 
         Task<ConsultantDailyLimitStatus> GetDailyLimitStatusAsync(long consultantProfileId);
+        Task SetTestConsultantLimit(long consultantProfileId);
+        Task SetSellerConsultantLimit(long consultantProfileId);
+        Task SetTopSellerConsultantLimit(long consultantProfileId);
     }
 }

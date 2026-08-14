@@ -24,6 +24,7 @@ public class ConsultantProfile : BaseAuditableEntity<long>
     public int? LimitNumber { get; set; }
     public ConsultantRole ConsultantRole { get; set; }
     public User User { get; set; } = default!;
+    public DateTime? RoleStartedAt { get; set; }
     public ICollection<LeadAssignment> CallAssignments { get; set; }
     public ICollection<Attendance> Attendances { get; set; }
 }

@@ -62,7 +62,7 @@ namespace DentalDashboard.Infrastracture.Repository
 
             var inFlightLead = await baseQuery
                 .Where(x => x.NotificationSent)
-                .OrderByDescending(x =>  x.CreatedAt)
+                .OrderByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .FirstOrDefaultAsync();
 
@@ -80,6 +80,22 @@ namespace DentalDashboard.Infrastracture.Repository
             TimeSpan redispatchInterval)
         {
             var lead = await GetActiveRealtimeBroadcastLeadAsync();
+            if (lead == null)
+                return null;
+
+            if (!lead.NotificationSent)
+                return lead;
+
+            var redispatchBefore = DateTime.UtcNow.Subtract(redispatchInterval);
+            if (lead.LastDispatchAt == null || lead.LastDispatchAt < redispatchBefore)
+                return lead;
+
+            return null;
+        }
+        public async Task<LeadAssignment?> GetCurrentRealtimeLeadForTestConsultanntDispatchAsync(
+            TimeSpan redispatchInterval)
+        {
+            var lead = await GetActiveRealtimeBroadcastLeadForTestConnsultantAsync();
             if (lead == null)
                 return null;
 
@@ -209,5 +225,6 @@ namespace DentalDashboard.Infrastracture.Repository
 
             return affectedRows == 1;
         }
+
     }
 }

@@ -25,13 +25,17 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public Task<List<ConsultantProfile>> GetAvailableAndOnnlineTestConsultant()
         {
+            var fiveDaysAgo = DateTime.UtcNow.AddDays(-5);
+
             return GetAll()
-              .Where(x =>
-              x.IsAvailable == true &&
-              x.IsOnline == true &&
-              x.ConsultantRole == ConsultantRole.Test 
-              && x.IsCompleteProfile == true)
-              .ToListAsync();
+                .Where(x =>
+                    x.IsAvailable &&
+                    x.IsOnline &&
+                    x.IsCompleteProfile &&
+                    x.ConsultantRole == ConsultantRole.Test &&
+                    x.RoleStartedAt.HasValue &&
+                    x.RoleStartedAt.Value > fiveDaysAgo)
+                .ToListAsync();
         }
 
         public Task<List<ConsultantProfile>> GetAvailableAndOnnlineTopSellerConsultant()

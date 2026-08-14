@@ -7,5 +7,6 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
         Task<long?> EnsureProfileExistsAsync(Guid userId);
         Task SetOnlineStatusAsync(long consultantProfileId, bool isOnline);
         Task SetPresentStatusAsync(long consultantProfileId, bool isPresent);
+
     }
 }

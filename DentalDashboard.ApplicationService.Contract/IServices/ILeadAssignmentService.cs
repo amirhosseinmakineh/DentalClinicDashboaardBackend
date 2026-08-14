@@ -17,5 +17,6 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
         Task AssignLeadToTestConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null);
         Task AssignLeadToSellerConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null);
         Task AssignLeadToTopSellertConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null);
+        Task AddLeadToUnCallLead();
     }
 }

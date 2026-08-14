@@ -1,4 +1,5 @@
-﻿using DentalDashboard.Domain.Models;
+﻿using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.IRepositories;
 
 namespace DentalDashboard.Domain.IRepositories
@@ -17,5 +18,7 @@ namespace DentalDashboard.Domain.IRepositories
         Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync();
         Task<int> GetTodayPickupCountAsync(long consultantProfileId);
         Task<bool> TryPickupLeadAsync(long leadAssignmentId, long consultantProfileId, CancellationToken cancellationToken);
+        Task<LeadAssignment?> GetCurrentRealtimeLeadForTestConsultanntDispatchAsync(TimeSpan redispatchInterval);
+
     }
 }

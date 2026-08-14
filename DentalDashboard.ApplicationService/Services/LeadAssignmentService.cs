@@ -469,6 +469,8 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
+                await leadAssignmentLimitService.SetTestConsultantLimit(consultant.Id);
+
                 if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
                     availableConsultants.Add(consultant);
             }
@@ -480,7 +482,7 @@ namespace DentalDashboard.ApplicationService.Services
             }
 
             var lead = await leadAssignmentRepository
-                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
+                .GetCurrentRealtimeLeadForTestConsultanntDispatchAsync(RealtimeLeadRedispatchInterval);
 
             if (lead == null)
             {
@@ -533,6 +535,8 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
+                await leadAssignmentLimitService.SetSellerConsultantLimit(consultant.Id);
+
                 if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
                     availableConsultants.Add(consultant);
             }
@@ -543,29 +547,32 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var lead = await leadAssignmentRepository
+            var newLead = await leadAssignmentRepository
                 .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
 
-            if (lead == null)
+            if (newLead == null)
             {
                 logger.LogInformation(
                     "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
                 return;
             }
+            else
+            {
 
-            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
+                var isReminder = newLead.NotificationSent && newLead.LastDispatchAt.HasValue;
 
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
+                await NotifyConsultantsForRealtimeLeadAsync(newLead, availableConsultants, isReminder);
 
-            lead.NotificationSent = true;
-            lead.LastDispatchAt = DateTime.UtcNow;
+                newLead.NotificationSent = true;
+                newLead.LastDispatchAt = DateTime.UtcNow;
 
-            await leadAssignmentRepository.SaveChange();
+                await leadAssignmentRepository.SaveChange();
 
-            logger.LogInformation(
-                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
-                lead.Id,
-                isReminder);
+                logger.LogInformation(
+                    "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
+                    newLead.Id,
+                    isReminder);
+            }
         }
 
         public async Task AssignLeadToTopSellertConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
@@ -597,6 +604,8 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
+                await leadAssignmentLimitService.SetTopSellerConsultantLimit(consultant.Id);
+
                 if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
                     availableConsultants.Add(consultant);
             }
@@ -676,6 +685,23 @@ namespace DentalDashboard.ApplicationService.Services
             }
 
             return excludeConsultants;
+        }
+
+        public async Task AddLeadToUnCallLead()
+        {
+            var unCallLeads = await leadAssignmentRepository.GetAll()
+                .Where(x => x.CreatedAt <= DateTime.Now.AddDays(-15)
+                && x.ConsultantProfileId == null
+                && x.ReportSubmittedAt == null
+                && x.LeadAssignmentState == LeadAssignmentState.New
+                && x.AssignmentType == LeadAssignmentType.RealTime
+                && x.IsDeleted == false).ToListAsync();
+            foreach(var unCallLead in unCallLeads)
+            {
+                unCallLead.IsDeleted = true;
+                leadAssignmentRepository.Update(unCallLead);
+            }
+            await leadAssignmentRepository.SaveChange();
         }
     }
 }

@@ -276,7 +276,10 @@ namespace DentalDashboard.ApplicationService.Services
                     new Dictionary<string, string>
                     {
                         ["leadId"] = lead.Id.ToString(),
-                        ["type"] = leadType == LeadLimitType.Burnt ? "BurntLead" : "RealtimeLead",
+                        // The frontend notification handlers currently subscribe to
+                        // the RealtimeLead event name for every pickup notification.
+                        ["type"] = "RealtimeLead",
+                        ["leadLimitType"] = leadType.ToString(),
                         ["userName"] = lead.UserName ?? string.Empty,
                         ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
                         ["isReminder"] = isReminder ? "true" : "false",

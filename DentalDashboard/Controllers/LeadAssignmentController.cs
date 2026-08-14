@@ -57,7 +57,9 @@ namespace DentalDashboard.Controllers
             if (result.Status == PickupLeadStatus.DailyLimitReached)
             {
                 var limitStatus = await leadAssignmentLimitService
-                    .GetDailyLimitStatusAsync(consultantProfileId, LeadLimitType.Realtime);
+                    .GetDailyLimitStatusAsync(
+                        consultantProfileId,
+                        result.LeadType ?? LeadLimitType.Realtime);
 
                 return StatusCode(
                     StatusCodes.Status429TooManyRequests,

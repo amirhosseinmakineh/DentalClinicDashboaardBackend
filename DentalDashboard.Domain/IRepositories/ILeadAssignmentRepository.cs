@@ -11,6 +11,7 @@ namespace DentalDashboard.Domain.IRepositories
         Task<List<LeadAssignment>> GetRealtimeLeadsForDispatchAsync(int take, TimeSpan redispatchInterval);
         Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync();
         Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(TimeSpan redispatchInterval);
+        Task<LeadAssignment?> GetCurrentLeadForDispatchAsync(LeadLimitType leadType, TimeSpan redispatchInterval);
         Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now);
         Task<int> CountUnassignedRealTimeLeadsAsync();
         Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers);
@@ -18,7 +19,5 @@ namespace DentalDashboard.Domain.IRepositories
         Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync();
         Task<int> GetTodayPickupCountAsync(long consultantProfileId, LeadLimitType leadType);
         Task<bool> TryPickupLeadAsync(long leadAssignmentId, long consultantProfileId, CancellationToken cancellationToken);
-        Task<LeadAssignment?> GetCurrentRealtimeLeadForTestConsultanntDispatchAsync(TimeSpan redispatchInterval);
-
     }
 }

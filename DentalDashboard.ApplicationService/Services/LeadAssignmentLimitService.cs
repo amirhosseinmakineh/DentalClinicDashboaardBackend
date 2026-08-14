@@ -97,7 +97,7 @@ namespace DentalDashboard.ApplicationService.Services
                 (ConsultantRole.Test, LeadLimitType.Realtime) => 0,
                 (ConsultantRole.Test, LeadLimitType.Burnt) => 20,
                 (ConsultantRole.Seller, LeadLimitType.Realtime) => 10,
-                (ConsultantRole.Seller, LeadLimitType.Burnt) => 30,
+                (ConsultantRole.Seller, LeadLimitType.Burnt) => 20,
                 (ConsultantRole.TopSeller, LeadLimitType.Realtime) => 20,
                 (ConsultantRole.TopSeller, LeadLimitType.Burnt) => 0,
                 _ => 0

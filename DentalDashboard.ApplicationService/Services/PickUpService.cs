@@ -33,14 +33,29 @@ public class PickUpService : IPickupService
         long consultantProfileId,
         CancellationToken cancellationToken)
     {
+        var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
+        if (lead == null)
+        {
+            return new PickupLeadResult
+            {
+                Status = PickupLeadStatus.AlreadyTaken,
+                LeadAssignmentId = leadAssignmentId
+            };
+        }
+
+        var leadType = lead.IsDeleted
+            ? LeadLimitType.Burnt
+            : LeadLimitType.Realtime;
+
         if (!await leadAssignmentLimitService.CanPickupLeadAsync(
                 consultantProfileId,
-                LeadLimitType.Realtime))
+                leadType))
         {
             return new PickupLeadResult
             {
                 Status = PickupLeadStatus.DailyLimitReached,
-                ConsultantProfileId = consultantProfileId
+                ConsultantProfileId = consultantProfileId,
+                LeadType = leadType
             };
         }
 
@@ -70,7 +85,7 @@ public class PickUpService : IPickupService
 
         await unitOfWork.SaveChangesAsync();
 
-        var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
+        lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
 
         await NotifyRealtimeLeadTakenAsync(leadAssignmentId, consultantProfileId);
 

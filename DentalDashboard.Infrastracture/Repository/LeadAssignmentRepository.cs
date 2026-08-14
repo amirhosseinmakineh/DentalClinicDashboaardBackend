@@ -92,10 +92,31 @@ namespace DentalDashboard.Infrastracture.Repository
 
             return null;
         }
-        public async Task<LeadAssignment?> GetCurrentRealtimeLeadForTestConsultanntDispatchAsync(
+        public async Task<LeadAssignment?> GetCurrentLeadForDispatchAsync(
+            LeadLimitType leadType,
             TimeSpan redispatchInterval)
         {
-            var lead = await GetActiveRealtimeBroadcastLeadAsync();
+            var query = GetAll()
+                .Where(x =>
+                    x.ConsultantProfileId == null &&
+                    x.ReportSubmittedAt == null &&
+                    x.LeadAssignmentState == LeadAssignmentState.New &&
+                    !x.PickUp);
+
+            query = leadType switch
+            {
+                LeadLimitType.Realtime => query.Where(x =>
+                    !x.IsDeleted && x.AssignmentType == LeadAssignmentType.RealTime),
+                LeadLimitType.Burnt => query.Where(x => x.IsDeleted),
+                _ => query.Where(x => false)
+            };
+
+            var lead = await query
+                .OrderByDescending(x => x.NotificationSent)
+                .ThenByDescending(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .FirstOrDefaultAsync();
+
             if (lead == null)
                 return null;
 

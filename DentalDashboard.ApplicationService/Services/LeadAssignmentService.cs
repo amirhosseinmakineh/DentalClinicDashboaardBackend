@@ -469,8 +469,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                await leadAssignmentLimitService.SetTestConsultantLimit(consultant.Id);
-
                 if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id, LeadLimitType.Burnt))
                     availableConsultants.Add(consultant);
             }
@@ -535,8 +533,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                await leadAssignmentLimitService.SetSellerConsultantLimit(consultant.Id);
-
                 if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id, LeadLimitType.Burnt))
                     availableConsultants.Add(consultant);
             }
@@ -604,8 +600,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                await leadAssignmentLimitService.SetTopSellerConsultantLimit(consultant.Id);
-
                 if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id, LeadLimitType.Realtime))
                     availableConsultants.Add(consultant);
             }

@@ -7,8 +7,6 @@ namespace DentalDashboard.ApplicationService.Services
 {
     public class LeadAssignmentLimitService : ILeadAssignmentLimitService
     {
-        public const int SystemDefaultDailyLimit = 10;
-
         private readonly ILeadAssignmentRepository _repository;
         private readonly IConsultantProfileRepository _consultantProfileRepository;
         public LeadAssignmentLimitService(
@@ -18,8 +16,6 @@ namespace DentalDashboard.ApplicationService.Services
             _repository = repository;
             _consultantProfileRepository = consultantProfileRepository;
         }
-
-        public int DefaultDailyLimit => SystemDefaultDailyLimit;
 
         public async Task<bool> CanPickupLeadAsync(long consultantProfileId, LeadLimitType leadType)
         {
@@ -106,36 +102,6 @@ namespace DentalDashboard.ApplicationService.Services
                 (ConsultantRole.TopSeller, LeadLimitType.Burnt) => 0,
                 _ => 0
             };
-        }
-        public async Task SetSellerConsultantLimit(long consultantProfileId)
-        {
-            var consultant = await _consultantProfileRepository.GetAll().Where(x => x.Id == consultantProfileId).FirstOrDefaultAsync();
-            if (consultant == null)
-                throw new InvalidOperationException("مشاور پیدا نشد.");
-            consultant.LimitNumber = 20;
-            _consultantProfileRepository.Update(consultant);
-            await _consultantProfileRepository.SaveChange();
-
-        }
-
-        public async Task SetTestConsultantLimit(long consultantProfileId)
-        {
-            var consultant = await _consultantProfileRepository.GetAll().Where(x => x.Id == consultantProfileId).FirstOrDefaultAsync();
-            if (consultant == null)
-                throw new InvalidOperationException("مشاور پیدا نشد.");
-            consultant.LimitNumber = 40;
-            _consultantProfileRepository.Update(consultant);
-            await _consultantProfileRepository.SaveChange();
-        }
-
-        public async Task SetTopSellerConsultantLimit(long consultantProfileId)
-        {
-            var consultant = await _consultantProfileRepository.GetAll().Where(x => x.Id == consultantProfileId).FirstOrDefaultAsync();
-            if (consultant == null)
-                throw new InvalidOperationException("مشاور پیدا نشد.");
-            consultant.LimitNumber = 30;
-            _consultantProfileRepository.Update(consultant);
-            await _consultantProfileRepository.SaveChange();
         }
     }
 }

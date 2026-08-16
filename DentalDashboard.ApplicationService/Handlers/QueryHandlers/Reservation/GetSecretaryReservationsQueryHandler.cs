@@ -142,6 +142,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     ,LastFollowUpAt = x.FollowUps.Where(f => !f.IsDeleted).OrderByDescending(f => f.CreatedAt).Select(f => (DateTime?)f.ScheduledAt).FirstOrDefault()
                     ,RejectionReason = x.RejectionReason
                     ,CancellationReason = x.CancellationReason
+                    ,RequestedServiceName = x.Description
+                    ,ConsultantReport = x.LeadAssignment.ReportDescription
+                    ,Priority = x.FollowUps.Where(f => !f.IsDeleted && f.Status == FollowUpStatus.Pending).Select(f => (FollowUpPriority?)f.Priority).Max()
+                    ,LastChangedByName = x.SecretaryActivities.OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Select(a => a.ActorUser.FirstName + " " + a.ActorUser.LastName).FirstOrDefault()
                 })
                 .ToListAsync(cancellationToken);
 

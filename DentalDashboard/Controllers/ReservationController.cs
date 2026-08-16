@@ -8,6 +8,8 @@ using System.Security.Claims;
 using DentalDashboard.Framwork.Domain;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Services;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace DentalDashboard.Controllers
 {
@@ -98,10 +100,12 @@ namespace DentalDashboard.Controllers
 
         [HttpPost("{reservationId:long}/follow-ups")]
         [Authorize(Roles = "Secretary")]
-        public async Task<IActionResult> CreateFollowUp(long reservationId, FollowUpRequest request, CancellationToken ct)
+        public async Task<IActionResult> CreateFollowUp(long reservationId, CreateFollowUpHttpRequest request, CancellationToken ct)
         {
             if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
-            try { var id = await secretaryDashboardService.CreateFollowUpAsync(reservationId, actor, request, ct); return Ok(Result<object>.Success(new { followUpId = id }, "پیگیری ثبت شد")); }
+            if (!HasExplicitOffset(request.ScheduledAt) || !DateTimeOffset.TryParse(request.ScheduledAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var scheduledAt))
+                return BadRequest(Result.Failure("زمان پیگیری باید ISO-8601 و دارای offset باشد", "INVALID_REQUEST"));
+            try { var result = await secretaryDashboardService.CreateFollowUpAsync(reservationId, actor, new CreateFollowUpRequest(scheduledAt, request.Reason), ct); return Ok(Result<FollowUpCreatedDto>.Success(result, "پیگیری ثبت شد")); }
             catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
         }
 
@@ -110,7 +114,7 @@ namespace DentalDashboard.Controllers
         public async Task<IActionResult> AddContact(long reservationId, ContactRequest request, CancellationToken ct)
         {
             if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
-            try { return Ok(Result<object>.Success(new { callCount = await secretaryDashboardService.AddContactAsync(reservationId, actor, request, ct) }, "تماس ثبت شد")); }
+            try { return Ok(Result<ContactCreatedDto>.Success(await secretaryDashboardService.AddContactAsync(reservationId, actor, request, ct), "تماس ثبت شد")); }
             catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
         }
 
@@ -119,7 +123,7 @@ namespace DentalDashboard.Controllers
         public async Task<IActionResult> AddNote(long reservationId, ReservationNoteRequest request, CancellationToken ct)
         {
             if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
-            try { return Ok(Result<object>.Success(new { noteId = await secretaryDashboardService.AddNoteAsync(reservationId, actor, request.Note, ct) }, "یادداشت ثبت شد")); }
+            try { return Ok(Result<NoteCreatedDto>.Success(await secretaryDashboardService.AddNoteAsync(reservationId, actor, request.Note, ct), "یادداشت ثبت شد")); }
             catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
         }
 
@@ -130,8 +134,11 @@ namespace DentalDashboard.Controllers
 
         [HttpGet("{reservationId:long}/history")]
         [Authorize(Roles = "Secretary,Admin")]
-        public async Task<IActionResult> History(long reservationId, CancellationToken ct) =>
-            Ok(Result<List<HistoryItemDto>>.Success(await secretaryDashboardService.HistoryAsync(reservationId, ct), "تاریخچه دریافت شد"));
+        public async Task<IActionResult> History(long reservationId, CancellationToken ct)
+        {
+            try { return Ok(Result<List<HistoryItemDto>>.Success(await secretaryDashboardService.HistoryAsync(reservationId, ct), "تاریخچه دریافت شد")); }
+            catch (KeyNotFoundException ex) { return MutationError(ex); }
+        }
 
         [HttpPut("{reservationId:long}/follow-ups/{followUpId:long}")]
         [Authorize(Roles = "Secretary")]
@@ -156,6 +163,7 @@ namespace DentalDashboard.Controllers
         {
             KeyNotFoundException => NotFound(Result.Failure(ErrorMessage(ex.Message), ex.Message)),
             InvalidOperationException => Conflict(Result.Failure(ErrorMessage(ex.Message), ex.Message)),
+            ArgumentException => UnprocessableEntity(Result.Failure(ErrorMessage(ex.Message), ex.Message)),
             _ => BadRequest(Result.Failure(ErrorMessage(ex.Message), ex.Message))
         };
 
@@ -166,6 +174,11 @@ namespace DentalDashboard.Controllers
             "RESERVATION_TIME_CONFLICT" => "زمان انتخاب‌شده دارای تداخل است",
             "RESERVATION_TIME_IN_PAST" => "زمان انتخاب‌شده در گذشته است",
             "FOLLOW_UP_TIME_IN_PAST" => "زمان پیگیری معتبر نیست",
+            "FOLLOW_UP_REASON_REQUIRED" => "دلیل پیگیری الزامی است",
+            "RESERVATION_NOT_FOLLOWABLE" => "برای این رزرو امکان ثبت پیگیری وجود ندارد",
+            "INVALID_CONTACT_RESULT" => "نتیجه تماس معتبر نیست",
+            "NOTE_REQUIRED" => "متن یادداشت الزامی است",
+            "TEXT_TOO_LONG" => "متن واردشده بیش از حد مجاز است",
             "VISIT_RESULT_TOO_EARLY" => "ثبت نتیجه پیش از سررسید رزرو ممکن نیست",
             "CONCURRENCY_CONFLICT" => "رزرو هم‌زمان توسط کاربر دیگری تغییر کرده است",
             _ => code
@@ -219,6 +232,9 @@ namespace DentalDashboard.Controllers
             return Guid.TryParse(value, out userId);
         }
 
+        private static bool HasExplicitOffset(string? value) => value is not null &&
+            Regex.IsMatch(value, @"(?:Z|[+-]\d{2}:\d{2})$", RegexOptions.CultureInvariant);
+
         [HttpGet("ConsultantPatientProfiles")]
         public async Task<IActionResult> GetConsultantPatientProfiles(
             [FromQuery] GetConsultantPatientProfilesQuery query)
@@ -235,4 +251,5 @@ namespace DentalDashboard.Controllers
     public record VisitResultRequest(VisitResultStatus VisitResultStatus, string? Note);
     public record ReservationNoteRequest(string Note);
     public record ReservationCancelRequest(string Reason);
+    public record CreateFollowUpHttpRequest(string ScheduledAt, string? Reason);
 }

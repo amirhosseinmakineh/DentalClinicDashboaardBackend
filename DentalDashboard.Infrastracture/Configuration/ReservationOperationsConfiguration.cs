@@ -9,7 +9,7 @@ public sealed class ReservationContactLogConfiguration : IEntityTypeConfiguratio
     public void Configure(EntityTypeBuilder<ReservationContactLog> builder)
     {
         builder.HasIndex(x => new { x.ReservationId, x.CreatedAt });
-        builder.Property(x => x.Note).HasMaxLength(2000);
+        builder.Property(x => x.Note).HasMaxLength(1000);
         builder.HasOne(x => x.Reservation).WithMany(x => x.ContactLogs).HasForeignKey(x => x.ReservationId).OnDelete(DeleteBehavior.Cascade);
     }
 }

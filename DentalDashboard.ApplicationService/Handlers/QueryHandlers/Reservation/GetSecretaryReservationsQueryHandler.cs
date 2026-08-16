@@ -28,14 +28,20 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (!query.IncludeCanceled)
                 reservations = reservations.Where(x => !x.IsCanceled);
 
-            if (query.ConsultantProfileId.HasValue)
-                reservations = reservations.Where(x => x.ConsultantProfileId == query.ConsultantProfileId.Value);
+            reservations = query.SortDirection?.ToLower() switch
+            {
+                "asc" => reservations.OrderBy(x => x.CreatedAt),
+                "desc" => reservations.OrderByDescending(x => x.CreatedAt),
+                _ => reservations.OrderByDescending(x => x.CreatedAt)
+            };
+
+            if (query.SortDirection == "Desc")
+                reservations = reservations.OrderBy(x => x.CreatedAt);
+
 
             if (!string.IsNullOrEmpty(query.ConsultantName))
             {
                 reservations = reservations
-                    .Include(x => x.ConsultantProfile)
-                    .ThenInclude(x => x.User)
                     .Where(x =>
                         x.ConsultantProfile.User.FirstName.Contains(query.ConsultantName) ||
                         x.ConsultantProfile.User.LastName.Contains(query.ConsultantName) ||
@@ -48,7 +54,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                 var searchText = query.SearchText.Trim();
 
                 reservations = reservations
-                    .Include(x => x.PatientUser)
                     .Where(x =>
                         (x.PatientUser.FirstName != null &&
                          x.PatientUser.FirstName.Contains(searchText)) ||
@@ -66,22 +71,37 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             reservations = reservations.ApplyReservationAtFilter(query.Date, query.From, query.To);
 
             if (query.AttendanceConfirmationStatus.HasValue)
-                reservations = reservations.Where(x => x.AttendanceConfirmationStatus == query.AttendanceConfirmationStatus.Value);
+            {
+                reservations = reservations.Where(x =>
+                    x.AttendanceConfirmationStatus ==
+                    query.AttendanceConfirmationStatus.Value);
+            }
 
             if (query.OnlyWaitingForSecretaryReview)
-                reservations = reservations.Where(x => x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
-                                                       x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
+            {
+                reservations = reservations.Where(x =>
+                    x.SecretaryReviewedAt == null &&
+                    (
+                        x.AttendanceConfirmationStatus ==
+                            ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent
+                        ||
+                        x.AttendanceConfirmationStatus ==
+                            ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent
+                    ));
+            }
 
             if (query.OnlyConsultantAttendanceConfirmed)
+            {
                 reservations = reservations.Where(x =>
                     x.ConsultantAttendanceConfirmedAt != null ||
-                    x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
-                    x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
+                    x.AttendanceConfirmationStatus ==
+                        ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
+                    x.AttendanceConfirmationStatus ==
+                        ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
+            }
 
             var totalCount = await reservations.CountAsync(cancellationToken);
             var items = await reservations
-                .OrderByDescending(x => x.ReservationAt)
-                .ThenByDescending(x => x.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(x => new SecretaryReservationItemResponse

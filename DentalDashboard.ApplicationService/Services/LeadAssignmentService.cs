@@ -579,7 +579,9 @@ namespace DentalDashboard.ApplicationService.Services
 
             var consultants = await consultantProfileRepository
                 .GetAvailableAndOnnlineTopSellerConsultant();
+
             excludedConsultantIds = await ManageExcludeConsultants();
+
             if (excludedConsultantIds is { Count: > 0 })
             {
                 var excluded = excludedConsultantIds.ToHashSet();
@@ -646,14 +648,14 @@ namespace DentalDashboard.ApplicationService.Services
                     x.LeadAssignmentState == LeadAssignmentState.Pending);
                 var unSubmitReportLead = consultant.CallAssignments.Where(x=> x.ConsultantProfileId == consultant.Id && x.ReportSubmittedAt == null).Count();
 
-                if (pendingLeadsCount >= 10)
+                if (pendingLeadsCount >= 20)
                 {
                     excludeConsultants.Add(consultant.Id);
 
                     await pushNotificationService.SendAsync(
                         consultant.UserId,
                         "خطا در گرفتن شماره جدید",
-                        "شما ۱۰ شماره در حال پیگیری دارید. لطفاً ابتدا پیگیری شماره‌های فعلی را انجام دهید؛ تا آن زمان شماره جدیدی برای شما ارسال نمی‌شود.",
+                        "شما 20 شماره در حال پیگیری دارید. لطفاً ابتدا پیگیری شماره‌های فعلی را انجام دهید؛ تا آن زمان شماره جدیدی برای شما ارسال نمی‌شود.",
                         new Dictionary<string, string>
                         {
                             ["type"] = "PendingLeadLimit",

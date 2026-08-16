@@ -47,5 +47,9 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public string? LastContactResult { get; set; }
         public string? RejectionReason { get; set; }
         public string? CancellationReason { get; set; }
+        public string? RequestedServiceName { get; set; }
+        public string? ConsultantReport { get; set; }
+        public FollowUpPriority? Priority { get; set; }
+        public string? LastChangedByName { get; set; }
     }
 }

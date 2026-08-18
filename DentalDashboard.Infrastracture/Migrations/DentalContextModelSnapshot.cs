@@ -403,6 +403,16 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool?>("SecretaryApprovedConsultantConfirmation")
                         .HasColumnType("bit");
 
+                    b.Property<string>("SecretaryAnnouncement")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("SecretaryAnnouncementUpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("SecretaryAnnouncementUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("SecretaryReviewNote")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");

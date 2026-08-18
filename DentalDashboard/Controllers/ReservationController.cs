@@ -68,6 +68,13 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpPut("SecretaryAnnouncement")]
+        public async Task<IActionResult> UpdateSecretaryAnnouncement(UpdateSecretaryAnnouncementCommand command)
+        {
+            var result = await commandDispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
         [HttpPut]
         public async Task<IActionResult> UpdateReservation(UpdateReservationCommand command)
         {

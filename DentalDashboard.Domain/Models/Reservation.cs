@@ -17,6 +17,9 @@ public class Reservation : BaseAuditableEntity<long>
     public Guid? SecretaryUserId { get; set; }
     public bool? SecretaryApprovedConsultantConfirmation { get; set; }
     public string? SecretaryReviewNote { get; set; }
+    public string? SecretaryAnnouncement { get; set; }
+    public DateTime? SecretaryAnnouncementUpdatedAt { get; set; }
+    public Guid? SecretaryAnnouncementUserId { get; set; }
     public bool IsAttendanceScoreApplied { get; set; }
     public int? AttendanceScoreValue { get; set; }
     public DateTime? AttendanceScoreAppliedAt { get; set; }

@@ -24,6 +24,9 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.Property(x => x.SecretaryReviewNote)
                 .HasMaxLength(1000);
 
+            builder.Property(x => x.SecretaryAnnouncement)
+                .HasMaxLength(1000);
+
             builder.HasOne(x => x.ConsultantProfile)
                 .WithMany()
                 .HasForeignKey(x => x.ConsultantProfileId)

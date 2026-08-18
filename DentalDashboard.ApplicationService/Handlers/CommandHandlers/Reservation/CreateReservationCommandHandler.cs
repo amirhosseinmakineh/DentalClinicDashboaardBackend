@@ -3,6 +3,7 @@ using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using DentalDashboard.ApplicationService.Handlers.Helpers;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
@@ -22,7 +23,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
         public async Task<Result<CreateReservationResponse>> HandleAsync(CreateReservationCommand command, CancellationToken cancellationToken = default)
         {
-            if (command.ReservationAt <= DateTime.Now)
+            if (!ReservationAppointmentTime.TryResolve(
+                    command.ReservationAt,
+                    command.AppointmentDateTime,
+                    out var appointmentDateTime,
+                    out var appointmentError))
+                return Result<CreateReservationResponse>.Failure(appointmentError!);
+
+            if (appointmentDateTime <= DateTime.Now)
                 return Result<CreateReservationResponse>.Failure("زمان رزرو باید در آینده باشد");
 
             var consultant = await consultantProfileRepository.GetByIdAsync(command.ConsultantProfileId);
@@ -68,7 +76,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (await reservationRepository.HasActiveReservationForLeadAsync(command.LeadAssignmentId))
                 return Result<CreateReservationResponse>.Failure("برای این بیمار قبلا رزرو فعال ثبت شده است");
 
-            var sameTimeCount = await reservationRepository.CountActiveReservationsAtAsync(command.ConsultantProfileId, command.ReservationAt);
+            var sameTimeCount = await reservationRepository.CountActiveReservationsAtAsync(command.ConsultantProfileId, appointmentDateTime);
             if (sameTimeCount >= MaxReservationsPerConsultantAtSameTime)
                 return Result<CreateReservationResponse>.Failure("ظرفیت این بازه زمانی برای مشاور تکمیل است");
 
@@ -76,14 +84,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             {
                 LeadAssignmentId = lead.Id,
                 ConsultantProfileId = command.ConsultantProfileId,
-                ReservationAt = command.ReservationAt,
+                ReservationAt = appointmentDateTime,
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                 Description = command.Description,
                 AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
                     ? null
                     : command.AttendancePrediction.Trim(),
                 CreatedAt = DateTime.UtcNow,
-                InitialReservationAt = command.ReservationAt,
+                InitialReservationAt = appointmentDateTime,
                 LastActivityAt = DateTime.UtcNow,
             };
 
@@ -93,11 +101,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             return Result<CreateReservationResponse>.Success(new CreateReservationResponse
             {
                 Id = reservation.Id,
+                ReservationId = reservation.Id,
                 LeadAssignmentId = reservation.LeadAssignmentId,
                 ConsultantProfileId = reservation.ConsultantProfileId,
                 PatientUserId = reservation.PatientUserId,
                 RequiresPatientProfile = !reservation.PatientUserId.HasValue,
                 ReservationAt = reservation.ReservationAt,
+                AppointmentDateTime = reservation.ReservationAt,
+                CreatedAt = reservation.CreatedAt,
                 SecondaryPhoneNumber = lead.SecondaryPhoneNumber,
                 PatientCity = lead.PatientCity ?? string.Empty,
                 PatientRegion = lead.PatientRegion,

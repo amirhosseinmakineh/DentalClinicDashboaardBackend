@@ -17,6 +17,9 @@ GET /api/Reservation/SecretaryReservations
 ```ts
 type SecretaryReservationItem = {
   // فیلدهای قبلی...
+  reservationId: number;
+  appointmentDateTime: string; // زمان مراجعه بیمار
+  createdAt: string;            // زمان ایجاد رکورد رزرو
   secretaryAnnouncement: string | null;
   secretaryAnnouncementStatus:
     | "NotCalled"
@@ -45,6 +48,22 @@ type SecretaryReservationItem = {
   "secretaryAnnouncementUserId": "4df08440-29bf-4ce0-953f-26686f043f04"
 }
 ```
+
+## قرارداد زمان رزرو
+
+فیلد موجود `Reservation.ReservationAt` در بک‌اند همان **زمان مراجعه بیمار** و source of truth تمام داشبوردها است؛ بنابراین ستون جدیدی در دیتابیس و migration انتقال داده ایجاد نشده است. برای شفاف‌بودن قرارداد API، این مقدار در response با نام `appointmentDateTime` نیز برگردانده می‌شود و `createdAt` فقط زمان ساخته‌شدن رکورد است.
+
+در ایجاد و ویرایش رزرو، فرانت‌اند جدید باید `appointmentDateTime` را به‌صورت ISO-8601 کامل ارسال کند:
+
+```json
+{
+  "appointmentDateTime": "2026-08-21T17:00:00Z"
+}
+```
+
+`reservationAt` فعلاً برای سازگاری با کلاینت قدیمی قابل ارسال است. اگر هر دو فیلد ارسال شوند باید دقیقاً برابر باشند، وگرنه درخواست رد می‌شود. مقدار ناقصی مانند `3` یک DateTime معتبر نیست و به‌دلیل `[ApiController]` با خطای HTTP 400 رد می‌شود.
+
+لیست ادمین/منشی (`GET /api/reservations` و endpoint قدیمی SecretaryReservations)، لیست مشاور و گزارش روزانه ادمین همگی زمان مراجعه را مستقیماً از همان `Reservation.ReservationAt` می‌خوانند. مرتب‌سازی و فیلتر گزارش روزانه نیز بر اساس زمان مراجعه انجام می‌شود، نه `createdAt`.
 
 ## ثبت یا ویرایش اعلام منشی
 

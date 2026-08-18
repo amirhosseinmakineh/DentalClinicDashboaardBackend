@@ -48,7 +48,7 @@ public sealed record DailyReservationReportItem(
     string? PatientRegion,
     string? BusinessName,
     int? AttendanceProbabilityPercent,
-    DateTime ReservationAt,
+    DateTime AppointmentDateTime,
     DateTime CreatedAt,
     DailyReservationRequestStatus RequestStatus,
     string RequestStatusTitle,
@@ -76,7 +76,7 @@ public class DailyReservationsReportService(DentalContext context)
         var reportDate = date ?? IranTimeHelper.TodayInIran();
         var query = BuildQuery(reportDate, consultantProfileId, requestStatus);
         var rows = await query
-            .OrderByDescending(x => x.CreatedAt)
+            .OrderBy(x => x.ReservationAt)
             .ThenByDescending(x => x.Id)
             .Select(x => new
             {
@@ -157,7 +157,7 @@ public class DailyReservationsReportService(DentalContext context)
             item.ConsultantPhoneNumber, item.PatientName, item.PatientPhoneNumber,
             item.SecondaryPhoneNumber, item.PatientCity, item.PatientRegion, item.BusinessName,
             item.AttendanceProbabilityPercent?.ToString(), FormatIran(item.CreatedAt),
-            FormatIran(item.ReservationAt), item.RequestStatusTitle, item.VisitResultStatusTitle,
+            FormatIran(item.AppointmentDateTime), item.RequestStatusTitle, item.VisitResultStatusTitle,
             AdminReportPersianLabels.ToYesNoNullable(item.IsConfirmedWithPatient),
             AdminReportPersianLabels.ToYesNo(item.IsCanceled), item.CancellationReason, item.Description)));
 
@@ -170,7 +170,7 @@ public class DailyReservationsReportService(DentalContext context)
         var (startUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(date);
         var (endUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(date.AddDays(1));
         var query = context.Reservations.AsNoTracking()
-            .Where(x => !x.IsDeleted && x.CreatedAt >= startUtc && x.CreatedAt < endUtc);
+            .Where(x => !x.IsDeleted && x.ReservationAt >= startUtc && x.ReservationAt < endUtc);
 
         if (consultantProfileId.HasValue)
             query = query.Where(x => x.ConsultantProfileId == consultantProfileId.Value);

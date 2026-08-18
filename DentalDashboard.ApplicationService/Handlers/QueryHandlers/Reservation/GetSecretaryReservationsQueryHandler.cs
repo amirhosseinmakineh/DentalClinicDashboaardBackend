@@ -40,9 +40,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 
             reservations = query.SortDirection?.ToLower() switch
             {
-                "asc" => reservations.OrderBy(x => x.CreatedAt),
-                "desc" => reservations.OrderByDescending(x => x.CreatedAt),
-                _ => reservations.OrderByDescending(x => x.CreatedAt)
+                "asc" => reservations.OrderBy(x => x.ReservationAt),
+                "desc" => reservations.OrderByDescending(x => x.ReservationAt),
+                _ => reservations.OrderBy(x => x.ReservationAt)
             };
 
             if (!string.IsNullOrEmpty(query.ConsultantName))
@@ -126,6 +126,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                 select new SecretaryReservationItemResponse
                 {
                     Id = x.Id,
+                    ReservationId = x.Id,
                     LeadAssignmentId = x.LeadAssignmentId,
                     ConsultantProfileId = x.ConsultantProfileId,
                     ConsultantUserId = x.ConsultantProfile.UserId,
@@ -133,6 +134,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     PatientUserId = x.PatientUserId,
                     RequiresPatientProfile = !x.PatientUserId.HasValue,
                     ReservationAt = x.ReservationAt,
+                    AppointmentDateTime = x.ReservationAt,
+                    CreatedAt = x.CreatedAt,
                     PatientName = x.LeadAssignment.UserName,
                     PatientPhoneNumber = x.LeadAssignment.PhoneNumber,
                     SecondaryPhoneNumber = x.LeadAssignment.SecondaryPhoneNumber,

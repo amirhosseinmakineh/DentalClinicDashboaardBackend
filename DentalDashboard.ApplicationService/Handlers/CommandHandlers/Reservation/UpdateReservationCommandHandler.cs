@@ -4,6 +4,7 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using DentalDashboard.ApplicationService.Handlers.Helpers;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
@@ -25,6 +26,13 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             UpdateReservationCommand command,
             CancellationToken cancellationToken = default)
         {
+            if (!ReservationAppointmentTime.TryResolve(
+                    command.ReservationAt,
+                    command.AppointmentDateTime,
+                    out var appointmentDateTime,
+                    out var appointmentError))
+                return Result<ReservationItemResponse>.Failure(appointmentError!);
+
             var reservation = await reservationRepository.GetByIdAsync(command.ReservationId);
             if (reservation == null || reservation.IsDeleted || reservation.IsCanceled)
                 return Result<ReservationItemResponse>.Failure("رزرو فعال یافت نشد");
@@ -64,15 +72,15 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 return Result<ReservationItemResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
             }
 
-            var reservationTimeChanged = reservation.ReservationAt != command.ReservationAt;
-            if (reservationTimeChanged && command.ReservationAt <= DateTime.Now)
+            var reservationTimeChanged = reservation.ReservationAt != appointmentDateTime;
+            if (reservationTimeChanged && appointmentDateTime <= DateTime.Now)
                 return Result<ReservationItemResponse>.Failure("زمان رزرو باید در آینده باشد");
 
             if (reservationTimeChanged)
             {
                 var sameTimeCount = await reservationRepository.CountActiveReservationsAtExcludingAsync(
                     command.ConsultantProfileId,
-                    command.ReservationAt,
+                    appointmentDateTime,
                     reservation.Id);
                 if (sameTimeCount >= MaxReservationsPerConsultantAtSameTime)
                 {
@@ -91,7 +99,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             leadAssignmentRepository.Update(lead);
 
-            reservation.ReservationAt = command.ReservationAt;
+            reservation.ReservationAt = appointmentDateTime;
             reservation.Description = command.Description?.Trim();
             reservation.AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
                 ? null
@@ -104,11 +112,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             return Result<ReservationItemResponse>.Success(new ReservationItemResponse
             {
                 Id = reservation.Id,
+                ReservationId = reservation.Id,
                 LeadAssignmentId = reservation.LeadAssignmentId,
                 ConsultantProfileId = reservation.ConsultantProfileId,
                 PatientUserId = reservation.PatientUserId,
                 RequiresPatientProfile = !reservation.PatientUserId.HasValue,
                 ReservationAt = reservation.ReservationAt,
+                AppointmentDateTime = reservation.ReservationAt,
+                CreatedAt = reservation.CreatedAt,
                 PatientName = lead.UserName,
                 PatientPhoneNumber = lead.PhoneNumber,
                 SecondaryPhoneNumber = lead.SecondaryPhoneNumber,

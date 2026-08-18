@@ -28,11 +28,14 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                 .Select(x => new ReservationItemResponse
                 {
                     Id = x.Id,
+                    ReservationId = x.Id,
                     LeadAssignmentId = x.LeadAssignmentId,
                     ConsultantProfileId = x.ConsultantProfileId,
                     PatientUserId = x.PatientUserId,
                     RequiresPatientProfile = !x.PatientUserId.HasValue,
                     ReservationAt = x.ReservationAt,
+                    AppointmentDateTime = x.ReservationAt,
+                    CreatedAt = x.CreatedAt,
                     PatientName = x.LeadAssignment != null ? x.LeadAssignment.UserName : string.Empty,
                     PatientPhoneNumber = x.LeadAssignment != null ? x.LeadAssignment.PhoneNumber : string.Empty,
                     SecondaryPhoneNumber = x.LeadAssignment != null ? x.LeadAssignment.SecondaryPhoneNumber : null,

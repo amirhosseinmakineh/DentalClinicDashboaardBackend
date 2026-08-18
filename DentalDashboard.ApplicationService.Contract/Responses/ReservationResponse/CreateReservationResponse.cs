@@ -3,11 +3,14 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
     public class CreateReservationResponse
     {
         public long Id { get; set; }
+        public long ReservationId { get; set; }
         public long LeadAssignmentId { get; set; }
         public long ConsultantProfileId { get; set; }
         public Guid? PatientUserId { get; set; }
         public bool RequiresPatientProfile { get; set; }
         public DateTime ReservationAt { get; set; }
+        public DateTime AppointmentDateTime { get; set; }
+        public DateTime CreatedAt { get; set; }
         public string? SecondaryPhoneNumber { get; set; }
         public string PatientCity { get; set; } = default!;
         public string? PatientRegion { get; set; }

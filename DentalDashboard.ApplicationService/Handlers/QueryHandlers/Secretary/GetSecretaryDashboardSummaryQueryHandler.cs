@@ -4,6 +4,7 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.ApplicationService.Contract.IServices;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Secretary;
 
@@ -11,10 +12,13 @@ public class GetSecretaryDashboardSummaryQueryHandler
     : IQueryHandler<GetSecretaryDashboardSummaryQuery, SecretaryDashboardSummaryResponse>
 {
     private readonly IReservationRepository reservationRepository;
+    private readonly ISecretaryAccessService accessService;
 
-    public GetSecretaryDashboardSummaryQueryHandler(IReservationRepository reservationRepository)
+    public GetSecretaryDashboardSummaryQueryHandler(IReservationRepository reservationRepository,
+        ISecretaryAccessService accessService)
     {
         this.reservationRepository = reservationRepository;
+        this.accessService = accessService;
     }
 
     public async Task<SecretaryDashboardSummaryResponse> HandleAsync(
@@ -24,6 +28,11 @@ public class GetSecretaryDashboardSummaryQueryHandler
         var reservations = reservationRepository.GetAll()
             .AsNoTracking()
             .Where(x => !x.IsDeleted && !x.IsCanceled);
+        var access = await accessService.GetAccessAsync(query.SecretaryUserId, cancellationToken);
+        if (!access.IsSecretary)
+            reservations = reservations.Where(_ => false);
+        else if (!access.HasFullAccess)
+            reservations = reservations.Where(x => access.AllowedDays.Contains(x.ReservationAt.DayOfWeek));
 
         return new SecretaryDashboardSummaryResponse
         {

@@ -6,6 +6,7 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.ApplicationService.Contract.IServices;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 {
@@ -13,13 +14,16 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
     {
         private readonly IReservationRepository reservationRepository;
         private readonly IUserRepository userRepository;
+        private readonly ISecretaryAccessService secretaryAccessService;
 
         public GetSecretaryReservationsQueryHandler(
             IReservationRepository reservationRepository,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            ISecretaryAccessService secretaryAccessService)
         {
             this.reservationRepository = reservationRepository;
             this.userRepository = userRepository;
+            this.secretaryAccessService = secretaryAccessService;
         }
 
         public async Task<PaginatedResult<SecretaryReservationItemResponse>> HandleAsync(GetSecretaryReservationsQuery query, CancellationToken cancellationToken = default)
@@ -30,6 +34,15 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             var reservations = reservationRepository.GetAll()
                 .AsNoTracking()
                 .Where(x => !x.IsDeleted);
+
+            var access = await secretaryAccessService.GetAccessAsync(query.SecretaryUserId, cancellationToken);
+            if (!access.IsSecretary)
+                reservations = reservations.Where(_ => false);
+            else if (!access.HasFullAccess)
+            {
+                var allowedDays = access.AllowedDays;
+                reservations = reservations.Where(x => allowedDays.Contains(x.ReservationAt.DayOfWeek));
+            }
 
             var consultantProfileId = query.ConsultantProfileId ?? query.ConsultantId;
             if (consultantProfileId.HasValue)

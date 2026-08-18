@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using DentalDashboard.Framwork.IRepositories;
+using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.Infrastracture.Services;
 namespace DentalDashboard.Infrastracture.Registration;
 public static class InfrastructureServiceRegistration
 {
@@ -33,6 +35,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IReservationRepository, ReservationRepository>();
         services.AddScoped<IUserPresenceLogRepository, UserPresenceLogRepository>();
         services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
+        services.AddScoped<ISecretaryAccessService, SecretaryAccessService>();
 
 
         return services;

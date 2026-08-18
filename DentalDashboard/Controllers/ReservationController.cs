@@ -5,6 +5,7 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using DentalDashboard.ApplicationService.Contract.IServices;
 
 namespace DentalDashboard.Controllers
 {
@@ -14,11 +15,14 @@ namespace DentalDashboard.Controllers
     {
         private readonly ICommandDispatcher commandDispatcher;
         private readonly IQueryDispatcher queryDispatcher;
+        private readonly ISecretaryAccessService secretaryAccessService;
 
-        public ReservationController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher)
+        public ReservationController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher,
+            ISecretaryAccessService secretaryAccessService)
         {
             this.commandDispatcher = commandDispatcher;
             this.queryDispatcher = queryDispatcher;
+            this.secretaryAccessService = secretaryAccessService;
         }
 
         [HttpPost]
@@ -50,15 +54,21 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("SecretaryReservations")]
+        [Authorize]
         public async Task<IActionResult> GetSecretaryReservations([FromQuery] GetSecretaryReservationsQuery query)
         {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            query.SecretaryUserId = userId;
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
         }
 
         [HttpGet("/api/reservations")]
+        [Authorize]
         public async Task<IActionResult> GetReservations([FromQuery] GetSecretaryReservationsQuery query)
         {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            query.SecretaryUserId = userId;
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
         }
@@ -71,8 +81,12 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost("ReviewAttendance")]
+        [Authorize]
         public async Task<IActionResult> ReviewAttendance(ReviewReservationAttendanceCommand command)
         {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            command.SecretaryUserId = userId;
+            if (!await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
         }
@@ -88,15 +102,31 @@ namespace DentalDashboard.Controllers
                 return Unauthorized();
 
             command.SecretaryUserId = secretaryUserId;
+            if (!await secretaryAccessService.CanAccessReservationAsync(secretaryUserId, command.ReservationId))
+                return Forbid();
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
         }
 
         [HttpPut]
+        [Authorize]
         public async Task<IActionResult> UpdateReservation(UpdateReservationCommand command)
         {
+            if (TryGetCurrentUserId(out var userId))
+            {
+                var access = await secretaryAccessService.GetAccessAsync(userId);
+                if (access.IsSecretary && (!await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId) ||
+                    (!access.HasFullAccess && !access.AllowedDays.Contains((command.AppointmentDateTime ?? command.ReservationAt).DayOfWeek))))
+                    return Forbid();
+            }
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
+        }
+
+        private bool TryGetCurrentUserId(out Guid userId)
+        {
+            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
+            return Guid.TryParse(value, out userId);
         }
 
         [HttpGet("ConsultantPatientProfiles")]

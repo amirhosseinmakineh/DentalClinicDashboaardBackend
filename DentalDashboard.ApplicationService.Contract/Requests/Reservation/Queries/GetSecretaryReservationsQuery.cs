@@ -2,6 +2,7 @@ using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
+using System.Text.Json.Serialization;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries
 {
@@ -26,5 +27,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queri
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
         public string SortDirection { get; set; } = string.Empty;
+        [JsonIgnore]
+        public Guid SecretaryUserId { get; set; }
     }
 }

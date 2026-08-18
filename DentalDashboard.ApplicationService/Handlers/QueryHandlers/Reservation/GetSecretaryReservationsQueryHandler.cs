@@ -25,8 +25,19 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 
             var reservations = reservationRepository.GetAll().AsNoTracking();
 
-            if (!query.IncludeCanceled)
-                reservations = reservations.Where(x => !x.IsCanceled);
+            reservations = query.ReservationStatus switch
+            {
+                ReservationStatus.Active => reservations.Where(x => !x.IsCanceled),
+                ReservationStatus.Cancelled => reservations.Where(x => x.IsCanceled),
+                _ when !query.IncludeCanceled => reservations.Where(x => !x.IsCanceled),
+                _ => reservations
+            };
+
+            if (query.ConsultantProfileId.HasValue)
+                reservations = reservations.Where(x => x.ConsultantProfileId == query.ConsultantProfileId.Value);
+
+            if (query.SecretaryAnnouncementStatus.HasValue)
+                reservations = reservations.Where(x => x.SecretaryAnnouncementStatus == query.SecretaryAnnouncementStatus.Value);
 
             reservations = query.SortDirection?.ToLower() switch
             {
@@ -55,17 +66,14 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 
                 reservations = reservations
                     .Where(x =>
-                        (x.PatientUser.FirstName != null &&
-                         x.PatientUser.FirstName.Contains(searchText)) ||
-
-                        (x.PatientUser.LastName != null &&
-                         x.PatientUser.LastName.Contains(searchText)) ||
-
-                        (x.PatientUser.PhoneNumber != null &&
-                         x.PatientUser.PhoneNumber.Contains(searchText)) ||
-
-                        ((x.PatientUser.FirstName ?? "") + " " +
-                         (x.PatientUser.LastName ?? "")).Contains(searchText));
+                        x.LeadAssignment.UserName.Contains(searchText) ||
+                        x.LeadAssignment.PhoneNumber.Contains(searchText) ||
+                        (x.LeadAssignment.SecondaryPhoneNumber != null &&
+                         x.LeadAssignment.SecondaryPhoneNumber.Contains(searchText)) ||
+                        (x.PatientUser != null &&
+                         (((x.PatientUser.FirstName ?? "") + " " +
+                           (x.PatientUser.LastName ?? "")).Contains(searchText) ||
+                          x.PatientUser.PhoneNumber.Contains(searchText))));
             }
 
             reservations = reservations.ApplyReservationAtFilter(query.Date, query.From, query.To);
@@ -131,6 +139,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     SecretaryUserId = x.SecretaryUserId,
                     SecretaryApprovedConsultantConfirmation = x.SecretaryApprovedConsultantConfirmation,
                     SecretaryReviewNote = x.SecretaryReviewNote,
+                    SecretaryAnnouncementStatus = x.SecretaryAnnouncementStatus,
+                    SecretaryAnnouncement = x.SecretaryAnnouncement,
+                    SecretaryAnnouncementUpdatedAt = x.SecretaryAnnouncementUpdatedAt,
+                    SecretaryAnnouncementUserName = x.SecretaryAnnouncementUser == null
+                        ? null
+                        : (x.SecretaryAnnouncementUser.FirstName + " " + x.SecretaryAnnouncementUser.LastName).Trim(),
                     IsAttendanceScoreApplied = x.IsAttendanceScoreApplied,
                     AttendanceScoreValue = x.AttendanceScoreValue,
                     AttendanceScoreAppliedAt = x.AttendanceScoreAppliedAt,

@@ -19,6 +19,9 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<Reservation> Reservations => Set<Reservation>();
         public DbSet<UserPresenceLog> UserPresenceLogs => Set<UserPresenceLog>();
         public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+        public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
+        public DbSet<Wallet> Wallets => Set<Wallet>();
+        public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -38,6 +38,12 @@ namespace DentalDashboard.Domain.Models
 
         public ConsultantProfile? ConsultantProfile { get; set; }
 
+        public Wallet? Wallet { get; set; }
+
+        public ICollection<FinancialTransaction> CreatedFinancialTransactions { get; set; } = new HashSet<FinancialTransaction>();
+
+        public ICollection<FinancialTransaction> UpdatedFinancialTransactions { get; set; } = new HashSet<FinancialTransaction>();
+
         public ICollection<UserRole> UserRoles { get; set; }
         public ICollection<PushSubscription> PushSubscriptions { get; set; }
 

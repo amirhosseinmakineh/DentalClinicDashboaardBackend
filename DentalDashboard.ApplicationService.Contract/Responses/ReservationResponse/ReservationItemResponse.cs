@@ -1,3 +1,5 @@
+using DentalDashboard.Domain.Enums;
+
 namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse
 {
     public class ReservationItemResponse
@@ -30,5 +32,9 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public bool IsDueForConsultantConfirmation { get; set; }
         public string? Description { get; set; }
         public bool IsCanceled { get; set; }
+        public SecretaryAnnouncementStatus? SecretaryAnnouncementStatus { get; set; }
+        public string? SecretaryAnnouncement { get; set; }
+        public DateTime? SecretaryAnnouncementUpdatedAt { get; set; }
+        public string? SecretaryAnnouncementUserName { get; set; }
     }
 }

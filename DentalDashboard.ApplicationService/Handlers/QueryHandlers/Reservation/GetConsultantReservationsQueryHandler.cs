@@ -70,6 +70,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     SecretaryUserId = x.SecretaryUserId,
                     SecretaryApprovedConsultantConfirmation = x.SecretaryApprovedConsultantConfirmation,
                     SecretaryReviewNote = x.SecretaryReviewNote,
+                    SecretaryAnnouncementStatus = x.SecretaryAnnouncementStatus,
+                    SecretaryAnnouncement = x.SecretaryAnnouncement,
+                    SecretaryAnnouncementUpdatedAt = x.SecretaryAnnouncementUpdatedAt,
+                    SecretaryAnnouncementUserName = x.SecretaryAnnouncementUser == null
+                        ? null
+                        : (x.SecretaryAnnouncementUser.FirstName + " " + x.SecretaryAnnouncementUser.LastName).Trim(),
                     IsAttendanceScoreApplied = x.IsAttendanceScoreApplied,
                     AttendanceScoreValue = x.AttendanceScoreValue,
                     AttendanceScoreAppliedAt = x.AttendanceScoreAppliedAt,

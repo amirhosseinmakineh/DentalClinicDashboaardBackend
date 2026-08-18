@@ -24,6 +24,11 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.Property(x => x.SecretaryReviewNote)
                 .HasMaxLength(1000);
 
+            builder.Property(x => x.SecretaryAnnouncement)
+                .HasMaxLength(1000);
+
+            builder.HasIndex(x => new { x.SecretaryAnnouncementStatus, x.ReservationAt, x.IsCanceled });
+
             builder.HasOne(x => x.ConsultantProfile)
                 .WithMany()
                 .HasForeignKey(x => x.ConsultantProfileId)
@@ -37,6 +42,11 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.HasOne(x => x.PatientUser)
                 .WithMany()
                 .HasForeignKey(x => x.PatientUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.SecretaryAnnouncementUser)
+                .WithMany()
+                .HasForeignKey(x => x.SecretaryAnnouncementUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

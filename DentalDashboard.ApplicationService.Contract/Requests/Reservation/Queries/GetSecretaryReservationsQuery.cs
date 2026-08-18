@@ -14,6 +14,8 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queri
         public DateTime? From { get; set; }
         public DateTime? To { get; set; }
         public ReservationAttendanceConfirmationStatus? AttendanceConfirmationStatus { get; set; }
+        public SecretaryAnnouncementStatus? SecretaryAnnouncementStatus { get; set; }
+        public ReservationStatus? ReservationStatus { get; set; }
         public bool OnlyWaitingForSecretaryReview { get; set; } = false;
         public bool OnlyConsultantAttendanceConfirmed { get; set; } = false;
         public bool IncludeCanceled { get; set; } = false;

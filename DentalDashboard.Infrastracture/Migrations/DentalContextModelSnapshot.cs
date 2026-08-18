@@ -403,6 +403,19 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool?>("SecretaryApprovedConsultantConfirmation")
                         .HasColumnType("bit");
 
+                    b.Property<string>("SecretaryAnnouncement")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("SecretaryAnnouncementStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SecretaryAnnouncementUpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("SecretaryAnnouncementUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("SecretaryReviewNote")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -420,9 +433,13 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("PatientUserId");
 
+                    b.HasIndex("SecretaryAnnouncementUserId");
+
                     b.HasIndex("LeadAssignmentId", "IsCanceled");
 
                     b.HasIndex("ConsultantProfileId", "ReservationAt", "IsCanceled");
+
+                    b.HasIndex("SecretaryAnnouncementStatus", "ReservationAt", "IsCanceled");
 
                     b.ToTable("Reservations");
                 });
@@ -673,11 +690,18 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasForeignKey("PatientUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("DentalDashboard.Domain.Models.User", "SecretaryAnnouncementUser")
+                        .WithMany()
+                        .HasForeignKey("SecretaryAnnouncementUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("ConsultantProfile");
 
                     b.Navigation("LeadAssignment");
 
                     b.Navigation("PatientUser");
+
+                    b.Navigation("SecretaryAnnouncementUser");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>

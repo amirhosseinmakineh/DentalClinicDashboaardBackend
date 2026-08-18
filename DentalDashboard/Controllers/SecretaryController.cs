@@ -3,6 +3,8 @@ using DentalDashboard.ApplicationService.Contract.Requests.Secretary.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace DentalDashboard.Controllers;
 
@@ -29,10 +31,13 @@ public class SecretaryController : ControllerBase
     }
 
     [HttpGet("dashboard/summary")]
+    [Authorize]
     public async Task<IActionResult> GetDashboardSummary(CancellationToken cancellationToken)
     {
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
+        if (!Guid.TryParse(claim, out var userId)) return Unauthorized();
         var result = await queryDispatcher.DispatchAsync(
-            new GetSecretaryDashboardSummaryQuery(),
+            new GetSecretaryDashboardSummaryQuery { SecretaryUserId = userId },
             cancellationToken);
         return Ok(result);
     }

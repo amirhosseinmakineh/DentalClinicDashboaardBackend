@@ -42,6 +42,8 @@ namespace DentalDashboard.Domain.Models
 
         public ICollection<FinancialTransaction> CreatedFinancialTransactions { get; set; } = new HashSet<FinancialTransaction>();
 
+        public ICollection<FinancialTransaction> UpdatedFinancialTransactions { get; set; } = new HashSet<FinancialTransaction>();
+
         public ICollection<UserRole> UserRoles { get; set; }
         public ICollection<PushSubscription> PushSubscriptions { get; set; }
 

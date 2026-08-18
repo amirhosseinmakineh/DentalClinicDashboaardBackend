@@ -19,16 +19,22 @@ public partial class AddFinancialTransactionCore : Migration
                 Id = table.Column<long>(type: "bigint", nullable: false).Annotation("SqlServer:Identity", "1, 1"),
                 Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                 TransactionType = table.Column<string>(type: "nvarchar(40)", maxLength: 40, nullable: false),
+                Direction = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                 ReferenceType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                 ReferenceId = table.Column<long>(type: "bigint", nullable: true),
                 Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                 CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                CreatedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                CreatedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                UpdatedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
             },
             constraints: table =>
             {
                 table.PrimaryKey("PK_FinancialTransactions", x => x.Id);
                 table.ForeignKey("FK_FinancialTransactions_Users_CreatedByUserId", x => x.CreatedByUserId,
+                    "Users", "Id", onDelete: ReferentialAction.Restrict);
+                table.ForeignKey("FK_FinancialTransactions_Users_UpdatedByUserId", x => x.UpdatedByUserId,
                     "Users", "Id", onDelete: ReferentialAction.Restrict);
             });
 
@@ -71,6 +77,8 @@ public partial class AddFinancialTransactionCore : Migration
 
         migrationBuilder.CreateIndex("IX_FinancialTransactions_CreatedAt", "FinancialTransactions", "CreatedAt");
         migrationBuilder.CreateIndex("IX_FinancialTransactions_CreatedByUserId", "FinancialTransactions", "CreatedByUserId");
+        migrationBuilder.CreateIndex("IX_FinancialTransactions_TransactionType", "FinancialTransactions", "TransactionType");
+        migrationBuilder.CreateIndex("IX_FinancialTransactions_UpdatedByUserId", "FinancialTransactions", "UpdatedByUserId");
         migrationBuilder.CreateIndex("IX_FinancialTransactions_ReferenceType_ReferenceId", "FinancialTransactions", new[] { "ReferenceType", "ReferenceId" });
         migrationBuilder.CreateIndex("IX_Wallets_UserId", "Wallets", "UserId", unique: true);
         migrationBuilder.CreateIndex("IX_WalletTransactions_FinancialTransactionId", "WalletTransactions", "FinancialTransactionId");

@@ -1,9 +1,12 @@
+using System.Security.Claims;
 using DentalDashboard.ApplicationService.Contract.Dtos.Financial;
 using DentalDashboard.ApplicationService.Contract.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DentalDashboard.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/financial/transactions")]
 public class FinancialController : ControllerBase
@@ -14,23 +17,17 @@ public class FinancialController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateFinancialTransactionRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var result = await service.CreateTransactionAsync(request, cancellationToken);
-            return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
-        }
-        catch (ArgumentException ex) { return BadRequest(new ProblemDetails { Title = "Validation failed", Detail = ex.Message, Status = 400 }); }
-        catch (KeyNotFoundException ex) { return NotFound(new ProblemDetails { Title = "Resource not found", Detail = ex.Message, Status = 404 }); }
+        var result = await service.CreateTransactionAsync(request, CurrentUserId(), cancellationToken);
+        return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
     }
 
     [HttpGet("{id:long}")]
-    public async Task<IActionResult> Get(long id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Get(long id, CancellationToken cancellationToken) =>
+        Ok(await service.GetTransactionAsync(id, cancellationToken));
+
+    private Guid CurrentUserId()
     {
-        try
-        {
-            var result = await service.GetTransactionAsync(id, cancellationToken);
-            return result is null ? NotFound(new ProblemDetails { Title = "Transaction not found", Status = 404 }) : Ok(result);
-        }
-        catch (ArgumentException ex) { return BadRequest(new ProblemDetails { Title = "Validation failed", Detail = ex.Message, Status = 400 }); }
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(value, out var id) ? id : throw new UnauthorizedAccessException("Authenticated user id is invalid.");
     }
 }

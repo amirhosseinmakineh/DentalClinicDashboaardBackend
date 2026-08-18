@@ -1,5 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Dtos.Financial;
 using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.Domain.Constants;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
@@ -8,61 +9,71 @@ namespace DentalDashboard.ApplicationService.Services;
 
 public class FinancialTransactionService : IFinancialTransactionService
 {
+    private const string AdminRole = "Admin";
+    private const int MaximumPageSize = 100;
     private readonly IFinancialTransactionRepository repository;
     public FinancialTransactionService(IFinancialTransactionRepository repository) => this.repository = repository;
 
     public async Task<FinancialTransactionDto> CreateTransactionAsync(CreateFinancialTransactionRequest request,
-        CancellationToken cancellationToken = default)
+        Guid createdByUserId, CancellationToken cancellationToken = default)
     {
         ValidateAmount(request.Amount);
-        if (!await repository.UserExistsAsync(request.CreatedByUserId, cancellationToken))
-            throw new KeyNotFoundException("Creating user was not found or is inactive.");
+        if (!Enum.IsDefined(request.TransactionType)) throw new ArgumentException("Invalid transaction type.");
+        if (!Enum.IsDefined(request.Direction)) throw new ArgumentException("Invalid transaction direction.");
+        if (!Enum.IsDefined(request.Status)) throw new ArgumentException("Invalid transaction status.");
+        await EnsureActiveUserAsync(createdByUserId, "Creating user", cancellationToken);
         var entity = await repository.AddAsync(new FinancialTransaction
         {
             Amount = request.Amount,
             TransactionType = request.TransactionType,
+            Direction = request.Direction,
+            Status = request.Status,
             ReferenceType = Normalize(request.ReferenceType),
             ReferenceId = request.ReferenceId,
             Description = Normalize(request.Description),
-            CreatedByUserId = request.CreatedByUserId
+            CreatedByUserId = createdByUserId
         }, cancellationToken);
         return Map(entity);
     }
 
-    public async Task<FinancialTransactionDto?> GetTransactionAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<FinancialTransactionDto> GetTransactionAsync(long id, CancellationToken cancellationToken = default)
     {
         if (id <= 0) throw new ArgumentException("Transaction id must be positive.");
         var entity = await repository.GetByIdAsync(id, cancellationToken);
-        return entity is null ? null : Map(entity);
+        return entity is null ? throw new KeyNotFoundException("Financial transaction was not found.") : Map(entity);
     }
 
-    public async Task<WalletDto> GetUserWalletAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<WalletDto> GetUserWalletAsync(Guid userId, int page = 1, int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
-        if (!await repository.UserExistsAsync(userId, cancellationToken))
-            throw new KeyNotFoundException("User was not found or is inactive.");
-        var wallet = await repository.GetWalletByUserIdAsync(userId, cancellationToken);
-        if (wallet is null) throw new KeyNotFoundException("Wallet was not found.");
-        return Map(wallet);
+        ValidatePagination(page, pageSize);
+        await EnsureActiveUserAsync(userId, "User", cancellationToken);
+        var result = await repository.GetOrCreateWalletByUserIdAsync(userId, page, pageSize, cancellationToken);
+        return Map(result.Wallet, result.TotalCount, page, pageSize);
     }
 
     public async Task<WalletDto> AddWalletTransactionAsync(Guid userId, WalletTransactionRequest request,
-        WalletTransactionType type, CancellationToken cancellationToken = default)
+        WalletTransactionType type, Guid performedByUserId, CancellationToken cancellationToken = default)
     {
         ValidateAmount(request.Amount);
-        if (!Enum.IsDefined(type)) throw new ArgumentException("Invalid wallet transaction type.");
-        if (!await repository.UserExistsAsync(userId, cancellationToken))
-            throw new KeyNotFoundException("Wallet user was not found or is inactive.");
-        if (!await repository.UserExistsAsync(request.CreatedByUserId, cancellationToken))
-            throw new KeyNotFoundException("Creating user was not found or is inactive.");
+        if (type is not (WalletTransactionType.Deposit or WalletTransactionType.Withdrawal))
+            throw new ArgumentException("Invalid wallet transaction type.");
+        await EnsureActiveUserAsync(userId, "Wallet user", cancellationToken);
+        await EnsureActiveUserAsync(performedByUserId, "Performing user", cancellationToken);
+        if (!await repository.UserHasRoleAsync(performedByUserId, AdminRole, cancellationToken))
+            throw new UnauthorizedAccessException("Only an Admin can perform wallet operations.");
 
+        await repository.GetOrCreateWalletByUserIdAsync(userId, 1, 1, cancellationToken);
+        var isDeposit = type == WalletTransactionType.Deposit;
         var financial = new FinancialTransaction
         {
             Amount = request.Amount,
-            TransactionType = type == WalletTransactionType.Deposit
-                ? TransactionType.WalletDeposit : TransactionType.WalletWithdrawal,
-            ReferenceType = nameof(Wallet),
+            TransactionType = isDeposit ? TransactionType.WalletDeposit : TransactionType.WalletWithdrawal,
+            Direction = isDeposit ? TransactionDirection.Credit : TransactionDirection.Debit,
+            Status = FinancialTransactionStatus.Completed,
+            ReferenceType = FinancialReferenceTypes.Wallet,
             Description = Normalize(request.Description),
-            CreatedByUserId = request.CreatedByUserId
+            CreatedByUserId = performedByUserId
         };
         var walletTransaction = new WalletTransaction
         {
@@ -70,19 +81,31 @@ public class FinancialTransactionService : IFinancialTransactionService
             Type = type,
             Description = Normalize(request.Description)
         };
-        var wallet = await repository.AddWalletTransactionAsync(userId, financial, walletTransaction, cancellationToken);
-        return Map(wallet);
+        await repository.AddWalletTransactionAsync(userId, financial, walletTransaction, cancellationToken);
+        var result = await repository.GetOrCreateWalletByUserIdAsync(userId, 1, 20, cancellationToken);
+        return Map(result.Wallet, result.TotalCount, 1, 20);
     }
 
+    private async Task EnsureActiveUserAsync(Guid userId, string label, CancellationToken cancellationToken)
+    {
+        if (userId == Guid.Empty || !await repository.UserExistsAsync(userId, cancellationToken))
+            throw new KeyNotFoundException($"{label} was not found or is inactive.");
+    }
     private static void ValidateAmount(decimal amount)
     {
         if (amount <= 0) throw new ArgumentException("Amount must be greater than zero.");
         if (decimal.Round(amount, 2) != amount) throw new ArgumentException("Amount cannot have more than two decimal places.");
     }
+    private static void ValidatePagination(int page, int pageSize)
+    {
+        if (page < 1) throw new ArgumentException("Page must be at least 1.");
+        if (pageSize is < 1 or > MaximumPageSize) throw new ArgumentException($"Page size must be between 1 and {MaximumPageSize}.");
+    }
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static FinancialTransactionDto Map(FinancialTransaction x) => new(x.Id, x.Amount, x.TransactionType,
-        x.ReferenceType, x.ReferenceId, x.Description, x.CreatedAt, x.CreatedByUserId);
-    private static WalletDto Map(Wallet x) => new(x.Id, x.UserId, x.Balance, x.CreatedAt, x.IsActive,
-        x.Transactions.OrderByDescending(t => t.CreatedAt).Select(t => new WalletTransactionDto(t.Id,
-            t.FinancialTransactionId, t.Amount, t.Type, t.CreatedAt, t.Description)).ToArray());
+        x.Direction, x.Status, x.ReferenceType, x.ReferenceId, x.Description, x.CreatedAt, x.CreatedByUserId,
+        x.UpdatedAt, x.UpdatedByUserId);
+    private static WalletDto Map(Wallet x, int totalCount, int page, int pageSize) => new(x.Id, x.UserId, x.Balance,
+        x.CreatedAt, x.IsActive, x.Transactions.Select(t => new WalletTransactionDto(t.Id,
+            t.FinancialTransactionId, t.Amount, t.Type, t.CreatedAt, t.Description)).ToArray(), totalCount, page, pageSize);
 }

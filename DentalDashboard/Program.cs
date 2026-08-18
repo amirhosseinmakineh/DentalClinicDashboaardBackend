@@ -140,6 +140,8 @@ using (var scope = app.Services.CreateScope())
 // Middleware
 // ====================================
 
+app.UseMiddleware<DentalDashboard.Middleware.ApiExceptionHandlingMiddleware>();
+
 app.UseHttpsRedirection();
 
 //app.UseCors("CorsPolicy");

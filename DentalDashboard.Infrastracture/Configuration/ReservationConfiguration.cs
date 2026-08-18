@@ -11,6 +11,7 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.HasIndex(x => new { x.ConsultantProfileId, x.ReservationAt, x.IsCanceled });
             builder.HasIndex(x => new { x.LeadAssignmentId, x.IsCanceled });
             builder.HasIndex(x => x.PatientUserId);
+            builder.HasIndex(x => x.SecretaryAnnouncementStatus);
 
             builder.Property(x => x.Description)
                 .HasMaxLength(1000);

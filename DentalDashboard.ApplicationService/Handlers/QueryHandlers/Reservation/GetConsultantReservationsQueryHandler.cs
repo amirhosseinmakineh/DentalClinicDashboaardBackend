@@ -70,6 +70,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     SecretaryUserId = x.SecretaryUserId,
                     SecretaryApprovedConsultantConfirmation = x.SecretaryApprovedConsultantConfirmation,
                     SecretaryReviewNote = x.SecretaryReviewNote,
+                    SecretaryAnnouncementStatus = x.SecretaryAnnouncementStatus,
                     SecretaryAnnouncement = x.SecretaryAnnouncement,
                     SecretaryAnnouncementUpdatedAt = x.SecretaryAnnouncementUpdatedAt,
                     SecretaryAnnouncementUserId = x.SecretaryAnnouncementUserId,

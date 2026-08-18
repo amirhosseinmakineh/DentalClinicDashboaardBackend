@@ -3,6 +3,8 @@ using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace DentalDashboard.Controllers
 {
@@ -54,6 +56,13 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpGet("/api/reservations")]
+        public async Task<IActionResult> GetReservations([FromQuery] GetSecretaryReservationsQuery query)
+        {
+            var result = await queryDispatcher.DispatchAsync(query);
+            return Ok(result);
+        }
+
         [HttpPost("ConfirmAttendance")]
         public async Task<IActionResult> ConfirmAttendance(ConfirmReservationAttendanceCommand command)
         {
@@ -69,8 +78,16 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPut("SecretaryAnnouncement")]
+        [Authorize]
         public async Task<IActionResult> UpdateSecretaryAnnouncement(UpdateSecretaryAnnouncementCommand command)
         {
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                              User.FindFirstValue("userId") ??
+                              User.FindFirstValue("Id");
+            if (!Guid.TryParse(userIdValue, out var secretaryUserId))
+                return Unauthorized();
+
+            command.SecretaryUserId = secretaryUserId;
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
         }

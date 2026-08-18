@@ -18,8 +18,17 @@ GET /api/Reservation/SecretaryReservations
 type SecretaryReservationItem = {
   // فیلدهای قبلی...
   secretaryAnnouncement: string | null;
+  secretaryAnnouncementStatus:
+    | "NotCalled"
+    | "NoAnswer"
+    | "Confirmed"
+    | "CancelledByPatient"
+    | "RescheduleRequested"
+    | "CallAgain"
+    | null;
   secretaryAnnouncementUpdatedAt: string | null; // ISO DateTime, UTC
   secretaryAnnouncementUserId: string | null;    // Guid
+  secretaryAnnouncementUserName: string | null;
 };
 ```
 
@@ -31,6 +40,7 @@ type SecretaryReservationItem = {
   "patientName": "علی رضایی",
   "reservationAt": "2026-08-20T10:30:00",
   "secretaryAnnouncement": "تماس گرفته شد؛ بیمار حضور فردا را تأیید کرد.",
+  "secretaryAnnouncementStatus": "Confirmed",
   "secretaryAnnouncementUpdatedAt": "2026-08-19T08:15:00Z",
   "secretaryAnnouncementUserId": "4df08440-29bf-4ce0-953f-26686f043f04"
 }
@@ -46,14 +56,15 @@ Content-Type: application/json
 ```json
 {
   "reservationId": 124,
-  "secretaryUserId": "4df08440-29bf-4ce0-953f-26686f043f04",
-  "secretaryAnnouncement": "تماس گرفته شد؛ بیمار حضور فردا را تأیید کرد."
+  "status": "Confirmed",
+  "description": "تماس گرفته شد؛ بیمار حضور فردا را تأیید کرد."
 }
 ```
 
 - `reservationId` شناسه رزرو همان ردیف است.
-- `secretaryUserId` شناسه کاربر منشی لاگین‌شده است.
-- `secretaryAnnouncement` متن آزاد با حداکثر **۱۰۰۰ کاراکتر** است.
+- شناسه منشی از JWT کاربر لاگین‌شده خوانده می‌شود و نباید در body ارسال شود.
+- `status` یکی از شش وضعیت قرارداد بالا و اجباری است.
+- `description` متن آزاد با حداکثر **۱۰۰۰ کاراکتر** است.
 - ارسال `null`، رشته خالی یا فقط فاصله، متن قبلی را پاک می‌کند و زمان/کاربر آخرین تغییر همچنان ثبت می‌شود.
 - رزرو لغوشده قابل ویرایش نیست.
 
@@ -77,3 +88,51 @@ Content-Type: application/json
 7. برای ردیف‌های `isCanceled === true` ویرایش را غیرفعال کنید.
 
 > این قابلیت مستقل از `secretaryReviewNote` است. `secretaryReviewNote` مربوط به بررسی حضور بعد از نوبت است؛ `secretaryAnnouncement` نتیجه تماس منشی پیش از نوبت را نگه می‌دارد.
+
+## فیلتر و گزارش
+
+مسیر یکپارچه لیست و فیلتر:
+
+```http
+GET /api/reservations?search=0912&fromDate=2026-08-18&toDate=2026-08-25&consultantId=12&secretaryAnnouncementStatus=NoAnswer&reservationStatus=PendingConsultantConfirmation
+```
+
+`search` روی نام بیمار، شماره اصلی و شماره دوم جستجو می‌کند. همه پارامترها اختیاری هستند. شناسه رزرو و مشاور در این سامانه از نوع `long` است.
+
+خلاصه داشبورد:
+
+```http
+GET /api/secretary/dashboard/summary
+```
+
+```json
+{ "needCall": 20, "confirmed": 30, "noAnswer": 5, "cancelled": 3 }
+```
+
+`needCall` شامل رزروهای فعال با وضعیت `null` یا `NotCalled` است. رزروهای حذف‌شده و لغوشده در آمار محاسبه نمی‌شوند.
+
+## قرارداد Web Push مشاور
+
+برای وضعیت‌های `NoAnswer`، `Confirmed` و `CancelledByPatient` یک Web Push به کاربر مشاور مرتبط ارسال می‌شود. envelope استاندارد Push برنامه به شکل زیر است و قرارداد پایدار رویداد داخل `data` قرار دارد:
+
+```json
+{
+  "title": "اعلام منشی رزرو",
+  "body": "بیمار رزرو خود را تایید کرد.",
+  "data": {
+    "type": "ReservationSecretaryConfirmed",
+    "reservationId": "124",
+    "patientName": "علی احمدی",
+    "reservationDate": "2026-08-20",
+    "message": "بیمار رزرو خود را تایید کرد."
+  }
+}
+```
+
+مقادیر پایدار `data.type`:
+
+- `ReservationSecretaryNoAnswer`
+- `ReservationSecretaryConfirmed`
+- `ReservationSecretaryCancelled`
+
+ذخیره نتیجه تماس وابسته به تحویل Push نیست؛ در صورت نداشتن subscription فعال، نتیجه تماس همچنان با موفقیت ذخیره می‌شود.

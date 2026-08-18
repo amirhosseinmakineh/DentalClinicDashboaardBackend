@@ -407,6 +407,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<int?>("SecretaryAnnouncementStatus")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("SecretaryAnnouncementUpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -429,6 +432,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PatientUserId");
+
+                    b.HasIndex("SecretaryAnnouncementStatus");
 
                     b.HasIndex("LeadAssignmentId", "IsCanceled");
 

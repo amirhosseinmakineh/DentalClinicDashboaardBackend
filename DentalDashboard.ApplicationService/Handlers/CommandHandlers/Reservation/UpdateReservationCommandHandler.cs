@@ -125,6 +125,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 SecretaryUserId = reservation.SecretaryUserId,
                 SecretaryApprovedConsultantConfirmation = reservation.SecretaryApprovedConsultantConfirmation,
                 SecretaryReviewNote = reservation.SecretaryReviewNote,
+                SecretaryAnnouncementStatus = reservation.SecretaryAnnouncementStatus,
                 SecretaryAnnouncement = reservation.SecretaryAnnouncement,
                 SecretaryAnnouncementUpdatedAt = reservation.SecretaryAnnouncementUpdatedAt,
                 SecretaryAnnouncementUserId = reservation.SecretaryAnnouncementUserId,

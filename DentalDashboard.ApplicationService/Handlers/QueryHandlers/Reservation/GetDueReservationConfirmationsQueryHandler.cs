@@ -41,6 +41,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     BusinessName = x.LeadAssignment != null ? x.LeadAssignment.BusinessName : null,
                     AttendanceProbabilityPercent = x.LeadAssignment != null ? x.LeadAssignment.AttendanceProbabilityPercent : null,
                     AttendancePrediction = x.AttendancePrediction,
+                    SecretaryAnnouncementStatus = x.SecretaryAnnouncementStatus,
                     SecretaryAnnouncement = x.SecretaryAnnouncement,
                     SecretaryAnnouncementUpdatedAt = x.SecretaryAnnouncementUpdatedAt,
                     SecretaryAnnouncementUserId = x.SecretaryAnnouncementUserId,

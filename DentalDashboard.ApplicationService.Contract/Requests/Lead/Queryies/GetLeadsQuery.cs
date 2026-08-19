@@ -2,6 +2,7 @@
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
+using System.Text.Json.Serialization;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
 {
@@ -30,6 +31,9 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
     {
         public LeadAssignmentState? leadAssignmentState { get; set; }
         public LeadAssignmentType? LeadAssignmentType { get; set; }
+        public string? SearchText { get; set; }
+        [JsonIgnore]
+        public bool ReservationOptionsOnly { get; set; }
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

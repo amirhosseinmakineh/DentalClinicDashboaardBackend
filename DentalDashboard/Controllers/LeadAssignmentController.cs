@@ -43,7 +43,11 @@ namespace DentalDashboard.Controllers
                      DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation, cancellationToken) ||
                  !await secretaryAccessService.HasPermissionAsync(userId,
                      DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewPatients, cancellationToken)))
-                return Forbid();
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    Result.Failure("شما دسترسی مشاهده بیماران و ایجاد رزرو را ندارید"));
+
+            if (access.IsSecretary)
+                query.ReservationOptionsOnly = true;
 
             var result = await dispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);

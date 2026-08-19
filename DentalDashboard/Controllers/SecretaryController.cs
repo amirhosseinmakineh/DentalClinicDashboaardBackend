@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Responses.Secretary;
+using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Domain;
@@ -23,29 +24,26 @@ public class SecretaryController : ControllerBase
     private readonly ISecretaryAccessService accessService;
     private readonly ILeadAssignmentRepository leadAssignmentRepository;
     private readonly IReservationRepository reservationRepository;
-    private readonly IUserRepository userRepository;
 
     public SecretaryController(
         ICommandDispatcher dispatcher,
         IQueryDispatcher queryDispatcher,
         ISecretaryAccessService accessService,
         ILeadAssignmentRepository leadAssignmentRepository,
-        IReservationRepository reservationRepository,
-        IUserRepository userRepository)
+        IReservationRepository reservationRepository)
     {
         this.dispatcher = dispatcher;
         this.queryDispatcher = queryDispatcher;
         this.accessService = accessService;
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.reservationRepository = reservationRepository;
-        this.userRepository = userRepository;
     }
 
-    [HttpGet("reservation-form-options")]
+    [HttpGet("after-sales-patients")]
     [Authorize]
-    public async Task<IActionResult> GetReservationFormOptions(
-        [FromQuery] string? patientSearch,
-        [FromQuery] string? consultantSearch,
+    public async Task<IActionResult> GetAfterSalesPatients(
+        [FromQuery] string? searchText,
+        [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
@@ -55,77 +53,59 @@ public class SecretaryController : ControllerBase
         if (!access.IsSecretary ||
             !await accessService.HasPermissionAsync(userId, SecretaryPermissionType.CreateReservation, cancellationToken) ||
             !await accessService.HasPermissionAsync(userId, SecretaryPermissionType.ViewPatients, cancellationToken))
-            return Forbid();
+            return StatusCode(StatusCodes.Status403Forbidden,
+                Result.Failure("شما دسترسی مشاهده بیماران و ایجاد رزرو را ندارید"));
 
-        var take = Math.Clamp(pageSize, 1, 100);
+        var normalizedPageNumber = Math.Max(pageNumber, 1);
+        var normalizedPageSize = Math.Clamp(pageSize, 1, 100);
         var patientsQuery = leadAssignmentRepository.GetAll()
             .AsNoTracking()
             .Where(x => !x.IsDeleted &&
-                        x.ConsultantProfileId.HasValue &&
                         x.ReportSubmittedAt.HasValue &&
                         (x.CallResult == LeadCallResult.Contacted || x.CallResult == LeadCallResult.Converted) &&
-                        !x.ConsultantProfile!.IsDeleted &&
-                        x.ConsultantProfile.IsCompleteProfile &&
-                        !x.ConsultantProfile.User.IsDeleted &&
-                        x.ConsultantProfile.User.IsActive &&
                         !reservationRepository.GetAll().Any(r =>
                             !r.IsDeleted && !r.IsCanceled && r.LeadAssignmentId == x.Id));
 
-        if (!string.IsNullOrWhiteSpace(patientSearch))
+        if (!string.IsNullOrWhiteSpace(searchText))
         {
-            var search = patientSearch.Trim();
+            var search = searchText.Trim();
             patientsQuery = patientsQuery.Where(x =>
                 x.UserName.Contains(search) || x.PhoneNumber.Contains(search));
         }
 
+        var totalCount = await patientsQuery.CountAsync(cancellationToken);
         var patients = await patientsQuery
             .OrderBy(x => x.UserName)
             .ThenByDescending(x => x.Id)
-            .Take(take)
-            .Select(x => new ReservationPatientOptionResponse
+            .Skip((normalizedPageNumber - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .Select(x => new AfterSalesPatientOptionResponse
             {
                 LeadAssignmentId = x.Id,
-                ConsultantProfileId = x.ConsultantProfileId!.Value,
                 FullName = x.UserName,
-                PhoneNumber = x.PhoneNumber
+                PhoneNumber = x.PhoneNumber,
+                ConsultantProfileId = x.ConsultantProfile != null &&
+                                      !x.ConsultantProfile.IsDeleted &&
+                                      x.ConsultantProfile.IsCompleteProfile &&
+                                      !x.ConsultantProfile.User.IsDeleted &&
+                                      x.ConsultantProfile.User.IsActive
+                    ? x.ConsultantProfileId
+                    : null,
+                ConsultantFullName = x.ConsultantProfile != null
+                    ? x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName
+                    : null,
+                ConsultantPhoneNumber = x.ConsultantProfile != null
+                    ? x.ConsultantProfile.User.PhoneNumber
+                    : null
             })
             .ToListAsync(cancellationToken);
 
-        var consultantsQuery = userRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => !x.IsDeleted && x.IsActive &&
-                        x.ConsultantProfile != null &&
-                        !x.ConsultantProfile.IsDeleted &&
-                        x.ConsultantProfile.IsCompleteProfile &&
-                        x.UserRoles.Any(ur => !ur.IsDeleted &&
-                                              !ur.Role.IsDeleted &&
-                                              ur.Role.RoleName == "Consultant"));
-
-        if (!string.IsNullOrWhiteSpace(consultantSearch))
+        return Ok(Result<PaginatedResult<AfterSalesPatientOptionResponse>>.Success(new PaginatedResult<AfterSalesPatientOptionResponse>
         {
-            var search = consultantSearch.Trim();
-            consultantsQuery = consultantsQuery.Where(x =>
-                x.FirstName.Contains(search) || x.LastName.Contains(search) ||
-                (x.FirstName + " " + x.LastName).Contains(search) || x.PhoneNumber.Contains(search));
-        }
-
-        var consultants = await consultantsQuery
-            .OrderBy(x => x.LastName)
-            .ThenBy(x => x.FirstName)
-            .Take(take)
-            .Select(x => new ReservationConsultantOptionResponse
-            {
-                ProfileId = x.ConsultantProfile!.Id,
-                FirstName = x.FirstName,
-                LastName = x.LastName,
-                PhoneNumber = x.PhoneNumber
-            })
-            .ToListAsync(cancellationToken);
-
-        return Ok(Result<ReservationFormOptionsResponse>.Success(new ReservationFormOptionsResponse
-        {
-            Patients = patients,
-            Consultants = consultants
+            Items = patients,
+            PageNumber = normalizedPageNumber,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount
         }));
     }
 

@@ -4,6 +4,8 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using DentalDashboard.ApplicationService.Handlers.Helpers;
+using DentalDashboard.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
@@ -33,9 +35,17 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (appointmentDateTime <= DateTime.Now)
                 return Result<CreateReservationResponse>.Failure("زمان رزرو باید در آینده باشد");
 
-            var consultant = await consultantProfileRepository.GetByIdAsync(command.ConsultantProfileId);
-            if (consultant == null || consultant.IsDeleted)
-                return Result<CreateReservationResponse>.Failure("مشاور یافت نشد");
+            if (command.ReservationType == ReservationType.AfterSalesService &&
+                string.IsNullOrWhiteSpace(command.Description))
+                return Result<CreateReservationResponse>.Failure("توضیح نوع خدمت پس از فروش الزامی است");
+
+            var consultantIsActive = await consultantProfileRepository.GetAll()
+                .AnyAsync(x => x.Id == command.ConsultantProfileId &&
+                               !x.IsDeleted && x.IsCompleteProfile &&
+                               !x.User.IsDeleted && x.User.IsActive,
+                    cancellationToken);
+            if (!consultantIsActive)
+                return Result<CreateReservationResponse>.Failure("مشاور فعال یافت نشد");
 
             var lead = await leadAssignmentRepository.GetByIdAndConsultantAsync(command.LeadAssignmentId, command.ConsultantProfileId);
             if (lead == null || lead.IsDeleted)
@@ -87,7 +97,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 ReservationAt = appointmentDateTime,
                 ReservationType = command.ReservationType,
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
-                Description = command.Description,
+                Description = string.IsNullOrWhiteSpace(command.Description) ? null : command.Description.Trim(),
                 AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
                     ? null
                     : command.AttendancePrediction.Trim(),

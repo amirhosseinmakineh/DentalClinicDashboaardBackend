@@ -134,16 +134,30 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
     public class GetAllLeadsAssignmentQueryHandler : IQueryHandler<GetAllLeadsQuery, PaginatedResult<LeadsAssignmentItemsResponse>>
     {
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
+        private readonly IReservationRepository reservationRepository;
 
-        public GetAllLeadsAssignmentQueryHandler(ILeadAssignmentRepository leadAssignmentRepository)
+        public GetAllLeadsAssignmentQueryHandler(
+            ILeadAssignmentRepository leadAssignmentRepository,
+            IReservationRepository reservationRepository)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
+            this.reservationRepository = reservationRepository;
         }
 
         public async Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(GetAllLeadsQuery query, CancellationToken cancellationToken = default)
         {
-            var allLeads = leadAssignmentRepository.GetAll()
-                .Where(x => !x.IsDeleted)
+            var leadsQuery = leadAssignmentRepository.GetAll().Where(x => !x.IsDeleted);
+
+            if (query.ReservationOptionsOnly)
+            {
+                leadsQuery = leadsQuery.Where(x =>
+                    x.ReportSubmittedAt.HasValue &&
+                    (x.CallResult == LeadCallResult.Contacted || x.CallResult == LeadCallResult.Converted) &&
+                    !reservationRepository.GetAll().Any(r =>
+                        !r.IsDeleted && !r.IsCanceled && r.LeadAssignmentId == x.Id));
+            }
+
+            var allLeads = leadsQuery
                 .Select(x => new LeadsAssignmentItemsResponse()
                 {
                     Id = x.Id,
@@ -151,6 +165,19 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     leadAssignmentType = x.AssignmentType,
                     PhoneNumber = x.PhoneNumber,
                     UserName = x.UserName,
+                    ConsultantProfileId = x.ConsultantProfile != null &&
+                                          !x.ConsultantProfile.IsDeleted &&
+                                          x.ConsultantProfile.IsCompleteProfile &&
+                                          !x.ConsultantProfile.User.IsDeleted &&
+                                          x.ConsultantProfile.User.IsActive
+                        ? x.ConsultantProfileId
+                        : null,
+                    ConsultantFullName = x.ConsultantProfile == null
+                        ? null
+                        : x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName,
+                    ConsultantPhoneNumber = x.ConsultantProfile == null
+                        ? null
+                        : x.ConsultantProfile.User.PhoneNumber,
                     CreatedAt = x.CreatedAt,
                     AssignedAt = x.AssignedAt,
                     ContactedAt = x.ContactedAt,
@@ -163,6 +190,13 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             if (query.LeadAssignmentType.HasValue)
             {
                 allLeads = allLeads.Where(x => x.leadAssignmentType == query.LeadAssignmentType.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.SearchText))
+            {
+                var searchText = query.SearchText.Trim();
+                allLeads = allLeads.Where(x =>
+                    x.UserName.Contains(searchText) || x.PhoneNumber.Contains(searchText));
             }
 
             return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);

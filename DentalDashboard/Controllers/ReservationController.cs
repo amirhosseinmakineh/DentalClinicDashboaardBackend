@@ -41,16 +41,19 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> CreateReservation(CreateReservationCommand command)
         {
             if (TryGetCurrentUserId(out var userId))
             {
                 var access = await secretaryAccessService.GetAccessAsync(userId);
                 if (access.IsSecretary && !await secretaryAccessService.HasPermissionAsync(userId,
-                    DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation)) return Forbid();
+                    DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation))
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        Result.Failure("شما دسترسی ایجاد رزرو را ندارید"));
             }
             var result = await commandDispatcher.DispatchAsync(command);
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         [HttpPatch("SecretaryReservations/{reservationId:long}/time")]

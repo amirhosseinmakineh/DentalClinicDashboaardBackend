@@ -6,6 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.Responses.Secretary;
+using DentalDashboard.ApplicationService.Contract.Responses;
+using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Framwork.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Controllers;
 
@@ -16,12 +22,91 @@ public class SecretaryController : ControllerBase
     private readonly ICommandDispatcher dispatcher;
     private readonly IQueryDispatcher queryDispatcher;
     private readonly ISecretaryAccessService accessService;
+    private readonly ILeadAssignmentRepository leadAssignmentRepository;
+    private readonly IReservationRepository reservationRepository;
 
-    public SecretaryController(ICommandDispatcher dispatcher, IQueryDispatcher queryDispatcher, ISecretaryAccessService accessService)
+    public SecretaryController(
+        ICommandDispatcher dispatcher,
+        IQueryDispatcher queryDispatcher,
+        ISecretaryAccessService accessService,
+        ILeadAssignmentRepository leadAssignmentRepository,
+        IReservationRepository reservationRepository)
     {
         this.dispatcher = dispatcher;
         this.queryDispatcher = queryDispatcher;
         this.accessService = accessService;
+        this.leadAssignmentRepository = leadAssignmentRepository;
+        this.reservationRepository = reservationRepository;
+    }
+
+    [HttpGet("after-sales-patients")]
+    [Authorize]
+    public async Task<IActionResult> GetAfterSalesPatients(
+        [FromQuery] string? searchText,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+        var access = await accessService.GetAccessAsync(userId, cancellationToken);
+        if (!access.IsSecretary ||
+            !await accessService.HasPermissionAsync(userId, SecretaryPermissionType.CreateReservation, cancellationToken) ||
+            !await accessService.HasPermissionAsync(userId, SecretaryPermissionType.ViewPatients, cancellationToken))
+            return StatusCode(StatusCodes.Status403Forbidden,
+                Result.Failure("شما دسترسی مشاهده بیماران و ایجاد رزرو را ندارید"));
+
+        var normalizedPageNumber = Math.Max(pageNumber, 1);
+        var normalizedPageSize = Math.Clamp(pageSize, 1, 100);
+        var patientsQuery = leadAssignmentRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => !x.IsDeleted &&
+                        x.ReportSubmittedAt.HasValue &&
+                        (x.CallResult == LeadCallResult.Contacted || x.CallResult == LeadCallResult.Converted) &&
+                        !reservationRepository.GetAll().Any(r =>
+                            !r.IsDeleted && !r.IsCanceled && r.LeadAssignmentId == x.Id));
+
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            var search = searchText.Trim();
+            patientsQuery = patientsQuery.Where(x =>
+                x.UserName.Contains(search) || x.PhoneNumber.Contains(search));
+        }
+
+        var totalCount = await patientsQuery.CountAsync(cancellationToken);
+        var patients = await patientsQuery
+            .OrderBy(x => x.UserName)
+            .ThenByDescending(x => x.Id)
+            .Skip((normalizedPageNumber - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .Select(x => new AfterSalesPatientOptionResponse
+            {
+                LeadAssignmentId = x.Id,
+                FullName = x.UserName,
+                PhoneNumber = x.PhoneNumber,
+                ConsultantProfileId = x.ConsultantProfile != null &&
+                                      !x.ConsultantProfile.IsDeleted &&
+                                      x.ConsultantProfile.IsCompleteProfile &&
+                                      !x.ConsultantProfile.User.IsDeleted &&
+                                      x.ConsultantProfile.User.IsActive
+                    ? x.ConsultantProfileId
+                    : null,
+                ConsultantFullName = x.ConsultantProfile != null
+                    ? x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName
+                    : null,
+                ConsultantPhoneNumber = x.ConsultantProfile != null
+                    ? x.ConsultantProfile.User.PhoneNumber
+                    : null
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(Result<PaginatedResult<AfterSalesPatientOptionResponse>>.Success(new PaginatedResult<AfterSalesPatientOptionResponse>
+        {
+            Items = patients,
+            PageNumber = normalizedPageNumber,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount
+        }));
     }
 
     [HttpGet("access")]
@@ -62,5 +147,13 @@ public class SecretaryController : ControllerBase
             new GetSecretaryDashboardSummaryQuery { SecretaryUserId = userId },
             cancellationToken);
         return Ok(result);
+    }
+
+    private bool TryGetCurrentUserId(out Guid userId)
+    {
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                    User.FindFirstValue("userId") ??
+                    User.FindFirstValue("Id");
+        return Guid.TryParse(claim, out userId);
     }
 }

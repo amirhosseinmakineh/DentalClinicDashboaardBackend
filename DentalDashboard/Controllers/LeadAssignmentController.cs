@@ -4,6 +4,8 @@ using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace DentalDashboard.Controllers
 {
@@ -14,22 +16,48 @@ namespace DentalDashboard.Controllers
         private readonly IQueryDispatcher dispatcher;
         private readonly IPickupService pickupService;
         private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
+        private readonly ISecretaryAccessService secretaryAccessService;
 
         public LeadAssignmentController(
             IQueryDispatcher dispatcher,
             IPickupService pickupService,
-            ILeadAssignmentLimitService leadAssignmentLimitService)
+            ILeadAssignmentLimitService leadAssignmentLimitService,
+            ISecretaryAccessService secretaryAccessService)
         {
             this.dispatcher = dispatcher;
             this.pickupService = pickupService;
             this.leadAssignmentLimitService = leadAssignmentLimitService;
+            this.secretaryAccessService = secretaryAccessService;
         }
 
         [HttpGet]
-        public async Task<IActionResult> Get([FromQuery] GetAllLeadsQuery query)
+        [Authorize]
+        public async Task<IActionResult> Get(
+            [FromQuery] GetAllLeadsQuery query,
+            CancellationToken cancellationToken)
         {
-            var result = await dispatcher.DispatchAsync(query);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var access = await secretaryAccessService.GetAccessAsync(userId, cancellationToken);
+            if (access.IsSecretary &&
+                (!await secretaryAccessService.HasPermissionAsync(userId,
+                     DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation, cancellationToken) ||
+                 !await secretaryAccessService.HasPermissionAsync(userId,
+                     DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewPatients, cancellationToken)))
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    Result.Failure("شما دسترسی مشاهده بیماران و ایجاد رزرو را ندارید"));
+
+            if (access.IsSecretary)
+                query.ReservationOptionsOnly = true;
+
+            var result = await dispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
+        }
+
+        private bool TryGetCurrentUserId(out Guid userId)
+        {
+            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                        User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
+            return Guid.TryParse(value, out userId);
         }
 
         [HttpPost("{leadAssignmentId}/pickup")]

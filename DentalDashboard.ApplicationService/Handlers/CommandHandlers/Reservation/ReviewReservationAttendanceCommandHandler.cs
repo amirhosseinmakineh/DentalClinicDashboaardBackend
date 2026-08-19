@@ -26,11 +26,18 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (reservation == null || reservation.IsDeleted)
                 return Result.Failure("رزرو یافت نشد");
 
-            if (reservation.ConsultantSaysPatientAttended == null)
-                return Result.Failure("ابتدا مشاور باید حضور یا عدم حضور بیمار را تایید کند");
+            if (reservation.IsCanceled)
+                return Result.Failure("رزرو لغو شده قابل بررسی نیست");
+
+            if (reservation.ReservationAt > DateTime.Now)
+                return Result.Failure("نتیجه خدمت فقط بعد از زمان مراجعه قابل ثبت است");
 
             if (reservation.IsAttendanceScoreApplied)
                 return Result.Failure("بررسی این رزرو قبلا ثبت شده است");
+
+            var patientReceivedService = command.PatientReceivedService ?? command.Approved;
+            if (!patientReceivedService.HasValue)
+                return Result.Failure("وضعیت انجام یا عدم انجام خدمت باید مشخص شود");
 
             var profile = await consultantProfileRepository.GetAll()
                 .FirstOrDefaultAsync(x => x.Id == reservation.ConsultantProfileId, cancellationToken);
@@ -38,10 +45,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 return Result.Failure("پروفایل مشاور یافت نشد");
 
             reservation.SecretaryUserId = command.SecretaryUserId;
-            reservation.SecretaryApprovedConsultantConfirmation = command.Approved;
+            reservation.PatientReceivedService = patientReceivedService.Value;
+            reservation.SecretaryApprovedConsultantConfirmation = patientReceivedService.Value;
             reservation.SecretaryReviewedAt = DateTime.UtcNow;
             reservation.SecretaryReviewNote = command.Note;
-            reservation.AttendanceConfirmationStatus = command.Approved
+            reservation.AttendanceConfirmationStatus = patientReceivedService.Value
                 ? ReservationAttendanceConfirmationStatus.SecretaryApproved
                 : ReservationAttendanceConfirmationStatus.SecretaryRejected;
             reservation.IsAttendanceScoreApplied = true;
@@ -52,7 +60,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             reservationRepository.Update(reservation);
             await reservationRepository.SaveChange();
 
-            return Result.Success("بررسی منشی ثبت شد");
+            return Result.Success(patientReceivedService.Value
+                ? "انجام خدمت برای بیمار تایید شد"
+                : "عدم انجام خدمت برای بیمار ثبت و رزرو رد شد");
         }
     }
 }

@@ -54,7 +54,10 @@ public class GetSecretaryDashboardSummaryQueryHandler
                 x => x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.NoAnswer),
 
             Cancelled = reservations.Count(
-                x => x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.CancelledByPatient)
+                x => x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.CancelledByPatient),
+
+            AfterSalesServices = reservations.Count(
+                x => x.ReservationType == ReservationType.AfterSalesService)
         };
     }
 }

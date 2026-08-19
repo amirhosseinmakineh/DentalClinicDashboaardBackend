@@ -2,6 +2,7 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Utilities.Convertor;
 
 namespace DentalDashboard.Services;
 
@@ -57,11 +58,19 @@ public sealed record DailyReservationReportItem(
     bool? IsConfirmedWithPatient,
     bool IsCanceled,
     string? CancellationReason,
-    string? Description);
+    string? Description)
+{
+    public string AppointmentDateTimePersian =>
+        IranTimeHelper.ToIranLocalTime(AppointmentDateTime).ToPersianDateTimeString();
+    public string CreatedAtPersian =>
+        IranTimeHelper.ToIranLocalTime(CreatedAt).ToPersianDateTimeString();
+}
 
 public sealed record DailyReservationsReport(
     DateOnly Date,
     DateTime GeneratedAt,
+    string DatePersian,
+    string GeneratedAtPersian,
     DailyReservationsReportSummary Summary,
     IReadOnlyList<DailyReservationReportItem> Items);
 
@@ -123,6 +132,8 @@ public class DailyReservationsReportService(DentalContext context)
         return new DailyReservationsReport(
             reportDate,
             DateTime.UtcNow,
+            reportDate.ToPersianDate(),
+            IranTimeHelper.ToIranLocalTime(DateTime.UtcNow).ToPersianDateTimeString(),
             new DailyReservationsReportSummary(
                 items.Count,
                 items.Count(x => !x.IsCanceled),
@@ -227,7 +238,7 @@ public class DailyReservationsReportService(DentalContext context)
         : DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
     private static string FormatIran(DateTime value) =>
-        IranTimeHelper.ToIranLocalTime(value).ToString("yyyy/MM/dd HH:mm");
+        IranTimeHelper.ToIranLocalTime(value).ToPersianDateTimeString();
 
     private static string ToPersian(DailyReservationRequestStatus status) => status switch
     {

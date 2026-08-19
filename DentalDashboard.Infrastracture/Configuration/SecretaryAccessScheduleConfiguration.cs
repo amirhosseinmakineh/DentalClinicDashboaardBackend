@@ -10,8 +10,22 @@ public sealed class SecretaryAccessScheduleConfiguration : IEntityTypeConfigurat
     {
         builder.ToTable("SecretaryAccessSchedules");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.UserId, x.DayOfWeek }).IsUnique();
         builder.HasOne(x => x.User).WithMany(x => x.SecretaryAccessSchedules).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class SecretaryAccessPermissionConfiguration : IEntityTypeConfiguration<SecretaryAccessPermission>
+{
+    public void Configure(EntityTypeBuilder<SecretaryAccessPermission> builder)
+    {
+        builder.ToTable("SecretaryAccessPermissions");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.HasIndex(x => new { x.SecretaryUserId, x.DayOfWeek, x.PermissionType }).IsUnique();
+        builder.HasOne(x => x.SecretaryUser).WithMany(x => x.SecretaryAccessPermissions)
+            .HasForeignKey(x => x.SecretaryUserId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

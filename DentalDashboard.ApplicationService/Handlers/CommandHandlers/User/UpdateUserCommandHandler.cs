@@ -50,6 +50,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 user.AvatarImageName = command.AvatarImageName;
                 user.Gender = command.Gender;
                 user.IsActive = command.IsActive;
+                user.SecretaryType = string.Equals(command.RoleName, "Secretary", StringComparison.OrdinalIgnoreCase)
+                    ? command.SecretaryType ?? DentalDashboard.Domain.Enums.SecretaryType.Main
+                    : null;
 
                 userRepository.Update(user);
 

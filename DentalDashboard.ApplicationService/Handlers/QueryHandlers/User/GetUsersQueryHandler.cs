@@ -64,6 +64,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
                     IsCompleteProfile = user.IsCompleteProfile,
                     Gender = user.Gender,
                     CreatedAt = user.CreatedAt,
+                    SecretaryType = user.SecretaryType,
                     PhoneNumber = user.PhoneNumber,
                     RoleName = user.UserRoles
                         .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)

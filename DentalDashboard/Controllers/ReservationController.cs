@@ -28,6 +28,12 @@ namespace DentalDashboard.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateReservation(CreateReservationCommand command)
         {
+            if (TryGetCurrentUserId(out var userId))
+            {
+                var access = await secretaryAccessService.GetAccessAsync(userId);
+                if (access.IsSecretary && !await secretaryAccessService.HasPermissionAsync(userId,
+                    DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation)) return Forbid();
+            }
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
         }
@@ -58,6 +64,7 @@ namespace DentalDashboard.Controllers
         public async Task<IActionResult> GetSecretaryReservations([FromQuery] GetSecretaryReservationsQuery query)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            if (!await secretaryAccessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewReservations)) return Forbid();
             query.SecretaryUserId = userId;
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
@@ -68,6 +75,7 @@ namespace DentalDashboard.Controllers
         public async Task<IActionResult> GetReservations([FromQuery] GetSecretaryReservationsQuery query)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            if (!await secretaryAccessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewReservations)) return Forbid();
             query.SecretaryUserId = userId;
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
@@ -86,7 +94,8 @@ namespace DentalDashboard.Controllers
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
             command.SecretaryUserId = userId;
-            if (!await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
+            if (!await secretaryAccessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ConfirmAttendance) ||
+                !await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
         }
@@ -102,7 +111,8 @@ namespace DentalDashboard.Controllers
                 return Unauthorized();
 
             command.SecretaryUserId = secretaryUserId;
-            if (!await secretaryAccessService.CanAccessReservationAsync(secretaryUserId, command.ReservationId))
+            if (!await secretaryAccessService.HasPermissionAsync(secretaryUserId, DentalDashboard.Domain.Enums.SecretaryPermissionType.SecretaryAnnouncement) ||
+                !await secretaryAccessService.CanAccessReservationAsync(secretaryUserId, command.ReservationId))
                 return Forbid();
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
@@ -115,9 +125,12 @@ namespace DentalDashboard.Controllers
             if (TryGetCurrentUserId(out var userId))
             {
                 var access = await secretaryAccessService.GetAccessAsync(userId);
-                if (access.IsSecretary && (!await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId) ||
-                    (!access.HasFullAccess && !access.AllowedDays.Contains((command.AppointmentDateTime ?? command.ReservationAt).DayOfWeek))))
-                    return Forbid();
+                if (access.IsSecretary)
+                {
+                    if (!await secretaryAccessService.HasPermissionAsync(userId,
+                            DentalDashboard.Domain.Enums.SecretaryPermissionType.EditReservations) ||
+                        !await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
+                }
             }
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
@@ -133,6 +146,12 @@ namespace DentalDashboard.Controllers
         public async Task<IActionResult> GetConsultantPatientProfiles(
             [FromQuery] GetConsultantPatientProfilesQuery query)
         {
+            if (TryGetCurrentUserId(out var userId))
+            {
+                var access = await secretaryAccessService.GetAccessAsync(userId);
+                if (access.IsSecretary && !await secretaryAccessService.HasPermissionAsync(userId,
+                    DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewPatients)) return Forbid();
+            }
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
         }

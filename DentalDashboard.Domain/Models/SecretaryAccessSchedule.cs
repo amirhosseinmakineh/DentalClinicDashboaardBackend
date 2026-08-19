@@ -1,6 +1,6 @@
 namespace DentalDashboard.Domain.Models;
 
-public class SecretaryAccessSchedule : BaseAuditableEntity<Guid>
+public class SecretaryAccessSchedule : BaseAuditableEntity<int>
 {
     public Guid UserId { get; set; }
     public DayOfWeek DayOfWeek { get; set; }

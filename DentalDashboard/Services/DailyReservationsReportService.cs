@@ -58,7 +58,11 @@ public sealed record DailyReservationReportItem(
     bool? IsConfirmedWithPatient,
     bool IsCanceled,
     string? CancellationReason,
-    string? Description)
+    string? Description,
+    SecretaryAnnouncementStatus? SecretaryAnnouncementStatus,
+    string? SecretaryAnnouncementStatusTitle,
+    string? SecretaryAnnouncement,
+    DateTime? SecretaryAnnouncementUpdatedAt)
 {
     public string AppointmentDateTimePersian =>
         IranTimeHelper.ToIranLocalTime(AppointmentDateTime).ToPersianDateTimeString();
@@ -108,7 +112,10 @@ public class DailyReservationsReportService(DentalContext context)
                 x.ConsultantSaysPatientAttended,
                 x.IsCanceled,
                 x.SecretaryReviewNote,
-                x.Description
+                x.Description,
+                x.SecretaryAnnouncementStatus,
+                x.SecretaryAnnouncement,
+                x.SecretaryAnnouncementUpdatedAt
             })
             .ToListAsync(cancellationToken);
 
@@ -126,7 +133,15 @@ public class DailyReservationsReportService(DentalContext context)
                 x.AttendanceProbabilityPercent, EnsureUtc(x.ReservationAt), EnsureUtc(x.CreatedAt),
                 status, ToPersian(status), visitStatus, ToPersian(visitStatus),
                 GetPatientConfirmation(x.AttendanceConfirmationStatus), x.IsCanceled,
-                x.IsCanceled ? x.SecretaryReviewNote : null, x.Description);
+                x.IsCanceled ? x.SecretaryReviewNote : null, x.Description,
+                x.SecretaryAnnouncementStatus,
+                x.SecretaryAnnouncementStatus.HasValue
+                    ? ToPersian(x.SecretaryAnnouncementStatus.Value)
+                    : null,
+                x.SecretaryAnnouncement,
+                x.SecretaryAnnouncementUpdatedAt.HasValue
+                    ? EnsureUtc(x.SecretaryAnnouncementUpdatedAt.Value)
+                    : null);
         }).ToList();
 
         return new DailyReservationsReport(
@@ -159,7 +174,8 @@ public class DailyReservationsReportService(DentalContext context)
                 "شناسه رزرو", "شناسه لید", "شناسه مشاور", "نام مشاور", "موبایل مشاور",
                 "نام بیمار", "موبایل بیمار", "شماره دوم", "شهر", "منطقه", "نام بیزینس",
                 "احتمال حضور (درصد)", "تاریخ ثبت رزرو", "تاریخ مراجعه", "وضعیت درخواست",
-                "نتیجه مراجعه", "تایید با بیمار", "لغو شده", "دلیل لغو", "توضیحات")
+                "نتیجه مراجعه", "تایید با بیمار", "لغو شده", "دلیل لغو", "توضیحات",
+                "وضعیت اعلام منشی", "اعلام منشی", "زمان اعلام منشی")
         };
 
         lines.AddRange(report.Items.Select(item => CsvExportHelper.JoinRow(
@@ -170,7 +186,11 @@ public class DailyReservationsReportService(DentalContext context)
             item.AttendanceProbabilityPercent?.ToString(), FormatIran(item.CreatedAt),
             FormatIran(item.AppointmentDateTime), item.RequestStatusTitle, item.VisitResultStatusTitle,
             AdminReportPersianLabels.ToYesNoNullable(item.IsConfirmedWithPatient),
-            AdminReportPersianLabels.ToYesNo(item.IsCanceled), item.CancellationReason, item.Description)));
+            AdminReportPersianLabels.ToYesNo(item.IsCanceled), item.CancellationReason, item.Description,
+            item.SecretaryAnnouncementStatusTitle, item.SecretaryAnnouncement,
+            item.SecretaryAnnouncementUpdatedAt.HasValue
+                ? FormatIran(item.SecretaryAnnouncementUpdatedAt.Value)
+                : null)));
 
         return CsvExportHelper.BuildFile(lines.ToArray());
     }
@@ -259,6 +279,17 @@ public class DailyReservationsReportService(DentalContext context)
         DailyReservationVisitResultStatus.NoShow => "عدم مراجعه",
         DailyReservationVisitResultStatus.Canceled => "لغو شده",
         DailyReservationVisitResultStatus.NeedsFollowUp => "نیازمند پیگیری",
+        _ => "نامشخص"
+    };
+
+    private static string ToPersian(SecretaryAnnouncementStatus status) => status switch
+    {
+        SecretaryAnnouncementStatus.NotCalled => "تماس گرفته نشده",
+        SecretaryAnnouncementStatus.NoAnswer => "پاسخ نداد",
+        SecretaryAnnouncementStatus.Confirmed => "تایید کرد",
+        SecretaryAnnouncementStatus.CancelledByPatient => "لغو توسط بیمار",
+        SecretaryAnnouncementStatus.RescheduleRequested => "درخواست تغییر زمان",
+        SecretaryAnnouncementStatus.CallAgain => "تماس مجدد",
         _ => "نامشخص"
     };
 }

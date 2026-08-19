@@ -157,7 +157,6 @@ using (var scope = app.Services.CreateScope())
 // Middleware
 // ====================================
 
-app.UseHttpsRedirection();
 
 //app.UseCors("CorsPolicy");
 app.UseCors("FrontendCors");

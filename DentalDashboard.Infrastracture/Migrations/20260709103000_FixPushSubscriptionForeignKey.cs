@@ -1,4 +1,6 @@
 using System;
+using DentalDashboard.Infrastracture.Context;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,22 +8,43 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DentalDashboard.Infrastracture.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(DentalContext))]
+    [Migration("20260709103000_FixPushSubscriptionForeignKey")]
     public partial class FixPushSubscriptionForeignKey : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_PushSubscriptions_Users_UserId1",
-                table: "PushSubscriptions");
+            // This migration existed without MigrationAttribute in earlier deployments, so its
+            // changes may already have been applied manually even though it is absent from
+            // __EFMigrationsHistory. Check every object to support both database states.
+            migrationBuilder.Sql(
+                """
+                IF EXISTS (
+                    SELECT 1
+                    FROM sys.foreign_keys
+                    WHERE name = N'FK_PushSubscriptions_Users_UserId1'
+                      AND parent_object_id = OBJECT_ID(N'[dbo].[PushSubscriptions]'))
+                BEGIN
+                    ALTER TABLE [dbo].[PushSubscriptions]
+                        DROP CONSTRAINT [FK_PushSubscriptions_Users_UserId1];
+                END;
 
-            migrationBuilder.DropIndex(
-                name: "IX_PushSubscriptions_UserId1",
-                table: "PushSubscriptions");
+                IF EXISTS (
+                    SELECT 1
+                    FROM sys.indexes
+                    WHERE name = N'IX_PushSubscriptions_UserId1'
+                      AND object_id = OBJECT_ID(N'[dbo].[PushSubscriptions]'))
+                BEGIN
+                    DROP INDEX [IX_PushSubscriptions_UserId1]
+                        ON [dbo].[PushSubscriptions];
+                END;
 
-            migrationBuilder.DropColumn(
-                name: "UserId1",
-                table: "PushSubscriptions");
+                IF COL_LENGTH(N'dbo.PushSubscriptions', N'UserId1') IS NOT NULL
+                BEGIN
+                    ALTER TABLE [dbo].[PushSubscriptions] DROP COLUMN [UserId1];
+                END;
+                """);
         }
 
         /// <inheritdoc />

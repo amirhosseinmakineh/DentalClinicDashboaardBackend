@@ -8,6 +8,10 @@ using System.Security.Claims;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IRepositories;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
+using DentalDashboard.Framwork.Domain;
+using DentalDashboard.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace DentalDashboard.Controllers
 {
@@ -19,15 +23,21 @@ namespace DentalDashboard.Controllers
         private readonly IQueryDispatcher queryDispatcher;
         private readonly ISecretaryAccessService secretaryAccessService;
         private readonly IConsultantProfileRepository consultantProfileRepository;
+        private readonly IReservationRepository reservationRepository;
+        private readonly IHubContext<ReservationsHub> reservationsHub;
 
         public ReservationController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher,
             ISecretaryAccessService secretaryAccessService,
-            IConsultantProfileRepository consultantProfileRepository)
+            IConsultantProfileRepository consultantProfileRepository,
+            IReservationRepository reservationRepository,
+            IHubContext<ReservationsHub> reservationsHub)
         {
             this.commandDispatcher = commandDispatcher;
             this.queryDispatcher = queryDispatcher;
             this.secretaryAccessService = secretaryAccessService;
             this.consultantProfileRepository = consultantProfileRepository;
+            this.reservationRepository = reservationRepository;
+            this.reservationsHub = reservationsHub;
         }
 
         [HttpPost]
@@ -43,11 +53,62 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpPatch("SecretaryReservations/{reservationId:long}/time")]
+        [Authorize]
+        public async Task<IActionResult> UpdateSecretaryReservationTime(
+            long reservationId,
+            UpdateSecretaryReservationTimeRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            if (!await secretaryAccessService.HasPermissionAsync(userId,
+                    DentalDashboard.Domain.Enums.SecretaryPermissionType.EditReservations) ||
+                !await secretaryAccessService.CanAccessReservationAsync(userId, reservationId))
+                return Forbid();
+
+            var reservation = await reservationRepository.GetByIdAsync(reservationId);
+            if (reservation == null || reservation.IsDeleted || reservation.IsCanceled)
+                return Ok(Result<ReservationItemResponse>.Failure("رزرو فعال یافت نشد"));
+
+            var command = new UpdateReservationCommand
+            {
+                ReservationId = reservationId,
+                ConsultantProfileId = reservation.ConsultantProfileId,
+                ReservationAt = request.ReservationAt,
+                AppointmentDateTime = request.AppointmentDateTime,
+                Description = reservation.Description,
+                AttendancePrediction = reservation.AttendancePrediction
+            };
+
+            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
+            await BroadcastReservationUpdatedAsync(result, userId, cancellationToken);
+            return Ok(result);
+        }
+
         [HttpPost("CompletePatientProfile")]
         public async Task<IActionResult> CompletePatientProfile(CompleteReservationPatientProfileCommand command)
         {
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
+        }
+
+        private async Task BroadcastReservationUpdatedAsync(
+            Result<ReservationItemResponse> result,
+            Guid? updatedByUserId = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (!result.IsSuccess || result.Data == null) return;
+
+            await reservationsHub.Clients.All.SendAsync("ReservationUpdated", new
+            {
+                reservationId = result.Data.ReservationId,
+                consultantProfileId = result.Data.ConsultantProfileId,
+                reservationAt = result.Data.ReservationAt,
+                appointmentDateTime = result.Data.AppointmentDateTime,
+                updatedByUserId,
+                updatedAt = DateTime.UtcNow,
+                reservation = result.Data
+            }, cancellationToken);
         }
 
         [HttpGet("GetConsultantReservations")]
@@ -138,6 +199,7 @@ namespace DentalDashboard.Controllers
                 }
             }
             var result = await commandDispatcher.DispatchAsync(command);
+            await BroadcastReservationUpdatedAsync(result, TryGetCurrentUserId(out var updatedBy) ? updatedBy : null);
             return Ok(result);
         }
 
@@ -171,7 +233,8 @@ namespace DentalDashboard.Controllers
                 SecondaryPhoneNumber = request.SecondaryPhoneNumber
             };
 
-            var result = await commandDispatcher.DispatchAsync(command);
+            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
+            await BroadcastReservationUpdatedAsync(result, userId, cancellationToken);
             return Ok(result);
         }
 

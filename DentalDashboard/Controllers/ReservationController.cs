@@ -80,7 +80,8 @@ namespace DentalDashboard.Controllers
                 ReservationAt = request.ReservationAt,
                 AppointmentDateTime = request.AppointmentDateTime,
                 Description = reservation.Description,
-                AttendancePrediction = reservation.AttendancePrediction
+                AttendancePrediction = reservation.AttendancePrediction,
+                DentalServices = request.DentalServices
             };
 
             var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
@@ -233,7 +234,8 @@ namespace DentalDashboard.Controllers
                 PatientRegion = request.PatientRegion,
                 AttendanceProbabilityPercent = request.AttendanceProbabilityPercent,
                 AttendancePrediction = request.AttendancePrediction,
-                SecondaryPhoneNumber = request.SecondaryPhoneNumber
+                SecondaryPhoneNumber = request.SecondaryPhoneNumber,
+                DentalServices = request.DentalServices
             };
 
             var result = await commandDispatcher.DispatchAsync(command, cancellationToken);

@@ -17,5 +17,6 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public string? AttendancePrediction { get; set; }
         public string? SecondaryPhoneNumber { get; set; }
         public ReservationType ReservationType { get; set; } = ReservationType.Regular;
+        public List<DentalServiceType> DentalServices { get; set; } = [];
     }
 }

@@ -87,6 +87,7 @@ public class ReservationsExportService
                 LeadAssignmentType = x.LeadAssignment != null ? x.LeadAssignment.AssignmentType : (LeadAssignmentType?)null,
                 x.ReservationAt,
                 x.ReservationType,
+                x.DentalServices,
                 x.PatientReceivedService,
                 x.AttendanceConfirmationStatus,
                 x.ConsultantAttendanceConfirmedAt,
@@ -122,6 +123,7 @@ public class ReservationsExportService
                 "احتمال حضور (درصد)",
                 "تاریخ و ساعت رزرو",
                 "نوع رزرو",
+                "خدمات",
                 "خدمت انجام شد؟",
                 "وضعیت تایید حضور",
                 "زمان اعلام مشاور",
@@ -156,6 +158,7 @@ public class ReservationsExportService
                 row.AttendanceProbability?.ToString() ?? string.Empty,
                 DateConvertor.ToPersianDateTimeString(row.ReservationAt),
                 row.ReservationType == ReservationType.AfterSalesService ? "خدمات پس از فروش" : "عادی",
+                string.Join("، ", row.DentalServices.Select(ToPersian)),
                 AdminReportPersianLabels.ToYesNoNullable(row.PatientReceivedService),
                 row.AttendanceConfirmationStatus.ToPersian(),
                 row.ConsultantAttendanceConfirmedAt.HasValue
@@ -181,4 +184,12 @@ public class ReservationsExportService
 
         return CsvExportHelper.BuildFile(lines.ToArray());
     }
+
+    private static string ToPersian(DentalServiceType service) => service switch
+    {
+        DentalServiceType.Composite => "کامپوزیت",
+        DentalServiceType.Implant => "ایمپلنت",
+        DentalServiceType.Laminate => "لمینت",
+        _ => service.ToString()
+    };
 }

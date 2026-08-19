@@ -25,6 +25,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
         public async Task<Result<CreateReservationResponse>> HandleAsync(CreateReservationCommand command, CancellationToken cancellationToken = default)
         {
+            var dentalServices = command.DentalServices.Distinct().ToList();
+            if (dentalServices.Count == 0 || dentalServices.Any(x => !Enum.IsDefined(x)))
+                return Result<CreateReservationResponse>.Failure("انتخاب حداقل یک خدمت معتبر الزامی است");
+
             if (!ReservationAppointmentTime.TryResolve(
                     command.ReservationAt,
                     command.AppointmentDateTime,
@@ -96,6 +100,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 ConsultantProfileId = command.ConsultantProfileId,
                 ReservationAt = appointmentDateTime,
                 ReservationType = command.ReservationType,
+                DentalServices = dentalServices,
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                 Description = string.IsNullOrWhiteSpace(command.Description) ? null : command.Description.Trim(),
                 AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
@@ -130,6 +135,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 AttendanceConfirmationStatus = reservation.AttendanceConfirmationStatus,
                 PatientName = lead.UserName,
                 PatientPhoneNumber = lead.PhoneNumber,
+                DentalServices = reservation.DentalServices,
 
 
             }, "رزرو با موفقیت ثبت شد");

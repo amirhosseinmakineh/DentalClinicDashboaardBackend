@@ -56,6 +56,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                     AvatarImageName = command.AvatarImageName,
                     IsActive = false,
                     IsCompleteProfile = false,
+                    SecretaryType = string.Equals(command.RoleName, "Secretary", StringComparison.OrdinalIgnoreCase)
+                        ? command.SecretaryType ?? DentalDashboard.Domain.Enums.SecretaryType.Main
+                        : null,
                 };
 
                 await userRepository.AddAsync(user);

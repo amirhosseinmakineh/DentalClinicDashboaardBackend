@@ -38,6 +38,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public int? AttendanceScoreValue { get; set; }
         public DateTime? AttendanceScoreAppliedAt { get; set; }
         public bool IsDueForConsultantConfirmation { get; set; }
+        public bool CanEdit { get; set; }
         public string? Description { get; set; }
         public bool IsCanceled { get; set; }
     }

@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.Domain.IRepositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Controllers
 {
@@ -16,13 +18,16 @@ namespace DentalDashboard.Controllers
         private readonly ICommandDispatcher commandDispatcher;
         private readonly IQueryDispatcher queryDispatcher;
         private readonly ISecretaryAccessService secretaryAccessService;
+        private readonly IConsultantProfileRepository consultantProfileRepository;
 
         public ReservationController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher,
-            ISecretaryAccessService secretaryAccessService)
+            ISecretaryAccessService secretaryAccessService,
+            IConsultantProfileRepository consultantProfileRepository)
         {
             this.commandDispatcher = commandDispatcher;
             this.queryDispatcher = queryDispatcher;
             this.secretaryAccessService = secretaryAccessService;
+            this.consultantProfileRepository = consultantProfileRepository;
         }
 
         [HttpPost]
@@ -132,6 +137,40 @@ namespace DentalDashboard.Controllers
                         !await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
                 }
             }
+            var result = await commandDispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
+        [HttpPut("ConsultantReservations/{reservationId:long}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateConsultantReservation(
+            long reservationId,
+            UpdateConsultantReservationRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            var consultantProfileId = await consultantProfileRepository.GetAll()
+                .Where(x => x.UserId == userId && !x.IsDeleted)
+                .Select(x => (long?)x.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (!consultantProfileId.HasValue) return Forbid();
+
+            var command = new UpdateReservationCommand
+            {
+                ReservationId = reservationId,
+                ConsultantProfileId = consultantProfileId.Value,
+                ReservationAt = request.ReservationAt,
+                AppointmentDateTime = request.AppointmentDateTime,
+                Description = request.Description,
+                PatientCity = request.PatientCity,
+                PatientRegion = request.PatientRegion,
+                AttendanceProbabilityPercent = request.AttendanceProbabilityPercent,
+                AttendancePrediction = request.AttendancePrediction,
+                SecondaryPhoneNumber = request.SecondaryPhoneNumber
+            };
+
             var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
         }

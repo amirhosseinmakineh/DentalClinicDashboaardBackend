@@ -147,6 +147,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     reservation.ReservationAt <= DateTime.Now &&
                     reservation.AttendanceConfirmationStatus ==
                     ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
+                CanEdit = !reservation.IsCanceled &&
+                    reservation.AttendanceConfirmationStatus is not
+                        (ReservationAttendanceConfirmationStatus.SecretaryApproved or
+                         ReservationAttendanceConfirmationStatus.SecretaryRejected),
                 Description = reservation.Description,
                 IsCanceled = reservation.IsCanceled
             }, "رزرو با موفقیت ویرایش شد");

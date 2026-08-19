@@ -1,4 +1,6 @@
 using System;
+using DentalDashboard.Infrastracture.Context;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +8,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DentalDashboard.Infrastracture.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(DentalContext))]
+    [Migration("20260709103000_FixPushSubscriptionForeignKey")]
     public partial class FixPushSubscriptionForeignKey : Migration
     {
         /// <inheritdoc />

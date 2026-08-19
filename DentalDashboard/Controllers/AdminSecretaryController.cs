@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using DentalDashboard.ApplicationService.Contract.Dtos.Secretary;
 using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.Requests.User.Queries.User;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,11 +10,28 @@ namespace DentalDashboard.Controllers;
 
 [ApiController]
 [Route("api/admin/secretary")]
+[Route("api/admin/secretaries")]
 [Authorize(Roles = "Admin")]
 public sealed class AdminSecretaryController : ControllerBase
 {
     private readonly ISecretaryAccessService accessService;
-    public AdminSecretaryController(ISecretaryAccessService accessService) => this.accessService = accessService;
+    private readonly IQueryDispatcher queryDispatcher;
+
+    public AdminSecretaryController(ISecretaryAccessService accessService, IQueryDispatcher queryDispatcher)
+    {
+        this.accessService = accessService;
+        this.queryDispatcher = queryDispatcher;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetSecretaries(
+        [FromQuery] GetUsersQuery query,
+        CancellationToken cancellationToken)
+    {
+        query.RoleName = "Secretary";
+        var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
+        return Ok(result);
+    }
 
     [HttpGet("{userId:guid}/schedule")]
     public async Task<IActionResult> GetSchedule(Guid userId, CancellationToken cancellationToken)

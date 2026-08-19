@@ -173,7 +173,7 @@ namespace DentalDashboard.Controllers
 
         [HttpPut("SecretaryAnnouncement")]
         [Authorize]
-        public async Task<IActionResult> UpdateSecretaryAnnouncement(UpdateSecretaryAnnouncementCommand command)
+        public async Task<IActionResult> UpdateSecretaryAnnouncement(UpdateSecretaryAnnouncementCommand command )
         {
             var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
                               User.FindFirstValue("userId") ??

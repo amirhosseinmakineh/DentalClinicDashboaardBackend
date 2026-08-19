@@ -2,6 +2,7 @@ using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
+using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Infrastracture.Services;
@@ -16,58 +17,85 @@ public sealed class SecretaryAccessService : ISecretaryAccessService
         var user = await context.Users.AsNoTracking().Where(x => x.Id == userId && x.IsActive && !x.IsDeleted)
             .Select(x => new { x.SecretaryType, IsSecretary = x.UserRoles.Any(ur => !ur.IsDeleted && ur.Role.RoleName.ToLower() == "secretary") })
             .FirstOrDefaultAsync(cancellationToken);
-        if (user == null || !user.IsSecretary) return new(false, null, Array.Empty<DayOfWeek>());
+        if (user == null || !user.IsSecretary) return new(false, null, [], []);
         var type = user.SecretaryType ?? SecretaryType.Main;
-        if (type == SecretaryType.Main) return new(true, type, Array.Empty<DayOfWeek>());
+        if (type == SecretaryType.Main)
+            return new(true, type, Enum.GetValues<DayOfWeek>(), Enum.GetValues<SecretaryPermissionType>());
+
         var days = await context.SecretaryAccessSchedules.AsNoTracking()
-            .Where(x => x.UserId == userId && x.IsActive && !x.IsDeleted).Select(x => x.DayOfWeek).Distinct().ToListAsync(cancellationToken);
-        return new(true, type, days);
+            .Where(x => x.UserId == userId && x.IsActive && !x.IsDeleted).Select(x => x.DayOfWeek)
+            .Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        var today = IranTimeHelper.IranLocalNow.DayOfWeek;
+        var permissions = await context.SecretaryAccessPermissions.AsNoTracking()
+            .Where(x => x.SecretaryUserId == userId && x.DayOfWeek == today && x.IsActive && !x.IsDeleted)
+            .Select(x => x.PermissionType).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        return new(true, type, days, permissions);
+    }
+
+    public async Task<bool> HasPermissionAsync(Guid userId, SecretaryPermissionType permission, CancellationToken cancellationToken = default)
+    {
+        var access = await GetAccessAsync(userId, cancellationToken);
+        if (access.HasFullAccess) return true;
+        var today = IranTimeHelper.IranLocalNow.DayOfWeek;
+        return access.IsSecretary && access.AllowedDays.Contains(today) && access.Permissions.Contains(permission);
     }
 
     public async Task<bool> CanAccessReservationAsync(Guid userId, long reservationId, CancellationToken cancellationToken = default)
     {
         var access = await GetAccessAsync(userId, cancellationToken);
         if (access.HasFullAccess) return true;
-        if (!access.IsSecretary || access.AllowedDays.Count == 0) return false;
-        var date = await context.Reservations.AsNoTracking().Where(x => x.Id == reservationId && !x.IsDeleted)
-            .Select(x => (DateTime?)x.ReservationAt).FirstOrDefaultAsync(cancellationToken);
-        return date.HasValue && access.AllowedDays.Contains(date.Value.DayOfWeek);
+        if (!access.IsSecretary || !access.AllowedDays.Contains(IranTimeHelper.IranLocalNow.DayOfWeek)) return false;
+        return await context.Reservations.AsNoTracking().AnyAsync(x => x.Id == reservationId && !x.IsDeleted, cancellationToken);
     }
 
     public async Task<IReadOnlyCollection<DayOfWeek>> GetScheduleAsync(Guid userId, CancellationToken cancellationToken = default) =>
         await context.SecretaryAccessSchedules.AsNoTracking().Where(x => x.UserId == userId && x.IsActive && !x.IsDeleted)
             .Select(x => x.DayOfWeek).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
 
-    public async Task<ScheduleUpdateResult> UpdateScheduleAsync(Guid userId, SecretaryType secretaryType,
-        IReadOnlyCollection<DayOfWeek> days, Guid changedByUserId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyDictionary<DayOfWeek, IReadOnlyCollection<SecretaryPermissionType>>> GetPermissionScheduleAsync(
+        Guid userId, CancellationToken cancellationToken = default)
     {
-        if (!Enum.IsDefined(secretaryType) || days.Any(x => !Enum.IsDefined(x)) || days.Count != days.Distinct().Count())
-            return new(false, "روزهای برنامه نامعتبر یا تکراری هستند");
+        var rows = await context.SecretaryAccessPermissions.AsNoTracking()
+            .Where(x => x.SecretaryUserId == userId && x.IsActive && !x.IsDeleted)
+            .Select(x => new { x.DayOfWeek, x.PermissionType }).ToListAsync(cancellationToken);
+        return rows.GroupBy(x => x.DayOfWeek).ToDictionary(x => x.Key,
+            x => (IReadOnlyCollection<SecretaryPermissionType>)x.Select(y => y.PermissionType).Distinct().OrderBy(y => y).ToArray());
+    }
+
+    public async Task<ScheduleUpdateResult> UpdateScheduleAsync(Guid userId, SecretaryType secretaryType,
+        IReadOnlyDictionary<DayOfWeek, IReadOnlyCollection<SecretaryPermissionType>> dayPermissions,
+        Guid changedByUserId, CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(secretaryType) || dayPermissions.Keys.Any(x => !Enum.IsDefined(x)) ||
+            dayPermissions.Values.SelectMany(x => x).Any(x => !Enum.IsDefined(x)))
+            return new(false, "روز یا دسترسی نامعتبر است");
+        if (secretaryType == SecretaryType.Main && dayPermissions.Count > 0)
+            return new(false, "منشی اصلی نیاز به برنامه دسترسی ندارد");
+
         var user = await context.Users.Include(x => x.UserRoles).ThenInclude(x => x.Role)
             .FirstOrDefaultAsync(x => x.Id == userId && !x.IsDeleted, cancellationToken);
         if (user == null || !user.UserRoles.Any(x => !x.IsDeleted && x.Role.RoleName.ToLower() == "secretary"))
             return new(false, "کاربر باید نقش منشی داشته باشد");
-        if (secretaryType == SecretaryType.Main && days.Count > 0)
-            return new(false, "منشی اصلی نیاز به برنامه دسترسی ندارد");
-        var existing = await context.SecretaryAccessSchedules.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
-        var oldDays = existing.Where(x => x.IsActive && !x.IsDeleted).Select(x => x.DayOfWeek).Distinct().OrderBy(x => x).ToArray();
-        var requestedDays = secretaryType == SecretaryType.Assistant ? days.ToHashSet() : new HashSet<DayOfWeek>();
-        context.SecretaryAccessSchedules.RemoveRange(existing.Where(x => !requestedDays.Contains(x.DayOfWeek)));
-        foreach (var schedule in existing.Where(x => requestedDays.Contains(x.DayOfWeek)))
+
+        var schedules = await context.SecretaryAccessSchedules.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        var permissions = await context.SecretaryAccessPermissions.Where(x => x.SecretaryUserId == userId).ToListAsync(cancellationToken);
+        var oldDays = schedules.Where(x => x.IsActive && !x.IsDeleted).Select(x => x.DayOfWeek).Distinct().OrderBy(x => x).ToArray();
+        context.SecretaryAccessSchedules.RemoveRange(schedules);
+        context.SecretaryAccessPermissions.RemoveRange(permissions);
+
+        if (secretaryType == SecretaryType.Assistant)
         {
-            schedule.IsActive = true;
-            schedule.IsDeleted = false;
-            schedule.DeletedAt = null;
-            requestedDays.Remove(schedule.DayOfWeek);
+            await context.SecretaryAccessSchedules.AddRangeAsync(dayPermissions.Keys.Select(day => new SecretaryAccessSchedule
+                { UserId = userId, DayOfWeek = day, IsActive = true }), cancellationToken);
+            await context.SecretaryAccessPermissions.AddRangeAsync(dayPermissions.SelectMany(entry => entry.Value.Distinct().Select(permission =>
+                new SecretaryAccessPermission { SecretaryUserId = userId, DayOfWeek = entry.Key, PermissionType = permission, IsActive = true })), cancellationToken);
         }
-        await context.SecretaryAccessSchedules.AddRangeAsync(requestedDays.Select(day => new SecretaryAccessSchedule
-            { Id = Guid.NewGuid(), UserId = userId, DayOfWeek = day, IsActive = true }), cancellationToken);
         user.SecretaryType = secretaryType;
         user.UpdatedAt = DateTime.UtcNow;
         await context.SecretaryAccessScheduleAudits.AddAsync(new SecretaryAccessScheduleAudit
         {
             Id = Guid.NewGuid(), SecretaryUserId = userId, ChangedByUserId = changedByUserId,
-            OldDays = string.Join(',', oldDays), NewDays = string.Join(',', days.OrderBy(x => x))
+            OldDays = string.Join(',', oldDays), NewDays = string.Join(',', dayPermissions.Keys.OrderBy(x => x))
         }, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         return new(true);

@@ -21,6 +21,7 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
         public DbSet<SecretaryAccessSchedule> SecretaryAccessSchedules => Set<SecretaryAccessSchedule>();
         public DbSet<SecretaryAccessScheduleAudit> SecretaryAccessScheduleAudits => Set<SecretaryAccessScheduleAudit>();
+        public DbSet<SecretaryAccessPermission> SecretaryAccessPermissions => Set<SecretaryAccessPermission>();
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

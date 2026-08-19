@@ -33,28 +33,12 @@ public class GetSecretaryDashboardSummaryQueryHandler
             query.SecretaryUserId,
             cancellationToken);
 
-        List<Domain.Models.Reservation> reservations;
-
-        if (!access.IsSecretary)
-        {
-            reservations = new List<Domain.Models.Reservation>();
-        }
-        else if (!access.HasFullAccess)
-        {
-            var allowedDays = access.AllowedDays.ToList();
-
-            reservations = await reservationsQuery
-                .ToListAsync(cancellationToken);
-
-            reservations = reservations
-                .Where(x => allowedDays.Contains(x.ReservationAt.DayOfWeek))
-                .ToList();
-        }
-        else
-        {
-            reservations = await reservationsQuery
-                .ToListAsync(cancellationToken);
-        }
+        // The configured days specify when an assistant may enter this section,
+        // not which appointment weekdays should be visible. The controller checks
+        // today's permission before dispatching this query.
+        var reservations = access.IsSecretary
+            ? await reservationsQuery.ToListAsync(cancellationToken)
+            : [];
 
 
         return new SecretaryDashboardSummaryResponse

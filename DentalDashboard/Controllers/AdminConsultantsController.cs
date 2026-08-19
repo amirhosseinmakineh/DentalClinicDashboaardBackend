@@ -2,12 +2,14 @@ using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DentalDashboard.Controllers;
 
 [Route("api/admin/consultants")]
 [ApiController]
+[Authorize(Roles = "Admin")]
 public class AdminConsultantsController : ControllerBase
 {
     private readonly IQueryDispatcher queryDispatcher;

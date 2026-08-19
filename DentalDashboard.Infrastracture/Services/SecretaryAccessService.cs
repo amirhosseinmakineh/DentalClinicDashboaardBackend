@@ -69,9 +69,6 @@ public sealed class SecretaryAccessService : ISecretaryAccessService
         if (!Enum.IsDefined(secretaryType) || dayPermissions.Keys.Any(x => !Enum.IsDefined(x)) ||
             dayPermissions.Values.SelectMany(x => x).Any(x => !Enum.IsDefined(x)))
             return new(false, "روز یا دسترسی نامعتبر است");
-        if (secretaryType == SecretaryType.Main && dayPermissions.Count > 0)
-            return new(false, "منشی اصلی نیاز به برنامه دسترسی ندارد");
-
         var user = await context.Users.Include(x => x.UserRoles).ThenInclude(x => x.Role)
             .FirstOrDefaultAsync(x => x.Id == userId && !x.IsDeleted, cancellationToken);
         if (user == null || !user.UserRoles.Any(x => !x.IsDeleted && x.Role.RoleName.ToLower() == "secretary"))

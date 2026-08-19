@@ -38,28 +38,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             var access = await secretaryAccessService.GetAccessAsync(query.SecretaryUserId, cancellationToken);
             if (!access.IsSecretary)
                 reservations = reservations.Where(_ => false);
-            else if (!access.HasFullAccess)
-            {
-                var allowedDays = access.AllowedDays
-                    .Select(x => (int)x)
-                    .ToList();
 
-                var reservationIds = await reservations
-                    .Select(x => new
-                    {
-                        x.Id,
-                        Day = x.ReservationAt.DayOfWeek
-                    })
-                    .ToListAsync(cancellationToken);
-
-                var allowedReservationIds = reservationIds
-                    .Where(x => allowedDays.Contains((int)x.Day))
-                    .Select(x => x.Id)
-                    .ToList();
-
-                reservations = reservations.Where(x =>
-                    allowedReservationIds.Contains(x.Id));
-            }
+            // AllowedDays controls which days the assistant secretary may use the
+            // dashboard; it is not a filter on the appointment weekday. Access for
+            // the current day is already enforced by HasPermissionAsync in the API.
             var consultantProfileId = query.ConsultantProfileId ?? query.ConsultantId;
             if (consultantProfileId.HasValue)
                 reservations = reservations.Where(x => x.ConsultantProfileId == consultantProfileId.Value);

@@ -76,7 +76,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("ConsultantPatientProfiles")]
-        public async Task<IActionResult> GetConsultantPatientProfiles(
+        public async Task<IActionResult> GetConsultantPatientProfiles( 
             [FromQuery] GetConsultantPatientProfilesQuery query)
         {
             var result = await queryDispatcher.DispatchAsync(query);

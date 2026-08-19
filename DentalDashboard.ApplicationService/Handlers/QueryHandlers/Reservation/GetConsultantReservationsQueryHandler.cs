@@ -40,6 +40,46 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryRejected);
             }
 
+            if (!string.IsNullOrWhiteSpace(query.SearchText))
+            {
+                var searchText = query.SearchText.Trim();
+                reservations = reservations.Where(x => x.LeadAssignment != null &&
+                    (x.LeadAssignment.UserName.Contains(searchText) ||
+                     x.LeadAssignment.PhoneNumber.Contains(searchText) ||
+                     (x.LeadAssignment.SecondaryPhoneNumber != null &&
+                      x.LeadAssignment.SecondaryPhoneNumber.Contains(searchText))));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.PatientName))
+            {
+                var patientName = query.PatientName.Trim();
+                reservations = reservations.Where(x => x.LeadAssignment != null &&
+                    x.LeadAssignment.UserName.Contains(patientName));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.PatientPhoneNumber))
+            {
+                var phoneNumber = query.PatientPhoneNumber.Trim();
+                reservations = reservations.Where(x => x.LeadAssignment != null &&
+                    (x.LeadAssignment.PhoneNumber.Contains(phoneNumber) ||
+                     (x.LeadAssignment.SecondaryPhoneNumber != null &&
+                      x.LeadAssignment.SecondaryPhoneNumber.Contains(phoneNumber))));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.PatientCity))
+            {
+                var patientCity = query.PatientCity.Trim();
+                reservations = reservations.Where(x => x.LeadAssignment != null &&
+                    x.LeadAssignment.PatientCity != null &&
+                    x.LeadAssignment.PatientCity.Contains(patientCity));
+            }
+
+            if (query.AttendanceConfirmationStatus.HasValue)
+            {
+                reservations = reservations.Where(x =>
+                    x.AttendanceConfirmationStatus == query.AttendanceConfirmationStatus.Value);
+            }
+
             var totalCount = await reservations.CountAsync(cancellationToken);
             var items = await reservations
                 .OrderBy(x => x.ReservationAt)

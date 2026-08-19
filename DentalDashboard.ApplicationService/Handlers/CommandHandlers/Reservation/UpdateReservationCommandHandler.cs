@@ -48,9 +48,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (reservation.ConsultantProfileId != command.ConsultantProfileId)
                 return Result<ReservationItemResponse>.Failure("این رزرو متعلق به شما نیست");
 
-            if (reservation.AttendanceConfirmationStatus is
-                ReservationAttendanceConfirmationStatus.SecretaryApproved or
-                ReservationAttendanceConfirmationStatus.SecretaryRejected)
+            if (!command.IsSecretaryEdit && reservation.AttendanceConfirmationStatus is
+                    ReservationAttendanceConfirmationStatus.SecretaryApproved or
+                    ReservationAttendanceConfirmationStatus.SecretaryRejected)
             {
                 return Result<ReservationItemResponse>.Failure("پس از بررسی منشی امکان ویرایش رزرو وجود ندارد");
             }
@@ -158,9 +158,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     reservation.AttendanceConfirmationStatus ==
                     ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                 CanEdit = !reservation.IsCanceled &&
-                    reservation.AttendanceConfirmationStatus is not
+                    (command.IsSecretaryEdit || reservation.AttendanceConfirmationStatus is not
                         (ReservationAttendanceConfirmationStatus.SecretaryApproved or
-                         ReservationAttendanceConfirmationStatus.SecretaryRejected),
+                         ReservationAttendanceConfirmationStatus.SecretaryRejected)),
                 Description = reservation.Description,
                 IsCanceled = reservation.IsCanceled,
                 DentalServices = reservation.DentalServices

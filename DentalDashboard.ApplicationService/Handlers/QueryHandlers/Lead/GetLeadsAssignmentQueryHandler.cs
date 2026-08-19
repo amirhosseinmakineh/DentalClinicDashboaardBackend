@@ -40,6 +40,36 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     : leadsQuery.Where(x => x.ReportSubmittedAt == null);
             }
 
+            if (!string.IsNullOrWhiteSpace(query.SearchText))
+            {
+                var searchText = query.SearchText.Trim();
+                leadsQuery = leadsQuery.Where(x =>
+                    x.UserName.Contains(searchText) ||
+                    x.PhoneNumber.Contains(searchText) ||
+                    (x.SecondaryPhoneNumber != null && x.SecondaryPhoneNumber.Contains(searchText)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.UserName))
+            {
+                var userName = query.UserName.Trim();
+                leadsQuery = leadsQuery.Where(x => x.UserName.Contains(userName));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.PhoneNumber))
+            {
+                var phoneNumber = query.PhoneNumber.Trim();
+                leadsQuery = leadsQuery.Where(x =>
+                    x.PhoneNumber.Contains(phoneNumber) ||
+                    (x.SecondaryPhoneNumber != null && x.SecondaryPhoneNumber.Contains(phoneNumber)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.PatientCity))
+            {
+                var patientCity = query.PatientCity.Trim();
+                leadsQuery = leadsQuery.Where(x =>
+                    x.PatientCity != null && x.PatientCity.Contains(patientCity));
+            }
+
             leadsQuery = leadsQuery.ApplyAssignedAtFilter(query);
 
             var allLeads = leadsQuery.Select(x => new LeadsAssignmentItemsResponse()

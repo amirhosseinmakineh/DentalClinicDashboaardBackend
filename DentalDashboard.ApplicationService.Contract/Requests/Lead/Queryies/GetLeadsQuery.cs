@@ -11,6 +11,10 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
         public LeadAssignmentState? leadAssignmentState { get; set; }
         public LeadAssignmentType? LeadAssignmentType { get; set; }
         public bool? HasSubmittedReport { get; set; }
+        public string? SearchText { get; set; }
+        public string? UserName { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? PatientCity { get; set; }
         public DateOnly? Date { get; set; }
         public DateTime? From { get; set; }
         public DateTime? To { get; set; }

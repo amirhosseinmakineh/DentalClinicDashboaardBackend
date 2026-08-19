@@ -41,6 +41,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> CreateReservation(CreateReservationCommand command)
         {
             if (TryGetCurrentUserId(out var userId))
@@ -50,7 +51,7 @@ namespace DentalDashboard.Controllers
                     DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation)) return Forbid();
             }
             var result = await commandDispatcher.DispatchAsync(command);
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         [HttpPatch("SecretaryReservations/{reservationId:long}/time")]

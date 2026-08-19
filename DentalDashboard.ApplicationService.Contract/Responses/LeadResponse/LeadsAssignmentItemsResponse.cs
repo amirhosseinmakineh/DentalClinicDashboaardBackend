@@ -4,7 +4,9 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
 {
     public record LeadsAssignmentItemsResponse : BaseResponse<long>
     {
+        public long LeadAssignmentId => Id;
         public string UserName { get; set; } = default!;
+        public string FullName => UserName;
         public string PhoneNumber { get; set; } = default!;
         public DateTime CreatedAt { get; set; }
         public LeadAssignmentState LeadAssignmentState { get; set; }

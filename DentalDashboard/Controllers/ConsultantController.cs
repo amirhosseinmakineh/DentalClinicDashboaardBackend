@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using System.Security.Claims;
 
 namespace DentalDashboard.Controllers
 {
@@ -19,16 +20,38 @@ namespace DentalDashboard.Controllers
     {
         private readonly ICommandDispatcher dispatcher;
         private readonly IQueryDispatcher queryDispatcher;
-        public ConsultantController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher)
+        private readonly ISecretaryAccessService secretaryAccessService;
+        public ConsultantController(
+            ICommandDispatcher commandDispatcher,
+            IQueryDispatcher queryDispatcher,
+            ISecretaryAccessService secretaryAccessService)
         {
             dispatcher = commandDispatcher;
             this.queryDispatcher = queryDispatcher;
+            this.secretaryAccessService = secretaryAccessService;
         }
         [HttpGet("GetConsultants")]
-        public async Task<IActionResult> GetConsultants([FromQuery]GetConsultantQuery query)
+        [Authorize]
+        public async Task<IActionResult> GetConsultants(
+            [FromQuery]GetConsultantQuery query,
+            CancellationToken cancellationToken)
         {
-            var result = await queryDispatcher.DispatchAsync(query);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var access = await secretaryAccessService.GetAccessAsync(userId, cancellationToken);
+            if (access.IsSecretary && !await secretaryAccessService.HasPermissionAsync(userId,
+                    DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation,
+                    cancellationToken))
+                return Forbid();
+
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
+        }
+
+        private bool TryGetCurrentUserId(out Guid userId)
+        {
+            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                        User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
+            return Guid.TryParse(value, out userId);
         }
 
         [HttpPost]

@@ -82,6 +82,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     AttendanceScoreAppliedAt = x.AttendanceScoreAppliedAt,
                     IsDueForConsultantConfirmation = x.ReservationAt <= now &&
                         x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
+                    CanEdit = !x.IsCanceled &&
+                        x.AttendanceConfirmationStatus != ReservationAttendanceConfirmationStatus.SecretaryApproved &&
+                        x.AttendanceConfirmationStatus != ReservationAttendanceConfirmationStatus.SecretaryRejected,
                     Description = x.Description,
                     IsCanceled = x.IsCanceled
                 })

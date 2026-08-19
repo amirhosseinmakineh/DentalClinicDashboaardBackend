@@ -15,6 +15,10 @@ public partial class AddSecretaryPermissionsAndIdentitySchedule : Migration
         // SQL Server cannot ALTER a Guid key into an identity int. Rebuild the table in one
         // transaction and copy every schedule row so existing access configuration is retained.
         migrationBuilder.DropForeignKey("FK_SecretaryAccessSchedules_Users_UserId", "SecretaryAccessSchedules");
+        // Constraint and index names are database-wide in SQL Server. Drop them before renaming
+        // the legacy table, otherwise creating the replacement table fails with duplicate names.
+        migrationBuilder.DropPrimaryKey("PK_SecretaryAccessSchedules", "SecretaryAccessSchedules");
+        migrationBuilder.DropIndex("IX_SecretaryAccessSchedules_UserId_DayOfWeek", "SecretaryAccessSchedules");
         migrationBuilder.RenameTable("SecretaryAccessSchedules", newName: "SecretaryAccessSchedules_Legacy");
         migrationBuilder.CreateTable(
             name: "SecretaryAccessSchedules",

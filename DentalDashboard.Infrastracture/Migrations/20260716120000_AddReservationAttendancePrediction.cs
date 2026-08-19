@@ -1,3 +1,5 @@
+using DentalDashboard.Infrastracture.Context;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DentalDashboard.Infrastracture.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(DentalContext))]
+    [Migration("20260716120000_AddReservationAttendancePrediction")]
     public partial class AddReservationAttendancePrediction : Migration
     {
         /// <inheritdoc />

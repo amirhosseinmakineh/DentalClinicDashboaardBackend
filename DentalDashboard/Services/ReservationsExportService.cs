@@ -86,6 +86,8 @@ public class ReservationsExportService
                 AttendanceProbability = x.LeadAssignment != null ? x.LeadAssignment.AttendanceProbabilityPercent : null,
                 LeadAssignmentType = x.LeadAssignment != null ? x.LeadAssignment.AssignmentType : (LeadAssignmentType?)null,
                 x.ReservationAt,
+                x.ReservationType,
+                x.PatientReceivedService,
                 x.AttendanceConfirmationStatus,
                 x.ConsultantAttendanceConfirmedAt,
                 x.ConsultantSaysPatientAttended,
@@ -119,6 +121,8 @@ public class ReservationsExportService
                 "نوع لید",
                 "احتمال حضور (درصد)",
                 "تاریخ و ساعت رزرو",
+                "نوع رزرو",
+                "خدمت انجام شد؟",
                 "وضعیت تایید حضور",
                 "زمان اعلام مشاور",
                 "مشاور: بیمار آمد؟",
@@ -151,6 +155,8 @@ public class ReservationsExportService
                 row.LeadAssignmentType.HasValue ? row.LeadAssignmentType.Value.ToPersian() : string.Empty,
                 row.AttendanceProbability?.ToString() ?? string.Empty,
                 DateConvertor.ToPersianDateTimeString(row.ReservationAt),
+                row.ReservationType == ReservationType.AfterSalesService ? "خدمات پس از فروش" : "عادی",
+                AdminReportPersianLabels.ToYesNoNullable(row.PatientReceivedService),
                 row.AttendanceConfirmationStatus.ToPersian(),
                 row.ConsultantAttendanceConfirmedAt.HasValue
                     ? DateConvertor.ToPersianDateTimeString(row.ConsultantAttendanceConfirmedAt.Value)

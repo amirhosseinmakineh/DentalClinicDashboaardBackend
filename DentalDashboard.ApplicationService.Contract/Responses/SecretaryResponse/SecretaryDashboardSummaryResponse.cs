@@ -6,4 +6,5 @@ public class SecretaryDashboardSummaryResponse
     public int Confirmed { get; set; }
     public int NoAnswer { get; set; }
     public int Cancelled { get; set; }
+    public int AfterSalesServices { get; set; }
 }

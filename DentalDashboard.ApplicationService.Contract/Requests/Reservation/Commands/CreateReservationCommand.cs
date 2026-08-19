@@ -1,5 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using DentalDashboard.Domain.Enums;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands
 {
@@ -15,5 +16,6 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public int? AttendanceProbabilityPercent { get; set; }
         public string? AttendancePrediction { get; set; }
         public string? SecondaryPhoneNumber { get; set; }
+        public ReservationType ReservationType { get; set; } = ReservationType.Regular;
     }
 }

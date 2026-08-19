@@ -1,5 +1,6 @@
 using DentalDashboard.Services;
 using DentalDashboard.Utilities.Time;
+using DentalDashboard.Utilities.Convertor;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -59,28 +60,28 @@ public class AdminReportsController : ControllerBase
         var reportDate = date ?? IranTimeHelper.TodayInIran();
         var file = await dailyReservationsReportService.ExportCsvAsync(
             reportDate, consultantProfileId, requestStatus, cancellationToken);
-        return File(file, "text/csv; charset=utf-8", $"daily-reservations-{reportDate:yyyyMMdd}.csv");
+        return File(file, "text/csv; charset=utf-8", $"daily-reservations-{PersianFileDate(reportDate)}.csv");
     }
 
     [HttpGet("users/export")]
     public async Task<IActionResult> ExportUsers(CancellationToken cancellationToken)
     {
         var file = await usersExportService.ExportCsvAsync(cancellationToken);
-        return File(file, "text/csv; charset=utf-8", $"users-report-{DateTime.Today:yyyyMMdd}.csv");
+        return File(file, "text/csv; charset=utf-8", $"users-report-{TodayPersianFileDate()}.csv");
     }
 
     [HttpGet("leads/export")]
     public async Task<IActionResult> ExportLeads(CancellationToken cancellationToken)
     {
         var file = await leadsExportService.ExportCsvAsync(cancellationToken);
-        return File(file, "text/csv; charset=utf-8", $"leads-report-{DateTime.Today:yyyyMMdd}.csv");
+        return File(file, "text/csv; charset=utf-8", $"leads-report-{TodayPersianFileDate()}.csv");
     }
 
     [HttpGet("consultants/export")]
     public async Task<IActionResult> ExportConsultants(CancellationToken cancellationToken)
     {
         var file = await consultantsExportService.ExportCsvAsync(cancellationToken);
-        return File(file, "text/csv; charset=utf-8", $"consultants-report-{DateTime.Today:yyyyMMdd}.csv");
+        return File(file, "text/csv; charset=utf-8", $"consultants-report-{TodayPersianFileDate()}.csv");
     }
 
     [HttpGet("consultants/daily-summary")]
@@ -89,7 +90,7 @@ public class AdminReportsController : ControllerBase
         var items = await consultantsDailySummaryService.GetTodaySummaryAsync(cancellationToken);
         return Ok(new
         {
-            date = IranTimeHelper.TodayInIran().ToString("yyyy-MM-dd"),
+            date = IranTimeHelper.TodayInIran().ToPersianDate(),
             items
         });
     }
@@ -100,7 +101,7 @@ public class AdminReportsController : ControllerBase
         var toExclusive = to?.Date.AddDays(1) ?? DateTime.Today.AddDays(1);
         var fromInclusive = from?.Date ?? toExclusive.AddDays(-1);
         var file = await leadCallReportExportService.ExportCsvAsync(fromInclusive, toExclusive, cancellationToken);
-        return File(file, "text/csv; charset=utf-8", $"lead-call-reports-{fromInclusive:yyyyMMdd}-{toExclusive.AddDays(-1):yyyyMMdd}.csv");
+        return File(file, "text/csv; charset=utf-8", $"lead-call-reports-{PersianFileDate(DateOnly.FromDateTime(fromInclusive))}-{PersianFileDate(DateOnly.FromDateTime(toExclusive.AddDays(-1)))}.csv");
     }
 
     [HttpGet("reservations/export")]
@@ -111,7 +112,7 @@ public class AdminReportsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var file = await reservationsExportService.ExportReservationsCsvAsync(from, to, consultantProfileId, cancellationToken);
-        return File(file, "text/csv; charset=utf-8", $"reservations-report-{DateTime.Today:yyyyMMdd}.csv");
+        return File(file, "text/csv; charset=utf-8", $"reservations-report-{TodayPersianFileDate()}.csv");
     }
 
     [HttpGet("consultant-attendance-confirmations/export")]
@@ -122,6 +123,10 @@ public class AdminReportsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var file = await reservationsExportService.ExportConsultantAttendanceConfirmationsCsvAsync(from, to, consultantProfileId, cancellationToken);
-        return File(file, "text/csv; charset=utf-8", $"consultant-attendance-confirmations-{DateTime.Today:yyyyMMdd}.csv");
+        return File(file, "text/csv; charset=utf-8", $"consultant-attendance-confirmations-{TodayPersianFileDate()}.csv");
     }
+
+    private static string TodayPersianFileDate() => PersianFileDate(IranTimeHelper.TodayInIran());
+
+    private static string PersianFileDate(DateOnly date) => date.ToPersianDate().Replace("/", string.Empty);
 }

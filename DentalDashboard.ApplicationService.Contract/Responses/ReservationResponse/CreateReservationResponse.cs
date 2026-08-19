@@ -1,3 +1,5 @@
+using DentalDashboard.Domain.Enums;
+
 namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse
 {
     public class CreateReservationResponse
@@ -11,6 +13,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public DateTime ReservationAt { get; set; }
         public DateTime AppointmentDateTime { get; set; }
         public DateTime CreatedAt { get; set; }
+        public ReservationType ReservationType { get; set; }
         public string? SecondaryPhoneNumber { get; set; }
         public string PatientCity { get; set; } = default!;
         public string? PatientRegion { get; set; }

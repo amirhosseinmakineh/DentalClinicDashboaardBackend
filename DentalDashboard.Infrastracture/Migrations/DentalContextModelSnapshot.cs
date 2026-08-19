@@ -397,8 +397,14 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<Guid?>("PatientUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool?>("PatientReceivedService")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("ReservationAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("ReservationType")
+                        .HasColumnType("int");
 
                     b.Property<bool?>("SecretaryApprovedConsultantConfirmation")
                         .HasColumnType("bit");
@@ -434,6 +440,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("PatientUserId");
 
                     b.HasIndex("SecretaryAnnouncementStatus");
+
+                    b.HasIndex("ReservationType", "ReservationAt");
 
                     b.HasIndex("LeadAssignmentId", "IsCanceled");
 

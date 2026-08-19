@@ -15,6 +15,10 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public DateTime ReservationAt { get; set; }
         public DateTime AppointmentDateTime { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string ReservationAtPersian { get; set; } = default!;
+        public string CreatedAtPersian { get; set; } = default!;
+        public ReservationType ReservationType { get; set; }
+        public bool? PatientReceivedService { get; set; }
         public string PatientName { get; set; } = default!;
         public string PatientPhoneNumber { get; set; } = default!;
         public string? SecondaryPhoneNumber { get; set; }
@@ -28,6 +32,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public string? ConsultantAttendanceNote { get; set; }
         public bool IsWaitingForSecretaryReview { get; set; }
         public DateTime? SecretaryReviewedAt { get; set; }
+        public string? SecretaryReviewedAtPersian { get; set; }
         public Guid? SecretaryUserId { get; set; }
         public bool? SecretaryApprovedConsultantConfirmation { get; set; }
         public string? SecretaryReviewNote { get; set; }

@@ -7,6 +7,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
 using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.Utilities.Convertor;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 {
@@ -49,12 +50,14 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (!query.IncludeCanceled)
                 reservations = reservations.Where(x => !x.IsCanceled);
 
-            reservations = query.SortDirection?.ToLower() switch
+            reservations = query.SortDirection?.ToLowerInvariant() switch
             {
-                "asc" => reservations.OrderBy(x => x.ReservationAt),
-                "desc" => reservations.OrderByDescending(x => x.ReservationAt),
-                _ => reservations.OrderBy(x => x.ReservationAt)
+                "desc" => reservations.OrderByDescending(x => x.ReservationAt).ThenByDescending(x => x.Id),
+                _ => reservations.OrderBy(x => x.ReservationAt).ThenBy(x => x.Id)
             };
+
+            if (query.ReservationType.HasValue)
+                reservations = reservations.Where(x => x.ReservationType == query.ReservationType.Value);
 
             if (!string.IsNullOrEmpty(query.ConsultantName))
             {
@@ -147,6 +150,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     ReservationAt = x.ReservationAt,
                     AppointmentDateTime = x.ReservationAt,
                     CreatedAt = x.CreatedAt,
+                    ReservationType = x.ReservationType,
+                    PatientReceivedService = x.PatientReceivedService,
                     PatientName = x.LeadAssignment.UserName,
                     PatientPhoneNumber = x.LeadAssignment.PhoneNumber,
                     SecondaryPhoneNumber = x.LeadAssignment.SecondaryPhoneNumber,
@@ -178,6 +183,13 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     IsCanceled = x.IsCanceled
                 })
                 .ToListAsync(cancellationToken);
+
+            foreach (var item in items)
+            {
+                item.ReservationAtPersian = item.ReservationAt.ToPersianDateTimeString();
+                item.CreatedAtPersian = item.CreatedAt.ToPersianDateTimeString();
+                item.SecretaryReviewedAtPersian = item.SecretaryReviewedAt?.ToPersianDateTimeString();
+            }
 
             return new PaginatedResult<SecretaryReservationItemResponse>
             {

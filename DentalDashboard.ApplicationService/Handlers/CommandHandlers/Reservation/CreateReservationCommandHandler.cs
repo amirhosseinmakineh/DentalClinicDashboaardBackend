@@ -85,6 +85,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 LeadAssignmentId = lead.Id,
                 ConsultantProfileId = command.ConsultantProfileId,
                 ReservationAt = appointmentDateTime,
+                ReservationType = command.ReservationType,
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                 Description = command.Description,
                 AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
@@ -109,6 +110,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 ReservationAt = reservation.ReservationAt,
                 AppointmentDateTime = reservation.ReservationAt,
                 CreatedAt = reservation.CreatedAt,
+                ReservationType = reservation.ReservationType,
                 SecondaryPhoneNumber = lead.SecondaryPhoneNumber,
                 PatientCity = lead.PatientCity ?? string.Empty,
                 PatientRegion = lead.PatientRegion,

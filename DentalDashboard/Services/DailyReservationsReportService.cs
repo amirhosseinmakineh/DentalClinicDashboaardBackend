@@ -59,6 +59,7 @@ public sealed record DailyReservationReportItem(
     bool IsCanceled,
     string? CancellationReason,
     string? Description,
+    IReadOnlyList<DentalServiceType> DentalServices,
     SecretaryAnnouncementStatus? SecretaryAnnouncementStatus,
     string? SecretaryAnnouncementStatusTitle,
     string? SecretaryAnnouncement,
@@ -113,6 +114,7 @@ public class DailyReservationsReportService(DentalContext context)
                 x.IsCanceled,
                 x.SecretaryReviewNote,
                 x.Description,
+                x.DentalServices,
                 x.SecretaryAnnouncementStatus,
                 x.SecretaryAnnouncement,
                 x.SecretaryAnnouncementUpdatedAt
@@ -133,7 +135,7 @@ public class DailyReservationsReportService(DentalContext context)
                 x.AttendanceProbabilityPercent, EnsureUtc(x.ReservationAt), EnsureUtc(x.CreatedAt),
                 status, ToPersian(status), visitStatus, ToPersian(visitStatus),
                 GetPatientConfirmation(x.AttendanceConfirmationStatus), x.IsCanceled,
-                x.IsCanceled ? x.SecretaryReviewNote : null, x.Description,
+                x.IsCanceled ? x.SecretaryReviewNote : null, x.Description, x.DentalServices,
                 x.SecretaryAnnouncementStatus,
                 x.SecretaryAnnouncementStatus.HasValue
                     ? ToPersian(x.SecretaryAnnouncementStatus.Value)
@@ -174,7 +176,7 @@ public class DailyReservationsReportService(DentalContext context)
                 "شناسه رزرو", "شناسه لید", "شناسه مشاور", "نام مشاور", "موبایل مشاور",
                 "نام بیمار", "موبایل بیمار", "شماره دوم", "شهر", "منطقه", "نام بیزینس",
                 "احتمال حضور (درصد)", "تاریخ ثبت رزرو", "تاریخ مراجعه", "وضعیت درخواست",
-                "نتیجه مراجعه", "تایید با بیمار", "لغو شده", "دلیل لغو", "توضیحات",
+                "نتیجه مراجعه", "تایید با بیمار", "لغو شده", "دلیل لغو", "توضیحات", "خدمات",
                 "وضعیت اعلام منشی", "اعلام منشی", "زمان اعلام منشی")
         };
 
@@ -187,6 +189,7 @@ public class DailyReservationsReportService(DentalContext context)
             FormatIran(item.AppointmentDateTime), item.RequestStatusTitle, item.VisitResultStatusTitle,
             AdminReportPersianLabels.ToYesNoNullable(item.IsConfirmedWithPatient),
             AdminReportPersianLabels.ToYesNo(item.IsCanceled), item.CancellationReason, item.Description,
+            string.Join("، ", item.DentalServices.Select(ToPersian)),
             item.SecretaryAnnouncementStatusTitle, item.SecretaryAnnouncement,
             item.SecretaryAnnouncementUpdatedAt.HasValue
                 ? FormatIran(item.SecretaryAnnouncementUpdatedAt.Value)
@@ -280,6 +283,14 @@ public class DailyReservationsReportService(DentalContext context)
         DailyReservationVisitResultStatus.Canceled => "لغو شده",
         DailyReservationVisitResultStatus.NeedsFollowUp => "نیازمند پیگیری",
         _ => "نامشخص"
+    };
+
+    private static string ToPersian(DentalServiceType service) => service switch
+    {
+        DentalServiceType.Composite => "کامپوزیت",
+        DentalServiceType.Implant => "ایمپلنت",
+        DentalServiceType.Laminate => "لمینت",
+        _ => service.ToString()
     };
 
     private static string ToPersian(SecretaryAnnouncementStatus status) => status switch

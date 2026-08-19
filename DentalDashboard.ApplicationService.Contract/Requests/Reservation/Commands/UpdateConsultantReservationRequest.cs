@@ -1,3 +1,5 @@
+using DentalDashboard.Domain.Enums;
+
 namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands;
 
 /// <summary>
@@ -14,4 +16,5 @@ public class UpdateConsultantReservationRequest
     public int? AttendanceProbabilityPercent { get; set; }
     public string? AttendancePrediction { get; set; }
     public string? SecondaryPhoneNumber { get; set; }
+    public List<DentalServiceType>? DentalServices { get; set; }
 }

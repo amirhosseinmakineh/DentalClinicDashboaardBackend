@@ -126,7 +126,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                         x.AttendanceConfirmationStatus != ReservationAttendanceConfirmationStatus.SecretaryApproved &&
                         x.AttendanceConfirmationStatus != ReservationAttendanceConfirmationStatus.SecretaryRejected,
                     Description = x.Description,
-                    IsCanceled = x.IsCanceled
+                    IsCanceled = x.IsCanceled,
+                    DentalServices = x.DentalServices
                 })
                 .ToListAsync(cancellationToken);
 

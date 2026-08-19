@@ -37,6 +37,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (reservation == null || reservation.IsDeleted || reservation.IsCanceled)
                 return Result<ReservationItemResponse>.Failure("رزرو فعال یافت نشد");
 
+            List<DentalServiceType>? dentalServices = null;
+            if (command.DentalServices != null)
+            {
+                dentalServices = command.DentalServices.Distinct().ToList();
+                if (dentalServices.Count == 0 || dentalServices.Any(x => !Enum.IsDefined(x)))
+                    return Result<ReservationItemResponse>.Failure("انتخاب حداقل یک خدمت معتبر الزامی است");
+            }
+
             if (reservation.ConsultantProfileId != command.ConsultantProfileId)
                 return Result<ReservationItemResponse>.Failure("این رزرو متعلق به شما نیست");
 
@@ -104,6 +112,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             reservation.AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
                 ? null
                 : command.AttendancePrediction.Trim();
+            if (dentalServices != null)
+                reservation.DentalServices = dentalServices;
             reservation.UpdatedAt = DateTime.UtcNow;
 
             reservationRepository.Update(reservation);
@@ -152,7 +162,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                         (ReservationAttendanceConfirmationStatus.SecretaryApproved or
                          ReservationAttendanceConfirmationStatus.SecretaryRejected),
                 Description = reservation.Description,
-                IsCanceled = reservation.IsCanceled
+                IsCanceled = reservation.IsCanceled,
+                DentalServices = reservation.DentalServices
             }, "رزرو با موفقیت ویرایش شد");
         }
     }

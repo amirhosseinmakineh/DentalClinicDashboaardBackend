@@ -23,5 +23,6 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public ReservationAttendanceConfirmationStatus AttendanceConfirmationStatus { get; set; }
         public string PatientName { get; set; } = default!;
         public string PatientPhoneNumber { get; set; } = default!;
+        public List<DentalServiceType> DentalServices { get; set; } = [];
     }
 }

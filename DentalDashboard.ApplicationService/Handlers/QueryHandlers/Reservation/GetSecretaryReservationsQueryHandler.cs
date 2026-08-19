@@ -180,7 +180,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     AttendanceScoreValue = x.AttendanceScoreValue,
                     AttendanceScoreAppliedAt = x.AttendanceScoreAppliedAt,
                     Description = x.Description,
-                    IsCanceled = x.IsCanceled
+                    IsCanceled = x.IsCanceled,
+                    DentalServices = x.DentalServices
                 })
                 .ToListAsync(cancellationToken);
 

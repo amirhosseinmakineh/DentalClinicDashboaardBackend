@@ -1,3 +1,5 @@
+using DentalDashboard.Domain.Enums;
+
 namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands;
 
 /// <summary>
@@ -8,4 +10,5 @@ public class UpdateSecretaryReservationTimeRequest
 {
     public DateTime ReservationAt { get; set; }
     public DateTime? AppointmentDateTime { get; set; }
+    public List<DentalServiceType>? DentalServices { get; set; }
 }

@@ -81,7 +81,8 @@ namespace DentalDashboard.Controllers
                 AppointmentDateTime = request.AppointmentDateTime,
                 Description = reservation.Description,
                 AttendancePrediction = reservation.AttendancePrediction,
-                DentalServices = request.DentalServices
+                DentalServices = request.DentalServices,
+                IsSecretaryEdit = true
             };
 
             var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
@@ -200,6 +201,8 @@ namespace DentalDashboard.Controllers
                     if (!await secretaryAccessService.HasPermissionAsync(userId,
                             DentalDashboard.Domain.Enums.SecretaryPermissionType.EditReservations) ||
                         !await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
+
+                    command.IsSecretaryEdit = true;
                 }
             }
             var result = await commandDispatcher.DispatchAsync(command);

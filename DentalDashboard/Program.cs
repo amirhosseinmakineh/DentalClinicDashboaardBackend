@@ -89,7 +89,8 @@ builder.Services.AddCors(options =>
     "https://www.drsaeedmoghadam.com",
     "http://localhost:4200",
     "https://drmoghadam.runflare.run",
-    "http://drsaeedmoghadam.com"
+    "http://drsaeedmoghadam.com",
+    "https://fonttest-axu-drsaeedtest2.runflare.cloud"
 )
             .AllowAnyHeader()
             .AllowAnyMethod()

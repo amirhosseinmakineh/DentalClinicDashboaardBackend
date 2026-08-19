@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DentalDashboard.ApplicationService.Contract\DentalDashboard.ApplicationService.Contract.csproj" />
     <ProjectReference Include="..\DentalDashboard.Domain\DentalDashboard.Domain.csproj" />
+    <ProjectReference Include="..\DentalDashboard.Utilities\DentalDashboard.Utilities.csproj" />
   </ItemGroup>
 
 </Project>

@@ -40,10 +40,26 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                 reservations = reservations.Where(_ => false);
             else if (!access.HasFullAccess)
             {
-                var allowedDays = access.AllowedDays;
-                reservations = reservations.Where(x => allowedDays.Contains(x.ReservationAt.DayOfWeek));
-            }
+                var allowedDays = access.AllowedDays
+                    .Select(x => (int)x)
+                    .ToList();
 
+                var reservationIds = await reservations
+                    .Select(x => new
+                    {
+                        x.Id,
+                        Day = x.ReservationAt.DayOfWeek
+                    })
+                    .ToListAsync(cancellationToken);
+
+                var allowedReservationIds = reservationIds
+                    .Where(x => allowedDays.Contains((int)x.Day))
+                    .Select(x => x.Id)
+                    .ToList();
+
+                reservations = reservations.Where(x =>
+                    allowedReservationIds.Contains(x.Id));
+            }
             var consultantProfileId = query.ConsultantProfileId ?? query.ConsultantId;
             if (consultantProfileId.HasValue)
                 reservations = reservations.Where(x => x.ConsultantProfileId == consultantProfileId.Value);

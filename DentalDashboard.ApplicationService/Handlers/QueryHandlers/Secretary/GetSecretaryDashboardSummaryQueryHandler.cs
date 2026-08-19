@@ -25,30 +25,52 @@ public class GetSecretaryDashboardSummaryQueryHandler
         GetSecretaryDashboardSummaryQuery query,
         CancellationToken cancellationToken = default)
     {
-        var reservations = reservationRepository.GetAll()
+        var reservationsQuery = reservationRepository.GetAll()
             .AsNoTracking()
             .Where(x => !x.IsDeleted && !x.IsCanceled);
-        var access = await accessService.GetAccessAsync(query.SecretaryUserId, cancellationToken);
+
+        var access = await accessService.GetAccessAsync(
+            query.SecretaryUserId,
+            cancellationToken);
+
+        List<Domain.Models.Reservation> reservations;
+
         if (!access.IsSecretary)
-            reservations = reservations.Where(_ => false);
+        {
+            reservations = new List<Domain.Models.Reservation>();
+        }
         else if (!access.HasFullAccess)
-            reservations = reservations.Where(x => access.AllowedDays.Contains(x.ReservationAt.DayOfWeek));
+        {
+            var allowedDays = access.AllowedDays.ToList();
+
+            reservations = await reservationsQuery
+                .ToListAsync(cancellationToken);
+
+            reservations = reservations
+                .Where(x => allowedDays.Contains(x.ReservationAt.DayOfWeek))
+                .ToList();
+        }
+        else
+        {
+            reservations = await reservationsQuery
+                .ToListAsync(cancellationToken);
+        }
+
 
         return new SecretaryDashboardSummaryResponse
         {
-            NeedCall = await reservations.CountAsync(
+            NeedCall = reservations.Count(
                 x => x.SecretaryAnnouncementStatus == null ||
-                     x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.NotCalled,
-                cancellationToken),
-            Confirmed = await reservations.CountAsync(
-                x => x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.Confirmed,
-                cancellationToken),
-            NoAnswer = await reservations.CountAsync(
-                x => x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.NoAnswer,
-                cancellationToken),
-            Cancelled = await reservations.CountAsync(
-                x => x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.CancelledByPatient,
-                cancellationToken)
+                     x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.NotCalled),
+
+            Confirmed = reservations.Count(
+                x => x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.Confirmed),
+
+            NoAnswer = reservations.Count(
+                x => x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.NoAnswer),
+
+            Cancelled = reservations.Count(
+                x => x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.CancelledByPatient)
         };
     }
 }

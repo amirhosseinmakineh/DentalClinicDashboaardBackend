@@ -85,7 +85,7 @@ public class DailyReservationsReportService(DentalContext context)
         var reportDate = date ?? IranTimeHelper.TodayInIran();
         var query = BuildQuery(reportDate, consultantProfileId, requestStatus);
         var rows = await query
-            .OrderBy(x => x.ReservationAt)
+            .OrderByDescending(x => x.CreatedAt)
             .ThenByDescending(x => x.Id)
             .Select(x => new
             {
@@ -181,7 +181,7 @@ public class DailyReservationsReportService(DentalContext context)
         var (startUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(date);
         var (endUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(date.AddDays(1));
         var query = context.Reservations.AsNoTracking()
-            .Where(x => !x.IsDeleted && x.ReservationAt >= startUtc && x.ReservationAt < endUtc);
+            .Where(x => !x.IsDeleted && x.CreatedAt >= startUtc && x.CreatedAt < endUtc);
 
         if (consultantProfileId.HasValue)
             query = query.Where(x => x.ConsultantProfileId == consultantProfileId.Value);

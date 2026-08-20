@@ -6,6 +6,7 @@ using DentalDashboard.Framwork.Domain;
 using DentalDashboard.ApplicationService.Handlers.Helpers;
 using DentalDashboard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Utilities.Time;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
@@ -36,7 +37,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     out var appointmentError))
                 return Result<CreateReservationResponse>.Failure(appointmentError!);
 
-            if (appointmentDateTime <= DateTime.Now)
+            if (appointmentDateTime <= IranTimeHelper.IranLocalNow)
                 return Result<CreateReservationResponse>.Failure("زمان رزرو باید در آینده باشد");
 
             if (command.ReservationType == ReservationType.AfterSalesService &&

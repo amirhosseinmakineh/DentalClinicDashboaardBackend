@@ -90,7 +90,8 @@ public class DailyReservationsReportService(DentalContext context)
         bool includeAll = false,
         CancellationToken cancellationToken = default)
     {
-        var reportDate = date ?? IranTimeHelper.TodayInIran();
+        var now = DateTime.Now;
+        var reportDate = date ?? DateOnly.FromDateTime(now);
         var query = BuildQuery(reportDate, reservationOwnerType, consultantProfileId,
             secretaryUserId, requestStatus, includeAll);
         var rows = await query
@@ -208,30 +209,43 @@ public class DailyReservationsReportService(DentalContext context)
     }
 
     private IQueryable<Domain.Models.Reservation> BuildQuery(
-        DateOnly date,
-        ReservationOwnerType? reservationOwnerType,
-        long? consultantProfileId,
-        Guid? secretaryUserId,
-        DailyReservationRequestStatus? requestStatus,
-        bool includeAll)
+     DateOnly date,
+     ReservationOwnerType? reservationOwnerType,
+     long? consultantProfileId,
+     Guid? secretaryUserId,
+     DailyReservationRequestStatus? requestStatus,
+     bool includeAll)
     {
-        var query = context.Reservations.AsNoTracking().Where(x => !x.IsDeleted);
+        var query = context.Reservations
+            .AsNoTracking()
+            .Where(x => !x.IsDeleted);
 
         if (includeAll)
             return query;
 
-        var (startUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(date);
-        var (endUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(date.AddDays(1));
-        query = query.Where(x => x.CreatedAt >= startUtc && x.CreatedAt < endUtc);
+        // مقایسه مستقیم با تاریخ ذخیره‌شده در Backend/Database
+        var startDate = date.ToDateTime(TimeOnly.MinValue);
+        var endDate = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
+
+        query = query.Where(x =>
+            x.CreatedAt >= startDate &&
+            x.CreatedAt < endDate);
 
         if (reservationOwnerType.HasValue)
-            query = query.Where(x => x.OwnerType == reservationOwnerType.Value);
+            query = query.Where(x =>
+                x.OwnerType == reservationOwnerType.Value);
+
         if (consultantProfileId.HasValue)
-            query = query.Where(x => x.ConsultantProfileId == consultantProfileId.Value);
+            query = query.Where(x =>
+                x.ConsultantProfileId == consultantProfileId.Value);
+
         if (secretaryUserId.HasValue)
-            query = query.Where(x => x.OwnerUserId == secretaryUserId.Value);
+            query = query.Where(x =>
+                x.OwnerUserId == secretaryUserId.Value);
+
         if (requestStatus.HasValue)
             query = ApplyRequestStatusFilter(query, requestStatus.Value);
+
         return query;
     }
 

@@ -394,6 +394,12 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<long>("LeadAssignmentId")
                         .HasColumnType("bigint");
 
+                    b.Property<int?>("OwnerType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("PatientUserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -446,6 +452,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("LeadAssignmentId", "IsCanceled");
 
                     b.HasIndex("ConsultantProfileId", "ReservationAt", "IsCanceled");
+
+                    b.HasIndex("OwnerType", "OwnerUserId", "CreatedAt");
 
                     b.ToTable("Reservations");
                 });

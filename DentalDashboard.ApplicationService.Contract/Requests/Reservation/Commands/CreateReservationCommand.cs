@@ -18,5 +18,11 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public string? SecondaryPhoneNumber { get; set; }
         public ReservationType ReservationType { get; set; } = ReservationType.Regular;
         public List<DentalServiceType> DentalServices { get; set; } = [];
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public ReservationOwnerType? OwnerType { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public Guid? OwnerUserId { get; set; }
     }
 }

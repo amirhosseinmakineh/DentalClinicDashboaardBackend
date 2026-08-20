@@ -83,13 +83,16 @@ public class DailyReservationsReportService(DentalContext context)
 {
     public async Task<DailyReservationsReport> GetAsync(
         DateOnly? date,
+        ReservationOwnerType? reservationOwnerType,
         long? consultantProfileId,
+        Guid? secretaryUserId,
         DailyReservationRequestStatus? requestStatus,
         bool includeAll = false,
         CancellationToken cancellationToken = default)
     {
         var reportDate = date ?? IranTimeHelper.TodayInIran();
-        var query = BuildQuery(reportDate, consultantProfileId, requestStatus, includeAll);
+        var query = BuildQuery(reportDate, reservationOwnerType, consultantProfileId,
+            secretaryUserId, requestStatus, includeAll);
         var rows = await query
             .OrderByDescending(x => x.CreatedAt)
             .ThenByDescending(x => x.Id)
@@ -166,13 +169,16 @@ public class DailyReservationsReportService(DentalContext context)
 
     public async Task<byte[]> ExportCsvAsync(
         DateOnly? date,
+        ReservationOwnerType? reservationOwnerType,
         long? consultantProfileId,
+        Guid? secretaryUserId,
         DailyReservationRequestStatus? requestStatus,
         bool includeAll = false,
         CancellationToken cancellationToken = default)
     {
         var report = await GetAsync(
-            date, consultantProfileId, requestStatus, includeAll, cancellationToken);
+            date, reservationOwnerType, consultantProfileId, secretaryUserId,
+            requestStatus, includeAll, cancellationToken);
         var lines = new List<string>
         {
             CsvExportHelper.JoinRow(
@@ -203,7 +209,9 @@ public class DailyReservationsReportService(DentalContext context)
 
     private IQueryable<Domain.Models.Reservation> BuildQuery(
         DateOnly date,
+        ReservationOwnerType? reservationOwnerType,
         long? consultantProfileId,
+        Guid? secretaryUserId,
         DailyReservationRequestStatus? requestStatus,
         bool includeAll)
     {
@@ -216,8 +224,12 @@ public class DailyReservationsReportService(DentalContext context)
         var (endUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(date.AddDays(1));
         query = query.Where(x => x.CreatedAt >= startUtc && x.CreatedAt < endUtc);
 
+        if (reservationOwnerType.HasValue)
+            query = query.Where(x => x.OwnerType == reservationOwnerType.Value);
         if (consultantProfileId.HasValue)
             query = query.Where(x => x.ConsultantProfileId == consultantProfileId.Value);
+        if (secretaryUserId.HasValue)
+            query = query.Where(x => x.OwnerUserId == secretaryUserId.Value);
         if (requestStatus.HasValue)
             query = ApplyRequestStatusFilter(query, requestStatus.Value);
         return query;

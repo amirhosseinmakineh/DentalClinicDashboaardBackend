@@ -8,6 +8,8 @@ public class Reservation : BaseAuditableEntity<long>
     public LeadAssignment LeadAssignment { get; set; } = default!;
     public long ConsultantProfileId { get; set; }
     public ConsultantProfile ConsultantProfile { get; set; } = default!;
+    public ReservationOwnerType? OwnerType { get; set; }
+    public Guid? OwnerUserId { get; set; }
     public Guid? PatientUserId { get; set; }
     public User? PatientUser { get; set; }
     public DateTime ReservationAt { get; set; }

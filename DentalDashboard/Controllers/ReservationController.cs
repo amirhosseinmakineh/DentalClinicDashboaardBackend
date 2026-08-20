@@ -56,6 +56,11 @@ namespace DentalDashboard.Controllers
                     DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation))
                     return StatusCode(StatusCodes.Status403Forbidden,
                         Result.Failure("شما دسترسی ایجاد رزرو را ندارید"));
+
+                command.OwnerUserId = userId;
+                command.OwnerType = access.IsSecretary
+                    ? DentalDashboard.Domain.Enums.ReservationOwnerType.Secretary
+                    : DentalDashboard.Domain.Enums.ReservationOwnerType.Consultant;
             }
             var result = await commandDispatcher.DispatchAsync(command);
             return result.IsSuccess ? Ok(result) : BadRequest(result);

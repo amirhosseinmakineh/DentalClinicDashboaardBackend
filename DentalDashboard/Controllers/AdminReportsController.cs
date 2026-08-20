@@ -3,6 +3,7 @@ using DentalDashboard.Utilities.Time;
 using DentalDashboard.Utilities.Convertor;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DentalDashboard.Domain.Enums;
 
 namespace DentalDashboard.Controllers;
 
@@ -40,13 +41,18 @@ public class AdminReportsController : ControllerBase
     [HttpGet("daily-reservations")]
     public async Task<IActionResult> GetDailyReservations(
         [FromQuery] DateOnly? date,
+        [FromQuery] ReservationOwnerType? reservationOwnerType,
         [FromQuery] long? consultantProfileId,
+        [FromQuery] Guid? secretaryUserId,
         [FromQuery] DailyReservationRequestStatus? requestStatus,
         [FromQuery] bool includeAll,
         CancellationToken cancellationToken)
     {
-        var report = await dailyReservationsReportService.GetAsync(
-            date, consultantProfileId, requestStatus, includeAll, cancellationToken);
+        var validationError = ValidateOwnerFilters(reservationOwnerType, consultantProfileId, secretaryUserId, includeAll);
+        if (validationError != null) return BadRequest(new { message = validationError });
+
+        var report = await dailyReservationsReportService.GetAsync(date, reservationOwnerType,
+            consultantProfileId, secretaryUserId, requestStatus, includeAll, cancellationToken);
         return Ok(report);
     }
 
@@ -54,16 +60,36 @@ public class AdminReportsController : ControllerBase
     [HttpGet("daily-reservations/export")]
     public async Task<IActionResult> ExportDailyReservations(
         [FromQuery] DateOnly? date,
+        [FromQuery] ReservationOwnerType? reservationOwnerType,
         [FromQuery] long? consultantProfileId,
+        [FromQuery] Guid? secretaryUserId,
         [FromQuery] DailyReservationRequestStatus? requestStatus,
         [FromQuery] bool includeAll,
         CancellationToken cancellationToken)
     {
+        var validationError = ValidateOwnerFilters(reservationOwnerType, consultantProfileId, secretaryUserId, includeAll);
+        if (validationError != null) return BadRequest(new { message = validationError });
+
         var reportDate = date ?? IranTimeHelper.TodayInIran();
         var file = await dailyReservationsReportService.ExportCsvAsync(
-            reportDate, consultantProfileId, requestStatus, includeAll, cancellationToken);
+            reportDate, reservationOwnerType, consultantProfileId, secretaryUserId,
+            requestStatus, includeAll, cancellationToken);
         var fileDate = includeAll ? "all" : PersianFileDate(reportDate);
         return File(file, "text/csv; charset=utf-8", $"daily-reservations-{fileDate}.csv");
+    }
+
+    private static string? ValidateOwnerFilters(
+        ReservationOwnerType? ownerType,
+        long? consultantProfileId,
+        Guid? secretaryUserId,
+        bool includeAll)
+    {
+        if (includeAll) return null;
+        if (ownerType == ReservationOwnerType.Consultant && secretaryUserId.HasValue)
+            return "secretaryUserId cannot be used with Consultant reservationOwnerType.";
+        if (ownerType == ReservationOwnerType.Secretary && consultantProfileId.HasValue)
+            return "consultantProfileId cannot be used with Secretary reservationOwnerType.";
+        return null;
     }
 
     [HttpGet("users/export")]

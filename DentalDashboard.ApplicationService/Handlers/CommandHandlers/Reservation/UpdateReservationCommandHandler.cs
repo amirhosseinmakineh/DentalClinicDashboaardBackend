@@ -5,6 +5,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using DentalDashboard.ApplicationService.Handlers.Helpers;
+using DentalDashboard.Utilities.Time;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
@@ -81,7 +82,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             }
 
             var reservationTimeChanged = reservation.ReservationAt != appointmentDateTime;
-            if (reservationTimeChanged && appointmentDateTime <= DateTime.Now)
+            if (reservationTimeChanged && appointmentDateTime <= IranTimeHelper.IranLocalNow)
                 return Result<ReservationItemResponse>.Failure("زمان رزرو باید در آینده باشد");
 
             if (reservationTimeChanged)
@@ -154,7 +155,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 AttendanceScoreValue = reservation.AttendanceScoreValue,
                 AttendanceScoreAppliedAt = reservation.AttendanceScoreAppliedAt,
                 IsDueForConsultantConfirmation =
-                    reservation.ReservationAt <= DateTime.Now &&
+                    reservation.ReservationAt <= IranTimeHelper.IranLocalNow &&
                     reservation.AttendanceConfirmationStatus ==
                     ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
                 CanEdit = !reservation.IsCanceled &&

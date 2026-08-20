@@ -1,3 +1,5 @@
+using DentalDashboard.Utilities.Time;
+
 namespace DentalDashboard.ApplicationService.Handlers.Helpers;
 
 public static class ReservationAppointmentTime
@@ -8,6 +10,11 @@ public static class ReservationAppointmentTime
         out DateTime value,
         out string? error)
     {
+        reservationAt = NormalizeIranWallClock(reservationAt);
+        appointmentDateTime = appointmentDateTime.HasValue
+            ? NormalizeIranWallClock(appointmentDateTime.Value)
+            : null;
+
         if (appointmentDateTime.HasValue &&
             reservationAt != default &&
             reservationAt != appointmentDateTime.Value)
@@ -26,5 +33,21 @@ public static class ReservationAppointmentTime
 
         error = null;
         return true;
+    }
+
+    /// <summary>
+    /// ReservationAt is stored as the wall-clock time selected in Iran. Browser
+    /// clients commonly serialize a Date as UTC (with a trailing Z); convert such
+    /// instants back to Iran before persisting them. Values without an offset are
+    /// already Iran wall-clock values and must not be shifted.
+    /// </summary>
+    public static DateTime NormalizeIranWallClock(DateTime value)
+    {
+        if (value == default || value.Kind == DateTimeKind.Unspecified)
+            return value;
+
+        return DateTime.SpecifyKind(
+            IranTimeHelper.ToIranLocalTime(value),
+            DateTimeKind.Unspecified);
     }
 }

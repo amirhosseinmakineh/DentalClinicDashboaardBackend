@@ -6,11 +6,13 @@ using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using DentalDashboard.Domain.IRepositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Controllers
 {
@@ -21,14 +23,17 @@ namespace DentalDashboard.Controllers
         private readonly ICommandDispatcher dispatcher;
         private readonly IQueryDispatcher queryDispatcher;
         private readonly ISecretaryAccessService secretaryAccessService;
+        private readonly IConsultantProfileRepository consultantProfileRepository;
         public ConsultantController(
             ICommandDispatcher commandDispatcher,
             IQueryDispatcher queryDispatcher,
-            ISecretaryAccessService secretaryAccessService)
+            ISecretaryAccessService secretaryAccessService,
+            IConsultantProfileRepository consultantProfileRepository)
         {
             dispatcher = commandDispatcher;
             this.queryDispatcher = queryDispatcher;
             this.secretaryAccessService = secretaryAccessService;
+            this.consultantProfileRepository = consultantProfileRepository;
         }
         [HttpGet("GetConsultants")]
         [Authorize]
@@ -38,7 +43,10 @@ namespace DentalDashboard.Controllers
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
             var access = await secretaryAccessService.GetAccessAsync(userId, cancellationToken);
-            if (access.IsSecretary && !await secretaryAccessService.HasPermissionAsync(userId,
+            var isConsultant = await consultantProfileRepository.GetAll()
+                .AnyAsync(x => x.UserId == userId && !x.IsDeleted, cancellationToken);
+            if (access.IsSecretary && !isConsultant &&
+                !await secretaryAccessService.HasPermissionAsync(userId,
                     DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation,
                     cancellationToken))
                 return Forbid();

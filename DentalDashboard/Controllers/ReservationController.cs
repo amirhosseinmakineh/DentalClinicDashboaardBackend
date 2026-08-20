@@ -47,7 +47,12 @@ namespace DentalDashboard.Controllers
             if (TryGetCurrentUserId(out var userId))
             {
                 var access = await secretaryAccessService.GetAccessAsync(userId);
-                if (access.IsSecretary && !await secretaryAccessService.HasPermissionAsync(userId,
+                var isOwnConsultantReservation = await consultantProfileRepository.GetAll()
+                    .AnyAsync(x => x.UserId == userId && !x.IsDeleted &&
+                                   x.Id == command.ConsultantProfileId);
+
+                if (access.IsSecretary && !isOwnConsultantReservation &&
+                    !await secretaryAccessService.HasPermissionAsync(userId,
                     DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation))
                     return StatusCode(StatusCodes.Status403Forbidden,
                         Result.Failure("شما دسترسی ایجاد رزرو را ندارید"));
@@ -212,7 +217,11 @@ namespace DentalDashboard.Controllers
             if (TryGetCurrentUserId(out var userId))
             {
                 var access = await secretaryAccessService.GetAccessAsync(userId);
-                if (access.IsSecretary)
+                var isOwnConsultantReservation = await consultantProfileRepository.GetAll()
+                    .AnyAsync(x => x.UserId == userId && !x.IsDeleted &&
+                                   x.Id == command.ConsultantProfileId);
+
+                if (access.IsSecretary && !isOwnConsultantReservation)
                 {
                     if (!await secretaryAccessService.HasPermissionAsync(userId,
                             DentalDashboard.Domain.Enums.SecretaryPermissionType.EditReservations) ||

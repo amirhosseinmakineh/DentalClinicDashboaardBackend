@@ -42,10 +42,11 @@ public class AdminReportsController : ControllerBase
         [FromQuery] DateOnly? date,
         [FromQuery] long? consultantProfileId,
         [FromQuery] DailyReservationRequestStatus? requestStatus,
+        [FromQuery] bool includeAll,
         CancellationToken cancellationToken)
     {
         var report = await dailyReservationsReportService.GetAsync(
-            date, consultantProfileId, requestStatus, cancellationToken);
+            date, consultantProfileId, requestStatus, includeAll, cancellationToken);
         return Ok(report);
     }
 
@@ -55,12 +56,14 @@ public class AdminReportsController : ControllerBase
         [FromQuery] DateOnly? date,
         [FromQuery] long? consultantProfileId,
         [FromQuery] DailyReservationRequestStatus? requestStatus,
+        [FromQuery] bool includeAll,
         CancellationToken cancellationToken)
     {
         var reportDate = date ?? IranTimeHelper.TodayInIran();
         var file = await dailyReservationsReportService.ExportCsvAsync(
-            reportDate, consultantProfileId, requestStatus, cancellationToken);
-        return File(file, "text/csv; charset=utf-8", $"daily-reservations-{PersianFileDate(reportDate)}.csv");
+            reportDate, consultantProfileId, requestStatus, includeAll, cancellationToken);
+        var fileDate = includeAll ? "all" : PersianFileDate(reportDate);
+        return File(file, "text/csv; charset=utf-8", $"daily-reservations-{fileDate}.csv");
     }
 
     [HttpGet("users/export")]

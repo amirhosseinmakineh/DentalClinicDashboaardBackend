@@ -1,17 +1,18 @@
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
+using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
+using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.Domain.IRepositories;
-using Microsoft.EntityFrameworkCore;
-using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
 using DentalDashboard.Framwork.Domain;
 using DentalDashboard.Hubs;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace DentalDashboard.Controllers
 {
@@ -66,38 +67,73 @@ namespace DentalDashboard.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPatch("SecretaryReservations/{reservationId:long}/time")]
+        [HttpPost("SecretaryReservations/{reservationId:long}/time")]
         [Authorize]
         public async Task<IActionResult> UpdateSecretaryReservationTime(
             long reservationId,
-            UpdateSecretaryReservationTimeRequest request,
+            [FromBody] UpdateSecretaryReservationTimeRequest request,
             CancellationToken cancellationToken)
         {
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-            if (!await secretaryAccessService.HasPermissionAsync(userId,
-                    DentalDashboard.Domain.Enums.SecretaryPermissionType.EditReservations) ||
-                !await secretaryAccessService.CanAccessReservationAsync(userId, reservationId))
-                return Forbid();
-
-            var reservation = await reservationRepository.GetByIdAsync(reservationId);
-            if (reservation == null || reservation.IsDeleted || reservation.IsCanceled)
-                return Ok(Result<ReservationItemResponse>.Failure("رزرو فعال یافت نشد"));
-
-            var command = new UpdateReservationCommand
+            try
             {
-                ReservationId = reservationId,
-                ConsultantProfileId = reservation.ConsultantProfileId,
-                ReservationAt = request.ReservationAt,
-                AppointmentDateTime = request.AppointmentDateTime,
-                Description = reservation.Description,
-                AttendancePrediction = reservation.AttendancePrediction,
-                DentalServices = request.DentalServices,
-                IsSecretaryEdit = true
-            };
+                if (!TryGetCurrentUserId(out var userId))
+                    return Unauthorized();
 
-            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
-            await BroadcastReservationUpdatedAsync(result, userId, cancellationToken);
-            return Ok(result);
+                var hasPermission = await secretaryAccessService.HasPermissionAsync(
+                    userId,
+                    SecretaryPermissionType.EditReservations);
+
+                if (!hasPermission)
+                    return Forbid();
+
+                var canAccess = await secretaryAccessService.CanAccessReservationAsync(
+                    userId,
+                    reservationId);
+
+                if (!canAccess)
+                    return Forbid();
+
+                var reservation = await reservationRepository.GetByIdAsync(reservationId);
+
+                if (reservation == null || reservation.IsDeleted || reservation.IsCanceled)
+                {
+                    return Ok(
+                        Result<ReservationItemResponse>.Failure("رزرو فعال یافت نشد")
+                    );
+                }
+
+                var command = new UpdateReservationCommand
+                {
+                    ReservationId = reservationId,
+                    ConsultantProfileId = reservation.ConsultantProfileId,
+                    ReservationAt = request.ReservationAt,
+                    AppointmentDateTime = request.AppointmentDateTime,
+                    Description = reservation.Description,
+                    AttendancePrediction = reservation.AttendancePrediction,
+                    DentalServices = request.DentalServices,
+                    IsSecretaryEdit = true
+                };
+
+                var result = await commandDispatcher.DispatchAsync(
+                    command,
+                    cancellationToken);
+
+                await BroadcastReservationUpdatedAsync(
+                    result,
+                    userId,
+                    cancellationToken);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = ex.Message,
+                    inner = ex.InnerException?.Message,
+                    stack = ex.StackTrace
+                });
+            }
         }
 
         [HttpPost("CompletePatientProfile")]
@@ -160,10 +196,18 @@ namespace DentalDashboard.Controllers
         [Authorize]
         public async Task<IActionResult> GetSecretaryReservations([FromQuery] GetSecretaryReservationsQuery query)
         {
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-            if (!await secretaryAccessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewReservations)) return Forbid();
+            if (!TryGetCurrentUserId(out var userId))
+                return Unauthorized();
+
+            var hasPermission = await secretaryAccessService.HasPermissionAsync(userId,DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewReservations);
+
+            if (!hasPermission)
+                return Forbid();
+
             query.SecretaryUserId = userId;
+
             var result = await queryDispatcher.DispatchAsync(query);
+
             return Ok(result);
         }
 

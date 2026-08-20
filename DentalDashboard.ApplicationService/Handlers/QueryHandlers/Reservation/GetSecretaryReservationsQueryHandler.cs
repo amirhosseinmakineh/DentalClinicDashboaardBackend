@@ -84,7 +84,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                          x.LeadAssignment.SecondaryPhoneNumber.Contains(searchText)));
             }
 
-            reservations = reservations.ApplyReservationAtFilter(
+            // The secretary dashboard's date picker represents the day the
+            // reservation was added, not the scheduled appointment day.
+            reservations = reservations.ApplyCreatedAtFilter(
                 query.Date,
                 query.FromDate ?? query.From,
                 query.ToDate ?? query.To);

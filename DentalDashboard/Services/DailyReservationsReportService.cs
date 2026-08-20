@@ -72,9 +72,9 @@ public sealed record DailyReservationReportItem(
 }
 
 public sealed record DailyReservationsReport(
-    DateOnly Date,
+    string Date,
     DateTime GeneratedAt,
-    string DatePersian,
+    string? DatePersian,
     string GeneratedAtPersian,
     DailyReservationsReportSummary Summary,
     IReadOnlyList<DailyReservationReportItem> Items);
@@ -85,10 +85,11 @@ public class DailyReservationsReportService(DentalContext context)
         DateOnly? date,
         long? consultantProfileId,
         DailyReservationRequestStatus? requestStatus,
+        bool includeAll = false,
         CancellationToken cancellationToken = default)
     {
         var reportDate = date ?? IranTimeHelper.TodayInIran();
-        var query = BuildQuery(reportDate, consultantProfileId, requestStatus);
+        var query = BuildQuery(reportDate, consultantProfileId, requestStatus, includeAll);
         var rows = await query
             .OrderByDescending(x => x.CreatedAt)
             .ThenByDescending(x => x.Id)
@@ -147,9 +148,9 @@ public class DailyReservationsReportService(DentalContext context)
         }).ToList();
 
         return new DailyReservationsReport(
-            reportDate,
+            includeAll ? string.Empty : reportDate.ToString("yyyy-MM-dd"),
             DateTime.UtcNow,
-            reportDate.ToPersianDate(),
+            includeAll ? null : reportDate.ToPersianDate(),
             IranTimeHelper.ToIranLocalTime(DateTime.UtcNow).ToPersianDateTimeString(),
             new DailyReservationsReportSummary(
                 items.Count,
@@ -167,9 +168,11 @@ public class DailyReservationsReportService(DentalContext context)
         DateOnly? date,
         long? consultantProfileId,
         DailyReservationRequestStatus? requestStatus,
+        bool includeAll = false,
         CancellationToken cancellationToken = default)
     {
-        var report = await GetAsync(date, consultantProfileId, requestStatus, cancellationToken);
+        var report = await GetAsync(
+            date, consultantProfileId, requestStatus, includeAll, cancellationToken);
         var lines = new List<string>
         {
             CsvExportHelper.JoinRow(
@@ -199,12 +202,19 @@ public class DailyReservationsReportService(DentalContext context)
     }
 
     private IQueryable<Domain.Models.Reservation> BuildQuery(
-        DateOnly date, long? consultantProfileId, DailyReservationRequestStatus? requestStatus)
+        DateOnly date,
+        long? consultantProfileId,
+        DailyReservationRequestStatus? requestStatus,
+        bool includeAll)
     {
+        var query = context.Reservations.AsNoTracking().Where(x => !x.IsDeleted);
+
+        if (includeAll)
+            return query;
+
         var (startUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(date);
         var (endUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(date.AddDays(1));
-        var query = context.Reservations.AsNoTracking()
-            .Where(x => !x.IsDeleted && x.CreatedAt >= startUtc && x.CreatedAt < endUtc);
+        query = query.Where(x => x.CreatedAt >= startUtc && x.CreatedAt < endUtc);
 
         if (consultantProfileId.HasValue)
             query = query.Where(x => x.ConsultantProfileId == consultantProfileId.Value);

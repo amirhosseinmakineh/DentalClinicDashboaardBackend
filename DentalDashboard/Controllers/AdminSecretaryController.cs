@@ -67,7 +67,11 @@ public sealed class AdminSecretaryController : ControllerBase
         {
             if (!Enum.TryParse<DayOfWeek>(item.Day, true, out var parsedDay) || !Enum.IsDefined(parsedDay))
                 return BadRequest(new { message = $"روز '{item.Day}' معتبر نیست" });
-            if (!configurations.TryAdd(parsedDay, item.Permissions))
+            var permissions = item.Permissions?
+                .Where(permission => permission.HasValue)
+                .Select(permission => permission.GetValueOrDefault())
+                .ToArray() ?? [];
+            if (!configurations.TryAdd(parsedDay, permissions))
                 return BadRequest(new { message = $"روز '{item.Day}' تکراری است" });
         }
         var result = await accessService.UpdateScheduleAsync(userId, request.SecretaryType,

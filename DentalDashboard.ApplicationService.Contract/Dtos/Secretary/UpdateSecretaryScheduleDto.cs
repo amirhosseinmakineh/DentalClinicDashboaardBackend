@@ -12,5 +12,5 @@ public sealed class UpdateSecretaryScheduleDto
 public sealed class SecretaryDayPermissionsDto
 {
     public string Day { get; set; } = string.Empty;
-    public List<SecretaryPermissionType> Permissions { get; set; } = [];
+    public List<SecretaryPermissionType?>? Permissions { get; set; } = [];
 }

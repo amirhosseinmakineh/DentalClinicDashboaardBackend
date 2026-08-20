@@ -98,6 +98,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             {
                 LeadAssignmentId = lead.Id,
                 ConsultantProfileId = command.ConsultantProfileId,
+                OwnerType = command.OwnerType,
+                OwnerUserId = command.OwnerUserId,
                 ReservationAt = appointmentDateTime,
                 ReservationType = command.ReservationType,
                 DentalServices = dentalServices,

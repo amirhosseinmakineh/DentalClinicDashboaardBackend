@@ -77,15 +77,31 @@ public sealed class SecretaryAccessService : ISecretaryAccessService
         var schedules = await context.SecretaryAccessSchedules.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
         var permissions = await context.SecretaryAccessPermissions.Where(x => x.SecretaryUserId == userId).ToListAsync(cancellationToken);
         var oldDays = schedules.Where(x => x.IsActive && !x.IsDeleted).Select(x => x.DayOfWeek).Distinct().OrderBy(x => x).ToArray();
+
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         context.SecretaryAccessSchedules.RemoveRange(schedules);
         context.SecretaryAccessPermissions.RemoveRange(permissions);
 
+        // Persist removals before inserting the replacement rows. Otherwise an update that keeps
+        // the same day/permission can violate the unique indexes before EF deletes the old rows.
+        if (schedules.Count > 0 || permissions.Count > 0)
+            await context.SaveChangesAsync(cancellationToken);
+
         if (secretaryType == SecretaryType.Assistant)
         {
-            await context.SecretaryAccessSchedules.AddRangeAsync(dayPermissions.Keys.Select(day => new SecretaryAccessSchedule
-                { UserId = userId, DayOfWeek = day, IsActive = true }), cancellationToken);
-            await context.SecretaryAccessPermissions.AddRangeAsync(dayPermissions.SelectMany(entry => entry.Value.Distinct().Select(permission =>
-                new SecretaryAccessPermission { SecretaryUserId = userId, DayOfWeek = entry.Key, PermissionType = permission, IsActive = true })), cancellationToken);
+            var newSchedules = dayPermissions.Keys.Select(day => new SecretaryAccessSchedule
+                { UserId = userId, DayOfWeek = day, IsActive = true }).ToArray();
+            var newPermissions = dayPermissions.SelectMany(entry => entry.Value.Distinct().Select(permission =>
+                new SecretaryAccessPermission
+                {
+                    SecretaryUserId = userId,
+                    DayOfWeek = entry.Key,
+                    PermissionType = permission,
+                    IsActive = true
+                })).ToArray();
+
+            await context.SecretaryAccessSchedules.AddRangeAsync(newSchedules, cancellationToken);
+            await context.SecretaryAccessPermissions.AddRangeAsync(newPermissions, cancellationToken);
         }
         user.SecretaryType = secretaryType;
         user.UpdatedAt = DateTime.UtcNow;
@@ -95,6 +111,7 @@ public sealed class SecretaryAccessService : ISecretaryAccessService
             OldDays = string.Join(',', oldDays), NewDays = string.Join(',', dayPermissions.Keys.OrderBy(x => x))
         }, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return new(true);
     }
 }

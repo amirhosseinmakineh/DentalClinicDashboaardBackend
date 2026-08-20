@@ -228,8 +228,8 @@ public class DailyReservationsReportService(DentalContext context)
         var endDate = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
 
         query = query.Where(x =>
-            x.CreatedAt >= startDate &&
-            x.CreatedAt < endDate);
+            x.ReservationAt >= startDate &&
+            x.ReservationAt < endDate);
 
         if (reservationOwnerType.HasValue)
             query = query.Where(x =>

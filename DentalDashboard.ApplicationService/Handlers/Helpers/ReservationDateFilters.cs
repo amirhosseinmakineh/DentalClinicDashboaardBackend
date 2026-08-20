@@ -19,14 +19,14 @@ public static class ReservationDateFilters
 
         if (from.HasValue)
         {
-            var fromDate = DateOnly.FromDateTime(from.Value);
+            var fromDate = IranTimeHelper.GetDateInIran(from.Value);
             var (startUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(fromDate);
             query = query.Where(x => x.ReservationAt >= startUtc);
         }
 
         if (to.HasValue)
         {
-            var toDate = DateOnly.FromDateTime(to.Value);
+            var toDate = IranTimeHelper.GetDateInIran(to.Value);
             var (_, endUtc) = IranTimeHelper.GetIranDayRangeAsUtc(toDate);
             query = query.Where(x => x.ReservationAt <= endUtc);
         }

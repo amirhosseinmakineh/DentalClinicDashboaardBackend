@@ -117,9 +117,25 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("GetConsultantReservations")]
-        public async Task<IActionResult> GetConsultantReservations([FromQuery] GetConsultantReservationsQuery query)
+        [Authorize]
+        public async Task<IActionResult> GetConsultantReservations(
+            [FromQuery] GetConsultantReservationsQuery query,
+            CancellationToken cancellationToken)
         {
-            var result = await queryDispatcher.DispatchAsync(query);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            var consultantProfileId = await consultantProfileRepository.GetAll()
+                .Where(x => x.UserId == userId && !x.IsDeleted)
+                .Select(x => (long?)x.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (!consultantProfileId.HasValue) return Forbid();
+
+            // Never trust a profile id supplied by the dashboard. Scoping the query
+            // from the authenticated user also prevents exposing another consultant's
+            // patient and reservation data.
+            query.ConsultantProfileId = consultantProfileId.Value;
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
         }
 

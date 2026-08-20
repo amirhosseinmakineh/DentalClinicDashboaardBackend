@@ -17,8 +17,13 @@ Content-Type: application/json
 در خروجی API لیست رزروهای مشاور:
 
 ```http
-GET /api/Reservation/GetConsultantReservations?consultantProfileId=3&pageNumber=1&pageSize=10
+GET /api/Reservation/GetConsultantReservations?pageNumber=1&pageSize=10
+Authorization: Bearer <access-token>
 ```
+
+این API نیز احراز هویت می‌شود و بک‌اند شناسه پروفایل مشاور را از توکن استخراج می‌کند؛ بنابراین ارسال
+`consultantProfileId` لازم نیست و اگر هم ارسال شود نادیده گرفته خواهد شد. در پاسخ `401` کاربر باید
+دوباره وارد شود و پاسخ `403` یعنی برای کاربر، پروفایل فعال مشاور پیدا نشده است.
 
 فیلد بولی `canEdit` به هر آیتم اضافه شده است. دکمه «ویرایش» فقط وقتی نمایش داده یا فعال شود که مقدار این فیلد `true` باشد.
 
@@ -51,7 +56,8 @@ GET /api/Reservation/GetConsultantReservations?consultantProfileId=3&pageNumber=
   "attendanceProbabilityPercent": 85,
   "attendancePrediction": "بیمار حضور را تلفنی تأیید کرد",
   "secondaryPhoneNumber": "09121111111",
-  "description": "ساعت رزرو با بیمار هماهنگ شد"
+  "description": "ساعت رزرو با بیمار هماهنگ شد",
+  "dentalServices": [1, 3]
 }
 ```
 
@@ -65,6 +71,7 @@ GET /api/Reservation/GetConsultantReservations?consultantProfileId=3&pageNumber=
 | `attendancePrediction` | `string?` | توضیح پیش‌بینی حضور |
 | `secondaryPhoneNumber` | `string?` | شماره تماس دوم بیمار |
 | `description` | `string?` | توضیحات رزرو |
+| `dentalServices` | `DentalServiceType[]?` | خدمات دندان‌پزشکی انتخاب‌شده؛ در صورت ارسال باید حداقل یک مقدار معتبر داشته باشد |
 
 > `reservationAt` در قرارداد فعلی الزامی است. فرم ویرایش باید مقدار فعلی آن را حتی وقتی ساعت عوض نشده ارسال کند.
 
@@ -91,6 +98,10 @@ GET /api/Reservation/GetConsultantReservations?consultantProfileId=3&pageNumber=
 ```
 
 بعد از موفقیت، آیتم جدول را با `data` جایگزین کنید یا لیست رزروها را دوباره دریافت کنید.
+
+بک‌اند همچنین رویداد SignalR با نام `ReservationUpdated` را روی هاب `/hubs/reservations`
+منتشر می‌کند. برای همگام‌سازی چند تب یا نمایش تغییر در سایر بخش‌های داشبورد، فرانت‌اند می‌تواند این
+رویداد را گوش کند و با `reservation.reservationId` آیتم متناظر را جایگزین کند.
 
 ## وضعیت‌ها و خطاها
 
@@ -122,6 +133,7 @@ type UpdateConsultantReservation = {
   attendancePrediction?: string;
   secondaryPhoneNumber?: string;
   description?: string;
+  dentalServices?: number[];
 };
 
 export async function updateConsultantReservation(

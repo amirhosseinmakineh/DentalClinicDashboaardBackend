@@ -102,6 +102,30 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
         }
     }
 
+    public class GetNewLeadsQueryHandler : IQueryHandler<GetNewLeadsQuery, PaginatedResult<LeadsAssignmentItemsResponse>>
+    {
+        private readonly GetLeadsAssignmentQueryHandler getLeadsHandler;
+
+        public GetNewLeadsQueryHandler(
+            ILeadAssignmentRepository leadAssignmentRepository,
+            IReservationRepository reservationRepository)
+        {
+            getLeadsHandler = new GetLeadsAssignmentQueryHandler(
+                leadAssignmentRepository,
+                reservationRepository);
+        }
+
+        public Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(
+            GetNewLeadsQuery query,
+            CancellationToken cancellationToken = default)
+        {
+            // This endpoint is dedicated to creating reports. Do not allow callers to
+            // broaden it by sending HasSubmittedReport=true.
+            query.HasSubmittedReport = false;
+            return getLeadsHandler.HandleAsync(query, cancellationToken);
+        }
+    }
+
     internal static class LeadAssignmentPagination
     {
         public static async Task<PaginatedResult<LeadsAssignmentItemsResponse>> ToPaginatedResultAsync(

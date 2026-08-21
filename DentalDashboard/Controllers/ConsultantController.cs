@@ -194,6 +194,15 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpGet("GetNewLeads")]
+        public async Task<IActionResult> GetNewLeads(
+            [FromQuery] GetNewLeadsQuery query,
+            CancellationToken cancellationToken)
+        {
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
+            return Ok(result);
+        }
+
         [HttpGet("GetBroadcastRealtimeLeads")]
         public async Task<IActionResult> GetBroadcastRealtimeLeads(
             [FromQuery] GetBroadcastRealtimeLeadsQuery query)

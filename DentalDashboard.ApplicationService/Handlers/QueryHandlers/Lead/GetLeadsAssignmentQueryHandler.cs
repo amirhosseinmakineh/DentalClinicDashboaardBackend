@@ -92,10 +92,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 PatientCity = x.PatientCity,
                 PatientRegion = x.PatientRegion,
                 BusinessName = x.BusinessName,
+                ConsultantProfileId = x.ConsultantProfileId,
                 AttendanceProbabilityPercent = x.AttendanceProbabilityPercent,
                 SecondaryPhoneNumber = x.SecondaryPhoneNumber,
                 HasActiveReservation = reservationRepository.GetAll()
-                    .Any(r => r.LeadAssignmentId == x.Id && !r.IsCanceled)
+                    .Any(r => r.LeadAssignmentId == x.Id)
             });
 
             return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);

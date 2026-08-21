@@ -2,6 +2,7 @@ using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
@@ -80,6 +81,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     x.AttendanceConfirmationStatus == query.AttendanceConfirmationStatus.Value);
             }
 
+
             var totalCount = await reservations.CountAsync(cancellationToken);
             var items = await reservations
                 .OrderBy(x => x.ReservationAt)
@@ -94,7 +96,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     ConsultantProfileId = x.ConsultantProfileId,
                     PatientUserId = x.PatientUserId,
                     RequiresPatientProfile = !x.PatientUserId.HasValue,
-                    ReservationAt = x.ReservationAt,
+                    ReservationAt = IranTimeHelper.ToIranLocalTime(x.ReservationAt),
                     AppointmentDateTime = x.ReservationAt,
                     CreatedAt = x.CreatedAt,
                     PatientName = x.LeadAssignment != null ? x.LeadAssignment.UserName : string.Empty,

@@ -8,6 +8,7 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Utilities.Convertor;
+using DentalDashboard.Utilities.Time;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 {
@@ -108,22 +109,15 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             // CreatedAt date range
             // ------------------------------------------------------------
 
-            if (query.FromDate.HasValue)
+            if (query.FromDate.HasValue && query.ToDate.HasValue)
             {
-                var fromDate = query.FromDate.Value;
+                var fromDate = query.FromDate.Value.Date;
+                var toDateExclusive = query.ToDate.Value.Date.AddDays(1);
 
                 reservations = reservations.Where(x =>
-                    x.ReservationAt >= fromDate);
+                    x.ReservationAt >= fromDate &&
+                    x.ReservationAt < toDateExclusive);
             }
-
-            if (query.ToDate.HasValue)
-            {
-                var toDate = query.ToDate.Value;
-
-                reservations = reservations.Where(x =>
-                    x.ReservationAt <= toDate);
-            }
-
             // ------------------------------------------------------------
             // Secretary announcement status
             // ------------------------------------------------------------

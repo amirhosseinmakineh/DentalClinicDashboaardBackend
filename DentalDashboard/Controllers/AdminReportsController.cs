@@ -99,10 +99,26 @@ public class AdminReportsController : ControllerBase
         return File(file, "text/csv; charset=utf-8", $"users-report-{TodayPersianFileDate()}.csv");
     }
 
-    [HttpGet("leads/export")]
-    public async Task<IActionResult> ExportLeads(CancellationToken cancellationToken)
+    [Authorize(Roles = "Admin")]
+    [HttpGet("leads")]
+    public async Task<IActionResult> GetLeads(
+        [FromQuery] LeadReportFilter filter, CancellationToken cancellationToken)
     {
-        var file = await leadsExportService.ExportCsvAsync(cancellationToken);
+        if (filter.From.HasValue && filter.To.HasValue && filter.From > filter.To)
+            return BadRequest(new { message = "from cannot be after to." });
+
+        return Ok(await leadsExportService.GetAsync(filter, cancellationToken));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("leads/export")]
+    public async Task<IActionResult> ExportLeads(
+        [FromQuery] LeadReportFilter filter, CancellationToken cancellationToken)
+    {
+        if (filter.From.HasValue && filter.To.HasValue && filter.From > filter.To)
+            return BadRequest(new { message = "from cannot be after to." });
+
+        var file = await leadsExportService.ExportCsvAsync(filter, cancellationToken);
         return File(file, "text/csv; charset=utf-8", $"leads-report-{TodayPersianFileDate()}.csv");
     }
 

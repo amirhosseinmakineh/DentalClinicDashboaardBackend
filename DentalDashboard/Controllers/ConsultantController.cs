@@ -196,10 +196,23 @@ namespace DentalDashboard.Controllers
 
         [HttpGet("GetNewLeads")]
         public async Task<IActionResult> GetNewLeads(
-            [FromQuery] GetNewLeadsQuery query,
-            CancellationToken cancellationToken)
+      [FromQuery] GetNewLeadsQuery query,
+      CancellationToken cancellationToken)
         {
-            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
+            Console.WriteLine(
+                $"GetNewLeads START - Cancelled: {cancellationToken.IsCancellationRequested}");
+
+            cancellationToken.Register(() =>
+            {
+                Console.WriteLine("GetNewLeads REQUEST CANCELLED");
+            });
+
+            var result = await queryDispatcher.DispatchAsync(
+                query,
+                cancellationToken);
+
+            Console.WriteLine("GetNewLeads END");
+
             return Ok(result);
         }
 

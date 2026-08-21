@@ -99,31 +99,45 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     .Any(r => r.LeadAssignmentId == x.Id)
             });
 
-            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
+            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads,cancellationToken);
         }
     }
 
     public class GetNewLeadsQueryHandler : IQueryHandler<GetNewLeadsQuery, PaginatedResult<LeadsAssignmentItemsResponse>>
     {
-        private readonly GetLeadsAssignmentQueryHandler getLeadsHandler;
+        private readonly ILeadAssignmentRepository leadAssignmentRepository;
 
-        public GetNewLeadsQueryHandler(
-            ILeadAssignmentRepository leadAssignmentRepository,
-            IReservationRepository reservationRepository)
+        public GetNewLeadsQueryHandler(ILeadAssignmentRepository leadAssignmentRepository)
         {
-            getLeadsHandler = new GetLeadsAssignmentQueryHandler(
-                leadAssignmentRepository,
-                reservationRepository);
+            this.leadAssignmentRepository = leadAssignmentRepository;
         }
 
-        public Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(
-            GetNewLeadsQuery query,
-            CancellationToken cancellationToken = default)
+        public async Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(
+     GetNewLeadsQuery query,
+     CancellationToken cancellationToken = default)
         {
-            // This endpoint is dedicated to creating reports. Do not allow callers to
-            // broaden it by sending HasSubmittedReport=true.
-            query.HasSubmittedReport = false;
-            return getLeadsHandler.HandleAsync(query, cancellationToken);
+            var newLeads = await leadAssignmentRepository
+                .GetAll()
+                .AsNoTracking()
+                .Where(x =>
+                    x.ConsultantProfileId == query.ProfileId &&
+                    x.ReportSubmittedAt == null &&
+                    x.ReportDescription == null)
+                .Select(x => new LeadsAssignmentItemsResponse
+                {
+                    Id = x.Id,
+                    ConsultantProfileId = x.ConsultantProfileId,
+                    ReportSubmittedAt = x.ReportSubmittedAt,
+                    ReportDescription = x.ReportDescription,
+                    UserName = x.UserName,
+                    PhoneNumber = x.PhoneNumber,
+                })
+                .ToListAsync(cancellationToken);
+
+            return new PaginatedResult<LeadsAssignmentItemsResponse>
+            {
+                Items = newLeads,
+            };
         }
     }
 
@@ -131,26 +145,18 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
     {
         public static async Task<PaginatedResult<LeadsAssignmentItemsResponse>> ToPaginatedResultAsync(
             IQueryable<LeadsAssignmentItemsResponse> query,
-            int pageNumber,
-            int pageSize,
             CancellationToken cancellationToken)
         {
-            var normalizedPageNumber = pageNumber < 1 ? 1 : pageNumber;
-            var normalizedPageSize = pageSize < 1 ? 10 : pageSize;
             var totalCount = await query.CountAsync(cancellationToken);
             var items = await query
                 .OrderByDescending(x => x.AssignedAt.HasValue)
                 .ThenByDescending(x => x.AssignedAt)
                 .ThenByDescending(x => x.Id)
-                .Skip((normalizedPageNumber - 1) * normalizedPageSize)
-                .Take(normalizedPageSize)
                 .ToListAsync(cancellationToken);
 
             return new PaginatedResult<LeadsAssignmentItemsResponse>()
             {
                 Items = items,
-                PageNumber = normalizedPageNumber,
-                PageSize = normalizedPageSize,
                 TotalCount = totalCount
             };
         }
@@ -224,7 +230,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     x.UserName.Contains(searchText) || x.PhoneNumber.Contains(searchText));
             }
 
-            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
+            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, cancellationToken);
         }
     }
 }

@@ -27,6 +27,15 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }
+
+    /// <summary>
+    /// Returns the consultant's picked-up leads that do not have a submitted report yet.
+    /// It intentionally has the same filters and pagination contract as <see cref="GetLeadsQuery"/>.
+    /// </summary>
+    public class GetNewLeadsQuery : GetLeadsQuery
+    {
+    }
+
     public class GetAllLeadsQuery : IQuery<PaginatedResult<LeadsAssignmentItemsResponse>>
     {
         public LeadAssignmentState? leadAssignmentState { get; set; }

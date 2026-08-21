@@ -18,6 +18,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public string? AttendancePrediction { get; set; }
         public string? SecondaryPhoneNumber { get; set; }
         public List<DentalServiceType>? DentalServices { get; set; }
+        public ReservationOwnerType? ReservationOwnerType { get; set; }
 
         // Set only by an authorized API endpoint; clients must not be able to bypass
         // the post-review edit restriction themselves.

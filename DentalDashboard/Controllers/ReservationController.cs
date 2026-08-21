@@ -111,7 +111,8 @@ namespace DentalDashboard.Controllers
                     Description = reservation.Description,
                     AttendancePrediction = reservation.AttendancePrediction,
                     DentalServices = request.DentalServices,
-                    IsSecretaryEdit = true
+                    IsSecretaryEdit = true,
+                    ReservationOwnerType = ReservationOwnerType.Secretary
                 };
 
                 var result = await commandDispatcher.DispatchAsync(
@@ -312,7 +313,8 @@ namespace DentalDashboard.Controllers
                 AttendanceProbabilityPercent = request.AttendanceProbabilityPercent,
                 AttendancePrediction = request.AttendancePrediction,
                 SecondaryPhoneNumber = request.SecondaryPhoneNumber,
-                DentalServices = request.DentalServices
+                DentalServices = request.DentalServices,
+                ReservationOwnerType = ReservationOwnerType.Consultant
             };
 
             var result = await commandDispatcher.DispatchAsync(command, cancellationToken);

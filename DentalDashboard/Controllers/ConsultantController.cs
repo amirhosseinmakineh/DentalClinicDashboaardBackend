@@ -2,6 +2,7 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
+using DentalDashboard.ApplicationService.Contract.Requests.FollowUp.Queries;
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
@@ -35,6 +36,17 @@ namespace DentalDashboard.Controllers
             this.secretaryAccessService = secretaryAccessService;
             this.consultantProfileRepository = consultantProfileRepository;
         }
+        [HttpGet("follow-ups")]
+        [Authorize]
+        public async Task<IActionResult> GetFollowUps([FromQuery] GetConsultantFollowUpsQuery query, CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var profileId = await consultantProfileRepository.GetAll().AsNoTracking().Where(x => !x.IsDeleted && x.UserId == userId).Select(x => (long?)x.Id).FirstOrDefaultAsync(cancellationToken);
+            if (!profileId.HasValue) return Forbid();
+            query.ConsultantProfileId = profileId.Value;
+            return Ok(await queryDispatcher.DispatchAsync(query, cancellationToken));
+        }
+
         [HttpGet("GetConsultants")]
         [Authorize]
         public async Task<IActionResult> GetConsultants(

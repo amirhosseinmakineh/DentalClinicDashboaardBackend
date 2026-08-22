@@ -422,6 +422,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<int?>("SecretaryAnnouncementStatus")
                         .HasColumnType("int");
 
+                    b.Property<bool?>("SecretaryFollowUpContacted")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime?>("SecretaryAnnouncementUpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -446,6 +449,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("PatientUserId");
 
                     b.HasIndex("SecretaryAnnouncementStatus");
+
+                    b.HasIndex("SecretaryAnnouncementUserId", "SecretaryAnnouncementUpdatedAt");
 
                     b.HasIndex("ReservationType", "ReservationAt");
 

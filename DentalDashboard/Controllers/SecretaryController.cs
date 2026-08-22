@@ -1,5 +1,7 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Secretary.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Secretary.Queries;
+using DentalDashboard.ApplicationService.Contract.Requests.FollowUp.Commands;
+using DentalDashboard.ApplicationService.Contract.Requests.FollowUp.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Mvc;
@@ -38,6 +40,43 @@ public class SecretaryController : ControllerBase
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.reservationRepository = reservationRepository;
     }
+
+    [HttpGet("follow-ups/patients")]
+    [Authorize]
+    public async Task<IActionResult> SearchFollowUpPatients([FromQuery] SearchSecretaryFollowUpPatientsQuery query, CancellationToken cancellationToken) => Ok(await queryDispatcher.DispatchAsync(query, cancellationToken));
+
+    [HttpGet("follow-ups/patients/{patientId:long}")]
+    [Authorize]
+    public async Task<IActionResult> GetFollowUpPatient(long patientId, CancellationToken cancellationToken)
+    {
+        var result = await queryDispatcher.DispatchAsync(new GetSecretaryFollowUpPatientInfoQuery { PatientId = patientId }, cancellationToken);
+        return result is null ? NotFound(Result.Failure("بیمار یا رزرو مرتبط یافت نشد")) : Ok(result);
+    }
+
+    [HttpGet("follow-ups")]
+    [Authorize]
+    public async Task<IActionResult> GetFollowUps([FromQuery] GetSecretaryFollowUpsQuery query, CancellationToken cancellationToken)
+    { if (!TryGetCurrentUserId(out var userId)) return Unauthorized(); query.SecretaryUserId = userId; return Ok(await queryDispatcher.DispatchAsync(query, cancellationToken)); }
+
+    [HttpGet("follow-ups/{id:long}")]
+    [Authorize]
+    public async Task<IActionResult> GetFollowUp(long id, CancellationToken cancellationToken)
+    { if (!TryGetCurrentUserId(out var userId)) return Unauthorized(); var result = await queryDispatcher.DispatchAsync(new GetSecretaryFollowUpByIdQuery { Id = id, SecretaryUserId = userId }, cancellationToken); return result is null ? NotFound(Result.Failure("پیگیری یافت نشد")) : Ok(result); }
+
+    [HttpPost("follow-ups")]
+    [Authorize]
+    public async Task<IActionResult> CreateFollowUp(CreateSecretaryFollowUpCommand command, CancellationToken cancellationToken)
+    { if (!TryGetCurrentUserId(out var userId)) return Unauthorized(); command.SecretaryUserId = userId; return Ok(await dispatcher.DispatchAsync(command, cancellationToken)); }
+
+    [HttpPut("follow-ups/{id:long}")]
+    [Authorize]
+    public async Task<IActionResult> UpdateFollowUp(long id, UpdateSecretaryFollowUpCommand command, CancellationToken cancellationToken)
+    { if (!TryGetCurrentUserId(out var userId)) return Unauthorized(); command.Id = id; command.SecretaryUserId = userId; return Ok(await dispatcher.DispatchAsync(command, cancellationToken)); }
+
+    [HttpDelete("follow-ups/{id:long}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteFollowUp(long id, CancellationToken cancellationToken)
+    { if (!TryGetCurrentUserId(out var userId)) return Unauthorized(); return Ok(await dispatcher.DispatchAsync(new DeleteSecretaryFollowUpCommand { Id = id, SecretaryUserId = userId }, cancellationToken)); }
 
     [HttpGet("after-sales-patients")]
     [Authorize]

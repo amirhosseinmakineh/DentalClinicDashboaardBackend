@@ -223,6 +223,102 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [HttpGet("{reservationId:long}")]
+        [Authorize]
+        public async Task<IActionResult> GetSecretaryReservationDetails(
+            long reservationId,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
+            if (!await secretaryAccessService.HasPermissionAsync(
+                    userId,
+                    SecretaryPermissionType.ViewReservations))
+            {
+                return Forbid();
+            }
+
+            var reservationExists = await reservationRepository.GetAll()
+                .AsNoTracking()
+                .AnyAsync(
+                    reservation =>
+                        reservation.Id == reservationId &&
+                        !reservation.IsDeleted,
+                    cancellationToken);
+
+            if (!reservationExists)
+            {
+                return NotFound(Result.Failure("رزرو یافت نشد"));
+            }
+
+            if (!await secretaryAccessService.CanAccessReservationAsync(
+                    userId,
+                    reservationId,
+                    cancellationToken))
+            {
+                return Forbid();
+            }
+
+            var result = await queryDispatcher.DispatchAsync(
+                new GetSecretaryReservationDetailsQuery(reservationId),
+                cancellationToken);
+
+            return result == null ? NotFound() : Ok(result);
+        }
+
+        [HttpPost("{reservationId:long}/assign-doctor")]
+        [Authorize]
+        public async Task<IActionResult> AssignReservationDoctor(
+            long reservationId,
+            [FromBody] UpdateReservationDoctorRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
+            if (!await secretaryAccessService.HasPermissionAsync(
+                    userId,
+                    SecretaryPermissionType.EditReservations))
+            {
+                return Forbid();
+            }
+
+            var reservationExists = await reservationRepository.GetAll()
+                .AsNoTracking()
+                .AnyAsync(
+                    reservation =>
+                        reservation.Id == reservationId &&
+                        !reservation.IsDeleted,
+                    cancellationToken);
+
+            if (!reservationExists)
+            {
+                return NotFound(Result.Failure("رزرو یافت نشد"));
+            }
+
+            if (!await secretaryAccessService.CanAccessReservationAsync(
+                    userId,
+                    reservationId,
+                    cancellationToken))
+            {
+                return Forbid();
+            }
+
+            var command = new UpdateReservationDoctorCommand
+            {
+                ReservationId = reservationId,
+                DoctorName = request.DoctorName
+            };
+            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
+
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
         [HttpPost("ConfirmAttendance")]
         public async Task<IActionResult> ConfirmAttendance(ConfirmReservationAttendanceCommand command)
         {

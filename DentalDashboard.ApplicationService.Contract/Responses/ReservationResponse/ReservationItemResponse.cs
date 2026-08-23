@@ -40,6 +40,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public bool IsDueForConsultantConfirmation { get; set; }
         public bool CanEdit { get; set; }
         public string? Description { get; set; }
+        public string? DoctorName { get; set; }
         public bool IsCanceled { get; set; }
         public List<DentalServiceType> DentalServices { get; set; } = [];
     }

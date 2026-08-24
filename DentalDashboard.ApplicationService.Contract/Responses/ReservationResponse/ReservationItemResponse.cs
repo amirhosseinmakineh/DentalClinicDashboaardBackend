@@ -13,6 +13,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public DateTime ReservationAt { get; set; }
         public string ReservationAtPersian { get; set; } = default!;
         public DateTime AppointmentDateTime { get; set; }
+        public int PatientCount { get; set; }
         public DateTime CreatedAt { get; set; }
         public string PatientName { get; set; } = default!;
         public string PatientPhoneNumber { get; set; } = default!;

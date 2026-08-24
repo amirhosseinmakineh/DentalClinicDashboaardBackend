@@ -403,6 +403,7 @@ namespace DentalDashboard.Controllers
                 ConsultantProfileId = consultantProfileId.Value,
                 ReservationAt = request.ReservationAt,
                 AppointmentDateTime = request.AppointmentDateTime,
+                PatientCount = request.PatientCount,
                 Description = request.Description,
                 PatientCity = request.PatientCity,
                 PatientRegion = request.PatientRegion,

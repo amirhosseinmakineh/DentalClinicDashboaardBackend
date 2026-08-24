@@ -10,6 +10,7 @@ public class UpdateConsultantReservationRequest
 {
     public DateTime ReservationAt { get; set; }
     public DateTime? AppointmentDateTime { get; set; }
+    public int? PatientCount { get; set; }
     public string? Description { get; set; }
     public string? PatientCity { get; set; }
     public string? PatientRegion { get; set; }

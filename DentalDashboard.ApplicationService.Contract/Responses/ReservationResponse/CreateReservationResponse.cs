@@ -12,6 +12,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public bool RequiresPatientProfile { get; set; }
         public DateTime ReservationAt { get; set; }
         public DateTime AppointmentDateTime { get; set; }
+        public int PatientCount { get; set; }
         public DateTime CreatedAt { get; set; }
         public ReservationType ReservationType { get; set; }
         public string? SecondaryPhoneNumber { get; set; }

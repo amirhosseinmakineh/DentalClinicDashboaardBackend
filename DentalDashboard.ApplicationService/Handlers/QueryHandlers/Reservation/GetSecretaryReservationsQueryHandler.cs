@@ -112,11 +112,17 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (query.FromDate.HasValue && query.ToDate.HasValue)
             {
                 var fromDate = query.FromDate.Value.Date;
-                var toDateExclusive = query.ToDate.Value.Date.AddDays(1);
 
                 reservations = reservations.Where(x =>
-                    x.ReservationAt >= fromDate &&
-                    x.ReservationAt < toDateExclusive);
+                    x.ReservationAt >= fromDate);
+            }
+
+            if (query.ToDate.HasValue)
+            {
+                var toDate = query.ToDate.Value.Date.AddDays(1);
+
+                reservations = reservations.Where(x =>
+                    x.ReservationAt < toDate);
             }
             // ------------------------------------------------------------
             // Secretary announcement status

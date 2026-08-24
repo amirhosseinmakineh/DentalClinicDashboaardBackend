@@ -31,7 +31,7 @@ public sealed class ConsultantsDailySummaryService
             .AsNoTracking()
             .Where(x =>
                 !x.IsDeleted &&
-                !x.IsCanceled &&
+                !x.IsCanceled && 
                 x.CreatedAt >= startUtc &&
                 x.CreatedAt < endUtc)
             .GroupBy(x => x.ConsultantProfileId)

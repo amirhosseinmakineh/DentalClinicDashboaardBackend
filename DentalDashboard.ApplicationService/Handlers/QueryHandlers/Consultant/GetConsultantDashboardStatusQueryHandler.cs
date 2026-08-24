@@ -1,5 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
@@ -13,15 +14,21 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadDomainService leadDomainService;
+        private readonly ILeadAssignmentRepository leadAssignmentRepository;
+        private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
 
         public GetConsultantDashboardStatusQueryHandler(
             IConsultantProfileRepository consultantProfileRepository,
             IReservationRepository reservationRepository,
-            ILeadDomainService leadDomainService)
+            ILeadDomainService leadDomainService,
+            ILeadAssignmentRepository leadAssignmentRepository,
+            ILeadAssignmentLimitService leadAssignmentLimitService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
             this.reservationRepository = reservationRepository;
             this.leadDomainService = leadDomainService;
+            this.leadAssignmentRepository = leadAssignmentRepository;
+            this.leadAssignmentLimitService = leadAssignmentLimitService;
         }
 
         public async Task<ConsultantDashboardStatusResponse> HandleAsync(
@@ -50,6 +57,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                          x.CreatedAt >= todayStartUtc &&
                          x.CreatedAt < todayEndUtc,
                     cancellationToken);
+            var todayCallsCount = await leadAssignmentRepository.GetTodayCallCountAsync(profile.Id);
+            var dailyLimitStatus = await leadAssignmentLimitService.GetDailyLimitStatusAsync(profile.Id);
 
             return new ConsultantDashboardStatusResponse
             {
@@ -60,7 +69,13 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 LastOfflineAt = profile.LastOfflineAt,
                 CanGoOnline = canGoOnline,
                 OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(isAfterWorkEnd),
-                TodayReservationsCount = todayReservationsCount
+                TodayReservationsCount = todayReservationsCount,
+                TodayCallsCount = todayCallsCount,
+                DailyLimit = dailyLimitStatus.EffectiveDailyLimit,
+                TodayPickupCount = dailyLimitStatus.TodayPickupCount,
+                RemainingDailyCapacity = Math.Max(
+                    0,
+                    dailyLimitStatus.EffectiveDailyLimit - dailyLimitStatus.TodayPickupCount)
             };
         }
 

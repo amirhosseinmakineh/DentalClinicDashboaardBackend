@@ -2,6 +2,7 @@
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
+using DentalDashboard.Utilities.Time;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -163,16 +164,32 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public async Task<int> GetTodayPickupCountAsync(long consultantProfileId)
         {
-            var today = DateTime.Today;
-            var tomorrow = today.AddDays(1);
+            var today = IranTimeHelper.TodayInIran();
+            var (todayStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(today);
+            var (tomorrowStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(1));
 
             return await context.LeadAssignments
                 .CountAsync(x =>
                     !x.IsDeleted &&
                     x.ConsultantProfileId == consultantProfileId &&
                     x.PickUp &&
-                    x.AssignedAt >= today &&
-                    x.AssignedAt < tomorrow);
+                    x.AssignedAt >= todayStartUtc &&
+                    x.AssignedAt < tomorrowStartUtc);
+        }
+
+        public async Task<int> GetTodayCallCountAsync(long consultantProfileId)
+        {
+            var today = IranTimeHelper.TodayInIran();
+            var (todayStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(today);
+            var (tomorrowStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(1));
+
+            return await context.LeadAssignments
+                .AsNoTracking()
+                .CountAsync(x =>
+                    !x.IsDeleted &&
+                    x.ConsultantProfileId == consultantProfileId &&
+                    x.CallInitiatedAt >= todayStartUtc &&
+                    x.CallInitiatedAt < tomorrowStartUtc);
         }
 
         public async Task<bool> TryPickupLeadAsync(

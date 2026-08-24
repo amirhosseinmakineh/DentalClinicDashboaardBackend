@@ -11,6 +11,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public long ConsultantProfileId { get; set; }
         public DateTime ReservationAt { get; set; }
         public DateTime? AppointmentDateTime { get; set; }
+        public int? PatientCount { get; set; }
         public string? Description { get; set; }
         public string? PatientCity { get; set; }
         public string? PatientRegion { get; set; }

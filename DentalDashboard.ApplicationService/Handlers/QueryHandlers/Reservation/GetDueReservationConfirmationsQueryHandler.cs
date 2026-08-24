@@ -35,6 +35,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     RequiresPatientProfile = !x.PatientUserId.HasValue,
                     ReservationAt = x.ReservationAt,
                     AppointmentDateTime = x.ReservationAt,
+                    PatientCount = x.PatientCount,
                     CreatedAt = x.CreatedAt,
                     PatientName = x.LeadAssignment != null ? x.LeadAssignment.UserName : string.Empty,
                     PatientPhoneNumber = x.LeadAssignment != null ? x.LeadAssignment.PhoneNumber : string.Empty,

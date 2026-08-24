@@ -12,6 +12,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
     public class UpdateReservationCommandHandler : ICommandHandler<UpdateReservationCommand, ReservationItemResponse>
     {
         private const int MaxReservationsPerConsultantAtSameTime = 10;
+        private const int MaxPatientsPerReservation = 10;
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
 
@@ -27,6 +28,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             UpdateReservationCommand command,
             CancellationToken cancellationToken = default)
         {
+            if (command.PatientCount.HasValue &&
+                (command.PatientCount < 1 || command.PatientCount > MaxPatientsPerReservation))
+                return Result<ReservationItemResponse>.Failure("تعداد بیماران باید بین ۱ تا ۱۰ نفر باشد");
+
             if (!ReservationAppointmentTime.TryResolve(
                     command.ReservationAt,
                     command.AppointmentDateTime,
@@ -109,6 +114,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             leadAssignmentRepository.Update(lead);
 
             reservation.ReservationAt = appointmentDateTime;
+            if (command.PatientCount.HasValue)
+                reservation.PatientCount = command.PatientCount.Value;
             reservation.Description = command.Description?.Trim();
             reservation.AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
                 ? null
@@ -130,6 +137,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 RequiresPatientProfile = !reservation.PatientUserId.HasValue,
                 ReservationAt = reservation.ReservationAt,
                 AppointmentDateTime = reservation.ReservationAt,
+                PatientCount = reservation.PatientCount,
                 CreatedAt = reservation.CreatedAt,
                 PatientName = lead.UserName,
                 PatientPhoneNumber = lead.PhoneNumber,

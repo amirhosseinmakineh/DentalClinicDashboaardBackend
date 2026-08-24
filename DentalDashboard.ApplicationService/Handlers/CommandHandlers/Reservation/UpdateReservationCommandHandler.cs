@@ -163,6 +163,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                         (ReservationAttendanceConfirmationStatus.SecretaryApproved or
                          ReservationAttendanceConfirmationStatus.SecretaryRejected)),
                 Description = reservation.Description,
+                DoctorName = reservation.DoctorName,
                 IsCanceled = reservation.IsCanceled,
                 DentalServices = reservation.DentalServices
             }, "رزرو با موفقیت ویرایش شد");

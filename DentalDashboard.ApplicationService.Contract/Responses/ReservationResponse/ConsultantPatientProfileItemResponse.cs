@@ -12,6 +12,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public string? PatientRegion { get; set; }
         public DateTime ProfileCreatedAt { get; set; }
         public DateTime ReservationAt { get; set; }
+        public string? DoctorName { get; set; }
         public string? InsuranceName { get; set; }
         public string? EmergencyPhoneNumber { get; set; }
     }

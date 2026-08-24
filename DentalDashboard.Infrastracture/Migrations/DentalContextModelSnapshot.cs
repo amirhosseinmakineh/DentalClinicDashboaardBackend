@@ -382,6 +382,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("DoctorName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
                     b.Property<bool>("IsAttendanceScoreApplied")
                         .HasColumnType("bit");
 

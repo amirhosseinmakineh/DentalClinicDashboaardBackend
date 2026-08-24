@@ -119,11 +119,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (query.ToDate.HasValue)
             {
                 var toDate = IranTimeHelper.GetDateInIran(query.ToDate.Value);
-                var (_, end) = IranTimeHelper.GetIranLocalDayRange(toDate);
+                var toDateExclusive = toDate.AddDays(1).ToDateTime(TimeOnly.MinValue);
 
-                reservations = reservations.Where(x =>
-                    x.ReservationAt >= fromDate &&
-                    x.ReservationAt < toDateExclusive);
+                reservations = reservations.Where(x => x.ReservationAt < toDateExclusive);
             }
             // ------------------------------------------------------------
             // Secretary announcement status

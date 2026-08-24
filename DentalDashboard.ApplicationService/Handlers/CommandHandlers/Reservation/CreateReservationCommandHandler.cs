@@ -13,6 +13,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
     public class CreateReservationCommandHandler : ICommandHandler<CreateReservationCommand, CreateReservationResponse>
     {
         private const int MaxReservationsPerConsultantAtSameTime = 10;
+        private const int MaxPatientsPerReservation = 10;
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly IConsultantProfileRepository consultantProfileRepository;
@@ -26,6 +27,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
         public async Task<Result<CreateReservationResponse>> HandleAsync(CreateReservationCommand command, CancellationToken cancellationToken = default)
         {
+            if (command.PatientCount < 1 || command.PatientCount > MaxPatientsPerReservation)
+                return Result<CreateReservationResponse>.Failure("تعداد بیماران باید بین ۱ تا ۱۰ نفر باشد");
+
             var dentalServices = command.DentalServices.Distinct().ToList();
             if (dentalServices.Count == 0 || dentalServices.Any(x => !Enum.IsDefined(x)))
                 return Result<CreateReservationResponse>.Failure("انتخاب حداقل یک خدمت معتبر الزامی است");
@@ -102,6 +106,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 OwnerType = ReservationOwnerType.Consultant,
                 OwnerUserId = command.OwnerUserId,
                 ReservationAt = appointmentDateTime,
+                PatientCount = command.PatientCount,
                 ReservationType = command.ReservationType,
                 DentalServices = dentalServices,
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
@@ -127,6 +132,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 RequiresPatientProfile = !reservation.PatientUserId.HasValue,
                 ReservationAt = reservation.ReservationAt,
                 AppointmentDateTime = reservation.ReservationAt,
+                PatientCount = reservation.PatientCount,
                 CreatedAt = reservation.CreatedAt,
                 ReservationType = reservation.ReservationType,
                 SecondaryPhoneNumber = lead.SecondaryPhoneNumber,

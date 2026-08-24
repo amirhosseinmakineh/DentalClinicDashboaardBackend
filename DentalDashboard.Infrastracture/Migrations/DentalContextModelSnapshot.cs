@@ -407,6 +407,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<Guid?>("PatientUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("PatientCount")
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<bool?>("PatientReceivedService")
                         .HasColumnType("bit");
 

@@ -19,6 +19,9 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.Property(x => x.Description)
                 .HasMaxLength(1000);
 
+            builder.Property(x => x.PatientCount)
+                .HasDefaultValue(1);
+
             builder.Property(x => x.DoctorName)
                 .HasMaxLength(150);
 

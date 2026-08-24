@@ -219,6 +219,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 
                     ReservationAt = x.ReservationAt,
                     AppointmentDateTime = x.ReservationAt,
+                    PatientCount = x.PatientCount,
                     CreatedAt = x.CreatedAt,
 
                     ReservationType = x.ReservationType,

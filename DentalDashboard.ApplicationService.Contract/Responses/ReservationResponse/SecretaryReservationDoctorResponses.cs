@@ -7,6 +7,7 @@ public sealed class SecretaryReservationDetailsResponse
     public string PatientPhoneNumber { get; set; } = string.Empty;
     public string ConsultantFullName { get; set; } = string.Empty;
     public DateTime ReservationAt { get; set; }
+    public int PatientCount { get; set; }
     public string? DoctorName { get; set; }
 }
 

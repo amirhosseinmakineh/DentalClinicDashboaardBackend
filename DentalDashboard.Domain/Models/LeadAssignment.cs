@@ -18,8 +18,6 @@ public class LeadAssignment : BaseAuditableEntity<long>
 
     public LeadAssignmentType AssignmentType { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-
     public DateTime? CallDeadlineAt { get; set; }
 
     public bool RequiresThreeMinuteCall { get; set; }

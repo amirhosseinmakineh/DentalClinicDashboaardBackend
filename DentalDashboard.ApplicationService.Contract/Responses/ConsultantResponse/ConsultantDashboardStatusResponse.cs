@@ -10,5 +10,9 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantRespon
         public bool CanGoOnline { get; init; }
         public string? OnlineStatusBlockReason { get; init; }
         public int TodayReservationsCount { get; init; }
+        public int TodayCallsCount { get; init; }
+        public int DailyLimit { get; init; }
+        public int TodayPickupCount { get; init; }
+        public int RemainingDailyCapacity { get; init; }
     }
 }

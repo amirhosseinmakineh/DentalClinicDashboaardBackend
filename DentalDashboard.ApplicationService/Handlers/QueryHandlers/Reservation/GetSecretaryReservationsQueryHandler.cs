@@ -1,7 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
-using DentalDashboard.ApplicationService.Handlers.Helpers;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
@@ -106,23 +105,25 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             }
 
             // ------------------------------------------------------------
-            // CreatedAt date range
+            // ReservationAt date range in Iran wall-clock time
             // ------------------------------------------------------------
 
-            if (query.FromDate.HasValue && query.ToDate.HasValue)
+            if (query.FromDate.HasValue)
             {
-                var fromDate = query.FromDate.Value.Date;
+                var fromDate = IranTimeHelper.GetDateInIran(query.FromDate.Value);
+                var (start, _) = IranTimeHelper.GetIranLocalDayRange(fromDate);
 
-                reservations = reservations.Where(x =>
-                    x.ReservationAt >= fromDate);
+                reservations = reservations.Where(x => x.ReservationAt >= start);
             }
 
             if (query.ToDate.HasValue)
             {
-                var toDate = query.ToDate.Value.Date.AddDays(1);
+                var toDate = IranTimeHelper.GetDateInIran(query.ToDate.Value);
+                var (_, end) = IranTimeHelper.GetIranLocalDayRange(toDate);
 
                 reservations = reservations.Where(x =>
-                    x.ReservationAt < toDate);
+                    x.ReservationAt >= fromDate &&
+                    x.ReservationAt < toDateExclusive);
             }
             // ------------------------------------------------------------
             // Secretary announcement status
@@ -302,6 +303,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 
                     Description =
                         x.Description,
+
+                    DoctorName =
+                        x.DoctorName,
 
                     IsCanceled =
                         x.IsCanceled,

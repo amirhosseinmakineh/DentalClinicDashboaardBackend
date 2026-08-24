@@ -13,6 +13,7 @@ public class Reservation : BaseAuditableEntity<long>
     public Guid? PatientUserId { get; set; }
     public User? PatientUser { get; set; }
     public DateTime ReservationAt { get; set; }
+    public string? DoctorName { get; set; }
     public ReservationType ReservationType { get; set; } = ReservationType.Regular;
     public List<DentalServiceType> DentalServices { get; set; } = [];
     public bool? PatientReceivedService { get; set; }

@@ -101,6 +101,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     LeadAssignmentId = reservation.LeadAssignmentId,
                     ConsultantProfileId = reservation.ConsultantProfileId,
                     ReservationAt = reservation.ReservationAt,
+                    DoctorName = reservation.DoctorName,
                     PatientName = $"{user.FirstName} {user.LastName}",
                     PatientPhoneNumber = user.PhoneNumber,
                     IsCompleteProfile = user.IsCompleteProfile,

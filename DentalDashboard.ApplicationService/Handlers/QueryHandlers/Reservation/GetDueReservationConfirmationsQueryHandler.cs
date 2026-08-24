@@ -51,6 +51,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     AttendanceConfirmationStatus = x.AttendanceConfirmationStatus,
                     IsDueForConsultantConfirmation = true,
                     Description = x.Description,
+                    DoctorName = x.DoctorName,
                     IsCanceled = x.IsCanceled
                 })
                 .ToListAsync(cancellationToken);

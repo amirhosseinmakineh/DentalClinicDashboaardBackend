@@ -27,6 +27,7 @@ public sealed class GetSecretaryReservationDetailsQueryHandler(IReservationRepos
                     reservation.ConsultantProfile.User.FirstName + " " +
                     reservation.ConsultantProfile.User.LastName,
                 ReservationAt = reservation.ReservationAt,
+                PatientCount = reservation.PatientCount,
                 DoctorName = reservation.DoctorName
             })
             .FirstOrDefaultAsync(cancellationToken);

@@ -10,5 +10,6 @@ public class UpdateSecretaryReservationTimeRequest
 {
     public DateTime ReservationAt { get; set; }
     public DateTime? AppointmentDateTime { get; set; }
+    public int? PatientCount { get; set; }
     public List<DentalServiceType>? DentalServices { get; set; }
 }

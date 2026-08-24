@@ -49,6 +49,7 @@ public sealed record DailyReservationReportItem(
     string? PatientRegion,
     string? BusinessName,
     int? AttendanceProbabilityPercent,
+    int PatientCount,
     DateTime AppointmentDateTime,
     DateTime CreatedAt,
     DailyReservationRequestStatus RequestStatus,
@@ -111,6 +112,7 @@ public class DailyReservationsReportService(DentalContext context)
                 x.LeadAssignment.PatientRegion,
                 x.LeadAssignment.BusinessName,
                 x.LeadAssignment.AttendanceProbabilityPercent,
+                x.PatientCount,
                 x.ReservationAt,
                 x.CreatedAt,
                 x.UpdatedAt,
@@ -137,7 +139,8 @@ public class DailyReservationsReportService(DentalContext context)
                 x.ConsultantFullName.Trim(), x.ConsultantPhoneNumber,
                 x.PatientName, x.PatientPhoneNumber, x.SecondaryPhoneNumber,
                 x.PatientCity, x.PatientRegion, x.BusinessName,
-                x.AttendanceProbabilityPercent, EnsureUtc(x.ReservationAt), EnsureUtc(x.CreatedAt),
+                x.AttendanceProbabilityPercent, x.PatientCount,
+                EnsureUtc(x.ReservationAt), EnsureUtc(x.CreatedAt),
                 status, ToPersian(status), visitStatus, ToPersian(visitStatus),
                 GetPatientConfirmation(x.AttendanceConfirmationStatus), x.IsCanceled,
                 x.IsCanceled ? x.SecretaryReviewNote : null, x.Description, x.DentalServices,
@@ -185,7 +188,7 @@ public class DailyReservationsReportService(DentalContext context)
             CsvExportHelper.JoinRow(
                 "شناسه رزرو", "شناسه لید", "شناسه مشاور", "نام مشاور", "موبایل مشاور",
                 "نام بیمار", "موبایل بیمار", "شماره دوم", "شهر", "منطقه", "نام بیزینس",
-                "احتمال حضور (درصد)", "تاریخ ثبت رزرو", "تاریخ مراجعه", "وضعیت درخواست",
+                "احتمال حضور (درصد)", "تعداد بیماران", "تاریخ ثبت رزرو", "تاریخ مراجعه", "وضعیت درخواست",
                 "نتیجه مراجعه", "تایید با بیمار", "لغو شده", "دلیل لغو", "توضیحات", "خدمات",
                 "وضعیت اعلام منشی", "اعلام منشی", "زمان اعلام منشی")
         };
@@ -195,7 +198,7 @@ public class DailyReservationsReportService(DentalContext context)
             item.ConsultantProfileId.ToString(), item.ConsultantFullName,
             item.ConsultantPhoneNumber, item.PatientName, item.PatientPhoneNumber,
             item.SecondaryPhoneNumber, item.PatientCity, item.PatientRegion, item.BusinessName,
-            item.AttendanceProbabilityPercent?.ToString(), FormatIran(item.CreatedAt),
+            item.AttendanceProbabilityPercent?.ToString(), item.PatientCount.ToString(), FormatIran(item.CreatedAt),
             FormatIran(item.AppointmentDateTime), item.RequestStatusTitle, item.VisitResultStatusTitle,
             AdminReportPersianLabels.ToYesNoNullable(item.IsConfirmedWithPatient),
             AdminReportPersianLabels.ToYesNo(item.IsCanceled), item.CancellationReason, item.Description,

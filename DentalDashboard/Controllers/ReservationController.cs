@@ -108,6 +108,7 @@ namespace DentalDashboard.Controllers
                     ConsultantProfileId = reservation.ConsultantProfileId,
                     ReservationAt = request.ReservationAt,
                     AppointmentDateTime = request.AppointmentDateTime,
+                    PatientCount = request.PatientCount,
                     Description = reservation.Description,
                     AttendancePrediction = reservation.AttendancePrediction,
                     DentalServices = request.DentalServices,

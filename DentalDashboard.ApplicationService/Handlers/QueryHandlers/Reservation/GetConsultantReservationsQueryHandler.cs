@@ -2,6 +2,7 @@ using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Utilities.Convertor;
 using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
 
@@ -133,6 +134,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     DentalServices = x.DentalServices
                 })
                 .ToListAsync(cancellationToken);
+
+            foreach (var item in items)
+            {
+                item.ReservationAtPersian = item.ReservationAt.ToPersianDateTimeString();
+            }
 
             return new PaginatedResult<ReservationItemResponse>
             {

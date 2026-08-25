@@ -23,7 +23,7 @@ namespace DentalDashboard.Infrastracture.Configuration
                 .HasDefaultValue(1);
 
             builder.Property(x => x.DoctorName)
-                .HasMaxLength(150);
+                .HasMaxLength(120);
 
             builder.Property(x => x.DentalServices)
                 .HasColumnType("nvarchar(max)");
@@ -38,7 +38,7 @@ namespace DentalDashboard.Infrastracture.Configuration
                 .HasMaxLength(1000);
 
             builder.Property(x => x.SecretaryAnnouncement)
-                .HasMaxLength(1000);
+                .HasMaxLength(2000);
 
             builder.HasOne(x => x.ConsultantProfile)
                 .WithMany()

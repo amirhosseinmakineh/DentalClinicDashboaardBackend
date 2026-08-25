@@ -15,6 +15,8 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public bool? PatientReceivedService { get; set; }
         /// <summary>Backward-compatible alias for older secretary clients.</summary>
         public bool? Approved { get; set; }
+        /// <summary>The doctor name entered manually by the secretary (2-120 characters).</summary>
+        public string? DoctorName { get; set; }
         public string? Note { get; set; }
     }
 }

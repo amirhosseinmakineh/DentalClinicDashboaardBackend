@@ -383,8 +383,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("DoctorName")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<bool>("IsAttendanceScoreApplied")
                         .HasColumnType("bit");
@@ -424,14 +424,20 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("SecretaryAnnouncement")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<int?>("SecretaryAnnouncementStatus")
                         .HasColumnType("int");
 
                     b.Property<bool?>("SecretaryFollowUpContacted")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("SecretaryFollowUpCreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SecretaryFollowUpDeletedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("SecretaryAnnouncementUpdatedAt")
                         .HasColumnType("datetime2");

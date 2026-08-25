@@ -270,56 +270,6 @@ namespace DentalDashboard.Controllers
             return result == null ? NotFound() : Ok(result);
         }
 
-        [HttpPost("{reservationId:long}/assign-doctor")]
-        [Authorize]
-        public async Task<IActionResult> AssignReservationDoctor(
-            long reservationId,
-            [FromBody] UpdateReservationDoctorRequest request,
-            CancellationToken cancellationToken)
-        {
-            if (!TryGetCurrentUserId(out var userId))
-            {
-                return Unauthorized();
-            }
-
-            if (!await secretaryAccessService.HasPermissionAsync(
-                    userId,
-                    SecretaryPermissionType.EditReservations))
-            {
-                return Forbid();
-            }
-
-            var reservationExists = await reservationRepository.GetAll()
-                .AsNoTracking()
-                .AnyAsync(
-                    reservation =>
-                        reservation.Id == reservationId &&
-                        !reservation.IsDeleted,
-                    cancellationToken);
-
-            if (!reservationExists)
-            {
-                return NotFound(Result.Failure("رزرو یافت نشد"));
-            }
-
-            if (!await secretaryAccessService.CanAccessReservationAsync(
-                    userId,
-                    reservationId,
-                    cancellationToken))
-            {
-                return Forbid();
-            }
-
-            var command = new UpdateReservationDoctorCommand
-            {
-                ReservationId = reservationId,
-                DoctorName = request.DoctorName
-            };
-            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
-
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
         [HttpPost("ConfirmAttendance")]
         public async Task<IActionResult> ConfirmAttendance(ConfirmReservationAttendanceCommand command)
         {
@@ -332,11 +282,19 @@ namespace DentalDashboard.Controllers
         public async Task<IActionResult> ReviewAttendance(ReviewReservationAttendanceCommand command)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var doctorName = command.DoctorName?.Trim();
+            if (command.ReservationId <= 0 || string.IsNullOrWhiteSpace(doctorName) || doctorName.Length is < 2 or > 120)
+                return BadRequest(Result.Failure("نام دکتر باید بین ۲ تا ۱۲۰ کاراکتر باشد"));
+            command.DoctorName = doctorName;
+            var reservation = await reservationRepository.GetAll().AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == command.ReservationId && !x.IsDeleted);
+            if (reservation is null) return NotFound(Result.Failure("رزرو یافت نشد"));
             command.SecretaryUserId = userId;
             if (!await secretaryAccessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ConfirmAttendance) ||
                 !await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
             var result = await commandDispatcher.DispatchAsync(command);
-            return Ok(result);
+            if (!result.IsSuccess && reservation.IsAttendanceScoreApplied) return Conflict(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         [HttpPut("SecretaryAnnouncement")]

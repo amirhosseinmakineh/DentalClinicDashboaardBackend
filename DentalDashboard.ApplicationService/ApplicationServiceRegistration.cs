@@ -4,6 +4,7 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using System.Net;
 
 namespace DentalDashboard.ApplicationService;
 
@@ -13,11 +14,15 @@ public static class ApplicationServiceRegistration
     {
         services.AddScoped<IRoleService, RoleService>();
         services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>()
-            // Yektanet generates the complete report before returning it and the
-            // production response can take longer than the previous 30 seconds.
-            // This client is only used by the background importer, so allowing a
-            // longer wait does not extend the timeout of dashboard API requests.
-            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(2));
+            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(5))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AutomaticDecompression = DecompressionMethods.GZip |
+                                         DecompressionMethods.Deflate |
+                                         DecompressionMethods.Brotli,
+                ConnectTimeout = TimeSpan.FromSeconds(30),
+                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+            });
         services.AddScoped<IPushNotificationService, WebPushNotificationService>();
         services.AddScoped<IConsultantProfileService, ConsultantProfileService>();
         services.AddScoped<IUserPresenceService, UserPresenceService>();

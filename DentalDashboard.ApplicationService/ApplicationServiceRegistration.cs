@@ -13,7 +13,11 @@ public static class ApplicationServiceRegistration
     {
         services.AddScoped<IRoleService, RoleService>();
         services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>()
-            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(30));
+            // Yektanet generates the complete report before returning it and the
+            // production response can take longer than the previous 30 seconds.
+            // This client is only used by the background importer, so allowing a
+            // longer wait does not extend the timeout of dashboard API requests.
+            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(2));
         services.AddScoped<IPushNotificationService, WebPushNotificationService>();
         services.AddScoped<IConsultantProfileService, ConsultantProfileService>();
         services.AddScoped<IUserPresenceService, UserPresenceService>();

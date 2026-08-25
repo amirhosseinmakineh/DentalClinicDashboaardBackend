@@ -30,7 +30,7 @@ public class AddLeadBackgroundService : BackgroundService
 
                 logger.LogInformation("AddLeads cycle started");
 
-                await leadService.AddLeadsAsync();
+                await leadService.AddLeadsAsync(stoppingToken);
 
                 logger.LogInformation("AddLeads cycle completed");
             }

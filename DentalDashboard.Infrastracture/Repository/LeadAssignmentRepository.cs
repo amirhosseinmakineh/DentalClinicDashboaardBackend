@@ -129,17 +129,32 @@ namespace DentalDashboard.Infrastracture.Repository
                                  x.LeadAssignmentState == LeadAssignmentState.New);
         }
 
-        public async Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers)
+        public async Task<HashSet<string>> GetExistingPhoneNumbersAsync(
+            IEnumerable<string> phoneNumbers,
+            CancellationToken cancellationToken = default)
         {
-            var phones = phoneNumbers.Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet();
-            if (!phones.Any())
-                return new HashSet<string>();
+            const int batchSize = 500;
+            var phones = phoneNumbers
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .ToArray();
+            var existingPhones = new HashSet<string>();
 
-            return (await GetAll()
-                    .Where(x => phones.Contains(x.PhoneNumber))
+            // SQL Server has a 2,100 parameter limit. The Yektanet report grows
+            // continuously, so querying every number in one Contains expression
+            // eventually times out or exceeds that limit.
+            foreach (var batch in phones.Chunk(batchSize))
+            {
+                var matches = await GetAll()
+                    .AsNoTracking()
+                    .Where(x => batch.Contains(x.PhoneNumber))
                     .Select(x => x.PhoneNumber)
-                    .ToListAsync())
-                .ToHashSet();
+                    .ToListAsync(cancellationToken);
+
+                existingPhones.UnionWith(matches);
+            }
+
+            return existingPhones;
         }
 
         public Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId)

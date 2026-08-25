@@ -12,7 +12,9 @@ namespace DentalDashboard.Domain.IRepositories
         Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(TimeSpan redispatchInterval);
         Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now);
         Task<int> CountUnassignedRealTimeLeadsAsync();
-        Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers);
+        Task<HashSet<string>> GetExistingPhoneNumbersAsync(
+            IEnumerable<string> phoneNumbers,
+            CancellationToken cancellationToken = default);
         Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId);
         Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync();
         Task<int> GetTodayPickupCountAsync(long consultantProfileId);

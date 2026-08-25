@@ -7,6 +7,7 @@ using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -72,32 +73,45 @@ namespace DentalDashboard.ApplicationService.Services
 
                 var leads = new List<LeadAssignment>();
 
+                var skippedRows = 0;
+
                 foreach (var row in rows.Skip(1))
                 {
                     var cells = row.SelectNodes(".//td");
 
-                    if (cells == null || cells.Count < 10)
+                    if (cells == null || cells.Count == 0)
+                    {
+                        skippedRows++;
                         continue;
+                    }
 
-                    var userName = Clean(cells[2].InnerText);
-                    var phoneNumber = Clean(cells[3].InnerText);
-                    var createAtText = Clean(cells[9].InnerText);
+                    var values = cells.Select(cell => Clean(cell.InnerText)).ToArray();
+                    var phoneNumber = values
+                        .Select(NormalizePhoneNumber)
+                        .FirstOrDefault(value => value != null);
 
-                    DateTime.TryParse(
-                        createAtText,
-                        out var createdAt);
+                    if (phoneNumber == null)
+                    {
+                        skippedRows++;
+                        continue;
+                    }
+
+                    // The Yektanet report has changed its column count in the past.
+                    // Keep the known name column as a best effort, but find the phone
+                    // by its value instead of relying on a brittle fixed index.
+                    var userName = values.Length > 2 ? values[2] : string.Empty;
 
                     leads.Add(new LeadAssignment
                     {
                         UserName = userName,
-                        PhoneNumber = phoneNumber,
-                        CreatedAt = createdAt
+                        PhoneNumber = phoneNumber
                     });
                 }
 
                 logger.LogInformation(
-                    "Fetched {Count} leads from landing page",
-                    leads.Count);
+                    "Fetched {Count} valid leads from landing page; skipped {SkippedCount} rows",
+                    leads.Count,
+                    skippedRows);
 
                 return leads.ToArray();
             }
@@ -138,6 +152,29 @@ namespace DentalDashboard.ApplicationService.Services
                 .Trim();
         }
 
+        private static string? NormalizePhoneNumber(string value)
+        {
+            var latinValue = value
+                .Replace('۰', '0').Replace('۱', '1').Replace('۲', '2')
+                .Replace('۳', '3').Replace('۴', '4').Replace('۵', '5')
+                .Replace('۶', '6').Replace('۷', '7').Replace('۸', '8')
+                .Replace('۹', '9')
+                .Replace('٠', '0').Replace('١', '1').Replace('٢', '2')
+                .Replace('٣', '3').Replace('٤', '4').Replace('٥', '5')
+                .Replace('٦', '6').Replace('٧', '7').Replace('٨', '8')
+                .Replace('٩', '9');
+
+            var digits = Regex.Replace(latinValue, @"[^0-9+]", string.Empty);
+            if (digits.StartsWith("+98", StringComparison.Ordinal))
+                digits = $"0{digits[3..]}";
+            else if (digits.StartsWith("0098", StringComparison.Ordinal))
+                digits = $"0{digits[4..]}";
+            else if (digits.Length == 10 && digits.StartsWith('9'))
+                digits = $"0{digits}";
+
+            return Regex.IsMatch(digits, @"^09\d{9}$") ? digits : null;
+        }
+
         public async Task AddLeadsAsync()
         {
             var now = DateTime.Now;
@@ -148,6 +185,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             var newLeads = updatedLeads
                 .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
+                .DistinctBy(x => x.PhoneNumber)
                 .ToList();
 
             if (!newLeads.Any())
@@ -167,6 +205,10 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.AddRangeAsync(newLeads);
             await leadAssignmentRepository.SaveChange();
+
+            logger.LogInformation(
+                "Saved {Count} new Yektanet leads",
+                newLeads.Count);
         }
 
         public async Task ReconcileMisclassifiedLeadStatesAsync()

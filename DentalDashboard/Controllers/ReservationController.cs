@@ -113,7 +113,8 @@ namespace DentalDashboard.Controllers
                     AttendancePrediction = reservation.AttendancePrediction,
                     DentalServices = request.DentalServices,
                     IsSecretaryEdit = true,
-                    ReservationOwnerType = ReservationOwnerType.Secretary
+                    ReservationOwnerType = ReservationOwnerType.Secretary,
+                    
                 };
 
                 var result = await commandDispatcher.DispatchAsync(

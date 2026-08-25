@@ -52,6 +52,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             reservation.SecretaryAnnouncementUserId = command.SecretaryUserId;
             reservation.SecretaryAnnouncementUpdatedAt = DateTime.UtcNow;
             reservation.UpdatedAt = DateTime.UtcNow;
+            reservation.Description = command.Description;
 
             reservationRepository.Update(reservation);
             await reservationRepository.SaveChange();

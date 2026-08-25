@@ -228,6 +228,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             var newLeads = updatedLeads
                 .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
+                .DistinctBy(x => x.PhoneNumber)
                 .ToList();
 
             if (!newLeads.Any())

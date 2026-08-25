@@ -115,6 +115,10 @@ namespace DentalDashboard.ApplicationService.Services
 
                 return leads.ToArray();
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (TaskCanceledException ex)
             {
                 logger.LogWarning(
@@ -175,13 +179,16 @@ namespace DentalDashboard.ApplicationService.Services
             return Regex.IsMatch(digits, @"^09\d{9}$") ? digits : null;
         }
 
-        public async Task AddLeadsAsync()
+        public async Task AddLeadsAsync(CancellationToken cancellationToken = default)
         {
             var now = DateTime.Now;
-            var updatedLeads = await LeadsListAsync();
+            var updatedLeads = (await LeadsListAsync(cancellationToken))
+                .DistinctBy(x => x.PhoneNumber)
+                .ToArray();
 
             var existingPhoneNumbers = await leadAssignmentRepository.GetExistingPhoneNumbersAsync(
-                updatedLeads.Select(x => x.PhoneNumber));
+                updatedLeads.Select(x => x.PhoneNumber),
+                cancellationToken);
 
             var newLeads = updatedLeads
                 .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))

@@ -240,12 +240,11 @@ public class DailyReservationsReportService(DentalContext context)
             }
             else
             {
-                query = query.Where(x =>
-                        x.OwnerType == reservationOwnerType.Value);
+
 
                 query = query.Where(x =>
-                    x.UpdatedAt >= startDate &&
-                    x.UpdatedAt < endDate);
+                    x.ReservationAt >= startDate &&
+                    x.ReservationAt < endDate);
             }
         }
 

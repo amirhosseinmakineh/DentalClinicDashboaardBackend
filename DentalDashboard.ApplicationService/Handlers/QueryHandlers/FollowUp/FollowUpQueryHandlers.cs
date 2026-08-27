@@ -74,7 +74,10 @@ public sealed class GetSecretaryFollowUpPatientInfoQueryHandler(
             .AsNoTracking()
             .Where(x =>
                 !x.IsDeleted &&
-                !x.IsCanceled)
+                !x.IsCanceled &&
+                x.LeadAssignmentId == q.PatientId &&
+                !x.LeadAssignment.IsDeleted &&
+                x.LeadAssignment.ConsultantProfileId == x.ConsultantProfileId)
             .OrderByDescending(x => x.ReservationAt)
             .Select(x => new PatientFollowUpInfoResponse
             {
@@ -113,7 +116,8 @@ public sealed class GetSecretaryFollowUpsQueryHandler(
             .Where(x =>
                 !x.IsDeleted &&
                 x.SecretaryAnnouncementUserId == q.SecretaryUserId &&
-                x.SecretaryAnnouncementUpdatedAt != null);
+                x.SecretaryFollowUpCreatedAt != null &&
+                x.SecretaryFollowUpDeletedAt == null);
 
         if (!string.IsNullOrWhiteSpace(q.Search))
         {
@@ -121,13 +125,14 @@ public sealed class GetSecretaryFollowUpsQueryHandler(
 
             query = query.Where(x =>
                 x.LeadAssignment.UserName.Contains(s) ||
-                x.LeadAssignment.PhoneNumber.Contains(s));
+                x.LeadAssignment.PhoneNumber.Contains(s) ||
+                x.SecretaryAnnouncement!.Contains(s));
         }
 
         var total = await query.CountAsync(ct);
 
         var items = await query
-            .OrderByDescending(x => x.SecretaryAnnouncementUpdatedAt)
+            .OrderByDescending(x => x.SecretaryFollowUpCreatedAt)
             .Skip((page - 1) * size)
             .Take(size)
             .Select(x => new SecretaryFollowUpResponse
@@ -143,8 +148,9 @@ public sealed class GetSecretaryFollowUpsQueryHandler(
                 ReservationDate = x.ReservationAt.Date,
                 ReservationTime = x.ReservationAt.ToString("HH:mm"),
                 Contacted = x.SecretaryFollowUpContacted ?? false,
-                ContactResult = x.SecretaryAnnouncement,
-                CreatedAt = x.SecretaryAnnouncementUpdatedAt!.Value
+                ContactResult = x.SecretaryAnnouncement!,
+                CreatedAt = x.SecretaryFollowUpCreatedAt!.Value,
+                UpdatedAt = x.SecretaryAnnouncementUpdatedAt!.Value
             })
             .ToListAsync(ct);
 
@@ -175,7 +181,8 @@ public sealed class GetSecretaryFollowUpByIdQueryHandler(
                 !x.IsDeleted &&
                 x.Id == q.Id &&
                 x.SecretaryAnnouncementUserId == q.SecretaryUserId &&
-                x.SecretaryAnnouncementUpdatedAt != null)
+                x.SecretaryFollowUpCreatedAt != null &&
+                x.SecretaryFollowUpDeletedAt == null)
             .Select(x => new SecretaryFollowUpResponse
             {
                 Id = x.Id,
@@ -189,7 +196,9 @@ public sealed class GetSecretaryFollowUpByIdQueryHandler(
                 ReservationDate = x.ReservationAt.Date,
                 ReservationTime = x.ReservationAt.ToString("HH:mm"),
                 Contacted = x.SecretaryFollowUpContacted ?? false,
-                ContactResult = x.SecretaryAnnouncement
+                ContactResult = x.SecretaryAnnouncement!,
+                CreatedAt = x.SecretaryFollowUpCreatedAt!.Value,
+                UpdatedAt = x.SecretaryAnnouncementUpdatedAt!.Value
             })
             .FirstOrDefaultAsync(ct);
     }
@@ -216,7 +225,10 @@ public sealed class GetConsultantFollowUpsQueryHandler(
                 !x.IsDeleted &&
                 x.ConsultantProfileId == q.ConsultantProfileId &&
                 x.SecretaryAnnouncementUserId != null &&
-                x.SecretaryAnnouncementUpdatedAt != null);
+                x.SecretaryFollowUpCreatedAt != null &&
+                x.SecretaryFollowUpDeletedAt == null &&
+                !x.LeadAssignment.IsDeleted &&
+                x.LeadAssignment.ConsultantProfileId == q.ConsultantProfileId);
 
         if (!string.IsNullOrWhiteSpace(q.Search))
         {
@@ -224,13 +236,14 @@ public sealed class GetConsultantFollowUpsQueryHandler(
 
             query = query.Where(x =>
                 x.LeadAssignment.UserName.Contains(s) ||
-                x.LeadAssignment.PhoneNumber.Contains(s));
+                x.LeadAssignment.PhoneNumber.Contains(s) ||
+                x.SecretaryAnnouncement!.Contains(s));
         }
 
         var total = await query.CountAsync(ct);
 
         var items = await query
-            .OrderByDescending(x => x.SecretaryAnnouncementUpdatedAt)
+            .OrderByDescending(x => x.SecretaryFollowUpCreatedAt)
             .Skip((page - 1) * size)
             .Take(size)
             .Select(x => new ConsultantFollowUpResponse
@@ -247,8 +260,9 @@ public sealed class GetConsultantFollowUpsQueryHandler(
                     .Select(u => u.FirstName + " " + u.LastName)
                     .FirstOrDefault() ?? string.Empty,
                 Contacted = x.SecretaryFollowUpContacted ?? false,
-                ContactResult = x.SecretaryAnnouncement,
-                CreatedAt = x.SecretaryAnnouncementUpdatedAt!.Value
+                ContactResult = x.SecretaryAnnouncement!,
+                CreatedAt = x.SecretaryFollowUpCreatedAt!.Value,
+                UpdatedAt = x.SecretaryAnnouncementUpdatedAt!.Value
             })
             .ToListAsync(ct);
 

@@ -33,11 +33,24 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 return Result.Failure("نتیجه خدمت فقط بعد از زمان مراجعه قابل ثبت است");
 
             if (reservation.IsAttendanceScoreApplied)
+            {
+                // An identical retry is safe and must not apply attendance effects twice.
+                var retriedDoctorName = command.DoctorName?.Trim();
+                var retriedResult = command.PatientReceivedService ?? command.Approved;
+                if (retriedResult == reservation.PatientReceivedService &&
+                    string.Equals(retriedDoctorName, reservation.DoctorName, StringComparison.Ordinal))
+                    return Result.Success("بررسی حضور بیمار قبلاً ثبت شده است");
+
                 return Result.Failure("بررسی این رزرو قبلا ثبت شده است");
+            }
 
             var patientReceivedService = command.PatientReceivedService ?? command.Approved;
             if (!patientReceivedService.HasValue)
                 return Result.Failure("وضعیت انجام یا عدم انجام خدمت باید مشخص شود");
+
+            var doctorName = command.DoctorName?.Trim();
+            if (string.IsNullOrWhiteSpace(doctorName) || doctorName.Length is < 2 or > 120)
+                return Result.Failure("نام دکتر باید بین ۲ تا ۱۲۰ کاراکتر باشد");
 
             var profile = await consultantProfileRepository.GetAll()
                 .FirstOrDefaultAsync(x => x.Id == reservation.ConsultantProfileId, cancellationToken);
@@ -46,6 +59,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             reservation.SecretaryUserId = command.SecretaryUserId;
             reservation.PatientReceivedService = patientReceivedService.Value;
+            reservation.DoctorName = doctorName;
             reservation.SecretaryApprovedConsultantConfirmation = patientReceivedService.Value;
             reservation.SecretaryReviewedAt = DateTime.UtcNow;
             reservation.SecretaryReviewNote = command.Note;

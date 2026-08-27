@@ -47,6 +47,9 @@ public class SecretaryController : ControllerBase
         [FromQuery] SearchSecretaryFollowUpPatientsQuery query,
         CancellationToken cancellationToken)
     {
+        if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+        if (!await accessService.HasPermissionAsync(userId, SecretaryPermissionType.ViewPatients, cancellationToken))
+            return Forbid();
         return Ok(
             await queryDispatcher.DispatchAsync(query, cancellationToken)
         );
@@ -58,6 +61,9 @@ public class SecretaryController : ControllerBase
         long patientId,
         CancellationToken cancellationToken)
     {
+        if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+        if (!await accessService.HasPermissionAsync(userId, SecretaryPermissionType.ViewPatients, cancellationToken))
+            return Forbid();
         var result = await queryDispatcher.DispatchAsync(
             new GetSecretaryFollowUpPatientInfoQuery
             {
@@ -80,6 +86,9 @@ public class SecretaryController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
 
+        if (!await accessService.HasPermissionAsync(userId, SecretaryPermissionType.SecretaryAnnouncement, cancellationToken))
+            return Forbid();
+
         query.SecretaryUserId = userId;
 
         return Ok(
@@ -95,6 +104,9 @@ public class SecretaryController : ControllerBase
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
+
+        if (!await accessService.HasPermissionAsync(userId, SecretaryPermissionType.SecretaryAnnouncement, cancellationToken))
+            return Forbid();
 
         var result = await queryDispatcher.DispatchAsync(
             new GetSecretaryFollowUpByIdQuery
@@ -119,6 +131,19 @@ public class SecretaryController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
 
+        if (!await accessService.HasPermissionAsync(userId, SecretaryPermissionType.SecretaryAnnouncement, cancellationToken))
+            return Forbid();
+
+        var reservationId = await reservationRepository.GetAll().AsNoTracking()
+            .Where(x => !x.IsDeleted && !x.IsCanceled && x.LeadAssignmentId == command.PatientId &&
+                        !x.LeadAssignment.IsDeleted && x.LeadAssignment.ConsultantProfileId == x.ConsultantProfileId)
+            .OrderByDescending(x => x.ReservationAt)
+            .Select(x => (long?)x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (!reservationId.HasValue) return NotFound(Result.Failure("رزرو مرتبط یافت نشد"));
+        if (!await accessService.CanAccessReservationAsync(userId, reservationId.Value, cancellationToken))
+            return Forbid();
+
         command.SecretaryUserId = userId;
 
         return Ok(
@@ -136,6 +161,10 @@ public class SecretaryController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
 
+        if (!await accessService.HasPermissionAsync(userId, SecretaryPermissionType.SecretaryAnnouncement, cancellationToken) ||
+            !await accessService.CanAccessReservationAsync(userId, id, cancellationToken))
+            return Forbid();
+
         command.Id = id;
         command.SecretaryUserId = userId;
 
@@ -152,6 +181,10 @@ public class SecretaryController : ControllerBase
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
+
+        if (!await accessService.HasPermissionAsync(userId, SecretaryPermissionType.SecretaryAnnouncement, cancellationToken) ||
+            !await accessService.CanAccessReservationAsync(userId, id, cancellationToken))
+            return Forbid();
 
         return Ok(
             await dispatcher.DispatchAsync(

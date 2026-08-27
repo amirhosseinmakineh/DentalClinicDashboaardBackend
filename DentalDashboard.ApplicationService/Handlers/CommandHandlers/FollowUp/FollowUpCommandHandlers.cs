@@ -3,7 +3,86 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
+
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.FollowUp;
-public sealed class CreateSecretaryFollowUpCommandHandler(IReservationRepository reservations) : ICommandHandler<CreateSecretaryFollowUpCommand> { public async Task<Result> HandleAsync(CreateSecretaryFollowUpCommand c,CancellationToken ct=default){if(c.SecretaryUserId==Guid.Empty)return Result.Failure("کاربر جاری معتبر نیست");if(c.PatientId<=0)return Result.Failure("بیمار معتبر نیست");var result=c.ContactResult?.Trim();if(result?.Length>1000)return Result.Failure("نتیجه تماس نباید بیشتر از ۱۰۰۰ کاراکتر باشد");var r=await reservations.GetAll().Where(x=>!x.IsDeleted&&!x.IsCanceled&&x.LeadAssignmentId==c.PatientId).OrderByDescending(x=>x.ReservationAt).FirstOrDefaultAsync(ct);if(r==null)return Result.Failure("رزرو مرتبط یافت نشد");r.SecretaryFollowUpContacted=c.Contacted;r.SecretaryAnnouncement=string.IsNullOrWhiteSpace(result)?null:result;r.SecretaryAnnouncementUserId=c.SecretaryUserId;r.SecretaryAnnouncementUpdatedAt=DateTime.UtcNow;r.UpdatedAt=DateTime.UtcNow;reservations.Update(r);await reservations.SaveChange();return Result.Success("پیگیری با موفقیت ثبت شد");} }
-public sealed class UpdateSecretaryFollowUpCommandHandler(IReservationRepository reservations) : ICommandHandler<UpdateSecretaryFollowUpCommand> { public async Task<Result> HandleAsync(UpdateSecretaryFollowUpCommand c,CancellationToken ct=default){if(c.Id<=0||c.SecretaryUserId==Guid.Empty)return Result.Failure("درخواست معتبر نیست");var result=c.ContactResult?.Trim();if(result?.Length>1000)return Result.Failure("نتیجه تماس نباید بیشتر از ۱۰۰۰ کاراکتر باشد");var r=await reservations.GetAll().FirstOrDefaultAsync(x=>!x.IsDeleted&&x.Id==c.Id&&x.SecretaryAnnouncementUserId==c.SecretaryUserId&&x.SecretaryAnnouncementUpdatedAt!=null,ct);if(r==null)return Result.Failure("پیگیری یافت نشد");r.SecretaryFollowUpContacted=c.Contacted;r.SecretaryAnnouncement=string.IsNullOrWhiteSpace(result)?null:result;r.SecretaryAnnouncementUpdatedAt=DateTime.UtcNow;r.UpdatedAt=DateTime.UtcNow;reservations.Update(r);await reservations.SaveChange();return Result.Success("پیگیری با موفقیت ویرایش شد");} }
-public sealed class DeleteSecretaryFollowUpCommandHandler(IReservationRepository reservations) : ICommandHandler<DeleteSecretaryFollowUpCommand> { public async Task<Result> HandleAsync(DeleteSecretaryFollowUpCommand c,CancellationToken ct=default){if(c.Id<=0||c.SecretaryUserId==Guid.Empty)return Result.Failure("درخواست معتبر نیست");var r=await reservations.GetAll().FirstOrDefaultAsync(x=>!x.IsDeleted&&x.Id==c.Id&&x.SecretaryAnnouncementUserId==c.SecretaryUserId&&x.SecretaryAnnouncementUpdatedAt!=null,ct);if(r==null)return Result.Failure("پیگیری یافت نشد");r.SecretaryFollowUpContacted=null;r.SecretaryAnnouncement=null;r.SecretaryAnnouncementStatus=null;r.SecretaryAnnouncementUserId=null;r.SecretaryAnnouncementUpdatedAt=null;r.UpdatedAt=DateTime.UtcNow;reservations.Update(r);await reservations.SaveChange();return Result.Success("پیگیری با موفقیت حذف شد");} }
+
+internal static class FollowUpValidation
+{
+    public static string? Normalize(string? value) => value?.Trim();
+    public static bool IsValid(string? value) => !string.IsNullOrWhiteSpace(value) && value.Length <= 2000;
+}
+
+public sealed class CreateSecretaryFollowUpCommandHandler(IReservationRepository reservations)
+    : ICommandHandler<CreateSecretaryFollowUpCommand>
+{
+    public async Task<Result> HandleAsync(CreateSecretaryFollowUpCommand command, CancellationToken ct = default)
+    {
+        var contactResult = FollowUpValidation.Normalize(command.ContactResult);
+        if (command.SecretaryUserId == Guid.Empty || command.PatientId <= 0)
+            return Result.Failure("درخواست معتبر نیست");
+        if (!FollowUpValidation.IsValid(contactResult))
+            return Result.Failure("نتیجه پیگیری اجباری و حداکثر ۲۰۰۰ کاراکتر است");
+
+        // The reservation and consultant are resolved server-side from the patient's current assignment.
+        var reservation = await reservations.GetAll()
+            .Where(x => !x.IsDeleted && !x.IsCanceled && x.LeadAssignmentId == command.PatientId &&
+                        !x.LeadAssignment.IsDeleted && x.LeadAssignment.ConsultantProfileId == x.ConsultantProfileId)
+            .OrderByDescending(x => x.ReservationAt)
+            .FirstOrDefaultAsync(ct);
+        if (reservation is null) return Result.Failure("رزرو و تخصیص فعال مرتبط یافت نشد");
+        if (reservation.SecretaryFollowUpCreatedAt.HasValue && !reservation.SecretaryFollowUpDeletedAt.HasValue)
+            return Result.Failure("برای این رزرو قبلاً پیگیری ثبت شده است");
+
+        var now = DateTime.UtcNow;
+        reservation.SecretaryFollowUpContacted = command.Contacted;
+        reservation.SecretaryAnnouncement = contactResult;
+        reservation.SecretaryAnnouncementUserId = command.SecretaryUserId;
+        reservation.SecretaryFollowUpCreatedAt = now;
+        reservation.SecretaryFollowUpDeletedAt = null;
+        reservation.SecretaryAnnouncementUpdatedAt = now;
+        reservation.UpdatedAt = now;
+        reservations.Update(reservation);
+        await reservations.SaveChange();
+        return Result.Success("پیگیری با موفقیت ثبت شد");
+    }
+}
+
+public sealed class UpdateSecretaryFollowUpCommandHandler(IReservationRepository reservations)
+    : ICommandHandler<UpdateSecretaryFollowUpCommand>
+{
+    public async Task<Result> HandleAsync(UpdateSecretaryFollowUpCommand command, CancellationToken ct = default)
+    {
+        var contactResult = FollowUpValidation.Normalize(command.ContactResult);
+        if (command.Id <= 0 || command.SecretaryUserId == Guid.Empty || !FollowUpValidation.IsValid(contactResult))
+            return Result.Failure("نتیجه پیگیری اجباری و حداکثر ۲۰۰۰ کاراکتر است");
+        var reservation = await reservations.GetAll().FirstOrDefaultAsync(x => !x.IsDeleted && x.Id == command.Id &&
+            x.SecretaryAnnouncementUserId == command.SecretaryUserId && x.SecretaryFollowUpCreatedAt != null &&
+            x.SecretaryFollowUpDeletedAt == null, ct);
+        if (reservation is null) return Result.Failure("پیگیری یافت نشد");
+        reservation.SecretaryFollowUpContacted = command.Contacted;
+        reservation.SecretaryAnnouncement = contactResult;
+        reservation.SecretaryAnnouncementUpdatedAt = DateTime.UtcNow;
+        reservation.UpdatedAt = DateTime.UtcNow;
+        reservations.Update(reservation);
+        await reservations.SaveChange();
+        return Result.Success("پیگیری با موفقیت ویرایش شد");
+    }
+}
+
+public sealed class DeleteSecretaryFollowUpCommandHandler(IReservationRepository reservations)
+    : ICommandHandler<DeleteSecretaryFollowUpCommand>
+{
+    public async Task<Result> HandleAsync(DeleteSecretaryFollowUpCommand command, CancellationToken ct = default)
+    {
+        if (command.Id <= 0 || command.SecretaryUserId == Guid.Empty) return Result.Failure("درخواست معتبر نیست");
+        var reservation = await reservations.GetAll().FirstOrDefaultAsync(x => !x.IsDeleted && x.Id == command.Id &&
+            x.SecretaryAnnouncementUserId == command.SecretaryUserId && x.SecretaryFollowUpCreatedAt != null &&
+            x.SecretaryFollowUpDeletedAt == null, ct);
+        if (reservation is null) return Result.Failure("پیگیری یافت نشد");
+        reservation.SecretaryFollowUpDeletedAt = DateTime.UtcNow;
+        reservation.UpdatedAt = DateTime.UtcNow;
+        reservations.Update(reservation);
+        await reservations.SaveChange();
+        return Result.Success("پیگیری با موفقیت حذف شد");
+    }
+}

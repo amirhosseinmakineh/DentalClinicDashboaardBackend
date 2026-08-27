@@ -31,6 +31,8 @@ public class Reservation : BaseAuditableEntity<long>
     // A secretary follow-up is stored on its existing reservation; no separate table is required.
     public bool? SecretaryFollowUpContacted { get; set; }
     public DateTime? SecretaryAnnouncementUpdatedAt { get; set; }
+    public DateTime? SecretaryFollowUpCreatedAt { get; set; }
+    public DateTime? SecretaryFollowUpDeletedAt { get; set; }
     public Guid? SecretaryAnnouncementUserId { get; set; }
     public bool IsAttendanceScoreApplied { get; set; }
     public int? AttendanceScoreValue { get; set; }

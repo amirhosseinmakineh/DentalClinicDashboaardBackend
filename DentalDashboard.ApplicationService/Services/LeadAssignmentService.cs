@@ -6,9 +6,7 @@ using DentalDashboard.Domain.Models;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 using System.Net;
-using System.Text.RegularExpressions;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -45,8 +43,6 @@ namespace DentalDashboard.ApplicationService.Services
         public async Task<LeadAssignment[]> LeadsListAsync(
           CancellationToken cancellationToken = default)
         {
-            var stopwatch = Stopwatch.StartNew();
-
             try
             {
                 if (!httpClient.DefaultRequestHeaders.UserAgent.Any())
@@ -55,23 +51,12 @@ namespace DentalDashboard.ApplicationService.Services
                         "Mozilla/5.0");
                 }
 
-                logger.LogInformation("Yektanet request started");
-
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                request.Headers.Accept.ParseAdd("text/html,application/xhtml+xml");
-
-                using var response = await httpClient.SendAsync(
-                    request,
+                using var response = await httpClient.GetAsync(
+                    url,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
 
                 response.EnsureSuccessStatusCode();
-
-                logger.LogInformation(
-                    "Yektanet response received with status {StatusCode} after {ElapsedMilliseconds} ms; content length: {ContentLength}",
-                    (int)response.StatusCode,
-                    stopwatch.ElapsedMilliseconds,
-                    response.Content.Headers.ContentLength);
 
                 var html = await response.Content.ReadAsStringAsync(
                     cancellationToken);
@@ -83,96 +68,64 @@ namespace DentalDashboard.ApplicationService.Services
                     .SelectNodes("//table//tr");
 
                 if (rows == null || rows.Count <= 1)
-                    throw new InvalidDataException("Yektanet response does not contain a lead table.");
+                    return Array.Empty<LeadAssignment>();
 
                 var leads = new List<LeadAssignment>();
-
-                var skippedRows = 0;
 
                 foreach (var row in rows.Skip(1))
                 {
                     var cells = row.SelectNodes(".//td");
 
-                    if (cells == null || cells.Count == 0)
-                    {
-                        skippedRows++;
+                    if (cells == null || cells.Count < 10)
                         continue;
-                    }
 
-                    var values = cells.Select(cell => Clean(cell.InnerText)).ToArray();
-                    var phoneNumber = values
-                        .Select(NormalizePhoneNumber)
-                        .FirstOrDefault(value => value != null);
+                    var userName = Clean(cells[2].InnerText);
+                    var phoneNumber = Clean(cells[3].InnerText);
+                    var createAtText = Clean(cells[9].InnerText);
 
-                    if (phoneNumber == null)
-                    {
-                        skippedRows++;
-                        logger.LogWarning(
-                            "Yektanet lead row {RowNumber} skipped; phone number exists: false",
-                            skippedRows + leads.Count);
-                        continue;
-                    }
-
-                    // The Yektanet report has changed its column count in the past.
-                    // Keep the known name column as a best effort, but find the phone
-                    // by its value instead of relying on a brittle fixed index.
-                    var userName = values.Length > 2 ? values[2] : string.Empty;
+                    DateTime.TryParse(
+                        createAtText,
+                        out var createdAt);
 
                     leads.Add(new LeadAssignment
                     {
                         UserName = userName,
-                        PhoneNumber = phoneNumber
+                        PhoneNumber = phoneNumber,
+                        CreatedAt = createdAt
                     });
-
-                    logger.LogDebug(
-                        "Yektanet lead row {RowNumber} mapped; phone number exists: true; phone: {MaskedPhone}",
-                        skippedRows + leads.Count,
-                        MaskPhoneNumber(phoneNumber));
                 }
 
                 logger.LogInformation(
-                    "Fetched {Count} valid leads from landing page; skipped {SkippedCount} rows",
-                    leads.Count,
-                    skippedRows);
+                    "Fetched {Count} leads from landing page",
+                    leads.Count);
 
                 return leads.ToArray();
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
             catch (TaskCanceledException ex)
             {
-                logger.LogError(
+                logger.LogWarning(
                     ex,
-                    "Yektanet timeout after {ElapsedMilliseconds} ms while fetching {Url}",
-                    stopwatch.ElapsedMilliseconds,
+                    "Timeout while fetching leads from {Url}",
                     url);
-                throw;
+
+                return Array.Empty<LeadAssignment>();
             }
             catch (HttpRequestException ex)
             {
-                logger.LogError(
+                logger.LogWarning(
                     ex,
-                    "Yektanet HTTP error with status {StatusCode} while fetching {Url}",
-                    ex.StatusCode.HasValue ? (int)ex.StatusCode.Value : null,
+                    "HTTP error while fetching leads from {Url}",
                     url);
-                throw;
-            }
-            catch (InvalidDataException ex)
-            {
-                logger.LogError(
-                    ex,
-                    "Invalid Yektanet response received after {ElapsedMilliseconds} ms",
-                    stopwatch.ElapsedMilliseconds);
-                throw;
+
+                return Array.Empty<LeadAssignment>();
             }
             catch (Exception ex)
             {
                 logger.LogError(
                     ex,
                     "Unexpected error while parsing leads");
-                throw;
+
+                return Array.Empty<LeadAssignment>();
             }
         }
 
@@ -185,50 +138,16 @@ namespace DentalDashboard.ApplicationService.Services
                 .Trim();
         }
 
-        private static string? NormalizePhoneNumber(string value)
-        {
-            var latinValue = value
-                .Replace('۰', '0').Replace('۱', '1').Replace('۲', '2')
-                .Replace('۳', '3').Replace('۴', '4').Replace('۵', '5')
-                .Replace('۶', '6').Replace('۷', '7').Replace('۸', '8')
-                .Replace('۹', '9')
-                .Replace('٠', '0').Replace('١', '1').Replace('٢', '2')
-                .Replace('٣', '3').Replace('٤', '4').Replace('٥', '5')
-                .Replace('٦', '6').Replace('٧', '7').Replace('٨', '8')
-                .Replace('٩', '9');
-
-            var digits = Regex.Replace(latinValue, @"[^0-9+]", string.Empty);
-            if (digits.StartsWith("+98", StringComparison.Ordinal))
-                digits = $"0{digits[3..]}";
-            else if (digits.StartsWith("0098", StringComparison.Ordinal))
-                digits = $"0{digits[4..]}";
-            else if (digits.Length == 10 && digits.StartsWith('9'))
-                digits = $"0{digits}";
-
-            return Regex.IsMatch(digits, @"^09\d{9}$") ? digits : null;
-        }
-
-        private static string MaskPhoneNumber(string phoneNumber)
-        {
-            return phoneNumber.Length < 8
-                ? "***"
-                : $"{phoneNumber[..4]}***{phoneNumber[^4..]}";
-        }
-
-        public async Task AddLeadsAsync(CancellationToken cancellationToken = default)
+        public async Task AddLeadsAsync()
         {
             var now = DateTime.Now;
-            var updatedLeads = (await LeadsListAsync(cancellationToken))
-                .DistinctBy(x => x.PhoneNumber)
-                .ToArray();
+            var updatedLeads = await LeadsListAsync();
 
             var existingPhoneNumbers = await leadAssignmentRepository.GetExistingPhoneNumbersAsync(
-                updatedLeads.Select(x => x.PhoneNumber),
-                cancellationToken);
+                updatedLeads.Select(x => x.PhoneNumber));
 
             var newLeads = updatedLeads
                 .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
-                .DistinctBy(x => x.PhoneNumber)
                 .ToList();
 
             if (!newLeads.Any())
@@ -247,26 +166,7 @@ namespace DentalDashboard.ApplicationService.Services
             }
 
             await leadAssignmentRepository.AddRangeAsync(newLeads);
-            logger.LogInformation(
-                "Saving {Count} new Yektanet leads; all phone numbers are present: {AllPhonesPresent}",
-                newLeads.Count,
-                newLeads.All(x => !string.IsNullOrWhiteSpace(x.PhoneNumber)));
-            try
-            {
-                await leadAssignmentRepository.SaveChange();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(
-                    ex,
-                    "Database error while saving {Count} Yektanet leads",
-                    newLeads.Count);
-                throw;
-            }
-
-            logger.LogInformation(
-                "SaveChanges completed; inserted {Count} new Yektanet leads",
-                newLeads.Count);
+            await leadAssignmentRepository.SaveChange();
         }
 
         public async Task ReconcileMisclassifiedLeadStatesAsync()
@@ -746,7 +646,7 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 var pendingLeadsCount = consultant.CallAssignments.Count(x =>
                     x.LeadAssignmentState == LeadAssignmentState.Pending);
-                var unSubmitReportLead = consultant.CallAssignments.Where(x=> x.ConsultantProfileId == consultant.Id && x.ReportSubmittedAt == null).Count();
+                var unSubmitReportLead = consultant.CallAssignments.Where(x => x.ConsultantProfileId == consultant.Id && x.ReportSubmittedAt == null).Count();
 
                 if (pendingLeadsCount >= 20)
                 {
@@ -762,7 +662,7 @@ namespace DentalDashboard.ApplicationService.Services
                             ["pendingCount"] = pendingLeadsCount.ToString()
                         });
                 }
-                if(unSubmitReportLead >= 1)
+                if (unSubmitReportLead >= 1)
                 {
                     excludeConsultants.Add(consultant.Id);
                     await pushNotificationService.SendAsync(

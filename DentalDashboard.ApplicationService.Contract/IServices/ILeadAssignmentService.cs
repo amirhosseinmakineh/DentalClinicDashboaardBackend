@@ -6,7 +6,7 @@ namespace DentalDashboard.ApplicationService.Contract.IServices
     public interface ILeadAssignmentService
     {
         Task<LeadAssignment[]> LeadsListAsync(CancellationToken cancellationToken);
-        Task AddLeadsAsync(CancellationToken cancellationToken = default);
+         Task AddLeadsAsync();
         Task ReconcileMisclassifiedLeadStatesAsync();
         Task AssignRealTimeLeadsAsync(IReadOnlyCollection<long>? excludedConsultantIds = null);
         Task ExpireOverdueRealTimeLeadsAsync();

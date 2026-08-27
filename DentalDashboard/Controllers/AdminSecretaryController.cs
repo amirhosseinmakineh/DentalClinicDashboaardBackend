@@ -37,15 +37,13 @@ public sealed class AdminSecretaryController : ControllerBase
     public async Task<IActionResult> GetSchedule(Guid userId, CancellationToken cancellationToken)
     {
         var access = await accessService.GetAccessAsync(userId, cancellationToken);
-        if (!access.IsSecretary) return BadRequest(new { message = "کاربر باید نقش منشی داشته باشد" });
         var days = await accessService.GetScheduleAsync(userId, cancellationToken);
         var permissions = await accessService.GetPermissionScheduleAsync(userId, cancellationToken);
         return Ok(new
         {
             userId,
             secretaryType = access.Type,
-            days = days.Select(x => x.ToString()),
-            dayPermissions = days.Select(day => new
+            days = days.Select(x => x.ToString()),dayPermissions = days.Select(day => new
             {
                 day = day.ToString(),
                 permissions = permissions.GetValueOrDefault(day, []).Select(x => x.ToString())

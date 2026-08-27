@@ -3,6 +3,7 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
+using DentalDashboard.Infrastracture.Repository;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,7 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
         private readonly IPushNotificationService pushNotificationService;
         private readonly ILogger<LeadAssignmentService> logger;
+        private readonly IServiceLogRepository serviceLogRepository;
 
         public LeadAssignmentService(
             HttpClient httpClient,
@@ -29,7 +31,8 @@ namespace DentalDashboard.ApplicationService.Services
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentLimitService leadAssignmentLimitService,
             IPushNotificationService pushNotificationService,
-            ILogger<LeadAssignmentService> logger)
+            ILogger<LeadAssignmentService> logger,
+            IServiceLogRepository serviceLogRepository)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -38,6 +41,7 @@ namespace DentalDashboard.ApplicationService.Services
             this.leadAssignmentLimitService = leadAssignmentLimitService;
             this.pushNotificationService = pushNotificationService;
             this.logger = logger;
+            this.serviceLogRepository = serviceLogRepository;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync(
@@ -55,6 +59,16 @@ namespace DentalDashboard.ApplicationService.Services
                     url,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
+
+                var log = new ServiceLog()
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    DeletedAt = null,
+                    LogName = "Yektanet",
+                    ResponseLog = response.ReasonPhrase
+                };
+               await serviceLogRepository.AddAsync(log);
+                await serviceLogRepository.SaveChange();
 
                 response.EnsureSuccessStatusCode();
 

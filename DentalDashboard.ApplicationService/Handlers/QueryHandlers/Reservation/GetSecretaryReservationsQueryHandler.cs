@@ -1,13 +1,10 @@
-using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
-using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
-using Microsoft.EntityFrameworkCore;
-using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Utilities.Convertor;
 using DentalDashboard.Utilities.Time;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
 {
@@ -34,7 +31,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             var pageNumber = Math.Max(query.PageNumber, 1);
             var pageSize = Math.Clamp(query.PageSize, 1, 100);
 
-            var access = await secretaryAccessService.GetAccessAsync(query.SecretaryUserId,cancellationToken);
+            var access = await secretaryAccessService.GetAccessAsync(query.SecretaryUserId, cancellationToken);
 
             if (!access.IsSecretary)
             {

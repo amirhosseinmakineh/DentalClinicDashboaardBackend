@@ -5,9 +5,9 @@ namespace DentalDashboard.Infrastracture.Context
 {
     public class DentalContext : DbContext
     {
-        public DentalContext(DbContextOptions<DentalContext> options):base(options)
+        public DentalContext(DbContextOptions<DentalContext> options) : base(options)
         {
-            
+
         }
         public DbSet<User> Users => Set<User>();
         public DbSet<Role> Roles => Set<Role>();
@@ -22,7 +22,7 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<SecretaryAccessSchedule> SecretaryAccessSchedules => Set<SecretaryAccessSchedule>();
         public DbSet<SecretaryAccessScheduleAudit> SecretaryAccessScheduleAudits => Set<SecretaryAccessScheduleAudit>();
         public DbSet<SecretaryAccessPermission> SecretaryAccessPermissions => Set<SecretaryAccessPermission>();
-
+        public DbSet<ServiceLog> ServiceLogs => Set<ServiceLog>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -67,36 +67,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             SecretaryAnnouncementStatus status,
             CancellationToken cancellationToken)
         {
-            var notification = status switch
-            {
-                SecretaryAnnouncementStatus.NoAnswer => (
-                    ReservationNotificationTypes.ReservationSecretaryNoAnswer,
-                    $"بیمار {reservation.LeadAssignment.UserName} پاسخگوی تماس منشی نبود."),
-                SecretaryAnnouncementStatus.Confirmed => (
-                    ReservationNotificationTypes.ReservationSecretaryConfirmed,
-                    "بیمار رزرو خود را تایید کرد."),
-                SecretaryAnnouncementStatus.CancelledByPatient => (
-                    ReservationNotificationTypes.ReservationSecretaryCancelled,
-                    "بیمار رزرو خود را لغو کرد."),
-                _ => default
-            };
-
-            if (notification == default)
-                return;
-
-            await pushNotificationService.SendAsync(
-                reservation.ConsultantProfile.UserId,
-                "اعلام منشی رزرو",
-                notification.Item2,
-                new Dictionary<string, string>
-                {
-                    ["type"] = notification.Item1,
-                    ["reservationId"] = reservation.Id.ToString(),
-                    ["patientName"] = reservation.LeadAssignment.UserName ?? string.Empty,
-                    ["reservationDate"] = reservation.ReservationAt.ToString("yyyy-MM-dd"),
-                    ["message"] = notification.Item2
-                },
-                cancellationToken);
+            //should send sms
+           return;
         }
     }
 }

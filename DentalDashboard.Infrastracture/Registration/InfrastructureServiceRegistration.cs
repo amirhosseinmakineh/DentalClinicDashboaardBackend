@@ -36,6 +36,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IUserPresenceLogRepository, UserPresenceLogRepository>();
         services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
         services.AddScoped<ISecretaryAccessService, SecretaryAccessService>();
+        services.AddScoped<IServiceLogRepository, ServiceLogRepository>();
 
 
         return services;

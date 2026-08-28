@@ -67,7 +67,7 @@ public sealed record DailyReservationReportItem(
     DateTime? SecretaryAnnouncementUpdatedAt)
 {
     public string AppointmentDateTimePersian =>
-        IranTimeHelper.ToIranLocalTime(AppointmentDateTime).ToPersianDateTimeString();
+        AppointmentDateTime.ToPersianDateTimeString();
     public string CreatedAtPersian =>
         IranTimeHelper.ToIranLocalTime(CreatedAt).ToPersianDateTimeString();
 }
@@ -140,7 +140,7 @@ public class DailyReservationsReportService(DentalContext context)
                 x.PatientName, x.PatientPhoneNumber, x.SecondaryPhoneNumber,
                 x.PatientCity, x.PatientRegion, x.BusinessName,
                 x.AttendanceProbabilityPercent, x.PatientCount,
-
+                x.ReservationAt, EnsureUtc(x.CreatedAt),
                 status, ToPersian(status), visitStatus, ToPersian(visitStatus),
                 GetPatientConfirmation(x.AttendanceConfirmationStatus), x.IsCanceled,
                 x.IsCanceled ? x.SecretaryReviewNote : null, x.Description, x.DentalServices,
@@ -199,7 +199,7 @@ public class DailyReservationsReportService(DentalContext context)
             item.ConsultantPhoneNumber, item.PatientName, item.PatientPhoneNumber,
             item.SecondaryPhoneNumber, item.PatientCity, item.PatientRegion, item.BusinessName,
             item.AttendanceProbabilityPercent?.ToString(), item.PatientCount.ToString(), FormatIran(item.CreatedAt),
-            FormatIran(item.AppointmentDateTime), item.RequestStatusTitle, item.VisitResultStatusTitle,
+            item.AppointmentDateTime.ToPersianDateTimeString(), item.RequestStatusTitle, item.VisitResultStatusTitle,
             AdminReportPersianLabels.ToYesNoNullable(item.IsConfirmedWithPatient),
             AdminReportPersianLabels.ToYesNo(item.IsCanceled), item.CancellationReason, item.Description,
             string.Join("، ", item.DentalServices.Select(ToPersian)),

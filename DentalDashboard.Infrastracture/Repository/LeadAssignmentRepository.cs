@@ -140,9 +140,6 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ToArray();
             var existingPhones = new HashSet<string>();
 
-            // SQL Server has a 2,100 parameter limit. The Yektanet report grows
-            // continuously, so querying every number in one Contains expression
-            // eventually times out or exceeds that limit.
             foreach (var batch in phones.Chunk(batchSize))
             {
                 var matches = await GetAll()

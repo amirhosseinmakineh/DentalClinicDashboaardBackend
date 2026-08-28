@@ -33,9 +33,6 @@ public class GetSecretaryDashboardSummaryQueryHandler
             query.SecretaryUserId,
             cancellationToken);
 
-        // The configured days specify when an assistant may enter this section,
-        // not which appointment weekdays should be visible. The controller checks
-        // today's permission before dispatching this query.
         var reservations = access.IsSecretary
             ? await reservationsQuery.ToListAsync(cancellationToken)
             : [];

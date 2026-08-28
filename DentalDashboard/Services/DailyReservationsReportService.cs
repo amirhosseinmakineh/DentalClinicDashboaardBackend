@@ -140,7 +140,7 @@ public class DailyReservationsReportService(DentalContext context)
                 x.PatientName, x.PatientPhoneNumber, x.SecondaryPhoneNumber,
                 x.PatientCity, x.PatientRegion, x.BusinessName,
                 x.AttendanceProbabilityPercent, x.PatientCount,
-                EnsureUtc(x.ReservationAt), EnsureUtc(x.CreatedAt),
+
                 status, ToPersian(status), visitStatus, ToPersian(visitStatus),
                 GetPatientConfirmation(x.AttendanceConfirmationStatus), x.IsCanceled,
                 x.IsCanceled ? x.SecretaryReviewNote : null, x.Description, x.DentalServices,

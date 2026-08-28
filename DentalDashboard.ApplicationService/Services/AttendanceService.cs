@@ -15,10 +15,7 @@ public class AttendanceService : IAttendanceService
         this.attendanceRepository = attendanceRepository;
     }
 
-    public async Task RecordCheckInAsync(
-        long consultantProfileId,
-        DateTime occurredAt,
-        CancellationToken cancellationToken = default)
+    public async Task RecordCheckInAsync(long consultantProfileId,DateTime occurredAt,CancellationToken cancellationToken = default)
     {
         var attendanceDate = DateOnly.FromDateTime(occurredAt);
         var checkInTime = TimeOnly.FromDateTime(occurredAt);
@@ -54,10 +51,7 @@ public class AttendanceService : IAttendanceService
         await attendanceRepository.SaveChange();
     }
 
-    public async Task RecordCheckOutAsync(
-        long consultantProfileId,
-        DateTime occurredAt,
-        CancellationToken cancellationToken = default)
+    public async Task RecordCheckOutAsync(long consultantProfileId,DateTime occurredAt,CancellationToken cancellationToken = default)
     {
         var attendanceDate = DateOnly.FromDateTime(occurredAt);
         var checkOutTime = TimeOnly.FromDateTime(occurredAt);

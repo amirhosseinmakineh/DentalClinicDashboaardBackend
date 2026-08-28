@@ -6,7 +6,6 @@ using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Repository;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace DentalDashboard.ApplicationService.Services
@@ -21,7 +20,6 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
         private readonly IPushNotificationService pushNotificationService;
-        private readonly ILogger<LeadAssignmentService> logger;
         private readonly IServiceLogRepository serviceLogRepository;
 
         public LeadAssignmentService(
@@ -31,7 +29,6 @@ namespace DentalDashboard.ApplicationService.Services
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentLimitService leadAssignmentLimitService,
             IPushNotificationService pushNotificationService,
-            ILogger<LeadAssignmentService> logger,
             IServiceLogRepository serviceLogRepository)
         {
             this.httpClient = httpClient;
@@ -40,7 +37,6 @@ namespace DentalDashboard.ApplicationService.Services
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadAssignmentLimitService = leadAssignmentLimitService;
             this.pushNotificationService = pushNotificationService;
-            this.logger = logger;
             this.serviceLogRepository = serviceLogRepository;
         }
 
@@ -67,7 +63,7 @@ namespace DentalDashboard.ApplicationService.Services
                     LogName = "Yektanet",
                     ResponseLog = response.ReasonPhrase
                 };
-               await serviceLogRepository.AddAsync(log);
+                await serviceLogRepository.AddAsync(log);
                 await serviceLogRepository.SaveChange();
 
                 response.EnsureSuccessStatusCode();
@@ -109,36 +105,18 @@ namespace DentalDashboard.ApplicationService.Services
                     });
                 }
 
-                logger.LogInformation(
-                    "Fetched {Count} leads from landing page",
-                    leads.Count);
-
                 return leads.ToArray();
             }
-            catch (TaskCanceledException ex)
+            catch (TaskCanceledException)
             {
-                logger.LogWarning(
-                    ex,
-                    "Timeout while fetching leads from {Url}",
-                    url);
-
                 return Array.Empty<LeadAssignment>();
             }
-            catch (HttpRequestException ex)
+            catch (HttpRequestException)
             {
-                logger.LogWarning(
-                    ex,
-                    "HTTP error while fetching leads from {Url}",
-                    url);
-
                 return Array.Empty<LeadAssignment>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(
-                    ex,
-                    "Unexpected error while parsing leads");
-
                 return Array.Empty<LeadAssignment>();
             }
         }
@@ -166,7 +144,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (!newLeads.Any())
             {
-                logger.LogDebug("AddLeadsAsync skipped: no new phone numbers from landing page");
                 return;
             }
 
@@ -212,7 +189,6 @@ namespace DentalDashboard.ApplicationService.Services
         {
             if (!leadDomainService.IsWorkingTime(DateTime.Now))
             {
-                logger.LogInformation("Realtime dispatch skipped: outside working hours");
                 return;
             }
 
@@ -229,7 +205,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (!consultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no online consultants");
                 return;
             }
 
@@ -243,7 +218,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (!availableConsultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
                 return;
             }
 
@@ -252,8 +226,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (lead == null)
             {
-                logger.LogInformation(
-                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
                 return;
             }
 
@@ -266,10 +238,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.SaveChange();
 
-            logger.LogInformation(
-                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
-                lead.Id,
-                isReminder);
         }
 
         private async Task NotifyConsultantsForRealtimeLeadAsync(
@@ -295,14 +263,6 @@ namespace DentalDashboard.ApplicationService.Services
                     });
             }
 
-            logger.LogInformation(
-                isReminder
-                    ? "Realtime lead reminder sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants"
-                    : "Realtime lead notification sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants",
-                lead.Id,
-                lead.UserName,
-                lead.PhoneNumber,
-                consultants.Count);
         }
 
         private static (string Title, string Body) BuildRealtimeLeadNotificationContent(
@@ -347,10 +307,6 @@ namespace DentalDashboard.ApplicationService.Services
                     });
             }
 
-            logger.LogInformation(
-                "Realtime lead taken notification sent for lead {LeadId} to {ConsultantCount} consultants",
-                leadAssignmentId,
-                consultants.Count);
         }
 
         public async Task<ExpireLeadRequeueResult> ExpireAndRequeueRealTimeLeadAsync(
@@ -457,7 +413,6 @@ namespace DentalDashboard.ApplicationService.Services
         {
             if (!leadDomainService.IsWorkingTime(DateTime.Now))
             {
-                logger.LogInformation("Realtime dispatch skipped: outside working hours");
                 return;
             }
 
@@ -475,7 +430,6 @@ namespace DentalDashboard.ApplicationService.Services
             }
             if (!consultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no online consultants");
                 return;
             }
 
@@ -489,7 +443,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (!availableConsultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
                 return;
             }
 
@@ -498,8 +451,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (lead == null)
             {
-                logger.LogInformation(
-                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
                 return;
             }
 
@@ -512,17 +463,12 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.SaveChange();
 
-            logger.LogInformation(
-                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
-                lead.Id,
-                isReminder);
         }
 
         public async Task AssignLeadToSellerConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
         {
             if (!leadDomainService.IsWorkingTime(DateTime.Now))
             {
-                logger.LogInformation("Realtime dispatch skipped: outside working hours");
                 return;
             }
 
@@ -540,7 +486,6 @@ namespace DentalDashboard.ApplicationService.Services
             }
             if (!consultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no online consultants");
                 return;
             }
             var availableConsultants = new List<ConsultantProfile>();
@@ -553,7 +498,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (!availableConsultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
                 return;
             }
 
@@ -562,8 +506,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (lead == null)
             {
-                logger.LogInformation(
-                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
                 return;
             }
 
@@ -576,17 +518,12 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.SaveChange();
 
-            logger.LogInformation(
-                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
-                lead.Id,
-                isReminder);
         }
 
         public async Task AssignLeadToTopSellertConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
         {
             if (!leadDomainService.IsWorkingTime(DateTime.Now))
             {
-                logger.LogInformation("Realtime dispatch skipped: outside working hours");
                 return;
             }
 
@@ -606,7 +543,6 @@ namespace DentalDashboard.ApplicationService.Services
             }
             if (!consultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no online consultants");
                 return;
             }
             var availableConsultants = new List<ConsultantProfile>();
@@ -619,7 +555,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (!availableConsultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
                 return;
             }
 
@@ -628,8 +563,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (lead == null)
             {
-                logger.LogInformation(
-                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
                 return;
             }
 
@@ -642,10 +575,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.SaveChange();
 
-            logger.LogInformation(
-                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
-                lead.Id,
-                isReminder);
         }
         private async Task<IReadOnlyCollection<long>> ManageExcludeConsultants()
         {
@@ -660,7 +589,9 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 var pendingLeadsCount = consultant.CallAssignments.Count(x =>
                     x.LeadAssignmentState == LeadAssignmentState.Pending);
-                var unSubmitReportLead = consultant.CallAssignments.Where(x => x.ConsultantProfileId == consultant.Id && x.ReportSubmittedAt == null).Count();
+                var unSubmitReportLead = consultant.CallAssignments
+                    .Count(x => x.ConsultantProfileId == consultant.Id &&
+                                x.ReportSubmittedAt == null);
 
                 if (pendingLeadsCount >= 20)
                 {

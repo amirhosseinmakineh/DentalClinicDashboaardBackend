@@ -14,12 +14,7 @@ public class UserPresenceService : IUserPresenceService
         this.presenceLogRepository = presenceLogRepository;
     }
 
-    public async Task LogAsync(
-        Guid userId,
-        UserPresenceEventType eventType,
-        DateTime? occurredAt = null,
-        string? description = null,
-        CancellationToken cancellationToken = default)
+    public async Task LogAsync(Guid userId,UserPresenceEventType eventType,DateTime? occurredAt = null,string? description = null,CancellationToken cancellationToken = default)
     {
         var log = new UserPresenceLog
         {

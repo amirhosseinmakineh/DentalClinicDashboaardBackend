@@ -43,10 +43,6 @@ public static class IranTimeHelper
 
     public static DateOnly GetDateInIran(DateTime value)
     {
-        // Date-only query values are bound as Unspecified by ASP.NET and already
-        // represent the date selected in the UI. Instants (for example an ISO
-        // value ending in Z) must first be moved to Iran time; otherwise dates
-        // around midnight are filtered as the preceding UTC day.
         var iranDateTime = value.Kind == DateTimeKind.Unspecified
             ? value
             : ToIranLocalTime(value);

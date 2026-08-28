@@ -4,11 +4,6 @@ using System.Text.Json.Serialization;
 using DentalDashboard.Domain.Enums;
 
 namespace DentalDashboard.ApplicationService.Contract.Serialization;
-
-/// <summary>
-/// Accepts the string values commonly produced by HTML selects while keeping the
-/// public response value as the enum's canonical name.
-/// </summary>
 public sealed class SecretaryAnnouncementStatusJsonConverter
     : JsonConverter<SecretaryAnnouncementStatus>
 {

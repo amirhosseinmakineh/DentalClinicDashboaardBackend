@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Domain.Secretary.Account.Entities;
 
 namespace DentalDashboard.Infrastracture.Context
 {
@@ -23,6 +24,8 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<SecretaryAccessScheduleAudit> SecretaryAccessScheduleAudits => Set<SecretaryAccessScheduleAudit>();
         public DbSet<SecretaryAccessPermission> SecretaryAccessPermissions => Set<SecretaryAccessPermission>();
         public DbSet<ServiceLog> ServiceLogs => Set<ServiceLog>();
+        public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
+        public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

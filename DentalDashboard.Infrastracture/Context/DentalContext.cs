@@ -1,7 +1,7 @@
 ﻿using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;
-using DentalDashboard.Domain.Secretary.Account.Entities;
-using DentalDashboard.Domain.Secretary.PatientFinance.Entities;
+using DentalDashboard.Domain.Secretary.Accountant.Entities;
+using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
 
 namespace DentalDashboard.Infrastracture.Context
 {

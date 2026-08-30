@@ -28,9 +28,7 @@ public sealed class SecretaryFinancialTransactionDto
     public string? CounterpartyName { get; init; }
     public PaymentMethod PaymentMethod { get; init; }
     public string PaymentMethodTitle { get; init; } = default!;
-    public string? TrackingNumber { get; init; }
     public string? Description { get; init; }
-    public string? ReceiptUrl { get; init; }
     public long? ExpenseCategoryId { get; init; }
     public string? ExpenseCategoryTitle { get; init; }
     public DateTime CreatedAt { get; init; }

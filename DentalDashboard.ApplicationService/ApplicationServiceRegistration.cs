@@ -28,6 +28,7 @@ public static class ApplicationServiceRegistration
         services.AddScoped<IUserPresenceService, UserPresenceService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IPickupService, PickUpService>();
+        services.AddScoped<IFinancialTransactionReceiptService, FinancialTransactionReceiptService>();
 
         services.AddScoped<IQueryDispatcher, QueryDispatcher>();
         services.AddTransient<ICommandDispatcher, CommandDispatcher>();

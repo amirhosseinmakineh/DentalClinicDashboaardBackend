@@ -51,9 +51,7 @@ public sealed class CreateSecretaryFinancialTransactionCommandHandler : ICommand
             Subject = Normalize(command.Subject),
             CounterpartyName = Normalize(command.CounterpartyName),
             PaymentMethod = command.PaymentMethod,
-            TrackingNumber = Normalize(command.TrackingNumber),
             Description = Normalize(command.Description),
-            ReceiptUrl = Normalize(command.ReceiptUrl),
             ExpenseCategoryId = command.ExpenseCategoryId,
             CreatedByUserId = command.CreatedByUserId
         };

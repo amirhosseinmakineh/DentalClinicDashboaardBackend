@@ -49,7 +49,6 @@ public sealed class GetSecretaryFinancialTransactionsQueryHandler : IQueryHandle
             transactions = transactions.Where(x =>
                 (x.Subject != null && x.Subject.Contains(search)) ||
                 (x.CounterpartyName != null && x.CounterpartyName.Contains(search)) ||
-                (x.TrackingNumber != null && x.TrackingNumber.Contains(search)) ||
                 (x.Description != null && x.Description.Contains(search)));
         }
 
@@ -78,9 +77,7 @@ public sealed class GetSecretaryFinancialTransactionsQueryHandler : IQueryHandle
             CounterpartyName = transaction.CounterpartyName,
             PaymentMethod = transaction.PaymentMethod,
             PaymentMethodTitle = transaction.PaymentMethod.GetTitle(),
-            TrackingNumber = transaction.TrackingNumber,
             Description = transaction.Description,
-            ReceiptUrl = transaction.ReceiptUrl,
             ExpenseCategoryId = transaction.ExpenseCategoryId,
             ExpenseCategoryTitle = transaction.ExpenseCategory == null ? null : transaction.ExpenseCategory.Title,
             CreatedAt = transaction.CreatedAt
@@ -88,4 +85,3 @@ public sealed class GetSecretaryFinancialTransactionsQueryHandler : IQueryHandle
     }
 
 }
-

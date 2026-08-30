@@ -11,7 +11,7 @@ public sealed record PatientFileDto(long Id, long? PatientId, long FileNumber, s
     PatientFileFinanceDto? Finance);
 
 public sealed record PatientFileFinanceDto(
-    long FinancialPatientId, decimal TotalTreatmentAmount, decimal TotalPaidAmount,
+    Guid FinancialPatientId, decimal TotalTreatmentAmount, decimal TotalPaidAmount,
     decimal RemainingAmount, decimal TotalDebtAmount, int ActiveFinancialCasesCount,
     int UnpaidChequesCount, int UnpaidPromissoryNotesCount,
     IReadOnlyList<PatientFileFinancialCaseDto> Cases);

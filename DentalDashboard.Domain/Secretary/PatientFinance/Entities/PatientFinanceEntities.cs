@@ -5,7 +5,7 @@ using DentalDashboard.Domain.Secretary.PatientFinance.Enums;
 namespace DentalDashboard.Domain.Secretary.PatientFinance.Entities;
 
 public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
-  public long PatientId { get; set; }
+  public Guid PatientId { get; set; }
   public DentalServiceType Service { get; set; }
   public decimal TotalAmount { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
@@ -13,7 +13,7 @@ public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
     get; set;
   } = PatientFinancialCaseStatus.Active;
   public Guid CreatedByUserId { get; set; }
-  public PatientProfile Patient { get; set; } = default!;
+  public User Patient { get; set; } = default!;
   public User CreatedByUser { get; set; } = default!;
   public ICollection<PatientCheque> Cheques { get; set; } = [];
   public ICollection<PatientPromissoryNote> PromissoryNotes { get; set; } = [];

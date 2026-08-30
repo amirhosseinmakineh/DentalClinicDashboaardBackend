@@ -42,14 +42,13 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
       return Result<PatientFinancialCaseIdResponse>.Failure("نوع توافق معتبر نیست");
     if (!Enum.IsDefined(typeof(DentalServiceType), c.ServiceId))
       return Result<PatientFinancialCaseIdResponse>.Failure("خدمت معتبر نیست");
-    var patientQuery = repo.Patients.AsNoTracking().Where(x => !x.IsDeleted);
-    if (c.PatientId > 0)
-      patientQuery = patientQuery.Where(x => x.Id == c.PatientId);
-    if (c.UserId.HasValue && c.UserId.Value != Guid.Empty)
-      patientQuery = patientQuery.Where(x => x.UserId == c.UserId.Value);
-    if (c.PatientId <= 0 && (!c.UserId.HasValue || c.UserId == Guid.Empty))
+    if (c.PatientId == Guid.Empty)
       return Result<PatientFinancialCaseIdResponse>.Failure("بیمار معتبر نیست");
-    var patient = await patientQuery.Select(x => new { x.Id }).SingleOrDefaultAsync(ct);
+    var patient = await repo.Patients.AsNoTracking()
+        .Where(x => !x.IsDeleted && x.Id == c.PatientId &&
+                    x.PatientProfile != null && !x.PatientProfile.IsDeleted)
+        .Select(x => new { x.Id })
+        .SingleOrDefaultAsync(ct);
     if (patient is null)
       return Result<PatientFinancialCaseIdResponse>.Failure("بیمار معتبر نیست");
     var cheques = c.Cheques ?? [];

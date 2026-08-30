@@ -90,8 +90,8 @@ public sealed class PatientFinanceController(ICommandDispatcher commands,
         new GetPatientFinancialCaseSummaryQuery(id), ct);
     return x is null ? NotFound(Result.Failure("پرونده یافت نشد")) : Ok(x);
   }
-  [HttpGet("patients/{id:long}/financial-summary")]
-  public async Task<IActionResult> PatientSummary(long id,
+  [HttpGet("patients/{id:guid}/financial-summary")]
+  public async Task<IActionResult> PatientSummary(Guid id,
                                                   CancellationToken ct) {
     var x = await queries.DispatchAsync(new GetPatientFinancialSummaryQuery(id),
                                         ct);

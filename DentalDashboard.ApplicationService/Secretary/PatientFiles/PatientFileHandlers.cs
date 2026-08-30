@@ -75,11 +75,11 @@ internal static class PatientFileFinanceLoader
         if (files.Count == 0) return [];
         var phones = files.Select(x => x.PhoneNumber).Distinct().ToList();
         var cases = await repository.Cases.AsNoTracking()
-            .Where(x => phones.Contains(x.Patient.User.PhoneNumber))
+            .Where(x => phones.Contains(x.Patient.PhoneNumber))
             .OrderByDescending(x => x.CreatedAt)
             .Select(x => new
             {
-                Phone = x.Patient.User.PhoneNumber,
+                Phone = x.Patient.PhoneNumber,
                 x.PatientId,
                 Case = new PatientFileFinancialCaseDto(
                     x.Id, (int)x.Service, x.Service.ToString(), x.TotalAmount,

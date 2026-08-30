@@ -13,7 +13,7 @@ public sealed class GetPatientFinancialCasesQuery
     : PatientFinancePagedQuery,
       IQuery<PaginatedResult<PatientFinancialCaseDto>> {
   public string? Search { get; set; }
-  public long? PatientId { get; set; }
+  public Guid? PatientId { get; set; }
   public int? ServiceId { get; set; }
   public PatientFinancialAgreementType? AgreementType { get; set; }
   public PatientFinancialCaseStatus? Status { get; set; }
@@ -26,13 +26,13 @@ public sealed
 public sealed
     record GetPatientFinancialCaseSummaryQuery(Guid PatientFinancialCaseId)
     : IQuery<PatientFinancialCaseSummaryDto?>;
-public sealed record GetPatientFinancialSummaryQuery(long PatientId)
+public sealed record GetPatientFinancialSummaryQuery(Guid PatientId)
     : IQuery<PatientFinancialSummaryDto?>;
 public sealed class GetPatientChequesQuery
     : PatientFinancePagedQuery,
       IQuery<PaginatedResult<PatientChequeDto>> {
   public Guid? PatientFinancialCaseId { get; set; }
-  public long? PatientId { get; set; }
+  public Guid? PatientId { get; set; }
   public string? Search { get; set; }
   public PatientChequeStatus? Status { get; set; }
   public DateTime? FromDueDate { get; set; }
@@ -42,7 +42,7 @@ public sealed class GetPatientPromissoryNotesQuery
     : PatientFinancePagedQuery,
       IQuery<PaginatedResult<PatientPromissoryNoteDto>> {
   public Guid? PatientFinancialCaseId { get; set; }
-  public long? PatientId { get; set; }
+  public Guid? PatientId { get; set; }
   public string? Search { get; set; }
   public PatientPromissoryNoteStatus? Status { get; set; }
   public DateTime? FromDueDate { get; set; }
@@ -51,7 +51,7 @@ public sealed class GetPatientPromissoryNotesQuery
 public sealed class GetPatientDebtsQuery
     : PatientFinancePagedQuery,
       IQuery<PaginatedResult<PatientDebtDto>> {
-  public long? PatientId { get; set; }
+  public Guid? PatientId { get; set; }
   public Guid? PatientFinancialCaseId { get; set; }
   public PatientDebtSourceType? SourceType { get; set; }
   public PatientDebtStatus? Status { get; set; }
@@ -64,7 +64,7 @@ public sealed class GetPatientDebtsQuery
 public sealed class GetPatientFinancialTransactionsQuery
     : PatientFinancePagedQuery,
       IQuery<PaginatedResult<PatientFinancialTransactionDto>> {
-  public long? PatientId { get; set; }
+  public Guid? PatientId { get; set; }
   public Guid? PatientFinancialCaseId { get; set; }
   public PatientFinancialTransactionSourceType? SourceType { get; set; }
   public DateTime? FromDate { get; set; }
@@ -76,11 +76,11 @@ public sealed class GetDuePatientFinancialCommitmentsQuery
   public DateTime? FromDate { get; set; }
   public DateTime? ToDate { get; set; }
   public PatientFinancialCommitmentType? Type { get; set; }
-  public long? PatientId { get; set; }
+  public Guid? PatientId { get; set; }
 }
 
 public sealed record PatientFinancialCaseDto(
-    Guid Id, long PatientId, Guid UserId, string PatientName,
+    Guid Id, Guid PatientId, Guid UserId, string PatientName,
     string? PatientPhoneNumber, int ServiceId, string ServiceName, decimal TotalAmount,
     decimal TotalPaidAmount, decimal RemainingAmount, decimal TotalDebtAmount,
     PatientFinancialAgreementType AgreementType,
@@ -89,15 +89,15 @@ public sealed record PatientFinancialCaseDetailsDto(
     PatientFinancialCaseDto Case, int ChequeCount, decimal ChequeAmount,
     int PromissoryNoteCount, decimal PromissoryNoteAmount);
 public sealed record PatientChequeDto(long Id, Guid PatientFinancialCaseId,
-                                      long PatientId, string PatientName,
+                                      Guid PatientId, string PatientName,
                                       decimal Amount, string SayadNumber,
                                       string OwnerName, DateTime DueDate,
                                       PatientChequeStatus Status);
 public sealed record PatientPromissoryNoteDto(
-    long Id, Guid PatientFinancialCaseId, long PatientId, string PatientName,
+    long Id, Guid PatientFinancialCaseId, Guid PatientId, string PatientName,
     string SerialNumber, decimal Amount, DateTime DueDate,
     PatientPromissoryNoteStatus Status);
-public sealed record PatientDebtDto(long Id, long PatientId, string PatientName,
+public sealed record PatientDebtDto(long Id, Guid PatientId, string PatientName,
                                     string? PatientPhoneNumber,
                                     Guid PatientFinancialCaseId,
                                     string ServiceName, decimal Amount,
@@ -105,12 +105,12 @@ public sealed record PatientDebtDto(long Id, long PatientId, string PatientName,
                                     long SourceId, DateTime DueDate,
                                     PatientDebtStatus Status);
 public sealed record PatientFinancialTransactionDto(
-    long Id, Guid PatientFinancialCaseId, long PatientId, decimal Amount,
+    long Id, Guid PatientFinancialCaseId, Guid PatientId, decimal Amount,
     PatientFinancialTransactionType Type,
     PatientFinancialTransactionSourceType SourceType, long SourceId,
     DateTime CreatedAt);
 public sealed record PatientFinancialSummaryDto(
-    long PatientId, decimal TotalTreatmentAmount, decimal TotalPaidAmount,
+    Guid PatientId, decimal TotalTreatmentAmount, decimal TotalPaidAmount,
     decimal RemainingAmount, decimal TotalDebtAmount,
     int ActiveFinancialCasesCount, int UnpaidChequesCount,
     int UnpaidPromissoryNotesCount);
@@ -123,5 +123,5 @@ public sealed record PatientFinancialCaseSummaryDto(
     decimal TotalDebtAmount);
 public sealed record PatientFinancialCommitmentDto(
     long Id, PatientFinancialCommitmentType Type, Guid PatientFinancialCaseId,
-    long PatientId, string PatientName, decimal Amount, DateTime DueDate,
+    Guid PatientId, string PatientName, decimal Amount, DateTime DueDate,
     int Status);

@@ -17,7 +17,7 @@ public sealed record PatientFileFinanceDto(
     IReadOnlyList<PatientFileFinancialCaseDto> Cases);
 
 public sealed record PatientFileFinancialCaseDto(
-    long Id, int ServiceId, string ServiceName, decimal TotalAmount,
+    Guid Id, int ServiceId, string ServiceName, decimal TotalAmount,
     decimal TotalPaidAmount, decimal RemainingAmount, decimal TotalDebtAmount,
     PatientFinancialAgreementType AgreementType, PatientFinancialCaseStatus Status,
     DateTime CreatedAt, IReadOnlyList<PatientFileChequeDto> Cheques,

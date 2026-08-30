@@ -4,7 +4,7 @@ using DentalDashboard.Domain.Secretary.PatientFinance.Enums;
 
 namespace DentalDashboard.Domain.Secretary.PatientFinance.Entities;
 
-public sealed class PatientFinancialCase : BaseAuditableEntity<long> {
+public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
   public long PatientId { get; set; }
   public DentalServiceType Service { get; set; }
   public decimal TotalAmount { get; set; }
@@ -12,8 +12,9 @@ public sealed class PatientFinancialCase : BaseAuditableEntity<long> {
   public PatientFinancialCaseStatus Status {
     get; set;
   } = PatientFinancialCaseStatus.Active;
-  public Guid CreatedBySecretaryUserId { get; set; }
+  public Guid CreatedByUserId { get; set; }
   public PatientProfile Patient { get; set; } = default!;
+  public User CreatedByUser { get; set; } = default!;
   public ICollection<PatientCheque> Cheques { get; set; } = [];
   public ICollection<PatientPromissoryNote> PromissoryNotes { get; set; } = [];
   public ICollection<PatientDebt> Debts { get; set; } = [];
@@ -23,7 +24,7 @@ public sealed class PatientFinancialCase : BaseAuditableEntity<long> {
 }
 
 public sealed class PatientCheque : BaseAuditableEntity<long> {
-  public long PatientFinancialCaseId { get; set; }
+  public Guid PatientFinancialCaseId { get; set; }
   public decimal Amount { get; set; }
   public string SayadNumber { get; set; } = default!;
   public string OwnerName { get; set; } = default!;
@@ -33,7 +34,7 @@ public sealed class PatientCheque : BaseAuditableEntity<long> {
 }
 
 public sealed class PatientPromissoryNote : BaseAuditableEntity<long> {
-  public long PatientFinancialCaseId { get; set; }
+  public Guid PatientFinancialCaseId { get; set; }
   public string SerialNumber { get; set; } = default!;
   public decimal Amount { get; set; }
   public DateTime DueDate { get; set; }
@@ -44,19 +45,20 @@ public sealed class PatientPromissoryNote : BaseAuditableEntity<long> {
 }
 
 public sealed class PatientFinancialTransaction : BaseAuditableEntity<long> {
-  public long PatientFinancialCaseId { get; set; }
+  public Guid PatientFinancialCaseId { get; set; }
   public decimal Amount { get; set; }
   public PatientFinancialTransactionType Type {
     get; set;
   } = PatientFinancialTransactionType.Payment;
   public PatientFinancialTransactionSourceType SourceType { get; set; }
   public long SourceId { get; set; }
-  public Guid CreatedBySecretaryUserId { get; set; }
+  public Guid CreatedByUserId { get; set; }
   public PatientFinancialCase FinancialCase { get; set; } = default!;
+  public User CreatedByUser { get; set; } = default!;
 }
 
 public sealed class PatientDebt : BaseAuditableEntity<long> {
-  public long PatientFinancialCaseId { get; set; }
+  public Guid PatientFinancialCaseId { get; set; }
   public decimal Amount { get; set; }
   public PatientDebtSourceType SourceType { get; set; }
   public long SourceId { get; set; }

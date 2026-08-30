@@ -13,6 +13,10 @@ public sealed class PatientFinancialCaseConfiguration
         .WithMany()
         .HasForeignKey(x => x.PatientId)
         .OnDelete(DeleteBehavior.Restrict);
+    b.HasOne(x => x.CreatedByUser)
+        .WithMany()
+        .HasForeignKey(x => x.CreatedByUserId)
+        .OnDelete(DeleteBehavior.Restrict);
     b.HasQueryFilter(x => !x.IsDeleted);
   }
 }
@@ -65,6 +69,10 @@ public sealed class PatientFinancialTransactionConfiguration
     b.HasOne(x => x.FinancialCase)
         .WithMany(x => x.Transactions)
         .HasForeignKey(x => x.PatientFinancialCaseId)
+        .OnDelete(DeleteBehavior.Restrict);
+    b.HasOne(x => x.CreatedByUser)
+        .WithMany()
+        .HasForeignKey(x => x.CreatedByUserId)
         .OnDelete(DeleteBehavior.Restrict);
     b.HasQueryFilter(x => !x.IsDeleted);
   }

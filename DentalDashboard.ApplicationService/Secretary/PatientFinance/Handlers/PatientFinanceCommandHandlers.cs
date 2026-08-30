@@ -29,51 +29,51 @@ internal static class FinanceRules {
 public sealed class CreatePatientFinancialCaseCommandHandler(
     IPatientFinanceRepository repo, IUnitOfWork uow)
     : ICommandHandler<CreatePatientFinancialCaseCommand,
-                      PatientFinanceIdResponse> {
-  public async Task<Result<PatientFinanceIdResponse>>
+                      PatientFinancialCaseIdResponse> {
+  public async Task<Result<PatientFinancialCaseIdResponse>>
   HandleAsync(CreatePatientFinancialCaseCommand c,
               CancellationToken ct = default) {
-    if (c.SecretaryUserId == Guid.Empty)
-      return Result<PatientFinanceIdResponse>.Failure("کاربر منشی معتبر نیست");
+    if (c.ActorUserId == Guid.Empty)
+      return Result<PatientFinancialCaseIdResponse>.Failure("کاربر معتبر نیست");
     if (c.TotalAmount <= 0)
-      return Result<PatientFinanceIdResponse>.Failure(
+      return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ کل باید بیشتر از صفر باشد");
     if (!Enum.IsDefined(c.AgreementType))
-      return Result<PatientFinanceIdResponse>.Failure("نوع توافق معتبر نیست");
+      return Result<PatientFinancialCaseIdResponse>.Failure("نوع توافق معتبر نیست");
     if (!Enum.IsDefined(typeof(DentalServiceType), c.ServiceId))
-      return Result<PatientFinanceIdResponse>.Failure("خدمت معتبر نیست");
+      return Result<PatientFinancialCaseIdResponse>.Failure("خدمت معتبر نیست");
     var patientQuery = repo.Patients.AsNoTracking().Where(x => !x.IsDeleted);
     if (c.PatientId > 0)
       patientQuery = patientQuery.Where(x => x.Id == c.PatientId);
     if (c.UserId.HasValue && c.UserId.Value != Guid.Empty)
       patientQuery = patientQuery.Where(x => x.UserId == c.UserId.Value);
     if (c.PatientId <= 0 && (!c.UserId.HasValue || c.UserId == Guid.Empty))
-      return Result<PatientFinanceIdResponse>.Failure("بیمار معتبر نیست");
+      return Result<PatientFinancialCaseIdResponse>.Failure("بیمار معتبر نیست");
     var patient = await patientQuery.Select(x => new { x.Id }).SingleOrDefaultAsync(ct);
     if (patient is null)
-      return Result<PatientFinanceIdResponse>.Failure("بیمار معتبر نیست");
+      return Result<PatientFinancialCaseIdResponse>.Failure("بیمار معتبر نیست");
     var cheques = c.Cheques ?? [];
     var notes = c.PromissoryNotes ?? [];
     if (c.AgreementType == PatientFinancialAgreementType.PrePayment &&
         cheques.Count == 0 && notes.Count == 0)
-      return Result<PatientFinanceIdResponse>.Failure(
+      return Result<PatientFinancialCaseIdResponse>.Failure(
           "برای پیش‌پرداخت ثبت حداقل یک چک یا سفته الزامی " +
           "است");
     foreach (var x in cheques) {
       var e =
           FinanceRules.Cheque(x.Amount, x.SayadNumber, x.OwnerName, x.DueDate);
       if (e != null)
-        return Result<PatientFinanceIdResponse>.Failure(e);
+        return Result<PatientFinancialCaseIdResponse>.Failure(e);
     }
     foreach (var x in notes) {
       var e = FinanceRules.Note(x.Amount, x.SerialNumber, x.DueDate);
       if (e != null)
-        return Result<PatientFinanceIdResponse>.Failure(e);
+        return Result<PatientFinancialCaseIdResponse>.Failure(e);
     }
     var entity = new PatientFinancialCase {
       PatientId = patient.Id, Service = (DentalServiceType)c.ServiceId,
       TotalAmount = c.TotalAmount, AgreementType = c.AgreementType,
-      CreatedBySecretaryUserId = c.SecretaryUserId
+      CreatedByUserId = c.ActorUserId
     };
     foreach (var x in cheques)
       entity.Cheques.Add(new PatientCheque { Amount = x.Amount,
@@ -87,7 +87,7 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
                                       DueDate = x.DueDate });
     await repo.AddCaseAsync(entity, ct);
     await uow.SaveChangesAsync();
-    return Result<PatientFinanceIdResponse>.Success(new(entity.Id));
+    return Result<PatientFinancialCaseIdResponse>.Success(new(entity.Id));
   }
 }
 public sealed class AddPatientChequeCommandHandler(
@@ -141,42 +141,42 @@ public sealed class AddPatientPromissoryNoteCommandHandler(
 public sealed class UpdatePatientFinancialCaseCommandHandler(
     IPatientFinanceRepository repo, IUnitOfWork uow)
     : ICommandHandler<UpdatePatientFinancialCaseCommand,
-                      PatientFinanceIdResponse> {
-  public async Task<Result<PatientFinanceIdResponse>>
+                      PatientFinancialCaseIdResponse> {
+  public async Task<Result<PatientFinancialCaseIdResponse>>
   HandleAsync(UpdatePatientFinancialCaseCommand c,
               CancellationToken ct = default) {
     var x = await repo.Cases.FirstOrDefaultAsync(x => x.Id == c.Id, ct);
     if (x is null)
-      return Result<PatientFinanceIdResponse>.Failure("پرونده یافت نشد");
+      return Result<PatientFinancialCaseIdResponse>.Failure("پرونده یافت نشد");
     if (x.Status != PatientFinancialCaseStatus.Active)
-      return Result<PatientFinanceIdResponse>.Failure(
+      return Result<PatientFinancialCaseIdResponse>.Failure(
           "فقط پرونده فعال قابل ویرایش است");var paid=await repo.Transactions.Where(t=>t.PatientFinancialCaseId==c.Id).SumAsync(t=>(decimal?)t.Amount,ct)??0;
     if (c.TotalAmount <= 0 || c.TotalAmount < paid)
-      return Result<PatientFinanceIdResponse>.Failure(
+      return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ کل نمی‌تواند کمتر از پرداخت قطعی " +
           "باشد");
     x.TotalAmount = c.TotalAmount;
     x.AgreementType = c.AgreementType;
     x.UpdatedAt = DateTime.UtcNow;
     await uow.SaveChangesAsync();
-    return Result<PatientFinanceIdResponse>.Success(new(x.Id));
+    return Result<PatientFinancialCaseIdResponse>.Success(new(x.Id));
   }
 }
 public sealed class CancelPatientFinancialCaseCommandHandler(
     IPatientFinanceRepository repo, IUnitOfWork uow)
     : ICommandHandler<CancelPatientFinancialCaseCommand,
-                      PatientFinanceIdResponse> {
-  public async Task<Result<PatientFinanceIdResponse>>
+                      PatientFinancialCaseIdResponse> {
+  public async Task<Result<PatientFinancialCaseIdResponse>>
   HandleAsync(CancelPatientFinancialCaseCommand c,
               CancellationToken ct = default) {
     var x = await repo.Cases.FirstOrDefaultAsync(x => x.Id == c.Id, ct);
     if (x is null || x.Status != PatientFinancialCaseStatus.Active)
-      return Result<PatientFinanceIdResponse>.Failure(
+      return Result<PatientFinancialCaseIdResponse>.Failure(
           "فقط پرونده فعال قابل لغو است");
     x.Status = PatientFinancialCaseStatus.Cancelled;
     x.UpdatedAt = DateTime.UtcNow;
     await uow.SaveChangesAsync();
-    return Result<PatientFinanceIdResponse>.Success(new(x.Id));
+    return Result<PatientFinancialCaseIdResponse>.Success(new(x.Id));
   }
 }
 
@@ -214,7 +214,7 @@ public sealed class UpdatePatientChequeStatusCommandHandler(
                     Amount = x.Amount,
                     SourceType = PatientFinancialTransactionSourceType.Cheque,
                     SourceId = x.Id,
-                    CreatedBySecretaryUserId = c.SecretaryUserId },
+                    CreatedByUserId = c.ActorUserId },
             ct);
         if (paid + x.Amount == x.FinancialCase.TotalAmount)
           x.FinancialCase.Status = PatientFinancialCaseStatus.Completed;
@@ -280,7 +280,7 @@ public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
                     SourceType =
                         PatientFinancialTransactionSourceType.PromissoryNote,
                     SourceId = x.Id,
-                    CreatedBySecretaryUserId = c.SecretaryUserId },
+                    CreatedByUserId = c.ActorUserId },
             ct);
         if (paid + x.Amount == x.FinancialCase.TotalAmount)
           x.FinancialCase.Status = PatientFinancialCaseStatus.Completed;
@@ -342,7 +342,7 @@ public sealed class PayPatientDebtCommandHandler(IPatientFinanceRepository repo,
       await repo.AddTransactionAsync(
           new() { PatientFinancialCaseId = d.PatientFinancialCaseId,
                   Amount = d.Amount, SourceType = st, SourceId = d.SourceId,
-                  CreatedBySecretaryUserId = c.SecretaryUserId },
+                  CreatedByUserId = c.ActorUserId },
           ct);
       d.Status = PatientDebtStatus.Paid;
       if (st == PatientFinancialTransactionSourceType.Cheque) {

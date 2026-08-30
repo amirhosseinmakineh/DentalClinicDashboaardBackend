@@ -36,7 +36,7 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                     PaginatedResult<PatientFinancialCaseDto>> {
   public async Task<PaginatedResult<PatientFinancialCaseDto>>
   HandleAsync(GetPatientFinancialCasesQuery q, CancellationToken ct = default) {
-    var x = repo.Cases.AsNoTracking();
+    var x = repo.Cases.AsNoTracking().AsQueryable();
     if (q.PatientId.HasValue)
       x = x.Where(a => a.PatientId == q.PatientId);
     if (q.ServiceId.HasValue)

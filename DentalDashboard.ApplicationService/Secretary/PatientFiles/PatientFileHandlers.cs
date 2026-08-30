@@ -74,6 +74,14 @@ internal static class PatientFileFinanceLoader
     {
         if (files.Count == 0) return [];
         var phones = files.Select(x => x.PhoneNumber).Distinct().ToList();
+        var financialPatients = await repository.Patients.AsNoTracking()
+            .Where(x => !x.IsDeleted && x.PatientProfile != null &&
+                !x.PatientProfile.IsDeleted && phones.Contains(x.PhoneNumber))
+            .Select(x => new { x.Id, x.PhoneNumber })
+            .ToListAsync(ct);
+        var patientIdByPhone = financialPatients
+            .GroupBy(x => x.PhoneNumber)
+            .ToDictionary(x => x.Key, x => (Guid?)x.First().Id);
         var cases = await repository.Cases.AsNoTracking()
             .Where(x => phones.Contains(x.Patient.PhoneNumber))
             .OrderByDescending(x => x.CreatedAt)
@@ -100,8 +108,9 @@ internal static class PatientFileFinanceLoader
         var byPhone = cases.GroupBy(x => x.Phone).ToDictionary(x => x.Key, x => x.ToList());
         return files.Select(file =>
         {
+            patientIdByPhone.TryGetValue(file.PhoneNumber, out var financialPatientId);
             if (!byPhone.TryGetValue(file.PhoneNumber, out var patientCases))
-                return file;
+                return file with { FinancialPatientId = financialPatientId };
             var activeCases = patientCases.Where(x => x.Case.Status != PatientFinancialCaseStatus.Cancelled).ToList();
             var total = activeCases.Sum(x => x.Case.TotalAmount);
             var paid = activeCases.Sum(x => x.Case.TotalPaidAmount);
@@ -112,7 +121,11 @@ internal static class PatientFileFinanceLoader
                 activeCases.Sum(x => x.Case.Cheques.Count(c => c.Status == PatientChequeStatus.Unpaid)),
                 activeCases.Sum(x => x.Case.PromissoryNotes.Count(n => n.Status == PatientPromissoryNoteStatus.Unpaid)),
                 patientCases.Select(x => x.Case).ToList());
-            return file with { Finance = finance };
+            return file with
+            {
+                FinancialPatientId = financialPatientId ?? patientCases[0].PatientId,
+                Finance = finance
+            };
         }).ToList();
     }
 }

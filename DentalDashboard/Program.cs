@@ -1,3 +1,4 @@
+﻿using DentalDashboard.Accountant;
 using DentalDashboard.ApplicationService;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Services;
@@ -18,7 +19,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Services
 // ====================================
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddApplicationPart(typeof(AccountantModule).Assembly);
 builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();

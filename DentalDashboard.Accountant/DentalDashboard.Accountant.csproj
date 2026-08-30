@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Infrastructure\Migrations\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DentalDashboard.Domain\DentalDashboard.Domain.csproj" />
+    <ProjectReference Include="..\DentalDashboard.Framwork\DentalDashboard.Framwork.csproj" />
+  </ItemGroup>
+</Project>

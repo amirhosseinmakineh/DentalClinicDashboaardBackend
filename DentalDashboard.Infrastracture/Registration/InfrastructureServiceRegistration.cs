@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using DentalDashboard.Framwork.IRepositories;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Infrastracture.Services;
-using DentalDashboard.Infrastracture.Accountant;
+using DentalDashboard.Accountant.Infrastructure;
 namespace DentalDashboard.Infrastracture.Registration;
 public static class InfrastructureServiceRegistration
 {
@@ -23,6 +23,8 @@ public static class InfrastructureServiceRegistration
             options.ConfigureWarnings(warnings =>
                 warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
+        services.AddScoped<DbContext>(provider =>
+            provider.GetRequiredService<DentalContext>());
 
         services.AddScoped(typeof(IBaseRepository<,>),typeof(BaseRepository<,>));
         services.AddScoped<IUserRepository,UserRepository>();

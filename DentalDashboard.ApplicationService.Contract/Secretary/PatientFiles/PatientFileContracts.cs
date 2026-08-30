@@ -1,5 +1,5 @@
 using DentalDashboard.Domain.Enums;
-using DentalDashboard.Domain.Accountant.PatientFinance.Enums;
+using DentalDashboard.Accountant.Domain.PatientFinance.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;

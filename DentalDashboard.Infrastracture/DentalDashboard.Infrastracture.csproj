@@ -23,6 +23,12 @@
     <ProjectReference Include="..\DentalDashboard.ApplicationService.Contract\DentalDashboard.ApplicationService.Contract.csproj" />
     <ProjectReference Include="..\DentalDashboard.Domain\DentalDashboard.Domain.csproj" />
     <ProjectReference Include="..\DentalDashboard.Utilities\DentalDashboard.Utilities.csproj" />
+    <ProjectReference Include="..\DentalDashboard.Accountant\DentalDashboard.Accountant.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\DentalDashboard.Accountant\Infrastructure\Migrations\**\*.cs"
+             Link="Migrations\Accountant\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

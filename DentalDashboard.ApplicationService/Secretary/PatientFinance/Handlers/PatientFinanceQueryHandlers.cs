@@ -57,7 +57,7 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                       a.Patient.User.PhoneNumber.Contains(s));
     }
     var (p, z) = QueryTools.Page(q);
-    var count = await x.CountAsync(ct);var items=await x.OrderByDescending(a=>a.CreatedAt).Skip((p-1)*z).Take(z).Select(a=>new PatientFinancialCaseDto(a.Id,a.PatientId,(a.Patient.User.FirstName+" "+a.Patient.User.LastName).Trim(),a.Patient.User.PhoneNumber,(int)a.Service,a.Service.ToString(),a.TotalAmount,a.Transactions.Sum(t=>(decimal?)t.Amount)??0,a.TotalAmount-(a.Transactions.Sum(t=>(decimal?)t.Amount)??0),a.Debts.Where(d=>d.Status==PatientDebtStatus.Unpaid).Sum(d=>(decimal?)d.Amount)??0,a.AgreementType,a.Status,a.CreatedAt)).ToListAsync(ct);
+    var count = await x.CountAsync(ct);var items=await x.OrderByDescending(a=>a.CreatedAt).Skip((p-1)*z).Take(z).Select(a=>new PatientFinancialCaseDto(a.Id,a.PatientId,a.Patient.UserId,(a.Patient.User.FirstName+" "+a.Patient.User.LastName).Trim(),a.Patient.User.PhoneNumber,(int)a.Service,a.Service.ToString(),a.TotalAmount,a.Transactions.Sum(t=>(decimal?)t.Amount)??0,a.TotalAmount-(a.Transactions.Sum(t=>(decimal?)t.Amount)??0),a.Debts.Where(d=>d.Status==PatientDebtStatus.Unpaid).Sum(d=>(decimal?)d.Amount)??0,a.AgreementType,a.Status,a.CreatedAt)).ToListAsync(ct);
     return new() { Items = items, TotalCount = count, PageNumber = p,
                    PageSize = z };
   }
@@ -65,7 +65,7 @@ public sealed class GetPatientFinancialCasesQueryHandler(
 public sealed class GetPatientFinancialCaseDetailsQueryHandler(
     IPatientFinanceRepository repo)
     : IQueryHandler<GetPatientFinancialCaseDetailsQuery,
-                    PatientFinancialCaseDetailsDto?> {public Task<PatientFinancialCaseDetailsDto?> HandleAsync(GetPatientFinancialCaseDetailsQuery q,CancellationToken ct=default)=>repo.Cases.AsNoTracking().Where(a=>a.Id==q.PatientFinancialCaseId).Select(a=>new PatientFinancialCaseDetailsDto(new(a.Id,a.PatientId,(a.Patient.User.FirstName+" "+a.Patient.User.LastName).Trim(),a.Patient.User.PhoneNumber,(int)a.Service,a.Service.ToString(),a.TotalAmount,a.Transactions.Sum(t=>(decimal?)t.Amount)??0,a.TotalAmount-(a.Transactions.Sum(t=>(decimal?)t.Amount)??0),a.Debts.Where(d=>d.Status==PatientDebtStatus.Unpaid).Sum(d=>(decimal?)d.Amount)??0,a.AgreementType,a.Status,a.CreatedAt),a.Cheques.Count,a.Cheques.Sum(c=>(decimal?)c.Amount)??0,a.PromissoryNotes.Count,a.PromissoryNotes.Sum(n=>(decimal?)n.Amount)??0)).FirstOrDefaultAsync(ct);
+                    PatientFinancialCaseDetailsDto?> {public Task<PatientFinancialCaseDetailsDto?> HandleAsync(GetPatientFinancialCaseDetailsQuery q,CancellationToken ct=default)=>repo.Cases.AsNoTracking().Where(a=>a.Id==q.PatientFinancialCaseId).Select(a=>new PatientFinancialCaseDetailsDto(new(a.Id,a.PatientId,a.Patient.UserId,(a.Patient.User.FirstName+" "+a.Patient.User.LastName).Trim(),a.Patient.User.PhoneNumber,(int)a.Service,a.Service.ToString(),a.TotalAmount,a.Transactions.Sum(t=>(decimal?)t.Amount)??0,a.TotalAmount-(a.Transactions.Sum(t=>(decimal?)t.Amount)??0),a.Debts.Where(d=>d.Status==PatientDebtStatus.Unpaid).Sum(d=>(decimal?)d.Amount)??0,a.AgreementType,a.Status,a.CreatedAt),a.Cheques.Count,a.Cheques.Sum(c=>(decimal?)c.Amount)??0,a.PromissoryNotes.Count,a.PromissoryNotes.Sum(n=>(decimal?)n.Amount)??0)).FirstOrDefaultAsync(ct);
 }
 public sealed class GetPatientFinancialCaseSummaryQueryHandler(
     IPatientFinanceRepository repo)

@@ -11,36 +11,36 @@ public sealed record CreatePatientPromissoryNoteDto(string SerialNumber,
                                                     decimal Amount,
                                                     DateTime DueDate);
 public sealed record PatientFinanceIdResponse(long Id);
+public sealed record PatientFinancialCaseIdResponse(Guid Id);
 
 public sealed class CreatePatientFinancialCaseCommand
-    : ICommand<PatientFinanceIdResponse> {
-  public long PatientId { get; set; }
-  public Guid? UserId { get; set; }
+    : ICommand<PatientFinancialCaseIdResponse> {
+  public Guid PatientId { get; set; }
   public int ServiceId { get; set; }
   public decimal TotalAmount { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
   public List<CreatePatientChequeDto>? Cheques { get; set; }
   public List<CreatePatientPromissoryNoteDto>? PromissoryNotes { get; set; }
   [JsonIgnore]
-  public Guid SecretaryUserId {
+  public Guid ActorUserId {
     get; set;
   }
 }
 public sealed class UpdatePatientFinancialCaseCommand
-    : ICommand<PatientFinanceIdResponse> {
+    : ICommand<PatientFinancialCaseIdResponse> {
   [JsonIgnore]
-  public long Id { get; set; }
+  public Guid Id { get; set; }
   public decimal TotalAmount { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
 }
-public sealed record CancelPatientFinancialCaseCommand(long Id)
-    : ICommand<PatientFinanceIdResponse>;
-public sealed record AddPatientChequeCommand(long PatientFinancialCaseId,
+public sealed record CancelPatientFinancialCaseCommand(Guid Id)
+    : ICommand<PatientFinancialCaseIdResponse>;
+public sealed record AddPatientChequeCommand(Guid PatientFinancialCaseId,
                                              decimal Amount, string SayadNumber,
                                              string OwnerName, DateTime DueDate)
     : ICommand<PatientFinanceIdResponse>;
 public sealed
-    record AddPatientPromissoryNoteCommand(long PatientFinancialCaseId,
+    record AddPatientPromissoryNoteCommand(Guid PatientFinancialCaseId,
                                            string SerialNumber, decimal Amount,
                                            DateTime DueDate)
     : ICommand<PatientFinanceIdResponse>;
@@ -50,7 +50,7 @@ public sealed class UpdatePatientChequeStatusCommand
   public long ChequeId { get; set; }
   public PatientChequeStatus Status { get; set; }
   [JsonIgnore]
-  public Guid SecretaryUserId {
+  public Guid ActorUserId {
     get; set;
   }
 }
@@ -60,7 +60,7 @@ public sealed class UpdatePatientPromissoryNoteStatusCommand
   public long PromissoryNoteId { get; set; }
   public PatientPromissoryNoteStatus Status { get; set; }
   [JsonIgnore]
-  public Guid SecretaryUserId {
+  public Guid ActorUserId {
     get; set;
   }
 }
@@ -68,7 +68,7 @@ public sealed class PayPatientDebtCommand : ICommand<PatientFinanceIdResponse> {
   [JsonIgnore]
   public long DebtId { get; set; }
   [JsonIgnore]
-  public Guid SecretaryUserId {
+  public Guid ActorUserId {
     get; set;
   }
 }

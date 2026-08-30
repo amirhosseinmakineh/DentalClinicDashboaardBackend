@@ -19,28 +19,28 @@ public sealed class PatientFinanceController(ICommandDispatcher commands,
                                           CancellationToken ct) {
     if (!UserId(out var id))
       return Unauthorized();
-    c.SecretaryUserId = id;
+    c.ActorUserId = id;
     return Write(await commands.DispatchAsync(c, ct));
   }
-  [HttpPut("patient-financial-cases/{id:long}")]
+  [HttpPut("patient-financial-cases/{id:guid}")]
   public async Task<IActionResult>
-  Update(long id, UpdatePatientFinancialCaseCommand c, CancellationToken ct) {
+  Update(Guid id, UpdatePatientFinancialCaseCommand c, CancellationToken ct) {
     c.Id = id;
     return Write(await commands.DispatchAsync(c, ct));
   }
-  [HttpDelete("patient-financial-cases/{id:long}")]
+  [HttpDelete("patient-financial-cases/{id:guid}")]
   public async Task<IActionResult>
-  Cancel(long id, CancellationToken ct) => Write(await commands.DispatchAsync(
+  Cancel(Guid id, CancellationToken ct) => Write(await commands.DispatchAsync(
       new CancelPatientFinancialCaseCommand(id), ct));
-  [HttpPost("patient-financial-cases/{caseId:long}/cheques")]
+  [HttpPost("patient-financial-cases/{caseId:guid}/cheques")]
   public async Task<IActionResult>
-  AddCheque(long caseId, CreatePatientChequeDto d, CancellationToken ct) =>
+  AddCheque(Guid caseId, CreatePatientChequeDto d, CancellationToken ct) =>
       Write(await commands.DispatchAsync(
           new AddPatientChequeCommand(caseId, d.Amount, d.SayadNumber,
                                       d.OwnerName, d.DueDate),
           ct));
-  [HttpPost("patient-financial-cases/{caseId:long}/promissory-notes")]
-  public async Task<IActionResult> AddNote(long caseId,
+  [HttpPost("patient-financial-cases/{caseId:guid}/promissory-notes")]
+  public async Task<IActionResult> AddNote(Guid caseId,
                                            CreatePatientPromissoryNoteDto d,
                                            CancellationToken ct) =>
       Write(await commands.DispatchAsync(
@@ -54,7 +54,7 @@ public sealed class PatientFinanceController(ICommandDispatcher commands,
     if (!UserId(out var user))
       return Unauthorized();
     c.ChequeId = id;
-    c.SecretaryUserId = user;
+    c.ActorUserId = user;
     return Write(await commands.DispatchAsync(c, ct));
   }
   [HttpPut("patient-promissory-notes/{id:long}/status")]
@@ -64,7 +64,7 @@ public sealed class PatientFinanceController(ICommandDispatcher commands,
     if (!UserId(out var user))
       return Unauthorized();
     c.PromissoryNoteId = id;
-    c.SecretaryUserId = user;
+    c.ActorUserId = user;
     return Write(await commands.DispatchAsync(c, ct));
   }
   [HttpPost("patient-debts/{id:long}/pay")]
@@ -72,26 +72,26 @@ public sealed class PatientFinanceController(ICommandDispatcher commands,
     if (!UserId(out var user))
       return Unauthorized();
     return Write(await commands.DispatchAsync(
-        new PayPatientDebtCommand { DebtId = id, SecretaryUserId = user }, ct));
+        new PayPatientDebtCommand { DebtId = id, ActorUserId = user }, ct));
   }
   [HttpGet("patient-financial-cases")]
   public async Task<IActionResult>
   Cases([FromQuery] GetPatientFinancialCasesQuery q,
         CancellationToken ct) => Ok(await queries.DispatchAsync(q, ct));
-  [HttpGet("patient-financial-cases/{id:long}")]
-  public async Task<IActionResult> Details(long id, CancellationToken ct) {
+  [HttpGet("patient-financial-cases/{id:guid}")]
+  public async Task<IActionResult> Details(Guid id, CancellationToken ct) {
     var x = await queries.DispatchAsync(
         new GetPatientFinancialCaseDetailsQuery(id), ct);
     return x is null ? NotFound(Result.Failure("پرونده یافت نشد")) : Ok(x);
   }
-  [HttpGet("patient-financial-cases/{id:long}/summary")]
-  public async Task<IActionResult> CaseSummary(long id, CancellationToken ct) {
+  [HttpGet("patient-financial-cases/{id:guid}/summary")]
+  public async Task<IActionResult> CaseSummary(Guid id, CancellationToken ct) {
     var x = await queries.DispatchAsync(
         new GetPatientFinancialCaseSummaryQuery(id), ct);
     return x is null ? NotFound(Result.Failure("پرونده یافت نشد")) : Ok(x);
   }
-  [HttpGet("patients/{id:long}/financial-summary")]
-  public async Task<IActionResult> PatientSummary(long id,
+  [HttpGet("patients/{id:guid}/financial-summary")]
+  public async Task<IActionResult> PatientSummary(Guid id,
                                                   CancellationToken ct) {
     var x = await queries.DispatchAsync(new GetPatientFinancialSummaryQuery(id),
                                         ct);

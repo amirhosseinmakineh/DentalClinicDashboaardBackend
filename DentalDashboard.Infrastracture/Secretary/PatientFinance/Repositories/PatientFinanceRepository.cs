@@ -13,8 +13,8 @@ public sealed class PatientFinanceRepository(DentalContext context)
   public IQueryable<PatientDebt> Debts => context.PatientDebts;
   public IQueryable<PatientFinancialTransaction> Transactions =>
       context.PatientFinancialTransactions;
-  public IQueryable<DentalDashboard.Domain.Models.PatientProfile> Patients =>
-      context.PatientProfiles;
+  public IQueryable<DentalDashboard.Domain.Models.User> Patients =>
+      context.Users;
   public Task AddCaseAsync(PatientFinancialCase x, CancellationToken ct) =>
       context.PatientFinancialCases.AddAsync(x, ct).AsTask();
   public Task AddChequeAsync(PatientCheque x, CancellationToken ct) =>

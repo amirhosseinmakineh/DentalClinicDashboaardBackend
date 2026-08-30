@@ -20,11 +20,14 @@ internal static class QueryTools {
     if (year is null || month is null || month < 1 || month > 12)
       throw new ArgumentException("سال و ماه باید با هم و معتبر ارسال شوند");
     var c = new PersianCalendar();
-    var start =
-        c.ToDateTime(year.Value, month.Value, 1, 0, 0, 0, DateTimeKind.Utc);
+    var start = DateTime.SpecifyKind(
+        c.ToDateTime(year.Value, month.Value, 1, 0, 0, 0, 0),
+        DateTimeKind.Utc);
     var days = c.GetDaysInMonth(year.Value, month.Value);
-    return (start, c.ToDateTime(year.Value, month.Value, days, 23, 59, 59, 999,
-                                DateTimeKind.Utc));
+    var end = DateTime.SpecifyKind(
+        c.ToDateTime(year.Value, month.Value, days, 23, 59, 59, 999, 0),
+        DateTimeKind.Utc);
+    return (start, end);
   }
 }
 public sealed class GetPatientFinancialCasesQueryHandler(

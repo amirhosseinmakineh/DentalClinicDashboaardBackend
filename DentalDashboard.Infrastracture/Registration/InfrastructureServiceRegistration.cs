@@ -8,10 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using DentalDashboard.Framwork.IRepositories;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Infrastracture.Services;
-using DentalDashboard.Domain.Secretary.Accountant.IRepositories;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
-using DentalDashboard.Infrastracture.Secretary.Accountant.PatientFinance.Repositories;
-using DentalDashboard.Infrastracture.Secretary.Accountant.Repositories;
+using DentalDashboard.Infrastracture.Accountant;
 namespace DentalDashboard.Infrastracture.Registration;
 public static class InfrastructureServiceRegistration
 {
@@ -41,10 +38,8 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
         services.AddScoped<ISecretaryAccessService, SecretaryAccessService>();
         services.AddScoped<IServiceLogRepository, ServiceLogRepository>();
-        services.AddScoped<ISecretaryAccountRepository, SecretaryAccountRepository>();
-        services.AddScoped<IExpenseRepository, ExpenseRepository>();
-        services.AddScoped<IPatientFinanceRepository, PatientFinanceRepository>();
         services.AddScoped<IPatientFileRepository, PatientFileRepository>();
+        services.AddAccountantInfrastructure();
 
         return services;
     }

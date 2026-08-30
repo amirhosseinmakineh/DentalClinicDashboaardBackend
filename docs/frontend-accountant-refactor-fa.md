@@ -1,8 +1,8 @@
-# راهنمای تغییرات Frontend پس از بازآرایی Accountant
+# راهنمای تغییرات Frontend پس از ماژول مستقل Accountant
 
 ## نتیجه کوتاه
 
-تغییر پوشه‌ها و namespaceهای Backend به `Secretary.Accountant` به‌تنهایی هیچ تغییری در Frontend لازم ندارد. URL، متد HTTP و ساختار درخواست endpointها تغییر نکرده‌اند.
+تغییر پوشه‌ها و namespaceهای Backend به `Accountant` به‌تنهایی هیچ تغییری در Frontend لازم ندارد. URL، متد HTTP و ساختار درخواست endpointها تغییر نکرده‌اند.
 
 تنها تغییر قابل مشاهده در قرارداد JSON مربوط به خروجی پرونده مالی بیمار است: فیلد تکراری `userId` از `PatientFinancialCaseDto` حذف شده است. از این پس `patientId` همان `Users.Id` بیمار و تنها شناسه معتبر بیمار برای APIهای حسابداری است.
 

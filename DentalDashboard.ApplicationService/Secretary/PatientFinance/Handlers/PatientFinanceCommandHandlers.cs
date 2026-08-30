@@ -42,8 +42,15 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
       return Result<PatientFinanceIdResponse>.Failure("نوع توافق معتبر نیست");
     if (!Enum.IsDefined(typeof(DentalServiceType), c.ServiceId))
       return Result<PatientFinanceIdResponse>.Failure("خدمت معتبر نیست");
-    if (c.PatientId <= 0 || !await repo.Patients.AsNoTracking().AnyAsync(
-                                x => x.Id == c.PatientId && !x.IsDeleted, ct))
+    var patientQuery = repo.Patients.AsNoTracking().Where(x => !x.IsDeleted);
+    if (c.PatientId > 0)
+      patientQuery = patientQuery.Where(x => x.Id == c.PatientId);
+    if (c.UserId.HasValue && c.UserId.Value != Guid.Empty)
+      patientQuery = patientQuery.Where(x => x.UserId == c.UserId.Value);
+    if (c.PatientId <= 0 && (!c.UserId.HasValue || c.UserId == Guid.Empty))
+      return Result<PatientFinanceIdResponse>.Failure("بیمار معتبر نیست");
+    var patient = await patientQuery.Select(x => new { x.Id }).SingleOrDefaultAsync(ct);
+    if (patient is null)
       return Result<PatientFinanceIdResponse>.Failure("بیمار معتبر نیست");
     var cheques = c.Cheques ?? [];
     var notes = c.PromissoryNotes ?? [];
@@ -64,7 +71,7 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
         return Result<PatientFinanceIdResponse>.Failure(e);
     }
     var entity = new PatientFinancialCase {
-      PatientId = c.PatientId, Service = (DentalServiceType)c.ServiceId,
+      PatientId = patient.Id, Service = (DentalServiceType)c.ServiceId,
       TotalAmount = c.TotalAmount, AgreementType = c.AgreementType,
       CreatedBySecretaryUserId = c.SecretaryUserId
     };

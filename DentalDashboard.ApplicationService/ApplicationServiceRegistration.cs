@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Services;
+using DentalDashboard.ApplicationService.Secretary.Accountant.Services;
 using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;

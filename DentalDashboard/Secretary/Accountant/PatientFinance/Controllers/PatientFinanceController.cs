@@ -1,4 +1,4 @@
-```csharp
+
 using System.Security.Claims;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Commands;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Queries;
@@ -184,4 +184,3 @@ public sealed class PatientFinanceController(ICommandDispatcher commands, IQuery
         return Guid.TryParse(userId, out id);
     }
 }
-```

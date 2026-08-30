@@ -5,7 +5,7 @@ using DentalDashboard.ApplicationService.Contract.Secretary.Account.Queries;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Secretary.Account.Entities;
 using DentalDashboard.Domain.Secretary.Account.Enums;
-using DentalDashboard.Domain.Secretary.Account.Repositories;
+using DentalDashboard.Domain.Secretary.Account.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;

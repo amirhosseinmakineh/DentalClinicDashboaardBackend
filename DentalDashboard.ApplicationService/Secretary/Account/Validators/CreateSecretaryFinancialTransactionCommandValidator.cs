@@ -7,7 +7,7 @@ using DentalDashboard.ApplicationService.Secretary.Account;
 
 namespace DentalDashboard.ApplicationService.Secretary.Account.Validators;
 
-public sealed class CreateSecretaryFinancialTransactionCommandValidator : AbstractValidator<CreateSecretaryFinancialTransactionCommand>
+public sealed partial class CreateSecretaryFinancialTransactionCommandValidator : AbstractValidator<CreateSecretaryFinancialTransactionCommand>
 {
     public CreateSecretaryFinancialTransactionCommandValidator()
     {

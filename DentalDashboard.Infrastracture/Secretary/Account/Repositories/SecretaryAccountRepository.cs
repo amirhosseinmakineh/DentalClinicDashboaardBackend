@@ -1,5 +1,5 @@
 using DentalDashboard.Domain.Secretary.Account.Entities;
-using DentalDashboard.Domain.Secretary.Account.Repositories;
+using DentalDashboard.Domain.Secretary.Account.IRepositories;
 using DentalDashboard.Infrastracture.Context;
 
 namespace DentalDashboard.Infrastracture.Secretary.Account.Repositories;

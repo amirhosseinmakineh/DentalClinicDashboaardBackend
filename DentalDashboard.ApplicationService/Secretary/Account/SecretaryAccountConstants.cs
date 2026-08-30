@@ -10,4 +10,6 @@ internal static class SecretaryAccountConstants
     internal const string TransactionCreatedMessage = "تراکنش مالی با موفقیت ثبت شد";
     internal const string IncomeCategoryMustBeEmptyMessage = "برای تراکنش ورودی نباید دسته‌بندی هزینه انتخاب شود";
     internal const string ExpenseCategoryIsRequiredMessage = "دسته‌بندی هزینه الزامی است";
+    internal const string SuccessCreateExpenseCategory = "دسته بندی هزینه با موفقیت اضافه شد";
+    internal const string RequeiredExpenseTitle = "وارد کردن عنوان هزینه اجباری هست";
 }

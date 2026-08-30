@@ -70,6 +70,28 @@ public sealed class SecretaryAccountController : ControllerBase
         return result is null ? NotFound(Result.Failure("تراکنش مالی یافت نشد")) : Ok(result);
     }
 
+    [HttpGet("financial-transactions/{id:long}/receipt")]
+    public async Task<IActionResult> GetTransactionReceipt(long id, CancellationToken cancellationToken)
+    {
+        if (id <= 0)
+        {
+            return BadRequest(Result.Failure("شناسه تراکنش معتبر نیست"));
+        }
+
+        var receipt = await queryDispatcher.DispatchAsync(
+            new GetSecretaryFinancialTransactionReceiptQuery { Id = id },
+            cancellationToken);
+
+        if (receipt is null)
+        {
+            return NotFound(Result.Failure("تراکنش مالی یافت نشد"));
+        }
+
+        Response.Headers.ContentDisposition = $"inline; filename=\"{receipt.FileName}\"";
+
+        return File(receipt.Content, receipt.ContentType);
+    }
+
     [HttpGet("expense-categories")]
     public async Task<IActionResult> GetExpenseCategories(CancellationToken cancellationToken)
     {

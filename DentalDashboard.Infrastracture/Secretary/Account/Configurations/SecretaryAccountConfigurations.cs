@@ -12,9 +12,7 @@ public sealed class FinancialTransactionConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.Amount).HasPrecision(18, 2);
         builder.Property(x => x.Subject).HasMaxLength(200);
         builder.Property(x => x.CounterpartyName).HasMaxLength(200);
-        builder.Property(x => x.TrackingNumber).HasMaxLength(100);
         builder.Property(x => x.Description).HasMaxLength(1000);
-        builder.Property(x => x.ReceiptUrl).HasMaxLength(500);
         builder.HasIndex(x => x.TransactionDate);
         builder.HasIndex(x => new { x.Type, x.ExpenseCategoryId });
         builder.HasOne(x => x.ExpenseCategory)

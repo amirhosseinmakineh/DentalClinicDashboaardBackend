@@ -12,9 +12,7 @@ public sealed class CreateSecretaryFinancialTransactionCommand : ICommand<Create
     public string? Subject { get; set; }
     public string? CounterpartyName { get; set; }
     public PaymentMethod PaymentMethod { get; set; }
-    public string? TrackingNumber { get; set; }
     public string? Description { get; set; }
-    public string? ReceiptUrl { get; set; }
     public long? ExpenseCategoryId { get; set; }
 
     [JsonIgnore]

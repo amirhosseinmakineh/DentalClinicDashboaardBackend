@@ -11,9 +11,7 @@ public sealed class FinancialTransaction : BaseAuditableEntity<long>
     public string? Subject { get; set; }
     public string? CounterpartyName { get; set; }
     public PaymentMethod PaymentMethod { get; set; }
-    public string? TrackingNumber { get; set; }
     public string? Description { get; set; }
-    public string? ReceiptUrl { get; set; }
     public long? ExpenseCategoryId { get; set; }
     public ExpenseCategory? ExpenseCategory { get; set; }
     public Guid CreatedByUserId { get; set; }

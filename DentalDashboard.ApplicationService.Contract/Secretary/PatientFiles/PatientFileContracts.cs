@@ -1,4 +1,3 @@
-using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
@@ -12,8 +11,12 @@ public sealed record EligiblePatientDto(long PatientId, string FirstName, string
 public sealed record CreatePatientFileResponse(long Id, long FileNumber);
 public sealed record ImportPatientFileError(int Row, string Field, string Message);
 public sealed record ImportPatientFilesResponse(bool Success, int ImportedCount, IReadOnlyList<ImportPatientFileError> Errors);
+public sealed record PatientFilePageResponse(
+    IReadOnlyList<PatientFileDto> Items, int Page, int PageSize, int TotalCount);
+public sealed record EligiblePatientPageResponse(
+    IReadOnlyList<EligiblePatientDto> Items, int Page, int PageSize, int TotalCount);
 
-public sealed class GetPatientFilesQuery : IQuery<Result<PaginatedResult<PatientFileDto>>>
+public sealed class GetPatientFilesQuery : IQuery<Result<PatientFilePageResponse>>
 {
     public string? Search { get; init; }
     public long? FileNumber { get; init; }
@@ -24,7 +27,7 @@ public sealed class GetPatientFilesQuery : IQuery<Result<PaginatedResult<Patient
 
 public sealed record GetPatientFileByIdQuery(long Id) : IQuery<Result<PatientFileDto>>;
 
-public sealed class SearchPatientsEligibleForFileQuery : IQuery<Result<PaginatedResult<EligiblePatientDto>>>
+public sealed class SearchPatientsEligibleForFileQuery : IQuery<Result<EligiblePatientPageResponse>>
 {
     public string? Search { get; init; }
     public int Page { get; init; } = 1;

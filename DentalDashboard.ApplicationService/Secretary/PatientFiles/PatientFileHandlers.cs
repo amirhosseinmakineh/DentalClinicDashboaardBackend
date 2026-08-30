@@ -4,6 +4,8 @@ using DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
+using DentalDashboard.Domain.Secretary.PatientFinance.Enums;
+using DentalDashboard.Domain.Secretary.PatientFinance.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -21,7 +23,7 @@ internal static class PatientFileNames
     }
 }
 
-public sealed class GetPatientFilesQueryHandler(IPatientFileRepository repository)
+public sealed class GetPatientFilesQueryHandler(IPatientFileRepository repository, IPatientFinanceRepository financeRepository)
     : IQueryHandler<GetPatientFilesQuery, Result<PatientFilePageResponse>>
 {
     public async Task<Result<PatientFilePageResponse>> HandleAsync(GetPatientFilesQuery request, CancellationToken ct = default)
@@ -43,21 +45,75 @@ public sealed class GetPatientFilesQueryHandler(IPatientFileRepository repositor
         var items = await query.OrderByDescending(x => x.FileNumber).ThenByDescending(x => x.Id)
             .Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
             .Select(x => new PatientFileDto(x.Id, x.PatientReferenceId, x.FileNumber, x.FirstName,
-                x.LastName, x.PhoneNumber, x.SourceType, x.CreatedAt)).ToListAsync(ct);
+                x.LastName, x.PhoneNumber, x.SourceType, x.CreatedAt, null)).ToListAsync(ct);
+        items = await PatientFileFinanceLoader.AttachAsync(items, financeRepository, ct);
         return Result<PatientFilePageResponse>.Success(
             new(items, request.Page, request.PageSize, count));
     }
 }
 
-public sealed class GetPatientFileByIdQueryHandler(IPatientFileRepository repository)
+public sealed class GetPatientFileByIdQueryHandler(IPatientFileRepository repository, IPatientFinanceRepository financeRepository)
     : IQueryHandler<GetPatientFileByIdQuery, Result<PatientFileDto>>
 {
     public async Task<Result<PatientFileDto>> HandleAsync(GetPatientFileByIdQuery request, CancellationToken ct = default)
     {
         var item = await repository.PatientFiles.AsNoTracking().Where(x => x.Id == request.Id)
             .Select(x => new PatientFileDto(x.Id, x.PatientReferenceId, x.FileNumber, x.FirstName,
-                x.LastName, x.PhoneNumber, x.SourceType, x.CreatedAt)).SingleOrDefaultAsync(ct);
+                x.LastName, x.PhoneNumber, x.SourceType, x.CreatedAt, null)).SingleOrDefaultAsync(ct);
+        if (item is not null)
+            item = (await PatientFileFinanceLoader.AttachAsync([item], financeRepository, ct))[0];
         return item is null ? Result<PatientFileDto>.Failure("پرونده بیمار یافت نشد") : Result<PatientFileDto>.Success(item);
+    }
+}
+
+internal static class PatientFileFinanceLoader
+{
+    public static async Task<List<PatientFileDto>> AttachAsync(
+        IReadOnlyList<PatientFileDto> files, IPatientFinanceRepository repository,
+        CancellationToken ct)
+    {
+        if (files.Count == 0) return [];
+        var phones = files.Select(x => x.PhoneNumber).Distinct().ToList();
+        var cases = await repository.Cases.AsNoTracking()
+            .Where(x => phones.Contains(x.Patient.User.PhoneNumber))
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new
+            {
+                Phone = x.Patient.User.PhoneNumber,
+                x.PatientId,
+                Case = new PatientFileFinancialCaseDto(
+                    x.Id, (int)x.Service, x.Service.ToString(), x.TotalAmount,
+                    x.Transactions.Sum(t => (decimal?)t.Amount) ?? 0,
+                    x.TotalAmount - (x.Transactions.Sum(t => (decimal?)t.Amount) ?? 0),
+                    x.Debts.Where(d => d.Status == PatientDebtStatus.Unpaid).Sum(d => (decimal?)d.Amount) ?? 0,
+                    x.AgreementType, x.Status, x.CreatedAt,
+                    x.Cheques.OrderBy(c => c.DueDate).Select(c => new PatientFileChequeDto(
+                        c.Id, c.Amount, c.SayadNumber, c.OwnerName, c.DueDate, c.Status)).ToList(),
+                    x.PromissoryNotes.OrderBy(n => n.DueDate).Select(n => new PatientFilePromissoryNoteDto(
+                        n.Id, n.SerialNumber, n.Amount, n.DueDate, n.Status)).ToList(),
+                    x.Debts.OrderBy(d => d.DueDate).Select(d => new PatientFileDebtDto(
+                        d.Id, d.Amount, d.SourceType, d.SourceId, d.DueDate, d.Status)).ToList(),
+                    x.Transactions.OrderByDescending(t => t.CreatedAt).Select(t => new PatientFileTransactionDto(
+                        t.Id, t.Amount, t.Type, t.SourceType, t.SourceId, t.CreatedAt)).ToList())
+            }).ToListAsync(ct);
+
+        var byPhone = cases.GroupBy(x => x.Phone).ToDictionary(x => x.Key, x => x.ToList());
+        return files.Select(file =>
+        {
+            if (!byPhone.TryGetValue(file.PhoneNumber, out var patientCases))
+                return file;
+            var activeCases = patientCases.Where(x => x.Case.Status != PatientFinancialCaseStatus.Cancelled).ToList();
+            var total = activeCases.Sum(x => x.Case.TotalAmount);
+            var paid = activeCases.Sum(x => x.Case.TotalPaidAmount);
+            var finance = new PatientFileFinanceDto(
+                patientCases[0].PatientId, total, paid, total - paid,
+                activeCases.Sum(x => x.Case.TotalDebtAmount),
+                patientCases.Count(x => x.Case.Status == PatientFinancialCaseStatus.Active),
+                activeCases.Sum(x => x.Case.Cheques.Count(c => c.Status == PatientChequeStatus.Unpaid)),
+                activeCases.Sum(x => x.Case.PromissoryNotes.Count(n => n.Status == PatientPromissoryNoteStatus.Unpaid)),
+                patientCases.Select(x => x.Case).ToList());
+            return file with { Finance = finance };
+        }).ToList();
     }
 }
 

@@ -15,6 +15,7 @@ public sealed record PatientFinanceIdResponse(long Id);
 public sealed class CreatePatientFinancialCaseCommand
     : ICommand<PatientFinanceIdResponse> {
   public long PatientId { get; set; }
+  public Guid? UserId { get; set; }
   public int ServiceId { get; set; }
   public decimal TotalAmount { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }

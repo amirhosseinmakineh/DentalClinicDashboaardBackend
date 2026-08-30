@@ -253,7 +253,7 @@ POST /api/secretary/patient-financial-cases
 
 ```json
 {
-  "patientId": 125,
+  "userId": "e2b95c55-6c64-42d1-b45d-8f245b4e2345",
   "serviceId": 1,
   "totalAmount": 150000000,
   "agreementType": 1,
@@ -280,6 +280,11 @@ POST /api/secretary/patient-financial-cases
   ]
 }
 ```
+
+برای ایجاد پرونده، ارسال یکی از `patientId` (شناسه عددی پروفایل بیمار) یا
+`userId` (شناسه GUID کاربر بیمار که API فهرست برمی‌گرداند) کافی است. اگر هر دو
+ارسال شوند باید متعلق به یک بیمار باشند؛ در غیر این صورت پاسخ «بیمار معتبر نیست»
+برگردانده می‌شود.
 
 پاسخ موفق:
 

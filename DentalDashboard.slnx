@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="DentalDashboard.Accountant/DentalDashboard.Accountant.csproj" />
     <Project Path="DentalDashboard.ApplicationService.Contract/DentalDashboard.ApplicationService.Contract.csproj" Id="5cde863d-ef88-488e-9254-34b1b4b9937e" />
     <Project Path="DentalDashboard.ApplicationService/DentalDashboard.ApplicationService.csproj" Id="4d192c88-c2d9-4f0a-9245-84d44ca349de" />
     <Project Path="DentalDashboard.Domain/DentalDashboard.Domain.csproj" />

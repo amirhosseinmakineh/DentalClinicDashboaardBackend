@@ -1,5 +1,5 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Services;
+using DentalDashboard.Accountant.Application;
 using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
@@ -29,7 +29,7 @@ public static class ApplicationServiceRegistration
         services.AddScoped<IUserPresenceService, UserPresenceService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IPickupService, PickUpService>();
-        services.AddScoped<IFinancialTransactionReceiptService, FinancialTransactionReceiptService>();
+        services.AddAccountantApplicationServices();
 
         services.AddScoped<IQueryDispatcher, QueryDispatcher>();
         services.AddTransient<ICommandDispatcher, CommandDispatcher>();

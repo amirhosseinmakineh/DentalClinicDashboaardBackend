@@ -9,7 +9,7 @@ namespace DentalDashboard.Infrastracture.Migrations;
 
 [DbContext(typeof(DentalContext))]
 [Migration("20260829120000_AddSecretaryAccount")]
-public partial class AddSecretaryAccount : Migration
+public partial class AddAccountant : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {

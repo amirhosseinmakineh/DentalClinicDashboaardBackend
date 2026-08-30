@@ -8,10 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using DentalDashboard.Framwork.IRepositories;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Infrastracture.Services;
-using DentalDashboard.Domain.Secretary.Accountant.IRepositories;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
-using DentalDashboard.Infrastracture.Secretary.Accountant.PatientFinance.Repositories;
-using DentalDashboard.Infrastracture.Secretary.Accountant.Repositories;
+using DentalDashboard.Accountant.Infrastructure;
 namespace DentalDashboard.Infrastracture.Registration;
 public static class InfrastructureServiceRegistration
 {
@@ -26,6 +23,8 @@ public static class InfrastructureServiceRegistration
             options.ConfigureWarnings(warnings =>
                 warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
+        services.AddScoped<DbContext>(provider =>
+            provider.GetRequiredService<DentalContext>());
 
         services.AddScoped(typeof(IBaseRepository<,>),typeof(BaseRepository<,>));
         services.AddScoped<IUserRepository,UserRepository>();
@@ -41,10 +40,8 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
         services.AddScoped<ISecretaryAccessService, SecretaryAccessService>();
         services.AddScoped<IServiceLogRepository, ServiceLogRepository>();
-        services.AddScoped<ISecretaryAccountRepository, SecretaryAccountRepository>();
-        services.AddScoped<IExpenseRepository, ExpenseRepository>();
-        services.AddScoped<IPatientFinanceRepository, PatientFinanceRepository>();
         services.AddScoped<IPatientFileRepository, PatientFileRepository>();
+        services.AddAccountantInfrastructure();
 
         return services;
     }

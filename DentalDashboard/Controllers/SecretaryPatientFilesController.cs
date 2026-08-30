@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace DentalDashboard.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Secretary")]
 [Route("api/secretary/patient-files")]
 public sealed class SecretaryPatientFilesController(ICommandDispatcher commands, IQueryDispatcher queries) : ControllerBase
 {

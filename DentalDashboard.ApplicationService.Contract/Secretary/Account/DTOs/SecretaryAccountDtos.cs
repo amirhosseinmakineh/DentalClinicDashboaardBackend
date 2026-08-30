@@ -32,4 +32,5 @@ public sealed class SecretaryFinancialTransactionDto
     public long? ExpenseCategoryId { get; init; }
     public string? ExpenseCategoryTitle { get; init; }
     public DateTime CreatedAt { get; init; }
+    public DateTime? UpdatedAt { get; init; }
 }

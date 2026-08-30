@@ -18,15 +18,18 @@ public sealed class SecretaryAccountController : ControllerBase
     private readonly ICommandDispatcher commandDispatcher;
     private readonly IQueryDispatcher queryDispatcher;
     private readonly IValidator<CreateSecretaryFinancialTransactionCommand> validator;
+    private readonly IValidator<UpdateSecretaryFinancialTransactionCommand> updateValidator;
 
     public SecretaryAccountController(
         ICommandDispatcher commandDispatcher,
         IQueryDispatcher queryDispatcher,
-        IValidator<CreateSecretaryFinancialTransactionCommand> validator)
+        IValidator<CreateSecretaryFinancialTransactionCommand> validator,
+        IValidator<UpdateSecretaryFinancialTransactionCommand> updateValidator)
     {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
         this.validator = validator;
+        this.updateValidator = updateValidator;
     }
 
     [HttpPost("financial-transactions")]
@@ -53,6 +56,37 @@ public sealed class SecretaryAccountController : ControllerBase
     public async Task<IActionResult> GetTransactions([FromQuery] GetSecretaryFinancialTransactionsQuery query, CancellationToken cancellationToken)
     {
         return Ok(await queryDispatcher.DispatchAsync(query, cancellationToken));
+    }
+
+    [HttpPut("financial-transactions/{id:long}")]
+    public async Task<IActionResult> UpdateTransaction(
+        long id,
+        UpdateSecretaryFinancialTransactionCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.Id = id;
+        var validationResult = await updateValidator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            var message = string.Join(" | ", validationResult.Errors.Select(x => x.ErrorMessage));
+            return BadRequest(Result.Failure(message));
+        }
+
+        var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete("financial-transactions/{id:long}")]
+    public async Task<IActionResult> DeleteTransaction(long id, CancellationToken cancellationToken)
+    {
+        if (id <= 0)
+        {
+            return BadRequest(Result.Failure("شناسه تراکنش معتبر نیست"));
+        }
+
+        var result = await commandDispatcher.DispatchAsync(
+            new DeleteSecretaryFinancialTransactionCommand(id), cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
     [HttpGet("financial-transactions/summary")]

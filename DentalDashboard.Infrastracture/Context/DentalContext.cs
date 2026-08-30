@@ -32,6 +32,7 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<PatientPromissoryNote> PatientPromissoryNotes => Set<PatientPromissoryNote>();
         public DbSet<PatientDebt> PatientDebts => Set<PatientDebt>();
         public DbSet<PatientFinancialTransaction> PatientFinancialTransactions => Set<PatientFinancialTransaction>();
+        public DbSet<PatientFile> PatientFiles => Set<PatientFile>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

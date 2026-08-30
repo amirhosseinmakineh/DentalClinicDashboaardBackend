@@ -57,7 +57,36 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                       a.Patient.PhoneNumber.Contains(s));
     }
     var (p, z) = QueryTools.Page(q);
-    var count = await x.CountAsync(ct);var items=await x.OrderByDescending(a=>a.CreatedAt).Skip((p-1)*z).Take(z).Select(a=>new PatientFinancialCaseDto(a.Id,a.PatientId,a.Patient.Id,(a.Patient.FirstName+" "+a.Patient.LastName).Trim(),a.Patient.PhoneNumber,(int)a.Service,a.Service.ToString(),a.TotalAmount,a.Transactions.Sum(t=>(decimal?)t.Amount)??0,a.TotalAmount-(a.Transactions.Sum(t=>(decimal?)t.Amount)??0),a.Debts.Where(d=>d.Status==PatientDebtStatus.Unpaid).Sum(d=>(decimal?)d.Amount)??0,a.AgreementType,a.Status,a.CreatedAt)).ToListAsync(ct);
+    // This endpoint is the patient list for the finance area. A patient can
+    // have several financial cases, but must only consume one row/page slot.
+    // The most recently created matching case represents that patient.
+    var count = await x.Select(a => a.PatientId).Distinct().CountAsync(ct);
+    var patientIds = await x.GroupBy(a => a.PatientId)
+        .Select(g => new { PatientId = g.Key, LastCaseAt = g.Max(a => a.CreatedAt) })
+        .OrderByDescending(a => a.LastCaseAt)
+        .ThenBy(a => a.PatientId)
+        .Skip((p - 1) * z)
+        .Take(z)
+        .Select(a => a.PatientId)
+        .ToListAsync(ct);
+
+    var matchingCases = await x.Where(a => patientIds.Contains(a.PatientId))
+        .Select(a => new PatientFinancialCaseDto(
+            a.Id, a.PatientId, a.Patient.Id,
+            (a.Patient.FirstName + " " + a.Patient.LastName).Trim(),
+            a.Patient.PhoneNumber, (int)a.Service, a.Service.ToString(),
+            a.TotalAmount,
+            a.Transactions.Sum(t => (decimal?)t.Amount) ?? 0,
+            a.TotalAmount - (a.Transactions.Sum(t => (decimal?)t.Amount) ?? 0),
+            a.Debts.Where(d => d.Status == PatientDebtStatus.Unpaid)
+                .Sum(d => (decimal?)d.Amount) ?? 0,
+            a.AgreementType, a.Status, a.CreatedAt))
+        .ToListAsync(ct);
+
+    var casesByPatient = matchingCases.GroupBy(a => a.PatientId)
+        .ToDictionary(g => g.Key,
+            g => g.OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).First());
+    var items = patientIds.Select(id => casesByPatient[id]).ToList();
     return new() { Items = items, TotalCount = count, PageNumber = p,
                    PageSize = z };
   }

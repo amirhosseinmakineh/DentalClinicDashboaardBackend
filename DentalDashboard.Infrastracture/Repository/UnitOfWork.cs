@@ -13,26 +13,26 @@ public class UnitOfWork : IUnitOfWork
         _context = context;
     }
 
-    private IDbContextTransaction _transaction;
+    private IDbContextTransaction? _transaction;
 
-    public async Task BeginTransactionAsync()
+    public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
-        _transaction = await _context.Database.BeginTransactionAsync();
+        _transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
     }
 
-    public async Task<int> SaveChangesAsync()
+    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.SaveChangesAsync();
+        return await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task CommitAsync()
+    public async Task CommitAsync(CancellationToken cancellationToken = default)
     {
-        await _context.SaveChangesAsync();
-        await _transaction.CommitAsync();
+        await _context.SaveChangesAsync(cancellationToken);
+        await (_transaction ?? throw new InvalidOperationException("No active transaction.")).CommitAsync(cancellationToken);
     }
 
-    public async Task RollbackAsync()
+    public async Task RollbackAsync(CancellationToken cancellationToken = default)
     {
-        await _transaction.RollbackAsync();
+        await (_transaction ?? throw new InvalidOperationException("No active transaction.")).RollbackAsync(cancellationToken);
     }
 }

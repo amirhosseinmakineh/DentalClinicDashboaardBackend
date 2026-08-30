@@ -7,7 +7,13 @@ namespace DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles;
 
 public sealed record PatientFileDto(long Id, long? PatientId, long FileNumber, string FirstName,
     string LastName, string PhoneNumber, PatientFileSourceType SourceType, DateTime CreatedAt);
-public sealed record EligiblePatientDto(long PatientId, string FirstName, string LastName, string PhoneNumber);
+public sealed record EligiblePatientDto(long PatientId, string FirstName, string LastName, string PhoneNumber)
+{
+    // LeadAssignment is the patient reference in the current domain. Exposing the
+    // aliases keeps the API explicit and compatible with existing patient pickers.
+    public long Id => PatientId;
+    public long LeadAssignmentId => PatientId;
+}
 public sealed record CreatePatientFileResponse(long Id, long FileNumber);
 public sealed record ImportPatientFileError(int Row, string Field, string Message);
 public sealed record ImportPatientFilesResponse(bool Success, int ImportedCount, IReadOnlyList<ImportPatientFileError> Errors);

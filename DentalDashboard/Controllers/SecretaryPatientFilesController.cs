@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DentalDashboard.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Secretary")]
 [Route("api/secretary/patient-files")]
 public sealed class SecretaryPatientFilesController(ICommandDispatcher commands, IQueryDispatcher queries) : ControllerBase
 {
@@ -25,7 +26,7 @@ public sealed class SecretaryPatientFilesController(ICommandDispatcher commands,
 
     [HttpPost]
     public async Task<IActionResult> Create(CreatePatientFileRequest request, CancellationToken ct) =>
-        ToResponse(await commands.DispatchAsync(new CreatePatientFileCommand(request.PatientId), ct));
+        ToResponse(await commands.DispatchAsync(new CreatePatientFileCommand(request.GetPatientId()), ct));
 
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, UpdatePatientFileRequest request, CancellationToken ct) =>
@@ -56,6 +57,15 @@ public sealed class SecretaryPatientFilesController(ICommandDispatcher commands,
             : BadRequest(Result.Failure(result.Message));
 }
 
-public sealed record CreatePatientFileRequest(long PatientId);
+public sealed class CreatePatientFileRequest
+{
+    public long? PatientId { get; init; }
+    public long? Id { get; init; }
+    public long? LeadAssignmentId { get; init; }
+    public long? PatientReferenceId { get; init; }
+
+    public long GetPatientId() =>
+        PatientId ?? LeadAssignmentId ?? PatientReferenceId ?? Id ?? 0;
+}
 public sealed record UpdatePatientFileRequest(string FirstName, string LastName, string PhoneNumber);
 public sealed class PatientFileImportForm { public IFormFile? File { get; set; } }

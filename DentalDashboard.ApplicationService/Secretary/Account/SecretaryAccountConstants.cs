@@ -10,6 +10,9 @@ internal static class SecretaryAccountConstants
     internal const string TransactionCreatedMessage = "تراکنش مالی با موفقیت ثبت شد";
     internal const string IncomeCategoryMustBeEmptyMessage = "برای تراکنش ورودی نباید دسته‌بندی هزینه انتخاب شود";
     internal const string ExpenseCategoryIsRequiredMessage = "دسته‌بندی هزینه الزامی است";
-    internal const string SuccessCreateExpenseCategory = "دسته بندی هزینه با موفقیت اضافه شد";
-    internal const string RequeiredExpenseTitle = "وارد کردن عنوان هزینه اجباری هست";
+    internal const string ExpenseCategoryNotFoundMessage = "دسته‌بندی هزینه یافت نشد";
+    internal const string ExpenseCategoryDuplicateTitleMessage = "دسته‌بندی هزینه‌ای با این عنوان قبلاً ثبت شده است";
+    internal const string ExpenseCategoryCreatedMessage = "دسته‌بندی هزینه با موفقیت ایجاد شد";
+    internal const string ExpenseCategoryUpdatedMessage = "دسته‌بندی هزینه با موفقیت ویرایش شد";
+    internal const string ExpenseCategoryDeletedMessage = "دسته‌بندی هزینه با موفقیت حذف شد";
 }

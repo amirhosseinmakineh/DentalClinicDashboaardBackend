@@ -3,6 +3,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DentalDashboard.Infrastracture.Repository;
 

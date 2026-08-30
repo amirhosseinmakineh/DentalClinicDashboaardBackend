@@ -9,6 +9,8 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using PatientFilePage = DentalDashboard.ApplicationService.Contract.Responses.PaginatedResult<DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles.PatientFileDto>;
+using EligiblePatientPage = DentalDashboard.ApplicationService.Contract.Responses.PaginatedResult<DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles.EligiblePatientDto>;
 
 namespace DentalDashboard.ApplicationService.Secretary.PatientFiles;
 
@@ -22,12 +24,12 @@ internal static class PatientFileNames
 }
 
 public sealed class GetPatientFilesQueryHandler(IPatientFileRepository repository)
-    : IQueryHandler<GetPatientFilesQuery, Result<PaginatedResult<PatientFileDto>>>
+    : IQueryHandler<GetPatientFilesQuery, Result<PatientFilePage>>
 {
-    public async Task<Result<PaginatedResult<PatientFileDto>>> HandleAsync(GetPatientFilesQuery request, CancellationToken ct = default)
+    public async Task<Result<PatientFilePage>> HandleAsync(GetPatientFilesQuery request, CancellationToken ct = default)
     {
         if (request.Page < 1 || request.PageSize is < 1 or > 100)
-            return Result<PaginatedResult<PatientFileDto>>.Failure("مقادیر صفحه‌بندی معتبر نیستند");
+            return Result<PatientFilePage>.Failure("مقادیر صفحه‌بندی معتبر نیستند");
         var query = repository.PatientFiles.AsNoTracking();
         if (request.FileNumber.HasValue) query = query.Where(x => x.FileNumber == request.FileNumber);
         if (request.SourceType.HasValue) query = query.Where(x => x.SourceType == request.SourceType);
@@ -44,7 +46,7 @@ public sealed class GetPatientFilesQueryHandler(IPatientFileRepository repositor
             .Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
             .Select(x => new PatientFileDto(x.Id, x.PatientReferenceId, x.FileNumber, x.FirstName,
                 x.LastName, x.PhoneNumber, x.SourceType, x.CreatedAt)).ToListAsync(ct);
-        return Result<PaginatedResult<PatientFileDto>>.Success(new()
+        return Result<PatientFilePage>.Success(new()
         { Items = items, PageNumber = request.Page, PageSize = request.PageSize, TotalCount = count });
     }
 }
@@ -62,12 +64,12 @@ public sealed class GetPatientFileByIdQueryHandler(IPatientFileRepository reposi
 }
 
 public sealed class SearchPatientsEligibleForFileQueryHandler(IPatientFileRepository repository)
-    : IQueryHandler<SearchPatientsEligibleForFileQuery, Result<PaginatedResult<EligiblePatientDto>>>
+    : IQueryHandler<SearchPatientsEligibleForFileQuery, Result<EligiblePatientPage>>
 {
-    public async Task<Result<PaginatedResult<EligiblePatientDto>>> HandleAsync(SearchPatientsEligibleForFileQuery request, CancellationToken ct = default)
+    public async Task<Result<EligiblePatientPage>> HandleAsync(SearchPatientsEligibleForFileQuery request, CancellationToken ct = default)
     {
         if (request.Page < 1 || request.PageSize is < 1 or > 100)
-            return Result<PaginatedResult<EligiblePatientDto>>.Failure("مقادیر صفحه‌بندی معتبر نیستند");
+            return Result<EligiblePatientPage>.Failure("مقادیر صفحه‌بندی معتبر نیستند");
         var query = repository.Patients.AsNoTracking().Where(p => !p.IsDeleted &&
             repository.Reservations.Any(r => !r.IsDeleted && !r.IsCanceled && r.LeadAssignmentId == p.Id) &&
             !repository.PatientFiles.Any(f => f.PatientReferenceId == p.Id && f.SourceType == PatientFileSourceType.System));
@@ -81,7 +83,7 @@ public sealed class SearchPatientsEligibleForFileQueryHandler(IPatientFileReposi
             .Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
             .Select(x => new { x.Id, x.UserName, x.PhoneNumber }).ToListAsync(ct);
         var items = raw.Select(x => { var n = PatientFileNames.Split(x.UserName); return new EligiblePatientDto(x.Id, n.FirstName, n.LastName, x.PhoneNumber); }).ToList();
-        return Result<PaginatedResult<EligiblePatientDto>>.Success(new()
+        return Result<EligiblePatientPage>.Success(new()
         { Items = items, PageNumber = request.Page, PageSize = request.PageSize, TotalCount = count });
     }
 }

@@ -44,6 +44,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<ISecretaryAccountRepository, SecretaryAccountRepository>();
         services.AddScoped<IExpenseRepository, ExpenseRepository>();
         services.AddScoped<IPatientFinanceRepository, PatientFinanceRepository>();
+        services.AddScoped<IPatientFileRepository, PatientFileRepository>();
 
         return services;
     }

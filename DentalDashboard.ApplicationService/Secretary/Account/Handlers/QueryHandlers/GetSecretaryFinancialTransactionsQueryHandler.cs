@@ -80,7 +80,8 @@ public sealed class GetSecretaryFinancialTransactionsQueryHandler : IQueryHandle
             Description = transaction.Description,
             ExpenseCategoryId = transaction.ExpenseCategoryId,
             ExpenseCategoryTitle = transaction.ExpenseCategory == null ? null : transaction.ExpenseCategory.Title,
-            CreatedAt = transaction.CreatedAt
+            CreatedAt = transaction.CreatedAt,
+            UpdatedAt = transaction.UpdatedAt
         };
     }
 

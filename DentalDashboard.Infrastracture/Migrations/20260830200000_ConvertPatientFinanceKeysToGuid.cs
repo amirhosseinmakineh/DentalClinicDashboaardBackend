@@ -53,6 +53,8 @@ BEGIN
     );
     SET IDENTITY_INSERT [dbo].[PatientCheques_Guid] ON;
     INSERT INTO [dbo].[PatientCheques_Guid]
+        ([Id], [PatientFinancialCaseId], [Amount], [SayadNumber], [OwnerName], [DueDate], [Status],
+         [CreatedAt], [UpdatedAt], [IsDeleted], [DeletedAt])
     SELECT c.[Id], m.[Id], c.[Amount], c.[SayadNumber], c.[OwnerName], c.[DueDate], c.[Status],
            c.[CreatedAt], c.[UpdatedAt], c.[IsDeleted], c.[DeletedAt]
     FROM [dbo].[PatientCheques] c
@@ -67,6 +69,8 @@ BEGIN
     );
     SET IDENTITY_INSERT [dbo].[PatientPromissoryNotes_Guid] ON;
     INSERT INTO [dbo].[PatientPromissoryNotes_Guid]
+        ([Id], [PatientFinancialCaseId], [SerialNumber], [Amount], [DueDate], [Status],
+         [CreatedAt], [UpdatedAt], [IsDeleted], [DeletedAt])
     SELECT n.[Id], m.[Id], n.[SerialNumber], n.[Amount], n.[DueDate], n.[Status],
            n.[CreatedAt], n.[UpdatedAt], n.[IsDeleted], n.[DeletedAt]
     FROM [dbo].[PatientPromissoryNotes] n
@@ -81,6 +85,8 @@ BEGIN
     );
     SET IDENTITY_INSERT [dbo].[PatientDebts_Guid] ON;
     INSERT INTO [dbo].[PatientDebts_Guid]
+        ([Id], [PatientFinancialCaseId], [Amount], [SourceType], [SourceId], [Status], [DueDate],
+         [CreatedAt], [UpdatedAt], [IsDeleted], [DeletedAt])
     SELECT d.[Id], m.[Id], d.[Amount], d.[SourceType], d.[SourceId], d.[Status], d.[DueDate],
            d.[CreatedAt], d.[UpdatedAt], d.[IsDeleted], d.[DeletedAt]
     FROM [dbo].[PatientDebts] d
@@ -96,6 +102,8 @@ BEGIN
     );
     SET IDENTITY_INSERT [dbo].[PatientFinancialTransactions_Guid] ON;
     INSERT INTO [dbo].[PatientFinancialTransactions_Guid]
+        ([Id], [PatientFinancialCaseId], [Amount], [Type], [SourceType], [SourceId], [CreatedByUserId],
+         [CreatedAt], [UpdatedAt], [IsDeleted], [DeletedAt])
     SELECT t.[Id], m.[Id], t.[Amount], t.[Type], t.[SourceType], t.[SourceId],
            t.[CreatedBySecretaryUserId], t.[CreatedAt], t.[UpdatedAt], t.[IsDeleted], t.[DeletedAt]
     FROM [dbo].[PatientFinancialTransactions] t

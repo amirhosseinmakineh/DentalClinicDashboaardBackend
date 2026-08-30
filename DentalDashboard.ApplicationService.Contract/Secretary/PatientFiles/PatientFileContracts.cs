@@ -8,7 +8,13 @@ namespace DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles;
 
 public sealed record PatientFileDto(long Id, long? PatientId, long FileNumber, string FirstName,
     string LastName, string PhoneNumber, PatientFileSourceType SourceType, DateTime CreatedAt,
-    PatientFileFinanceDto? Finance);
+    PatientFileFinanceDto? Finance)
+{
+    // The patient-file id is a long, while financial APIs expect the patient's
+    // User id (Guid). Keep both identifiers explicit so clients do not have to
+    // infer the financial patient id from an existing financial case.
+    public Guid? FinancialPatientId { get; init; }
+}
 
 public sealed record PatientFileFinanceDto(
     Guid FinancialPatientId, decimal TotalTreatmentAmount, decimal TotalPaidAmount,

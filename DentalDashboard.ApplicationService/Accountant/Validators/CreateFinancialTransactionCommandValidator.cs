@@ -7,9 +7,9 @@ using DentalDashboard.ApplicationService.Accountant;
 
 namespace DentalDashboard.ApplicationService.Accountant.Validators;
 
-public sealed partial class CreateSecretaryFinancialTransactionCommandValidator : AbstractValidator<CreateSecretaryFinancialTransactionCommand>
+public sealed partial class CreateFinancialTransactionCommandValidator : AbstractValidator<CreateFinancialTransactionCommand>
 {
-    public CreateSecretaryFinancialTransactionCommandValidator()
+    public CreateFinancialTransactionCommandValidator()
     {
         RuleFor(x => x.Type).IsInEnum();
         RuleFor(x => x.Amount).GreaterThan(0);
@@ -21,10 +21,10 @@ public sealed partial class CreateSecretaryFinancialTransactionCommandValidator 
         RuleFor(x => x.ExpenseCategoryId)
             .Null()
             .When(x => x.Type == FinancialTransactionType.Income)
-            .WithMessage(SecretaryAccountConstants.IncomeCategoryMustBeEmptyMessage);
+            .WithMessage(AccountantConstants.IncomeCategoryMustBeEmptyMessage);
         RuleFor(x => x.ExpenseCategoryId)
             .NotNull()
             .When(x => x.Type == FinancialTransactionType.Expense)
-            .WithMessage(SecretaryAccountConstants.ExpenseCategoryIsRequiredMessage);
+            .WithMessage(AccountantConstants.ExpenseCategoryIsRequiredMessage);
     }
 }

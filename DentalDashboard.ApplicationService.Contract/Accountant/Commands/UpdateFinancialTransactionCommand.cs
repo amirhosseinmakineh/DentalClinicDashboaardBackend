@@ -3,8 +3,8 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
 namespace DentalDashboard.ApplicationService.Contract.Accountant.Commands;
 
-public sealed class UpdateSecretaryFinancialTransactionCommand
-    : ICommand<CreateSecretaryFinancialTransactionResponse>
+public sealed class UpdateFinancialTransactionCommand
+    : ICommand<CreateFinancialTransactionResponse>
 {
     public long Id { get; set; }
     public FinancialTransactionType Type { get; set; }

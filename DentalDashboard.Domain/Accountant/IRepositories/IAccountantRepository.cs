@@ -3,7 +3,7 @@ using DentalDashboard.Framwork.IRepositories;
 
 namespace DentalDashboard.Domain.Accountant.IRepositories;
 
-public interface ISecretaryAccountRepository
+public interface IAccountantRepository
 {
     IQueryable<FinancialTransaction> FinancialTransactions { get; }
     IQueryable<ExpenseCategory> ExpenseCategories { get; }

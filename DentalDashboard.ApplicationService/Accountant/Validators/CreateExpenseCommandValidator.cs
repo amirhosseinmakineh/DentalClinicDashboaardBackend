@@ -3,7 +3,7 @@ using FluentValidation;
 
 namespace DentalDashboard.ApplicationService.Accountant.Validators;
 
-public sealed partial class CreateSecretaryFinancialTransactionCommandValidator
+public sealed partial class CreateFinancialTransactionCommandValidator
 {
     public sealed class CreateExpenseCommandValidator : AbstractValidator<CreateExpenseCommand>
     {

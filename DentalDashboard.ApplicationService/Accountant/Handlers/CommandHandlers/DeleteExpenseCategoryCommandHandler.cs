@@ -24,7 +24,7 @@ public sealed class DeleteExpenseCategoryCommandHandler
             .FirstOrDefaultAsync(x => x.Id == command.Id && !x.IsDeleted, cancellationToken);
         if (category is null)
         {
-            return Result.Failure(SecretaryAccountConstants.ExpenseCategoryNotFoundMessage);
+            return Result.Failure(AccountantConstants.ExpenseCategoryNotFoundMessage);
         }
 
         category.IsDeleted = true;
@@ -34,6 +34,6 @@ public sealed class DeleteExpenseCategoryCommandHandler
         repository.Update(category);
         await repository.SaveChange();
 
-        return Result.Success(SecretaryAccountConstants.ExpenseCategoryDeletedMessage);
+        return Result.Success(AccountantConstants.ExpenseCategoryDeletedMessage);
     }
 }

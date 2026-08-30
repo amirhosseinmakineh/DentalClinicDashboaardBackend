@@ -11,8 +11,8 @@ public static class AccountantInfrastructureServiceRegistration
     public static IServiceCollection AddAccountantInfrastructure(
         this IServiceCollection services)
     {
-        services.AddScoped<ISecretaryAccountRepository,
-            SecretaryAccountRepository>();
+        services.AddScoped<IAccountantRepository,
+            AccountantRepository>();
         services.AddScoped<IExpenseRepository, ExpenseRepository>();
         services.AddScoped<IPatientFinanceRepository,
             PatientFinanceRepository>();

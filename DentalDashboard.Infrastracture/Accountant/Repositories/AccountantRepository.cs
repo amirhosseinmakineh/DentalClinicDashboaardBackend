@@ -4,11 +4,11 @@ using DentalDashboard.Infrastracture.Context;
 
 namespace DentalDashboard.Infrastracture.Accountant.Repositories;
 
-public sealed class SecretaryAccountRepository : ISecretaryAccountRepository
+public sealed class AccountantRepository : IAccountantRepository
 {
     private readonly DentalContext context;
 
-    public SecretaryAccountRepository(DentalContext context)
+    public AccountantRepository(DentalContext context)
     {
         this.context = context;
     }

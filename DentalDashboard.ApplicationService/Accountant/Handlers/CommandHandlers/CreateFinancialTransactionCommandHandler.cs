@@ -13,22 +13,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Accountant.Handlers.CommandHandlers;
 
-public sealed class CreateSecretaryFinancialTransactionCommandHandler : ICommandHandler<CreateSecretaryFinancialTransactionCommand, CreateSecretaryFinancialTransactionResponse>
+public sealed class CreateFinancialTransactionCommandHandler : ICommandHandler<CreateFinancialTransactionCommand, CreateFinancialTransactionResponse>
 {
-    private readonly ISecretaryAccountRepository repository;
+    private readonly IAccountantRepository repository;
     private readonly IUnitOfWork unitOfWork;
 
-    public CreateSecretaryFinancialTransactionCommandHandler(ISecretaryAccountRepository repository, IUnitOfWork unitOfWork)
+    public CreateFinancialTransactionCommandHandler(IAccountantRepository repository, IUnitOfWork unitOfWork)
     {
         this.repository = repository;
         this.unitOfWork = unitOfWork;
     }
 
-    public async Task<Result<CreateSecretaryFinancialTransactionResponse>> HandleAsync(CreateSecretaryFinancialTransactionCommand command, CancellationToken cancellationToken = default)
+    public async Task<Result<CreateFinancialTransactionResponse>> HandleAsync(CreateFinancialTransactionCommand command, CancellationToken cancellationToken = default)
     {
         if (command.CreatedByUserId == Guid.Empty)
         {
-            return Result<CreateSecretaryFinancialTransactionResponse>.Failure(SecretaryAccountConstants.InvalidCurrentUserMessage);
+            return Result<CreateFinancialTransactionResponse>.Failure(AccountantConstants.InvalidCurrentUserMessage);
         }
 
         if (command.Type == FinancialTransactionType.Expense)
@@ -39,7 +39,7 @@ public sealed class CreateSecretaryFinancialTransactionCommandHandler : ICommand
 
             if (!categoryIsActive)
             {
-                return Result<CreateSecretaryFinancialTransactionResponse>.Failure(SecretaryAccountConstants.InvalidExpenseCategoryMessage);
+                return Result<CreateFinancialTransactionResponse>.Failure(AccountantConstants.InvalidExpenseCategoryMessage);
             }
         }
 
@@ -59,9 +59,9 @@ public sealed class CreateSecretaryFinancialTransactionCommandHandler : ICommand
         await repository.AddTransactionAsync(transaction, cancellationToken);
         await unitOfWork.SaveChangesAsync();
 
-        return Result<CreateSecretaryFinancialTransactionResponse>.Success(
-            new CreateSecretaryFinancialTransactionResponse(transaction.Id),
-            SecretaryAccountConstants.TransactionCreatedMessage);
+        return Result<CreateFinancialTransactionResponse>.Success(
+            new CreateFinancialTransactionResponse(transaction.Id),
+            AccountantConstants.TransactionCreatedMessage);
     }
 
     private static string? Normalize(string? value)

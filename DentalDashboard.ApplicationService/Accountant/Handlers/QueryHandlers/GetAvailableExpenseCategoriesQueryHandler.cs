@@ -12,21 +12,21 @@ using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Accountant.Handlers.QueryHandlers;
-public sealed class GetSecretaryExpenseCategoriesQueryHandler : IQueryHandler<GetSecretaryExpenseCategoriesQuery, Result<IReadOnlyList<SecretaryExpenseCategoryDto>>>
+public sealed class GetAvailableExpenseCategoriesQueryHandler : IQueryHandler<GetAvailableExpenseCategoriesQuery, Result<IReadOnlyList<ExpenseCategoryDto>>>
 {
-    private readonly ISecretaryAccountRepository repository;
-    public GetSecretaryExpenseCategoriesQueryHandler(ISecretaryAccountRepository repository)
+    private readonly IAccountantRepository repository;
+    public GetAvailableExpenseCategoriesQueryHandler(IAccountantRepository repository)
     {
         this.repository = repository;
     }
-    public async Task<Result<IReadOnlyList<SecretaryExpenseCategoryDto>>> HandleAsync(GetSecretaryExpenseCategoriesQuery query, CancellationToken cancellationToken = default)
+    public async Task<Result<IReadOnlyList<ExpenseCategoryDto>>> HandleAsync(GetAvailableExpenseCategoriesQuery query, CancellationToken cancellationToken = default)
     {
         var categories = await repository.ExpenseCategories
             .AsNoTracking()
             .Where(x => !x.IsDeleted && x.IsActive)
             .OrderBy(x => x.Title)
-            .Select(x => new SecretaryExpenseCategoryDto(x.Id, x.Title))
+            .Select(x => new ExpenseCategoryDto(x.Id, x.Title))
             .ToListAsync(cancellationToken);
-        return Result<IReadOnlyList<SecretaryExpenseCategoryDto>>.Success(categories);
+        return Result<IReadOnlyList<ExpenseCategoryDto>>.Success(categories);
     }
 }

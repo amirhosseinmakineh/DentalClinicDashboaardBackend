@@ -25,7 +25,7 @@ public sealed class UpdateExpenseCategoryCommandHandler
         if (category is null)
         {
             return Result<ExpenseCategoryResponse>.Failure(
-                SecretaryAccountConstants.ExpenseCategoryNotFoundMessage);
+                AccountantConstants.ExpenseCategoryNotFoundMessage);
         }
 
         var title = command.Title.Trim();
@@ -34,7 +34,7 @@ public sealed class UpdateExpenseCategoryCommandHandler
         if (titleExists)
         {
             return Result<ExpenseCategoryResponse>.Failure(
-                SecretaryAccountConstants.ExpenseCategoryDuplicateTitleMessage);
+                AccountantConstants.ExpenseCategoryDuplicateTitleMessage);
         }
 
         category.Title = title;
@@ -50,6 +50,6 @@ public sealed class UpdateExpenseCategoryCommandHandler
                 category.IsActive,
                 category.CreatedAt,
                 category.UpdatedAt),
-            SecretaryAccountConstants.ExpenseCategoryUpdatedMessage);
+            AccountantConstants.ExpenseCategoryUpdatedMessage);
     }
 }

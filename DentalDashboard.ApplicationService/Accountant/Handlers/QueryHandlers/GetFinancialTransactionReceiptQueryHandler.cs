@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Accountant.Handlers.QueryHandlers;
 
-public sealed class GetSecretaryFinancialTransactionReceiptQueryHandler : IQueryHandler<GetSecretaryFinancialTransactionReceiptQuery, FinancialTransactionReceiptResponse?>
+public sealed class GetFinancialTransactionReceiptQueryHandler : IQueryHandler<GetFinancialTransactionReceiptQuery, FinancialTransactionReceiptResponse?>
 {
-    private readonly ISecretaryAccountRepository repository;
+    private readonly IAccountantRepository repository;
     private readonly IFinancialTransactionReceiptService receiptService;
 
-    public GetSecretaryFinancialTransactionReceiptQueryHandler(
-        ISecretaryAccountRepository repository,
+    public GetFinancialTransactionReceiptQueryHandler(
+        IAccountantRepository repository,
         IFinancialTransactionReceiptService receiptService)
     {
         this.repository = repository;
@@ -20,7 +20,7 @@ public sealed class GetSecretaryFinancialTransactionReceiptQueryHandler : IQuery
     }
 
     public async Task<FinancialTransactionReceiptResponse?> HandleAsync(
-        GetSecretaryFinancialTransactionReceiptQuery query,
+        GetFinancialTransactionReceiptQuery query,
         CancellationToken cancellationToken = default)
     {
         if (query.Id <= 0)
@@ -38,7 +38,7 @@ public sealed class GetSecretaryFinancialTransactionReceiptQueryHandler : IQuery
             return null;
         }
 
-        var transactionDto = GetSecretaryFinancialTransactionsQueryHandler.Map(transaction);
+        var transactionDto = GetFinancialTransactionsQueryHandler.Map(transaction);
 
         return receiptService.Create(transactionDto);
     }

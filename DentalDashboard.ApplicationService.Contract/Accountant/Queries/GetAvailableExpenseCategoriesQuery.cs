@@ -4,7 +4,6 @@ using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Contract.Accountant.Queries;
 
-public sealed class GetSecretaryFinancialTransactionDetailsQuery : IQuery<Result<SecretaryFinancialTransactionDto>?>
+public sealed class GetAvailableExpenseCategoriesQuery : IQuery<Result<IReadOnlyList<ExpenseCategoryDto>>>
 {
-    public long Id { get; set; }
 }

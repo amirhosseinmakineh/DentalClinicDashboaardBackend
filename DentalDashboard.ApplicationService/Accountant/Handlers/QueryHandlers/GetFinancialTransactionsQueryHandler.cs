@@ -12,19 +12,19 @@ using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Accountant.Handlers.QueryHandlers;
-public sealed class GetSecretaryFinancialTransactionsQueryHandler : IQueryHandler<GetSecretaryFinancialTransactionsQuery, Result<SecretaryFinancialTransactionPage>>
+public sealed class GetFinancialTransactionsQueryHandler : IQueryHandler<GetFinancialTransactionsQuery, Result<FinancialTransactionPage>>
 {
-    private readonly ISecretaryAccountRepository repository;
+    private readonly IAccountantRepository repository;
 
-    public GetSecretaryFinancialTransactionsQueryHandler(ISecretaryAccountRepository repository)
+    public GetFinancialTransactionsQueryHandler(IAccountantRepository repository)
     {
         this.repository = repository;
     }
 
-    public async Task<Result<SecretaryFinancialTransactionPage>> HandleAsync(GetSecretaryFinancialTransactionsQuery query, CancellationToken cancellationToken = default)
+    public async Task<Result<FinancialTransactionPage>> HandleAsync(GetFinancialTransactionsQuery query, CancellationToken cancellationToken = default)
     {
-        var page = Math.Max(query.Page, SecretaryAccountConstants.DefaultPage);
-        var pageSize = Math.Clamp(query.PageSize, SecretaryAccountConstants.MinimumPageSize, SecretaryAccountConstants.MaximumPageSize);
+        var page = Math.Max(query.Page, AccountantConstants.DefaultPage);
+        var pageSize = Math.Clamp(query.PageSize, AccountantConstants.MinimumPageSize, AccountantConstants.MaximumPageSize);
         var transactions = repository.FinancialTransactions.AsNoTracking().Where(x => !x.IsDeleted);
 
         if (query.Type.HasValue)
@@ -56,17 +56,17 @@ public sealed class GetSecretaryFinancialTransactionsQueryHandler : IQueryHandle
         var entities = await transactions.Include(x => x.ExpenseCategory)
             .OrderByDescending(x => x.TransactionDate)
             .ThenByDescending(x => x.Id)
-            .Skip((page - SecretaryAccountConstants.DefaultPage) * pageSize)
+            .Skip((page - AccountantConstants.DefaultPage) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
         var items = entities.Select(Map).ToList();
 
-        return Result<SecretaryFinancialTransactionPage>.Success(new SecretaryFinancialTransactionPage(items, page, pageSize, totalCount));
+        return Result<FinancialTransactionPage>.Success(new FinancialTransactionPage(items, page, pageSize, totalCount));
     }
 
-    internal static SecretaryFinancialTransactionDto Map(FinancialTransaction transaction)
+    internal static FinancialTransactionDto Map(FinancialTransaction transaction)
     {
-        return new SecretaryFinancialTransactionDto
+        return new FinancialTransactionDto
         {
             Id = transaction.Id,
             Type = transaction.Type,

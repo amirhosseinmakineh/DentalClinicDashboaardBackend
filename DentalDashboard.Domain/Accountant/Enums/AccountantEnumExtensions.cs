@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace DentalDashboard.Domain.Accountant.Enums;
 
-public static class SecretaryAccountEnumExtensions
+public static class AccountantEnumExtensions
 {
     public static string GetTitle(this Enum value)
     {

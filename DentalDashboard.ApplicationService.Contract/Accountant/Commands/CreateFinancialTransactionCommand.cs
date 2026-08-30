@@ -4,7 +4,7 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
 namespace DentalDashboard.ApplicationService.Contract.Accountant.Commands;
 
-public sealed class CreateSecretaryFinancialTransactionCommand : ICommand<CreateSecretaryFinancialTransactionResponse>
+public sealed class CreateFinancialTransactionCommand : ICommand<CreateFinancialTransactionResponse>
 {
     public FinancialTransactionType Type { get; set; }
     public decimal Amount { get; set; }
@@ -19,4 +19,4 @@ public sealed class CreateSecretaryFinancialTransactionCommand : ICommand<Create
     public Guid CreatedByUserId { get; set; }
 }
 
-public sealed record CreateSecretaryFinancialTransactionResponse(long Id);
+public sealed record CreateFinancialTransactionResponse(long Id);

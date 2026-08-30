@@ -12,20 +12,20 @@ using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Accountant.Handlers.QueryHandlers;
-public sealed class GetSecretaryFinancialTransactionDetailsQueryHandler : IQueryHandler<GetSecretaryFinancialTransactionDetailsQuery, Result<SecretaryFinancialTransactionDto>?>
+public sealed class GetFinancialTransactionDetailsQueryHandler : IQueryHandler<GetFinancialTransactionDetailsQuery, Result<FinancialTransactionDto>?>
 {
-    private readonly ISecretaryAccountRepository repository;
-    public GetSecretaryFinancialTransactionDetailsQueryHandler(ISecretaryAccountRepository repository)
+    private readonly IAccountantRepository repository;
+    public GetFinancialTransactionDetailsQueryHandler(IAccountantRepository repository)
     {
         this.repository = repository;
     }
 
-    public async Task<Result<SecretaryFinancialTransactionDto>?> HandleAsync(GetSecretaryFinancialTransactionDetailsQuery query, CancellationToken cancellationToken = default)
+    public async Task<Result<FinancialTransactionDto>?> HandleAsync(GetFinancialTransactionDetailsQuery query, CancellationToken cancellationToken = default)
     {
         var transaction = await repository.FinancialTransactions.AsNoTracking()
             .Include(x => x.ExpenseCategory)
             .FirstOrDefaultAsync(x => x.Id == query.Id && !x.IsDeleted, cancellationToken);
-        return transaction is null ? null : Result<SecretaryFinancialTransactionDto>.Success(GetSecretaryFinancialTransactionsQueryHandler.Map(transaction));
+        return transaction is null ? null : Result<FinancialTransactionDto>.Success(GetFinancialTransactionsQueryHandler.Map(transaction));
     }
 }
 

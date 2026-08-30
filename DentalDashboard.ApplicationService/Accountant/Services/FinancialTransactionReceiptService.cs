@@ -11,7 +11,7 @@ public sealed class FinancialTransactionReceiptService : IFinancialTransactionRe
 {
     private const string ContentType = "text/html; charset=utf-8";
 
-    public FinancialTransactionReceiptResponse Create(SecretaryFinancialTransactionDto transaction)
+    public FinancialTransactionReceiptResponse Create(FinancialTransactionDto transaction)
     {
         var receiptNumber = transaction.Id.ToString(CultureInfo.InvariantCulture);
         var amount = transaction.Amount.ToString("N0", CultureInfo.GetCultureInfo("fa-IR"));

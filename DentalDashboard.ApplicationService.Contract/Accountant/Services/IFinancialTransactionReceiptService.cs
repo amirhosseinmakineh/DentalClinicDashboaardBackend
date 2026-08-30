@@ -5,5 +5,5 @@ namespace DentalDashboard.ApplicationService.Contract.Accountant.Services;
 
 public interface IFinancialTransactionReceiptService
 {
-    FinancialTransactionReceiptResponse Create(SecretaryFinancialTransactionDto transaction);
+    FinancialTransactionReceiptResponse Create(FinancialTransactionDto transaction);
 }

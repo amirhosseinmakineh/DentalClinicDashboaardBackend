@@ -2,7 +2,7 @@
 
 ## نتیجه کوتاه
 
-تغییر پوشه‌ها و namespaceهای Backend به `Accountant` به‌تنهایی هیچ تغییری در Frontend لازم ندارد. URL، متد HTTP و ساختار درخواست endpointها تغییر نکرده‌اند.
+تغییر پوشه‌ها و namespaceهای Backend به `Accountant` به‌تنهایی هیچ تغییری در Frontend لازم ندارد. routeهای قبلی، متد HTTP و ساختار درخواست endpointها تغییر نکرده‌اند. علاوه بر آن‌ها alias عمومی `api/accountant` نیز اضافه شده است.
 
 تنها تغییر قابل مشاهده در قرارداد JSON مربوط به خروجی پرونده مالی بیمار است: فیلد تکراری `userId` از `PatientFinancialCaseDto` حذف شده است. از این پس `patientId` همان `Users.Id` بیمار و تنها شناسه معتبر بیمار برای APIهای حسابداری است.
 
@@ -60,7 +60,7 @@ const patientUserId = financialCase.patientId;
 
 ## مواردی که تغییر نکرده‌اند
 
-- هیچ route یا HTTP method تغییر نکرده است.
+- تمام routeهای قبلی و HTTP methodها بدون تغییر حفظ شده‌اند؛ routeهای `api/accountant` فقط alias جدید و اختیاری هستند.
 - پارامتر `patientId` در body و query همچنان با همین نام ارسال می‌شود.
 - `patientId` از نوع GUID/string است و باید شناسه `Users.Id` کاربری باشد که نقش `Patient` دارد.
 - شناسه کاربر لاگین‌شده/منشی همچنان از JWT استخراج می‌شود و نباید از Frontend در body ارسال شود.
@@ -73,4 +73,4 @@ const patientUserId = financialCase.patientId;
 2. مصرف آن را به `patientId` تغییر دهید.
 3. اگر type از روی OpenAPI تولید می‌شود، client را دوباره generate کنید.
 4. تست کنید که بازکردن جزئیات مالی و لینک‌دادن به بیمار با `patientId` انجام می‌شود.
-5. هیچ URL جدیدی با عبارت `accountant` نسازید؛ routeهای عمومی API عمداً ثابت مانده‌اند.
+5. برای سازگاری می‌توانید routeهای قبلی را نگه دارید؛ برای کد جدید استفاده از aliasهای `api/accountant` پیشنهاد می‌شود.

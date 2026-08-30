@@ -8,30 +8,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Accountant.Handlers.CommandHandlers;
 
-public sealed class UpdateSecretaryFinancialTransactionCommandHandler
-    : ICommandHandler<UpdateSecretaryFinancialTransactionCommand, CreateSecretaryFinancialTransactionResponse>
+public sealed class UpdateFinancialTransactionCommandHandler
+    : ICommandHandler<UpdateFinancialTransactionCommand, CreateFinancialTransactionResponse>
 {
-    private readonly ISecretaryAccountRepository repository;
+    private readonly IAccountantRepository repository;
     private readonly IUnitOfWork unitOfWork;
 
-    public UpdateSecretaryFinancialTransactionCommandHandler(
-        ISecretaryAccountRepository repository,
+    public UpdateFinancialTransactionCommandHandler(
+        IAccountantRepository repository,
         IUnitOfWork unitOfWork)
     {
         this.repository = repository;
         this.unitOfWork = unitOfWork;
     }
 
-    public async Task<Result<CreateSecretaryFinancialTransactionResponse>> HandleAsync(
-        UpdateSecretaryFinancialTransactionCommand command,
+    public async Task<Result<CreateFinancialTransactionResponse>> HandleAsync(
+        UpdateFinancialTransactionCommand command,
         CancellationToken cancellationToken = default)
     {
         var transaction = await repository.FinancialTransactions
             .FirstOrDefaultAsync(x => x.Id == command.Id && !x.IsDeleted, cancellationToken);
         if (transaction is null)
         {
-            return Result<CreateSecretaryFinancialTransactionResponse>.Failure(
-                SecretaryAccountConstants.TransactionNotFoundMessage);
+            return Result<CreateFinancialTransactionResponse>.Failure(
+                AccountantConstants.TransactionNotFoundMessage);
         }
 
         if (command.Type == FinancialTransactionType.Expense)
@@ -41,8 +41,8 @@ public sealed class UpdateSecretaryFinancialTransactionCommandHandler
                 .AnyAsync(x => x.Id == command.ExpenseCategoryId && !x.IsDeleted && x.IsActive, cancellationToken);
             if (!categoryIsActive)
             {
-                return Result<CreateSecretaryFinancialTransactionResponse>.Failure(
-                    SecretaryAccountConstants.InvalidExpenseCategoryMessage);
+                return Result<CreateFinancialTransactionResponse>.Failure(
+                    AccountantConstants.InvalidExpenseCategoryMessage);
             }
         }
 
@@ -58,9 +58,9 @@ public sealed class UpdateSecretaryFinancialTransactionCommandHandler
 
         await unitOfWork.SaveChangesAsync();
 
-        return Result<CreateSecretaryFinancialTransactionResponse>.Success(
-            new CreateSecretaryFinancialTransactionResponse(transaction.Id),
-            SecretaryAccountConstants.TransactionUpdatedMessage);
+        return Result<CreateFinancialTransactionResponse>.Success(
+            new CreateFinancialTransactionResponse(transaction.Id),
+            AccountantConstants.TransactionUpdatedMessage);
     }
 
     private static string? Normalize(string? value) =>

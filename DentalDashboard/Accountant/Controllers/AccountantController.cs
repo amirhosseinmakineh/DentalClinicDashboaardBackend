@@ -13,18 +13,19 @@ namespace DentalDashboard.Accountant.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/secretary/account")]
-public sealed class SecretaryAccountController : ControllerBase
+[Route("api/accountant")]
+public sealed class AccountantController : ControllerBase
 {
     private readonly ICommandDispatcher commandDispatcher;
     private readonly IQueryDispatcher queryDispatcher;
-    private readonly IValidator<CreateSecretaryFinancialTransactionCommand> validator;
-    private readonly IValidator<UpdateSecretaryFinancialTransactionCommand> updateValidator;
+    private readonly IValidator<CreateFinancialTransactionCommand> validator;
+    private readonly IValidator<UpdateFinancialTransactionCommand> updateValidator;
 
-    public SecretaryAccountController(
+    public AccountantController(
         ICommandDispatcher commandDispatcher,
         IQueryDispatcher queryDispatcher,
-        IValidator<CreateSecretaryFinancialTransactionCommand> validator,
-        IValidator<UpdateSecretaryFinancialTransactionCommand> updateValidator)
+        IValidator<CreateFinancialTransactionCommand> validator,
+        IValidator<UpdateFinancialTransactionCommand> updateValidator)
     {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
@@ -33,7 +34,7 @@ public sealed class SecretaryAccountController : ControllerBase
     }
 
     [HttpPost("financial-transactions")]
-    public async Task<IActionResult> CreateTransaction(CreateSecretaryFinancialTransactionCommand command, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateTransaction(CreateFinancialTransactionCommand command, CancellationToken cancellationToken)
     {
         if (!TryGetCurrentUserId(out var userId))
         {
@@ -53,7 +54,7 @@ public sealed class SecretaryAccountController : ControllerBase
     }
 
     [HttpGet("financial-transactions")]
-    public async Task<IActionResult> GetTransactions([FromQuery] GetSecretaryFinancialTransactionsQuery query, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetTransactions([FromQuery] GetFinancialTransactionsQuery query, CancellationToken cancellationToken)
     {
         return Ok(await queryDispatcher.DispatchAsync(query, cancellationToken));
     }
@@ -61,7 +62,7 @@ public sealed class SecretaryAccountController : ControllerBase
     [HttpPut("financial-transactions/{id:long}")]
     public async Task<IActionResult> UpdateTransaction(
         long id,
-        UpdateSecretaryFinancialTransactionCommand command,
+        UpdateFinancialTransactionCommand command,
         CancellationToken cancellationToken)
     {
         command.Id = id;
@@ -85,12 +86,12 @@ public sealed class SecretaryAccountController : ControllerBase
         }
 
         var result = await commandDispatcher.DispatchAsync(
-            new DeleteSecretaryFinancialTransactionCommand(id), cancellationToken);
+            new DeleteFinancialTransactionCommand(id), cancellationToken);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
     [HttpGet("financial-transactions/summary")]
-    public async Task<IActionResult> GetSummary([FromQuery] GetSecretaryFinancialSummaryQuery query, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetSummary([FromQuery] GetFinancialSummaryQuery query, CancellationToken cancellationToken)
     {
         return Ok(await queryDispatcher.DispatchAsync(query, cancellationToken));
     }
@@ -99,7 +100,7 @@ public sealed class SecretaryAccountController : ControllerBase
     public async Task<IActionResult> GetTransaction(long id, CancellationToken cancellationToken)
     {
         var result = await queryDispatcher.DispatchAsync(
-            new GetSecretaryFinancialTransactionDetailsQuery { Id = id },
+            new GetFinancialTransactionDetailsQuery { Id = id },
             cancellationToken);
         return result is null ? NotFound(Result.Failure("تراکنش مالی یافت نشد")) : Ok(result);
     }
@@ -113,7 +114,7 @@ public sealed class SecretaryAccountController : ControllerBase
         }
 
         var receipt = await queryDispatcher.DispatchAsync(
-            new GetSecretaryFinancialTransactionReceiptQuery { Id = id },
+            new GetFinancialTransactionReceiptQuery { Id = id },
             cancellationToken);
 
         if (receipt is null)
@@ -129,7 +130,7 @@ public sealed class SecretaryAccountController : ControllerBase
     [HttpGet("expense-categories")]
     public async Task<IActionResult> GetExpenseCategories(CancellationToken cancellationToken)
     {
-        return Ok(await queryDispatcher.DispatchAsync(new GetSecretaryExpenseCategoriesQuery(), cancellationToken));
+        return Ok(await queryDispatcher.DispatchAsync(new GetAvailableExpenseCategoriesQuery(), cancellationToken));
     }
 
     private bool TryGetCurrentUserId(out Guid userId)

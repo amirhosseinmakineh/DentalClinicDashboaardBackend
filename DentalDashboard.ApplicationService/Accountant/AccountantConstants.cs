@@ -1,6 +1,6 @@
 namespace DentalDashboard.ApplicationService.Accountant;
 
-internal static class SecretaryAccountConstants
+internal static class AccountantConstants
 {
     internal const int DefaultPage = 1;
     internal const int MinimumPageSize = 1;

@@ -27,7 +27,7 @@ public sealed class CreateExpenseCategoryCommandHandler
         if (titleExists)
         {
             return Result<CreateExpenseResponse>.Failure(
-                SecretaryAccountConstants.ExpenseCategoryDuplicateTitleMessage);
+                AccountantConstants.ExpenseCategoryDuplicateTitleMessage);
         }
 
         var category = new ExpenseCategory
@@ -41,6 +41,6 @@ public sealed class CreateExpenseCategoryCommandHandler
 
         return Result<CreateExpenseResponse>.Success(
             new CreateExpenseResponse(category.Id, category.Title, category.IsActive),
-            SecretaryAccountConstants.ExpenseCategoryCreatedMessage);
+            AccountantConstants.ExpenseCategoryCreatedMessage);
     }
 }

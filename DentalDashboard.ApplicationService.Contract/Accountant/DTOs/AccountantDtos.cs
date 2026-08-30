@@ -2,22 +2,22 @@ using DentalDashboard.Domain.Accountant.Enums;
 
 namespace DentalDashboard.ApplicationService.Contract.Accountant.DTOs;
 
-public sealed record SecretaryExpenseCategoryDto(long Id, string Title);
+public sealed record ExpenseCategoryDto(long Id, string Title);
 
-public sealed record SecretaryFinancialSummaryDto(
+public sealed record FinancialSummaryDto(
     decimal TotalIncome,
     decimal TotalExpense,
     decimal Balance,
     int IncomeCount,
     int ExpenseCount);
 
-public sealed record SecretaryFinancialTransactionPage(
-    IReadOnlyList<SecretaryFinancialTransactionDto> Items,
+public sealed record FinancialTransactionPage(
+    IReadOnlyList<FinancialTransactionDto> Items,
     int Page,
     int PageSize,
     int TotalCount);
 
-public sealed class SecretaryFinancialTransactionDto
+public sealed class FinancialTransactionDto
 {
     public long Id { get; init; }
     public FinancialTransactionType Type { get; init; }

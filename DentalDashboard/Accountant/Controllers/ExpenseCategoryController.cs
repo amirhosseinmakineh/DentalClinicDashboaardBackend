@@ -12,6 +12,7 @@ namespace DentalDashboard.Accountant.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/secretary/expense-categories")]
+[Route("api/accountant/expense-category-management")]
 public sealed class ExpenseCategoryController : ControllerBase
 {
     private readonly ICommandDispatcher commandDispatcher;

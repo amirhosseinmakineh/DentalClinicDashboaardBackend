@@ -4,7 +4,7 @@ using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Contract.Accountant.Queries;
 
-public sealed class GetSecretaryFinancialSummaryQuery : IQuery<Result<SecretaryFinancialSummaryDto>>
+public sealed class GetFinancialSummaryQuery : IQuery<Result<FinancialSummaryDto>>
 {
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }

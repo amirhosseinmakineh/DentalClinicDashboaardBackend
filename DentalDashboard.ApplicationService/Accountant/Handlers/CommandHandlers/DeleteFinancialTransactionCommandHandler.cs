@@ -7,14 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Accountant.Handlers.CommandHandlers;
 
-public sealed class DeleteSecretaryFinancialTransactionCommandHandler
-    : ICommandHandler<DeleteSecretaryFinancialTransactionCommand>
+public sealed class DeleteFinancialTransactionCommandHandler
+    : ICommandHandler<DeleteFinancialTransactionCommand>
 {
-    private readonly ISecretaryAccountRepository repository;
+    private readonly IAccountantRepository repository;
     private readonly IUnitOfWork unitOfWork;
 
-    public DeleteSecretaryFinancialTransactionCommandHandler(
-        ISecretaryAccountRepository repository,
+    public DeleteFinancialTransactionCommandHandler(
+        IAccountantRepository repository,
         IUnitOfWork unitOfWork)
     {
         this.repository = repository;
@@ -22,14 +22,14 @@ public sealed class DeleteSecretaryFinancialTransactionCommandHandler
     }
 
     public async Task<Result> HandleAsync(
-        DeleteSecretaryFinancialTransactionCommand command,
+        DeleteFinancialTransactionCommand command,
         CancellationToken cancellationToken = default)
     {
         var transaction = await repository.FinancialTransactions
             .FirstOrDefaultAsync(x => x.Id == command.Id && !x.IsDeleted, cancellationToken);
         if (transaction is null)
         {
-            return Result.Failure(SecretaryAccountConstants.TransactionNotFoundMessage);
+            return Result.Failure(AccountantConstants.TransactionNotFoundMessage);
         }
 
         var now = DateTime.UtcNow;
@@ -38,6 +38,6 @@ public sealed class DeleteSecretaryFinancialTransactionCommandHandler
         transaction.UpdatedAt = now;
         await unitOfWork.SaveChangesAsync();
 
-        return Result.Success(SecretaryAccountConstants.TransactionDeletedMessage);
+        return Result.Success(AccountantConstants.TransactionDeletedMessage);
     }
 }

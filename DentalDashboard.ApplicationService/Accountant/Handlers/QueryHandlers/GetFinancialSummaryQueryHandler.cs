@@ -12,15 +12,15 @@ using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Accountant.Handlers.QueryHandlers;
-public sealed class GetSecretaryFinancialSummaryQueryHandler : IQueryHandler<GetSecretaryFinancialSummaryQuery, Result<SecretaryFinancialSummaryDto>>
+public sealed class GetFinancialSummaryQueryHandler : IQueryHandler<GetFinancialSummaryQuery, Result<FinancialSummaryDto>>
 {
-    private readonly ISecretaryAccountRepository repository;
-    public GetSecretaryFinancialSummaryQueryHandler(ISecretaryAccountRepository repository)
+    private readonly IAccountantRepository repository;
+    public GetFinancialSummaryQueryHandler(IAccountantRepository repository)
     {
         this.repository = repository;
     }
 
-    public async Task<Result<SecretaryFinancialSummaryDto>> HandleAsync(GetSecretaryFinancialSummaryQuery query, CancellationToken cancellationToken = default)
+    public async Task<Result<FinancialSummaryDto>> HandleAsync(GetFinancialSummaryQuery query, CancellationToken cancellationToken = default)
     {
         var transactions = repository.FinancialTransactions.AsNoTracking().Where(x => !x.IsDeleted);
         if (query.FromDate.HasValue)
@@ -40,7 +40,7 @@ public sealed class GetSecretaryFinancialSummaryQueryHandler : IQueryHandler<Get
         }).FirstOrDefaultAsync(cancellationToken);
         var income = totals?.Income ?? 0;
         var expense = totals?.Expense ?? 0;
-        return Result<SecretaryFinancialSummaryDto>.Success(new SecretaryFinancialSummaryDto(income, expense, income - expense, totals?.IncomeCount ?? 0, totals?.ExpenseCount ?? 0));
+        return Result<FinancialSummaryDto>.Success(new FinancialSummaryDto(income, expense, income - expense, totals?.IncomeCount ?? 0, totals?.ExpenseCount ?? 0));
     }
 }
 

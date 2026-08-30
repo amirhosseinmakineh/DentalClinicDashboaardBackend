@@ -5,7 +5,7 @@ using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.ApplicationService.Contract.Accountant.Queries;
 
-public sealed class GetSecretaryFinancialTransactionsQuery : IQuery<Result<SecretaryFinancialTransactionPage>>
+public sealed class GetFinancialTransactionsQuery : IQuery<Result<FinancialTransactionPage>>
 {
     public const int DefaultPage = 1;
     public const int DefaultPageSize = 20;

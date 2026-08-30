@@ -1,6 +1,7 @@
 ﻿using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using DentalDashboard.Domain.Secretary.Account.Entities;
+using DentalDashboard.Domain.Secretary.PatientFinance.Entities;
 
 namespace DentalDashboard.Infrastracture.Context
 {
@@ -26,6 +27,11 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<ServiceLog> ServiceLogs => Set<ServiceLog>();
         public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
         public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+        public DbSet<PatientFinancialCase> PatientFinancialCases => Set<PatientFinancialCase>();
+        public DbSet<PatientCheque> PatientCheques => Set<PatientCheque>();
+        public DbSet<PatientPromissoryNote> PatientPromissoryNotes => Set<PatientPromissoryNote>();
+        public DbSet<PatientDebt> PatientDebts => Set<PatientDebt>();
+        public DbSet<PatientFinancialTransaction> PatientFinancialTransactions => Set<PatientFinancialTransaction>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

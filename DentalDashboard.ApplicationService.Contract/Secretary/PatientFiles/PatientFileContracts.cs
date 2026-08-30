@@ -1,4 +1,5 @@
 using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.Secretary.PatientFinance.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -6,7 +7,35 @@ using DentalDashboard.Framwork.Domain;
 namespace DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles;
 
 public sealed record PatientFileDto(long Id, long? PatientId, long FileNumber, string FirstName,
-    string LastName, string PhoneNumber, PatientFileSourceType SourceType, DateTime CreatedAt);
+    string LastName, string PhoneNumber, PatientFileSourceType SourceType, DateTime CreatedAt,
+    PatientFileFinanceDto? Finance);
+
+public sealed record PatientFileFinanceDto(
+    long FinancialPatientId, decimal TotalTreatmentAmount, decimal TotalPaidAmount,
+    decimal RemainingAmount, decimal TotalDebtAmount, int ActiveFinancialCasesCount,
+    int UnpaidChequesCount, int UnpaidPromissoryNotesCount,
+    IReadOnlyList<PatientFileFinancialCaseDto> Cases);
+
+public sealed record PatientFileFinancialCaseDto(
+    long Id, int ServiceId, string ServiceName, decimal TotalAmount,
+    decimal TotalPaidAmount, decimal RemainingAmount, decimal TotalDebtAmount,
+    PatientFinancialAgreementType AgreementType, PatientFinancialCaseStatus Status,
+    DateTime CreatedAt, IReadOnlyList<PatientFileChequeDto> Cheques,
+    IReadOnlyList<PatientFilePromissoryNoteDto> PromissoryNotes,
+    IReadOnlyList<PatientFileDebtDto> Debts,
+    IReadOnlyList<PatientFileTransactionDto> Transactions);
+
+public sealed record PatientFileChequeDto(long Id, decimal Amount, string SayadNumber,
+    string OwnerName, DateTime DueDate, PatientChequeStatus Status);
+public sealed record PatientFilePromissoryNoteDto(long Id, string SerialNumber,
+    decimal Amount, DateTime DueDate, PatientPromissoryNoteStatus Status);
+public sealed record PatientFileDebtDto(long Id, decimal Amount,
+    PatientDebtSourceType SourceType, long SourceId, DateTime DueDate,
+    PatientDebtStatus Status);
+public sealed record PatientFileTransactionDto(long Id, decimal Amount,
+    PatientFinancialTransactionType Type,
+    PatientFinancialTransactionSourceType SourceType, long SourceId,
+    DateTime CreatedAt);
 public sealed record EligiblePatientDto(long PatientId, string FirstName, string LastName, string PhoneNumber)
 {
     // LeadAssignment is the patient reference in the current domain. Exposing the

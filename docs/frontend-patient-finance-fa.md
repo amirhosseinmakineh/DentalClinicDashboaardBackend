@@ -329,6 +329,7 @@ GET /api/secretary/patient-financial-cases?search=0912&status=1&page=1&pageSize=
 interface PatientFinancialCase {
   id: number;
   patientId: number;
+  userId: string; // شناسه کاربر بیمار (GUID)
   patientName: string;
   patientPhoneNumber: string | null;
   serviceId: number;
@@ -771,4 +772,3 @@ export class PatientFinanceApiService {
 - [ ] بعد از Mutation، Summary و Listهای مرتبط Reload می‌شوند.
 - [ ] برای تراکنش قطعی دکمه Edit/Delete نمایش داده نمی‌شود.
 - [ ] Cancel Case به‌عنوان لغو وضعیت نمایش داده می‌شود، نه حذف سابقه مالی.
-

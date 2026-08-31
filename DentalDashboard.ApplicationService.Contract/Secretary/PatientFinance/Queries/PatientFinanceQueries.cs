@@ -82,7 +82,8 @@ public sealed class GetDuePatientFinancialCommitmentsQuery
 public sealed record PatientFinancialCaseDto(
     long Id, long PatientId, Guid UserId, string PatientName,
     string? PatientPhoneNumber, int ServiceId, string ServiceName, decimal TotalAmount,
-    decimal TotalPaidAmount, decimal RemainingAmount, decimal TotalDebtAmount,
+    decimal InitialPaymentAmount, decimal TotalPaidAmount,
+    decimal RemainingAmount, decimal TotalDebtAmount,
     PatientFinancialAgreementType AgreementType,
     PatientFinancialCaseStatus Status, DateTime CreatedAt);
 public sealed record PatientFinancialCaseDetailsDto(
@@ -115,7 +116,8 @@ public sealed record PatientFinancialSummaryDto(
     int ActiveFinancialCasesCount, int UnpaidChequesCount,
     int UnpaidPromissoryNotesCount);
 public sealed record PatientFinancialCaseSummaryDto(
-    decimal TotalAmount, decimal TotalPaidAmount, decimal RemainingAmount,
+    decimal TotalAmount, decimal InitialPaymentAmount, decimal TotalPaidAmount,
+    decimal RemainingAmount,
     decimal TotalChequeAmount, decimal PaidChequeAmount,
     decimal PendingChequeAmount, decimal UnpaidChequeAmount,
     decimal TotalPromissoryNoteAmount, decimal PaidPromissoryNoteAmount,

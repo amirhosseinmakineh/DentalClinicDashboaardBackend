@@ -12,7 +12,7 @@
 
 ```text
 Patient
-└── Financial Case (Service + TotalAmount)
+└── Financial Case (Service + TotalAmount + InitialPaymentAmount)
     ├── Cheques
     ├── Promissory Notes
     ├── Debts
@@ -20,7 +20,8 @@ Patient
 ```
 
 - ثبت چک یا سفته **پرداخت محسوب نمی‌شود**.
-- مبلغ فقط بعد از تغییر وضعیت چک/سفته به `Paid` یا تسویه Debt وارد `totalPaidAmount` می‌شود.
+- مبلغ `initialPaymentAmount` همان وجه نقدی پیش‌پرداخت/ودیعه در لحظه ساخت پرونده است و بلافاصله در `totalPaidAmount` محاسبه می‌شود.
+- مبلغ چک یا سفته فقط بعد از تغییر وضعیت آن به `Paid` یا تسویه Debt وارد `totalPaidAmount` می‌شود.
 - `remainingAmount` و Summaryها را Frontend محاسبه نکند؛ مقدار Backend مرجع نهایی است.
 - رکوردهای مالی حذف فیزیکی نمی‌شوند. حذف پرونده در UI به معنی Cancel کردن آن است.
 - مبالغ JSON از نوع number هستند، ولی به دلیل دقت مالی در UI با کتابخانه/روش امن نمایش داده شوند و هیچ‌وقت از محاسبات float به عنوان مقدار نهایی استفاده نشود.
@@ -192,6 +193,7 @@ financialCaseForm = this.fb.group({
   patientId: this.fb.control<number | null>(null, Validators.required),
   serviceId: this.fb.control<number | null>(null, Validators.required),
   totalAmount: this.fb.control<number | null>(null, [Validators.required, Validators.min(1)]),
+  initialPaymentAmount: this.fb.control<number | null>(null, [Validators.required, Validators.min(1)]),
   agreementType: this.fb.control<1 | 2>(2, Validators.required),
   cheques: this.fb.array<FormGroup>([]),
   promissoryNotes: this.fb.array<FormGroup>([]),
@@ -256,6 +258,7 @@ POST /api/secretary/patient-financial-cases
   "patientId": 125,
   "serviceId": 1,
   "totalAmount": 150000000,
+  "initialPaymentAmount": 15000000,
   "agreementType": 1,
   "cheques": [
     {
@@ -335,6 +338,7 @@ interface PatientFinancialCase {
   serviceId: number;
   serviceName: string;
   totalAmount: number;
+  initialPaymentAmount: number;
   totalPaidAmount: number;
   remainingAmount: number;
   totalDebtAmount: number;
@@ -371,6 +375,7 @@ PUT /api/secretary/patient-financial-cases/{caseId}
 ```json
 {
   "totalAmount": 170000000,
+  "initialPaymentAmount": 20000000,
   "agreementType": 2
 }
 ```
@@ -595,6 +600,7 @@ GET /api/secretary/patient-financial-cases/{caseId}/summary
 ```ts
 interface PatientFinancialCaseSummary {
   totalAmount: number;
+  initialPaymentAmount: number;
   totalPaidAmount: number;
   remainingAmount: number;
   totalChequeAmount: number;
@@ -742,6 +748,7 @@ export class PatientFinanceApiService {
 - تعهد قبلاً پرداخت شده است.
 - پرداخت از مبلغ کل درمان بیشتر می‌شود.
 - مبلغ کل جدید کمتر از پرداخت قطعی است.
+- مبلغ پیش‌پرداخت/ودیعه صفر یا منفی است، یا از مبلغ کل بیشتر است.
 
 بعد از هر Mutation موفق، حداقل داده‌های زیر Invalid/Reload شوند:
 
@@ -761,6 +768,7 @@ export class PatientFinanceApiService {
 - [ ] دکمه‌های «چک بعدی» و «سفته بعدی» هم‌زمان در دسترس‌اند.
 - [ ] تعداد نامحدود Row قابل اضافه‌شدن است و هر Row قبل از Submit قابل حذف است.
 - [ ] PrePayment بدون هیچ تعهدی Submit نمی‌شود؛ Deposit بدون تعهد مجاز است.
+- [ ] `initialPaymentAmount` اجباری، مثبت و حداکثر برابر `totalAmount` است؛ عنوان آن بر اساس نوع توافق «مبلغ پیش‌پرداخت» یا «مبلغ ودیعه» نمایش داده می‌شود.
 - [ ] شماره صیاد، صاحب چک، سریال سفته، مبلغ مثبت و DueDate در Client Validate می‌شوند.
 - [ ] تاریخ‌ها ISO ارسال و تاریخ شمسی فقط در Presentation استفاده می‌شود.
 - [ ] ثبت چک/سفته به عنوان پرداخت نمایش داده نمی‌شود.

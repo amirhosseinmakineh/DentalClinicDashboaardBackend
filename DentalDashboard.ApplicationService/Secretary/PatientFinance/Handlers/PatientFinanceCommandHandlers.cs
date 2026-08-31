@@ -38,6 +38,12 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
     if (c.TotalAmount <= 0)
       return Result<PatientFinanceIdResponse>.Failure(
           "مبلغ کل باید بیشتر از صفر باشد");
+    if (c.InitialPaymentAmount <= 0)
+      return Result<PatientFinanceIdResponse>.Failure(
+          "مبلغ پیش‌پرداخت یا ودیعه باید بیشتر از صفر باشد");
+    if (c.InitialPaymentAmount > c.TotalAmount)
+      return Result<PatientFinanceIdResponse>.Failure(
+          "مبلغ پیش‌پرداخت یا ودیعه نمی‌تواند از مبلغ کل بیشتر باشد");
     if (!Enum.IsDefined(c.AgreementType))
       return Result<PatientFinanceIdResponse>.Failure("نوع توافق معتبر نیست");
     if (!Enum.IsDefined(typeof(DentalServiceType), c.ServiceId))
@@ -65,7 +71,12 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
     }
     var entity = new PatientFinancialCase {
       PatientId = c.PatientId, Service = (DentalServiceType)c.ServiceId,
-      TotalAmount = c.TotalAmount, AgreementType = c.AgreementType,
+      TotalAmount = c.TotalAmount,
+      InitialPaymentAmount = c.InitialPaymentAmount,
+      AgreementType = c.AgreementType,
+      Status = c.InitialPaymentAmount == c.TotalAmount
+                   ? PatientFinancialCaseStatus.Completed
+                   : PatientFinancialCaseStatus.Active,
       CreatedBySecretaryUserId = c.SecretaryUserId
     };
     foreach (var x in cheques)
@@ -144,12 +155,21 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     if (x.Status != PatientFinancialCaseStatus.Active)
       return Result<PatientFinanceIdResponse>.Failure(
           "فقط پرونده فعال قابل ویرایش است");var paid=await repo.Transactions.Where(t=>t.PatientFinancialCaseId==c.Id).SumAsync(t=>(decimal?)t.Amount,ct)??0;
-    if (c.TotalAmount <= 0 || c.TotalAmount < paid)
+    if (!Enum.IsDefined(c.AgreementType))
+      return Result<PatientFinanceIdResponse>.Failure("نوع توافق معتبر نیست");
+    if (c.InitialPaymentAmount <= 0)
+      return Result<PatientFinanceIdResponse>.Failure(
+          "مبلغ پیش‌پرداخت یا ودیعه باید بیشتر از صفر باشد");
+    if (c.TotalAmount <= 0 ||
+        c.TotalAmount < paid + c.InitialPaymentAmount)
       return Result<PatientFinanceIdResponse>.Failure(
           "مبلغ کل نمی‌تواند کمتر از پرداخت قطعی " +
           "باشد");
     x.TotalAmount = c.TotalAmount;
+    x.InitialPaymentAmount = c.InitialPaymentAmount;
     x.AgreementType = c.AgreementType;
+    if (paid + c.InitialPaymentAmount == c.TotalAmount)
+      x.Status = PatientFinancialCaseStatus.Completed;
     x.UpdatedAt = DateTime.UtcNow;
     await uow.SaveChangesAsync();
     return Result<PatientFinanceIdResponse>.Success(new(x.Id));
@@ -195,7 +215,7 @@ public sealed class UpdatePatientChequeStatusCommandHandler(
         return Result<PatientFinanceIdResponse>.Failure(
             "وضعیت چک قبلاً تعیین شده و قابل تغییر نیست");
       }
-      if (c.Status == PatientChequeStatus.Paid) {var paid=await repo.Transactions.Where(t=>t.PatientFinancialCaseId==x.PatientFinancialCaseId).SumAsync(t=>(decimal?)t.Amount,ct)??0;
+      if (c.Status == PatientChequeStatus.Paid) {var paid=x.FinancialCase.InitialPaymentAmount+(await repo.Transactions.Where(t=>t.PatientFinancialCaseId==x.PatientFinancialCaseId).SumAsync(t=>(decimal?)t.Amount,ct)??0);
         if (paid + x.Amount > x.FinancialCase.TotalAmount) {
           await uow.RollbackAsync();
           return Result<PatientFinanceIdResponse>.Failure(
@@ -260,7 +280,7 @@ public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
         return Result<PatientFinanceIdResponse>.Failure(
             "وضعیت سفته قبلاً تعیین شده و قابل تغییر نیست");
       }
-      if (c.Status == PatientPromissoryNoteStatus.Paid) {var paid=await repo.Transactions.Where(t=>t.PatientFinancialCaseId==x.PatientFinancialCaseId).SumAsync(t=>(decimal?)t.Amount,ct)??0;
+      if (c.Status == PatientPromissoryNoteStatus.Paid) {var paid=x.FinancialCase.InitialPaymentAmount+(await repo.Transactions.Where(t=>t.PatientFinancialCaseId==x.PatientFinancialCaseId).SumAsync(t=>(decimal?)t.Amount,ct)??0);
         if (paid + x.Amount > x.FinancialCase.TotalAmount) {
           await uow.RollbackAsync();
           return Result<PatientFinanceIdResponse>.Failure(
@@ -325,7 +345,7 @@ public sealed class PayPatientDebtCommandHandler(IPatientFinanceRepository repo,
         await uow.RollbackAsync();
         return Result<PatientFinanceIdResponse>.Failure(
             "این تعهد قبلاً پرداخت شده است");
-      }var paid=await repo.Transactions.Where(x=>x.PatientFinancialCaseId==d.PatientFinancialCaseId).SumAsync(x=>(decimal?)x.Amount,ct)??0;
+      }var paid=d.FinancialCase.InitialPaymentAmount+(await repo.Transactions.Where(x=>x.PatientFinancialCaseId==d.PatientFinancialCaseId).SumAsync(x=>(decimal?)x.Amount,ct)??0);
       if (paid + d.Amount > d.FinancialCase.TotalAmount) {
         await uow.RollbackAsync();
         return Result<PatientFinanceIdResponse>.Failure(

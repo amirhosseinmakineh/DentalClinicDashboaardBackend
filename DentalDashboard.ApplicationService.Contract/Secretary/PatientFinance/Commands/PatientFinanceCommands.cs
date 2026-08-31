@@ -17,6 +17,7 @@ public sealed class CreatePatientFinancialCaseCommand
   public long PatientId { get; set; }
   public int ServiceId { get; set; }
   public decimal TotalAmount { get; set; }
+  public decimal InitialPaymentAmount { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
   public List<CreatePatientChequeDto>? Cheques { get; set; }
   public List<CreatePatientPromissoryNoteDto>? PromissoryNotes { get; set; }
@@ -30,6 +31,7 @@ public sealed class UpdatePatientFinancialCaseCommand
   [JsonIgnore]
   public long Id { get; set; }
   public decimal TotalAmount { get; set; }
+  public decimal InitialPaymentAmount { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
 }
 public sealed record CancelPatientFinancialCaseCommand(long Id)

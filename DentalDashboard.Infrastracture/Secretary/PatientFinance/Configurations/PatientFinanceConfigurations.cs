@@ -8,6 +8,7 @@ public sealed class PatientFinancialCaseConfiguration
     : IEntityTypeConfiguration<PatientFinancialCase> {
   public void Configure(EntityTypeBuilder<PatientFinancialCase> b) {
     b.Property(x => x.TotalAmount).HasPrecision(18, 2);
+    b.Property(x => x.InitialPaymentAmount).HasPrecision(18, 2);
     b.HasIndex(x => x.PatientId);
     b.HasOne(x => x.Patient)
         .WithMany()

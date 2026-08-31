@@ -83,8 +83,10 @@ internal static class PatientFileFinanceLoader
                 x.PatientId,
                 Case = new PatientFileFinancialCaseDto(
                     x.Id, (int)x.Service, x.Service.ToString(), x.TotalAmount,
-                    x.Transactions.Sum(t => (decimal?)t.Amount) ?? 0,
-                    x.TotalAmount - (x.Transactions.Sum(t => (decimal?)t.Amount) ?? 0),
+                    x.InitialPaymentAmount,
+                    x.InitialPaymentAmount + (x.Transactions.Sum(t => (decimal?)t.Amount) ?? 0),
+                    x.TotalAmount - x.InitialPaymentAmount -
+                        (x.Transactions.Sum(t => (decimal?)t.Amount) ?? 0),
                     x.Debts.Where(d => d.Status == PatientDebtStatus.Unpaid).Sum(d => (decimal?)d.Amount) ?? 0,
                     x.AgreementType, x.Status, x.CreatedAt,
                     x.Cheques.OrderBy(c => c.DueDate).Select(c => new PatientFileChequeDto(

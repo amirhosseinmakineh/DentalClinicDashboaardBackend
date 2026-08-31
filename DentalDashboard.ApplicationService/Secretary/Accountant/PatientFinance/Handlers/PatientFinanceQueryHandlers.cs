@@ -75,7 +75,7 @@ public sealed class GetPatientFinancialCasesQueryHandler(
             a.Id, a.PatientId, a.Patient.Id,
             (a.Patient.FirstName + " " + a.Patient.LastName).Trim(),
             a.Patient.PhoneNumber, (int)a.Service, a.Service.ToString(),
-            a.TotalAmount,
+            a.TotalAmount, a.PrePaymentAmount, a.DepositAmount,
             a.Transactions.Sum(t => (decimal?)t.Amount) ?? 0,
             a.TotalAmount - (a.Transactions.Sum(t => (decimal?)t.Amount) ?? 0),
             a.Debts.Where(d => d.Status == PatientDebtStatus.Unpaid)
@@ -94,7 +94,7 @@ public sealed class GetPatientFinancialCasesQueryHandler(
 public sealed class GetPatientFinancialCaseDetailsQueryHandler(
     IPatientFinanceRepository repo)
     : IQueryHandler<GetPatientFinancialCaseDetailsQuery,
-                    PatientFinancialCaseDetailsDto?> {public Task<PatientFinancialCaseDetailsDto?> HandleAsync(GetPatientFinancialCaseDetailsQuery q,CancellationToken ct=default)=>repo.Cases.AsNoTracking().Where(a=>a.Id==q.PatientFinancialCaseId).Select(a=>new PatientFinancialCaseDetailsDto(new(a.Id,a.PatientId,a.Patient.Id,(a.Patient.FirstName+" "+a.Patient.LastName).Trim(),a.Patient.PhoneNumber,(int)a.Service,a.Service.ToString(),a.TotalAmount,a.Transactions.Sum(t=>(decimal?)t.Amount)??0,a.TotalAmount-(a.Transactions.Sum(t=>(decimal?)t.Amount)??0),a.Debts.Where(d=>d.Status==PatientDebtStatus.Unpaid).Sum(d=>(decimal?)d.Amount)??0,a.AgreementType,a.Status,a.CreatedAt),a.Cheques.Count,a.Cheques.Sum(c=>(decimal?)c.Amount)??0,a.PromissoryNotes.Count,a.PromissoryNotes.Sum(n=>(decimal?)n.Amount)??0)).FirstOrDefaultAsync(ct);
+    PatientFinancialCaseDetailsDto?> {public Task<PatientFinancialCaseDetailsDto?> HandleAsync(GetPatientFinancialCaseDetailsQuery q,CancellationToken ct=default)=>repo.Cases.AsNoTracking().Where(a=>a.Id==q.PatientFinancialCaseId).Select(a=>new PatientFinancialCaseDetailsDto(new(a.Id,a.PatientId,a.Patient.Id,(a.Patient.FirstName+" "+a.Patient.LastName).Trim(),a.Patient.PhoneNumber,(int)a.Service,a.Service.ToString(),a.TotalAmount,a.PrePaymentAmount,a.DepositAmount,a.Transactions.Sum(t=>(decimal?)t.Amount)??0,a.TotalAmount-(a.Transactions.Sum(t=>(decimal?)t.Amount)??0),a.Debts.Where(d=>d.Status==PatientDebtStatus.Unpaid).Sum(d=>(decimal?)d.Amount)??0,a.AgreementType,a.Status,a.CreatedAt),a.Cheques.Count,a.Cheques.Sum(c=>(decimal?)c.Amount)??0,a.PromissoryNotes.Count,a.PromissoryNotes.Sum(n=>(decimal?)n.Amount)??0)).FirstOrDefaultAsync(ct);
 }
 public sealed class GetPatientFinancialCaseSummaryQueryHandler(
     IPatientFinanceRepository repo)

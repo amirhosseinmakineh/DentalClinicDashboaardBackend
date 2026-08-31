@@ -8,6 +8,8 @@ public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
   public Guid PatientId { get; set; }
   public DentalServiceType Service { get; set; }
   public decimal TotalAmount { get; set; }
+  public decimal PrePaymentAmount { get; set; }
+  public decimal DepositAmount { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
   public PatientFinancialCaseStatus Status {
     get; set;

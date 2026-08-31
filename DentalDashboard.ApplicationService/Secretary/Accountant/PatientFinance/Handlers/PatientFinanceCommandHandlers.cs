@@ -38,6 +38,12 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
     if (c.TotalAmount <= 0)
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ کل باید بیشتر از صفر باشد");
+    if (c.PrePaymentAmount < 0 || c.DepositAmount < 0)
+      return Result<PatientFinancialCaseIdResponse>.Failure(
+          "مبلغ پیش‌پرداخت و ودیعه نمی‌تواند منفی باشد");
+    if (c.PrePaymentAmount + c.DepositAmount > c.TotalAmount)
+      return Result<PatientFinancialCaseIdResponse>.Failure(
+          "مجموع مبلغ پیش‌پرداخت و ودیعه نمی‌تواند بیشتر از مبلغ کل باشد");
     if (!Enum.IsDefined(c.AgreementType))
       return Result<PatientFinancialCaseIdResponse>.Failure("نوع توافق معتبر نیست");
     if (!Enum.IsDefined(typeof(DentalServiceType), c.ServiceId))
@@ -71,7 +77,8 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
     }
     var entity = new PatientFinancialCase {
       PatientId = patient.Id, Service = (DentalServiceType)c.ServiceId,
-      TotalAmount = c.TotalAmount, AgreementType = c.AgreementType,
+      TotalAmount = c.TotalAmount, PrePaymentAmount = c.PrePaymentAmount,
+      DepositAmount = c.DepositAmount, AgreementType = c.AgreementType,
       CreatedByUserId = c.ActorUserId
     };
     foreach (var x in cheques)
@@ -154,7 +161,15 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ کل نمی‌تواند کمتر از پرداخت قطعی " +
           "باشد");
+    if (c.PrePaymentAmount < 0 || c.DepositAmount < 0)
+      return Result<PatientFinancialCaseIdResponse>.Failure(
+          "مبلغ پیش‌پرداخت و ودیعه نمی‌تواند منفی باشد");
+    if (c.PrePaymentAmount + c.DepositAmount > c.TotalAmount)
+      return Result<PatientFinancialCaseIdResponse>.Failure(
+          "مجموع مبلغ پیش‌پرداخت و ودیعه نمی‌تواند بیشتر از مبلغ کل باشد");
     x.TotalAmount = c.TotalAmount;
+    x.PrePaymentAmount = c.PrePaymentAmount;
+    x.DepositAmount = c.DepositAmount;
     x.AgreementType = c.AgreementType;
     x.UpdatedAt = DateTime.UtcNow;
     await uow.SaveChangesAsync();

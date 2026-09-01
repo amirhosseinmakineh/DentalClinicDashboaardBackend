@@ -371,16 +371,50 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
                             .Where(f => f.PhoneNumber == x.FinancialCase.Patient.PhoneNumber)
                             .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                         x.Amount, x.DueDate, (int)x.Status));
-    var all = q.Type == PatientFinancialCommitmentType.Cheque ? cheques
-              : q.Type == PatientFinancialCommitmentType.PromissoryNote
-                  ? notes
-                  : cheques.Concat(notes);
     var (p, z) = QueryTools.Page(q);
-    var count = await all.CountAsync(ct);
-    var items = await all.OrderBy(x => x.DueDate)
-                    .Skip((p - 1) * z)
+    var skip = (p - 1) * z;
+
+    if (q.Type is PatientFinancialCommitmentType.Cheque or
+                  PatientFinancialCommitmentType.PromissoryNote) {
+      var selected = q.Type == PatientFinancialCommitmentType.Cheque
+                         ? cheques
+                         : notes;
+      var selectedCount = await selected.CountAsync(ct);
+      var selectedItems = await selected.OrderBy(x => x.DueDate)
+                              .ThenBy(x => x.Type)
+                              .ThenBy(x => x.Id)
+                              .Skip(skip)
+                              .Take(z)
+                              .ToListAsync(ct);
+      return new() { Items = selectedItems, TotalCount = selectedCount,
+                     PageNumber = p, PageSize = z };
+    }
+
+    // Applying Concat after these DTO projections is not translatable by EF
+    // Core because each projection contains a correlated patient-file lookup.
+    // Read only the prefix needed from each source, then merge that small result
+    // in memory so global ordering and pagination remain correct.
+    var chequeCount = await cheques.CountAsync(ct);
+    var noteCount = await notes.CountAsync(ct);
+    var windowSize = skip + z;
+    var chequeWindow = await cheques.OrderBy(x => x.DueDate)
+                             .ThenBy(x => x.Type)
+                             .ThenBy(x => x.Id)
+                             .Take(windowSize)
+                             .ToListAsync(ct);
+    var noteWindow = await notes.OrderBy(x => x.DueDate)
+                           .ThenBy(x => x.Type)
+                           .ThenBy(x => x.Id)
+                           .Take(windowSize)
+                           .ToListAsync(ct);
+    var items = chequeWindow.Concat(noteWindow)
+                    .OrderBy(x => x.DueDate)
+                    .ThenBy(x => x.Type)
+                    .ThenBy(x => x.Id)
+                    .Skip(skip)
                     .Take(z)
-                    .ToListAsync(ct);
+                    .ToList();
+    var count = chequeCount + noteCount;
     return new() { Items = items, TotalCount = count, PageNumber = p,
                    PageSize = z };
   }

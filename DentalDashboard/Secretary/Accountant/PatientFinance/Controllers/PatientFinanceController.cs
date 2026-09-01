@@ -195,7 +195,8 @@ public sealed class PatientFinanceController(ICommandDispatcher commands, IQuery
         if (result.Message.Contains("قابل ویرایش نیست") ||
             result.Message.Contains("قابل لغو") ||
             result.Message.Contains("روز سررسید") ||
-            result.Message.Contains("قبلاً تعیین شده"))
+            result.Message.Contains("قبلاً تعیین شده") ||
+            result.Message.Contains("تسویه کامل بدهی امکان‌پذیر نیست"))
             return Conflict(result);
 
         return BadRequest(result);

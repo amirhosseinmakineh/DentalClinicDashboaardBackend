@@ -5,6 +5,7 @@ using DentalDashboard.Domain.Models;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
+using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance.Handlers;
@@ -256,6 +257,20 @@ public sealed class GetPatientDebtsQueryHandler(IPatientFinanceRepository repo)
       x = x.Where(a => a.SourceType == q.SourceType);
     if (q.Status.HasValue)
       x = x.Where(a => a.Status == q.Status);
+    if (q.Status == PatientDebtStatus.Unpaid)
+      x = x.Where(a =>
+          (a.SourceType == PatientDebtSourceType.Cheque
+               ? repo.Cheques.Any(c => c.Id == a.SourceId &&
+                                       c.Status == PatientChequeStatus.Unpaid)
+               : repo.PromissoryNotes.Any(n => n.Id == a.SourceId &&
+                   n.Status == PatientPromissoryNoteStatus.Unpaid)) &&
+          !repo.Transactions.Any(t =>
+              t.SourceId == a.SourceId &&
+              t.Type == PatientFinancialTransactionType.Payment &&
+              ((a.SourceType == PatientDebtSourceType.Cheque &&
+                t.SourceType == PatientFinancialTransactionSourceType.Cheque) ||
+               (a.SourceType == PatientDebtSourceType.PromissoryNote &&
+                t.SourceType == PatientFinancialTransactionSourceType.PromissoryNote))));
     var month = QueryTools.PersianMonth(q.Year, q.Month);
     if (month.HasValue)
       x = x.Where(a => a.DueDate >= month.Value.start &&
@@ -338,18 +353,22 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
   public async Task<PaginatedResult<PatientFinancialCommitmentDto>>
   HandleAsync(GetDuePatientFinancialCommitmentsQuery q,
               CancellationToken ct = default) {
-    var from = q.FromDate ?? DateTime.UtcNow.Date;
-    var to = q.ToDate ?? from.AddDays(7);
+    var today = IranTimeHelper.TodayInIran();
+    var defaultTo = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(3)).EndUtc;
+    var from = q.FromDate;
+    var to = q.ToDate ?? defaultTo;
     var cheques =
         repo.Cheques.AsNoTracking()
             .Where(x => x.Status == PatientChequeStatus.Pending &&
-                        x.DueDate >= from && x.DueDate <= to &&
+                        (!from.HasValue || x.DueDate >= from.Value) &&
+                        x.DueDate <= to &&
                         (q.PatientId == null ||
                          x.FinancialCase.PatientId == q.PatientId));
     var notes =
         repo.PromissoryNotes.AsNoTracking()
             .Where(x => x.Status == PatientPromissoryNoteStatus.Pending &&
-                        x.DueDate >= from && x.DueDate <= to &&
+                        (!from.HasValue || x.DueDate >= from.Value) &&
+                        x.DueDate <= to &&
                         (q.PatientId == null ||
                          x.FinancialCase.PatientId == q.PatientId));
     IQueryable<PatientFinancialCommitmentDto> SelectCheques(

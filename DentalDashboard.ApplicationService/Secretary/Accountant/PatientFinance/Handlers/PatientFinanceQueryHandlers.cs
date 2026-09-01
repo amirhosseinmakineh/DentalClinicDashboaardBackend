@@ -2,6 +2,7 @@ using System.Globalization;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance
     .Queries;
 using DentalDashboard.Domain.Models;
+using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
 using Microsoft.EntityFrameworkCore;
@@ -344,8 +345,16 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
             .Where(x => x.Status == PatientChequeStatus.Pending &&
                         x.DueDate >= from && x.DueDate <= to &&
                         (q.PatientId == null ||
-                         x.FinancialCase.PatientId == q.PatientId))
-            .Select(x => new PatientFinancialCommitmentDto(
+                         x.FinancialCase.PatientId == q.PatientId));
+    var notes =
+        repo.PromissoryNotes.AsNoTracking()
+            .Where(x => x.Status == PatientPromissoryNoteStatus.Pending &&
+                        x.DueDate >= from && x.DueDate <= to &&
+                        (q.PatientId == null ||
+                         x.FinancialCase.PatientId == q.PatientId));
+    IQueryable<PatientFinancialCommitmentDto> SelectCheques(
+        IQueryable<PatientCheque> query) =>
+        query.Select(x => new PatientFinancialCommitmentDto(
                         x.Id, PatientFinancialCommitmentType.Cheque,
                         x.PatientFinancialCaseId, x.FinancialCase.PatientId,
                         (x.FinancialCase.Patient.FirstName + " " +
@@ -355,13 +364,9 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
                             .Where(f => f.PhoneNumber == x.FinancialCase.Patient.PhoneNumber)
                             .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                         x.Amount, x.DueDate, (int)x.Status));
-    var notes =
-        repo.PromissoryNotes.AsNoTracking()
-            .Where(x => x.Status == PatientPromissoryNoteStatus.Pending &&
-                        x.DueDate >= from && x.DueDate <= to &&
-                        (q.PatientId == null ||
-                         x.FinancialCase.PatientId == q.PatientId))
-            .Select(x => new PatientFinancialCommitmentDto(
+    IQueryable<PatientFinancialCommitmentDto> SelectNotes(
+        IQueryable<PatientPromissoryNote> query) =>
+        query.Select(x => new PatientFinancialCommitmentDto(
                         x.Id, PatientFinancialCommitmentType.PromissoryNote,
                         x.PatientFinancialCaseId, x.FinancialCase.PatientId,
                         (x.FinancialCase.Patient.FirstName + " " +
@@ -374,17 +379,24 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
     var (p, z) = QueryTools.Page(q);
     var skip = (p - 1) * z;
 
-    if (q.Type is PatientFinancialCommitmentType.Cheque or
-                  PatientFinancialCommitmentType.PromissoryNote) {
-      var selected = q.Type == PatientFinancialCommitmentType.Cheque
-                         ? cheques
-                         : notes;
-      var selectedCount = await selected.CountAsync(ct);
-      var selectedItems = await selected.OrderBy(x => x.DueDate)
-                              .ThenBy(x => x.Type)
-                              .ThenBy(x => x.Id)
-                              .Skip(skip)
-                              .Take(z)
+    if (q.Type == PatientFinancialCommitmentType.Cheque) {
+      var selectedCount = await cheques.CountAsync(ct);
+      var selectedItems = await SelectCheques(
+                                  cheques.OrderBy(x => x.DueDate)
+                                      .ThenBy(x => x.Id)
+                                      .Skip(skip)
+                                      .Take(z))
+                              .ToListAsync(ct);
+      return new() { Items = selectedItems, TotalCount = selectedCount,
+                     PageNumber = p, PageSize = z };
+    }
+    if (q.Type == PatientFinancialCommitmentType.PromissoryNote) {
+      var selectedCount = await notes.CountAsync(ct);
+      var selectedItems = await SelectNotes(
+                                  notes.OrderBy(x => x.DueDate)
+                                      .ThenBy(x => x.Id)
+                                      .Skip(skip)
+                                      .Take(z))
                               .ToListAsync(ct);
       return new() { Items = selectedItems, TotalCount = selectedCount,
                      PageNumber = p, PageSize = z };
@@ -397,16 +409,16 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
     var chequeCount = await cheques.CountAsync(ct);
     var noteCount = await notes.CountAsync(ct);
     var windowSize = skip + z;
-    var chequeWindow = await cheques.OrderBy(x => x.DueDate)
-                             .ThenBy(x => x.Type)
-                             .ThenBy(x => x.Id)
-                             .Take(windowSize)
+    var chequeWindow = await SelectCheques(
+                                   cheques.OrderBy(x => x.DueDate)
+                                       .ThenBy(x => x.Id)
+                                       .Take(windowSize))
+                               .ToListAsync(ct);
+    var noteWindow = await SelectNotes(
+                                 notes.OrderBy(x => x.DueDate)
+                                     .ThenBy(x => x.Id)
+                                     .Take(windowSize))
                              .ToListAsync(ct);
-    var noteWindow = await notes.OrderBy(x => x.DueDate)
-                           .ThenBy(x => x.Type)
-                           .ThenBy(x => x.Id)
-                           .Take(windowSize)
-                           .ToListAsync(ct);
     var items = chequeWindow.Concat(noteWindow)
                     .OrderBy(x => x.DueDate)
                     .ThenBy(x => x.Type)

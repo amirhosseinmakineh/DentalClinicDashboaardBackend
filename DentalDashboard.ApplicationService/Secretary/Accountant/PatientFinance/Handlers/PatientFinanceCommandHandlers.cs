@@ -14,17 +14,25 @@ using System.Data;
 namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance.Handlers;
 
 internal static class FinanceRules {
+  private const string PastDueDateMessage =
+      "تاریخ سررسید چک یا سفته نمی‌تواند قبل از امروز باشد.";
+
+  private static bool IsPastDueDate(DateTime due) =>
+      IranTimeHelper.GetDateInIran(due) < IranTimeHelper.TodayInIran();
+
   public static string? Cheque(decimal amount, string? sayad, string? owner,
                                DateTime due) =>
       amount <= 0                        ? "مبلغ چک باید بیشتر از صفر باشد"
       : string.IsNullOrWhiteSpace(sayad) ? "شماره صیاد الزامی است"
       : string.IsNullOrWhiteSpace(owner) ? "نام صاحب چک الزامی است"
       : due == default                   ? "تاریخ سررسید الزامی است"
+      : IsPastDueDate(due)               ? PastDueDateMessage
                                          : null;
   public static string? Note(decimal amount, string? serial, DateTime due) =>
       amount <= 0                         ? "مبلغ سفته باید بیشتر از صفر باشد"
       : string.IsNullOrWhiteSpace(serial) ? "شماره سریال سفته الزامی است"
       : due == default                    ? "تاریخ سررسید الزامی است"
+      : IsPastDueDate(due)                ? PastDueDateMessage
                                           : null;
 }
 
@@ -333,7 +341,7 @@ public sealed class UpdatePatientChequeStatusCommandHandler(
             "وضعیت چک قبلاً تعیین شده و قابل تغییر نیست");
       }
       if ((c.Status is PatientChequeStatus.Paid or PatientChequeStatus.Unpaid) &&
-          IranTimeHelper.IranLocalNow.Date < x.DueDate.Date) {
+          IranTimeHelper.TodayInIran() < IranTimeHelper.GetDateInIran(x.DueDate)) {
         await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure(
             "ثبت نتیجه پرداخت فقط از روز سررسید امکان‌پذیر است");
@@ -345,6 +353,13 @@ public sealed class UpdatePatientChequeStatusCommandHandler(
               "پرداخت از مبلغ کل درمان بیشتر " +
               "می‌شود");
         }
+        var legacyDebts = await repo.Debts
+            .Where(d => d.SourceType == PatientDebtSourceType.Cheque &&
+                        d.SourceId == x.Id &&
+                        d.Status == PatientDebtStatus.Unpaid)
+            .ToListAsync(ct);
+        foreach (var debt in legacyDebts)
+          debt.Status = PatientDebtStatus.Cancelled;
         await repo.AddTransactionAsync(
             new() { PatientFinancialCaseId = x.PatientFinancialCaseId,
                     Amount = x.Amount,
@@ -404,7 +419,7 @@ public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
             "وضعیت سفته قبلاً تعیین شده و قابل تغییر نیست");
       }
       if ((c.Status is PatientPromissoryNoteStatus.Paid or PatientPromissoryNoteStatus.Unpaid) &&
-          IranTimeHelper.IranLocalNow.Date < x.DueDate.Date) {
+          IranTimeHelper.TodayInIran() < IranTimeHelper.GetDateInIran(x.DueDate)) {
         await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure(
             "ثبت نتیجه پرداخت فقط از روز سررسید امکان‌پذیر است");
@@ -416,6 +431,13 @@ public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
               "پرداخت از مبلغ کل درمان بیشتر " +
               "می‌شود");
         }
+        var legacyDebts = await repo.Debts
+            .Where(d => d.SourceType == PatientDebtSourceType.PromissoryNote &&
+                        d.SourceId == x.Id &&
+                        d.Status == PatientDebtStatus.Unpaid)
+            .ToListAsync(ct);
+        foreach (var debt in legacyDebts)
+          debt.Status = PatientDebtStatus.Cancelled;
         await repo.AddTransactionAsync(
             new() { PatientFinancialCaseId = x.PatientFinancialCaseId,
                     Amount = x.Amount,

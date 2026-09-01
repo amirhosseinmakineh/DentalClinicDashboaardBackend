@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
@@ -53,6 +54,23 @@ public sealed class UpdatePatientChequeStatusCommand
   public Guid ActorUserId {
     get; set;
   }
+}
+public sealed class UpdatePatientChequeCommand
+    : ICommand<PatientFinanceIdResponse> {
+  [JsonIgnore]
+  public long ChequeId { get; set; }
+  public decimal Amount { get; set; }
+  public string OwnerName { get; set; } = string.Empty;
+  [JsonExtensionData]
+  public Dictionary<string, JsonElement>? AdditionalFields { get; set; }
+}
+public sealed class UpdatePatientPromissoryNoteCommand
+    : ICommand<PatientFinanceIdResponse> {
+  [JsonIgnore]
+  public long PromissoryNoteId { get; set; }
+  public decimal Amount { get; set; }
+  [JsonExtensionData]
+  public Dictionary<string, JsonElement>? AdditionalFields { get; set; }
 }
 public sealed class UpdatePatientPromissoryNoteStatusCommand
     : ICommand<PatientFinanceIdResponse> {

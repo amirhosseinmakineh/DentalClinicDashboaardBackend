@@ -10,6 +10,7 @@ public interface IPatientFinanceRepository {
   IQueryable<PatientDebt> Debts { get; }
   IQueryable<PatientFinancialTransaction> Transactions { get; }
   IQueryable<User> Patients { get; }
+  IQueryable<PatientFile> PatientFiles { get; }
   Task AddCaseAsync(PatientFinancialCase entity, CancellationToken ct);
   Task AddChequeAsync(PatientCheque entity, CancellationToken ct);
   Task AddPromissoryNoteAsync(PatientPromissoryNote entity,

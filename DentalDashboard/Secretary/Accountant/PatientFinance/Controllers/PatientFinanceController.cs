@@ -77,6 +77,20 @@ public sealed class PatientFinanceController(ICommandDispatcher commands, IQuery
         return Write(await commands.DispatchAsync(command, cancellationToken));
     }
 
+    [HttpPut("patient-cheques/{id:long}")]
+    public async Task<IActionResult> UpdateCheque(long id, UpdatePatientChequeCommand command, CancellationToken cancellationToken)
+    {
+        command.ChequeId = id;
+        return Write(await commands.DispatchAsync(command, cancellationToken));
+    }
+
+    [HttpPut("patient-promissory-notes/{id:long}")]
+    public async Task<IActionResult> UpdateNote(long id, UpdatePatientPromissoryNoteCommand command, CancellationToken cancellationToken)
+    {
+        command.PromissoryNoteId = id;
+        return Write(await commands.DispatchAsync(command, cancellationToken));
+    }
+
     [HttpPut("patient-promissory-notes/{id:long}/status")]
     public async Task<IActionResult> NoteStatus(long id, UpdatePatientPromissoryNoteStatusCommand command, CancellationToken cancellationToken)
     {
@@ -172,7 +186,19 @@ public sealed class PatientFinanceController(ICommandDispatcher commands, IQuery
 
     private IActionResult Write<T>(Result<T> result)
     {
-        return result.IsSuccess ? Ok(result) : BadRequest(result);
+        if (result.IsSuccess)
+            return Ok(result);
+
+        if (result.Message.Contains("یافت نشد"))
+            return NotFound(result);
+
+        if (result.Message.Contains("قابل ویرایش نیست") ||
+            result.Message.Contains("قابل لغو") ||
+            result.Message.Contains("روز سررسید") ||
+            result.Message.Contains("قبلاً تعیین شده"))
+            return Conflict(result);
+
+        return BadRequest(result);
     }
 
     private bool UserId(out Guid id)

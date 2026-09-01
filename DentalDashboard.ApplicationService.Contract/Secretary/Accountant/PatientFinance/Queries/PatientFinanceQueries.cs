@@ -81,23 +81,28 @@ public sealed class GetDuePatientFinancialCommitmentsQuery
 
 public sealed record PatientFinancialCaseDto(
     Guid Id, Guid PatientId, Guid UserId, string PatientName,
-    string? PatientPhoneNumber, int ServiceId, string ServiceName, decimal TotalAmount,
+    string PatientFileNumber, string? PatientPhoneNumber, int ServiceId, string ServiceName, decimal TotalAmount,
     decimal TotalPaidAmount, decimal RemainingAmount, decimal TotalDebtAmount,
     PatientFinancialAgreementType AgreementType,
     PatientFinancialCaseStatus Status, DateTime CreatedAt);
 public sealed record PatientFinancialCaseDetailsDto(
     PatientFinancialCaseDto Case, int ChequeCount, decimal ChequeAmount,
-    int PromissoryNoteCount, decimal PromissoryNoteAmount);
+    int PromissoryNoteCount, decimal PromissoryNoteAmount,
+    IReadOnlyList<PatientChequeDto> Cheques,
+    IReadOnlyList<PatientPromissoryNoteDto> PromissoryNotes);
 public sealed record PatientChequeDto(long Id, Guid PatientFinancialCaseId,
                                       Guid PatientId, string PatientName,
+                                      string PatientFileNumber,
                                       decimal Amount, string SayadNumber,
                                       string OwnerName, DateTime DueDate,
                                       PatientChequeStatus Status);
 public sealed record PatientPromissoryNoteDto(
     long Id, Guid PatientFinancialCaseId, Guid PatientId, string PatientName,
+    string PatientFileNumber,
     string SerialNumber, decimal Amount, DateTime DueDate,
     PatientPromissoryNoteStatus Status);
 public sealed record PatientDebtDto(long Id, Guid PatientId, string PatientName,
+                                    string PatientFileNumber,
                                     string? PatientPhoneNumber,
                                     Guid PatientFinancialCaseId,
                                     string ServiceName, decimal Amount,
@@ -105,7 +110,8 @@ public sealed record PatientDebtDto(long Id, Guid PatientId, string PatientName,
                                     long SourceId, DateTime DueDate,
                                     PatientDebtStatus Status);
 public sealed record PatientFinancialTransactionDto(
-    long Id, Guid PatientFinancialCaseId, Guid PatientId, decimal Amount,
+    long Id, Guid PatientFinancialCaseId, Guid PatientId, string PatientName,
+    string PatientFileNumber, decimal Amount,
     PatientFinancialTransactionType Type,
     PatientFinancialTransactionSourceType SourceType, long SourceId,
     DateTime CreatedAt);
@@ -123,5 +129,6 @@ public sealed record PatientFinancialCaseSummaryDto(
     decimal TotalDebtAmount);
 public sealed record PatientFinancialCommitmentDto(
     long Id, PatientFinancialCommitmentType Type, Guid PatientFinancialCaseId,
-    Guid PatientId, string PatientName, decimal Amount, DateTime DueDate,
+    Guid PatientId, string PatientName, string PatientFileNumber,
+    decimal Amount, DateTime DueDate,
     int Status);

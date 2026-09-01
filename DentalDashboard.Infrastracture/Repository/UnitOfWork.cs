@@ -1,5 +1,6 @@
 ﻿using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Infrastracture.Context;
+using System.Data;
 
 
 using Microsoft.EntityFrameworkCore.Storage;
@@ -15,9 +16,11 @@ public class UnitOfWork : IUnitOfWork
 
     private IDbContextTransaction? _transaction;
 
-    public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
+    public async Task BeginTransactionAsync(
+        CancellationToken cancellationToken = default,
+        IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
     {
-        _transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        _transaction = await _context.Database.BeginTransactionAsync(isolationLevel, cancellationToken);
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

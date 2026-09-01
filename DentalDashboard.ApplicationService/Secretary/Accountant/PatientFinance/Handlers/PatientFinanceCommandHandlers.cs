@@ -479,29 +479,70 @@ public sealed class PayPatientDebtCommandHandler(IPatientFinanceRepository repo,
     : ICommandHandler<PayPatientDebtCommand, PatientFinanceIdResponse> {
   public async Task<Result<PatientFinanceIdResponse>>
   HandleAsync(PayPatientDebtCommand c, CancellationToken ct = default) {
-    await uow.BeginTransactionAsync();
+    await uow.BeginTransactionAsync(ct, IsolationLevel.Serializable);
     try {
       var d = await repo.Debts.Include(x => x.FinancialCase)
                   .FirstOrDefaultAsync(x => x.Id == c.DebtId, ct);
       if (d is null || d.Status != PatientDebtStatus.Unpaid) {
-        await uow.RollbackAsync();
+        await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure(
             "بدهی پرداخت‌نشده یافت نشد");
+      }
+      var hasPendingCommitment =
+          await repo.Cheques.AnyAsync(
+              x => x.PatientFinancialCaseId == d.PatientFinancialCaseId &&
+                   x.Status == PatientChequeStatus.Pending,
+              ct) ||
+          await repo.PromissoryNotes.AnyAsync(
+              x => x.PatientFinancialCaseId == d.PatientFinancialCaseId &&
+                   x.Status == PatientPromissoryNoteStatus.Pending,
+              ct);
+      if (hasPendingCommitment) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure(
+            "تا تعیین تکلیف همه چک‌ها و سفته‌های در گردش، تسویه کامل بدهی امکان‌پذیر نیست");
       }
       var st = d.SourceType == PatientDebtSourceType.Cheque
                    ? PatientFinancialTransactionSourceType.Cheque
                    : PatientFinancialTransactionSourceType.PromissoryNote;
       if (await repo.Transactions.AnyAsync(
               x => x.SourceType == st && x.SourceId == d.SourceId, ct)) {
-        await uow.RollbackAsync();
+        await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure(
             "این تعهد قبلاً پرداخت شده است");
-      }var paid=await repo.Transactions.Where(x=>x.PatientFinancialCaseId==d.PatientFinancialCaseId).SumAsync(x=>(decimal?)x.Amount,ct)??0;
+      }
+      var paid = await repo.Transactions
+                       .Where(x => x.PatientFinancialCaseId ==
+                                   d.PatientFinancialCaseId)
+                       .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
       if (paid + d.Amount > d.FinancialCase.TotalAmount) {
-        await uow.RollbackAsync();
+        await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure(
             "پرداخت از مبلغ کل درمان بیشتر " +
             "می‌شود");
+      }
+      if (d.SourceType == PatientDebtSourceType.Cheque) {
+        var source = await repo.Cheques.FirstOrDefaultAsync(
+            x => x.Id == d.SourceId &&
+                 x.Status == PatientChequeStatus.Unpaid,
+            ct);
+        if (source is null) {
+          await uow.RollbackAsync(ct);
+          return Result<PatientFinanceIdResponse>.Failure(
+              "چک پرداخت‌نشده مرتبط با بدهی یافت نشد");
+        }
+        source.Status = PatientChequeStatus.Paid;
+      } else {
+        var source = await repo.PromissoryNotes.FirstOrDefaultAsync(
+            x => x.Id == d.SourceId &&
+                 x.Status == PatientPromissoryNoteStatus.Unpaid,
+            ct);
+        if (source is null) {
+          await uow.RollbackAsync(ct);
+          return Result<PatientFinanceIdResponse>.Failure(
+              "سفته پرداخت‌نشده مرتبط با بدهی یافت نشد");
+        }
+        source.Status = PatientPromissoryNoteStatus.Paid;
       }
       await repo.AddTransactionAsync(
           new() { PatientFinancialCaseId = d.PatientFinancialCaseId,
@@ -509,20 +550,12 @@ public sealed class PayPatientDebtCommandHandler(IPatientFinanceRepository repo,
                   CreatedByUserId = c.ActorUserId },
           ct);
       d.Status = PatientDebtStatus.Paid;
-      if (st == PatientFinancialTransactionSourceType.Cheque) {
-        var x = await repo.Cheques.FirstAsync(x => x.Id == d.SourceId, ct);
-        x.Status = PatientChequeStatus.Paid;
-      } else {
-        var x =
-            await repo.PromissoryNotes.FirstAsync(x => x.Id == d.SourceId, ct);
-        x.Status = PatientPromissoryNoteStatus.Paid;
-      }
       if (paid + d.Amount == d.FinancialCase.TotalAmount)
         d.FinancialCase.Status = PatientFinancialCaseStatus.Completed;
-      await uow.CommitAsync();
+      await uow.CommitAsync(ct);
       return Result<PatientFinanceIdResponse>.Success(new(d.Id));
     } catch {
-      await uow.RollbackAsync();
+      await uow.RollbackAsync(ct);
       throw;
     }
   }

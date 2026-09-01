@@ -8,6 +8,8 @@ using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Utilities.Time;
+using System.Data;
 
 namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance.Handlers;
 
@@ -168,14 +170,143 @@ public sealed class CancelPatientFinancialCaseCommandHandler(
   public async Task<Result<PatientFinancialCaseIdResponse>>
   HandleAsync(CancelPatientFinancialCaseCommand c,
               CancellationToken ct = default) {
-    var x = await repo.Cases.FirstOrDefaultAsync(x => x.Id == c.Id, ct);
-    if (x is null || x.Status != PatientFinancialCaseStatus.Active)
-      return Result<PatientFinancialCaseIdResponse>.Failure(
-          "فقط پرونده فعال قابل لغو است");
-    x.Status = PatientFinancialCaseStatus.Cancelled;
-    x.UpdatedAt = DateTime.UtcNow;
-    await uow.SaveChangesAsync();
-    return Result<PatientFinancialCaseIdResponse>.Success(new(x.Id));
+    await uow.BeginTransactionAsync(ct, IsolationLevel.Serializable);
+    try {
+      var x = await repo.Cases.FirstOrDefaultAsync(x => x.Id == c.Id, ct);
+      if (x is null) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinancialCaseIdResponse>.Failure("پرونده یافت نشد");
+      }
+      if (x.Status != PatientFinancialCaseStatus.Active) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinancialCaseIdResponse>.Failure(
+            "فقط پرونده فعال قابل لغو است");
+      }
+      if (x.AgreementType != PatientFinancialAgreementType.Deposit) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinancialCaseIdResponse>.Failure(
+            "لغو مالی فقط برای توافق ودیعه امکان‌پذیر است.");
+      }
+      if (await repo.Transactions.AnyAsync(t =>
+              t.PatientFinancialCaseId == c.Id &&
+              t.Type == PatientFinancialTransactionType.Payment, ct)) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinancialCaseIdResponse>.Failure(
+            "پس از ثبت اولین پرداخت، لغو مالی بیمار امکان‌پذیر نیست.");
+      }
+      x.Status = PatientFinancialCaseStatus.Cancelled;
+      x.UpdatedAt = DateTime.UtcNow;
+      await uow.CommitAsync(ct);
+      return Result<PatientFinancialCaseIdResponse>.Success(new(x.Id));
+    } catch {
+      await uow.RollbackAsync(ct);
+      throw;
+    }
+  }
+}
+
+public sealed class UpdatePatientChequeCommandHandler(
+    IPatientFinanceRepository repo, IUnitOfWork uow)
+    : ICommandHandler<UpdatePatientChequeCommand, PatientFinanceIdResponse> {
+  public async Task<Result<PatientFinanceIdResponse>> HandleAsync(
+      UpdatePatientChequeCommand c, CancellationToken ct = default) {
+    if (c.AdditionalFields is { Count: > 0 })
+      return Result<PatientFinanceIdResponse>.Failure(
+          "درخواست شامل فیلد غیرمجاز است.");
+    if (c.Amount <= 0)
+      return Result<PatientFinanceIdResponse>.Failure(
+          "مبلغ چک باید بیشتر از صفر باشد");
+    if (string.IsNullOrWhiteSpace(c.OwnerName))
+      return Result<PatientFinanceIdResponse>.Failure("نام صاحب چک الزامی است");
+    if (c.OwnerName.Trim().Length > 200)
+      return Result<PatientFinanceIdResponse>.Failure(
+          "نام صاحب چک نمی‌تواند بیشتر از ۲۰۰ نویسه باشد");
+
+    await uow.BeginTransactionAsync(ct, IsolationLevel.Serializable);
+    try {
+      var cheque = await repo.Cheques.Include(x => x.FinancialCase)
+          .FirstOrDefaultAsync(x => x.Id == c.ChequeId, ct);
+      if (cheque is null) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure("چک یافت نشد");
+      }
+      if (cheque.Status != PatientChequeStatus.Pending) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure(
+            "چک تأیید یا رد شده است و دیگر قابل ویرایش نیست.");
+      }
+      var otherCommitments = await repo.Cheques
+          .Where(x => x.PatientFinancialCaseId == cheque.PatientFinancialCaseId &&
+                      x.Id != cheque.Id)
+          .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
+      otherCommitments += await repo.PromissoryNotes
+          .Where(x => x.PatientFinancialCaseId == cheque.PatientFinancialCaseId)
+          .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
+      if (otherCommitments + c.Amount > cheque.FinancialCase.TotalAmount) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure(
+            "مجموع تعهدات نمی‌تواند از مبلغ کل پرونده بیشتر باشد");
+      }
+      cheque.Amount = c.Amount;
+      cheque.OwnerName = c.OwnerName.Trim();
+      cheque.UpdatedAt = DateTime.UtcNow;
+      await uow.CommitAsync(ct);
+      return Result<PatientFinanceIdResponse>.Success(
+          new(cheque.Id), "اطلاعات چک با موفقیت ویرایش شد.");
+    } catch {
+      await uow.RollbackAsync(ct);
+      throw;
+    }
+  }
+}
+
+public sealed class UpdatePatientPromissoryNoteCommandHandler(
+    IPatientFinanceRepository repo, IUnitOfWork uow)
+    : ICommandHandler<UpdatePatientPromissoryNoteCommand,
+                      PatientFinanceIdResponse> {
+  public async Task<Result<PatientFinanceIdResponse>> HandleAsync(
+      UpdatePatientPromissoryNoteCommand c, CancellationToken ct = default) {
+    if (c.AdditionalFields is { Count: > 0 })
+      return Result<PatientFinanceIdResponse>.Failure(
+          "درخواست شامل فیلد غیرمجاز است.");
+    if (c.Amount <= 0)
+      return Result<PatientFinanceIdResponse>.Failure(
+          "مبلغ سفته باید بیشتر از صفر باشد");
+
+    await uow.BeginTransactionAsync(ct, IsolationLevel.Serializable);
+    try {
+      var note = await repo.PromissoryNotes.Include(x => x.FinancialCase)
+          .FirstOrDefaultAsync(x => x.Id == c.PromissoryNoteId, ct);
+      if (note is null) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure("سفته یافت نشد");
+      }
+      if (note.Status != PatientPromissoryNoteStatus.Pending) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure(
+            "سفته تأیید یا رد شده است و دیگر قابل ویرایش نیست.");
+      }
+      var otherCommitments = await repo.PromissoryNotes
+          .Where(x => x.PatientFinancialCaseId == note.PatientFinancialCaseId &&
+                      x.Id != note.Id)
+          .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
+      otherCommitments += await repo.Cheques
+          .Where(x => x.PatientFinancialCaseId == note.PatientFinancialCaseId)
+          .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
+      if (otherCommitments + c.Amount > note.FinancialCase.TotalAmount) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure(
+            "مجموع تعهدات نمی‌تواند از مبلغ کل پرونده بیشتر باشد");
+      }
+      note.Amount = c.Amount;
+      note.UpdatedAt = DateTime.UtcNow;
+      await uow.CommitAsync(ct);
+      return Result<PatientFinanceIdResponse>.Success(
+          new(note.Id), "اطلاعات سفته با موفقیت ویرایش شد.");
+    } catch {
+      await uow.RollbackAsync(ct);
+      throw;
+    }
   }
 }
 
@@ -186,9 +317,9 @@ public sealed class UpdatePatientChequeStatusCommandHandler(
   public async Task<Result<PatientFinanceIdResponse>>
   HandleAsync(UpdatePatientChequeStatusCommand c,
               CancellationToken ct = default) {
-    if (c.Status is PatientChequeStatus.Pending || !Enum.IsDefined(c.Status))
+    if (c.Status is not (PatientChequeStatus.Paid or PatientChequeStatus.Unpaid))
       return Result<PatientFinanceIdResponse>.Failure("وضعیت مقصد معتبر نیست");
-    await uow.BeginTransactionAsync();
+    await uow.BeginTransactionAsync(ct, IsolationLevel.Serializable);
     try {
       var x = await repo.Cheques.Include(x => x.FinancialCase)
                   .FirstOrDefaultAsync(x => x.Id == c.ChequeId, ct);
@@ -200,6 +331,12 @@ public sealed class UpdatePatientChequeStatusCommandHandler(
         await uow.RollbackAsync();
         return Result<PatientFinanceIdResponse>.Failure(
             "وضعیت چک قبلاً تعیین شده و قابل تغییر نیست");
+      }
+      if ((c.Status is PatientChequeStatus.Paid or PatientChequeStatus.Unpaid) &&
+          IranTimeHelper.IranLocalNow.Date < x.DueDate.Date) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure(
+            "ثبت نتیجه پرداخت فقط از روز سررسید امکان‌پذیر است");
       }
       if (c.Status == PatientChequeStatus.Paid) {var paid=await repo.Transactions.Where(t=>t.PatientFinancialCaseId==x.PatientFinancialCaseId).SumAsync(t=>(decimal?)t.Amount,ct)??0;
         if (paid + x.Amount > x.FinancialCase.TotalAmount) {
@@ -250,10 +387,10 @@ public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
   public async Task<Result<PatientFinanceIdResponse>>
   HandleAsync(UpdatePatientPromissoryNoteStatusCommand c,
               CancellationToken ct = default) {
-    if (c.Status is PatientPromissoryNoteStatus.Pending ||
-        !Enum.IsDefined(c.Status))
+    if (c.Status is not (PatientPromissoryNoteStatus.Paid or
+                         PatientPromissoryNoteStatus.Unpaid))
       return Result<PatientFinanceIdResponse>.Failure("وضعیت مقصد معتبر نیست");
-    await uow.BeginTransactionAsync();
+    await uow.BeginTransactionAsync(ct, IsolationLevel.Serializable);
     try {
       var x = await repo.PromissoryNotes.Include(x => x.FinancialCase)
                   .FirstOrDefaultAsync(x => x.Id == c.PromissoryNoteId, ct);
@@ -265,6 +402,12 @@ public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
         await uow.RollbackAsync();
         return Result<PatientFinanceIdResponse>.Failure(
             "وضعیت سفته قبلاً تعیین شده و قابل تغییر نیست");
+      }
+      if ((c.Status is PatientPromissoryNoteStatus.Paid or PatientPromissoryNoteStatus.Unpaid) &&
+          IranTimeHelper.IranLocalNow.Date < x.DueDate.Date) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure(
+            "ثبت نتیجه پرداخت فقط از روز سررسید امکان‌پذیر است");
       }
       if (c.Status == PatientPromissoryNoteStatus.Paid) {var paid=await repo.Transactions.Where(t=>t.PatientFinancialCaseId==x.PatientFinancialCaseId).SumAsync(t=>(decimal?)t.Amount,ct)??0;
         if (paid + x.Amount > x.FinancialCase.TotalAmount) {

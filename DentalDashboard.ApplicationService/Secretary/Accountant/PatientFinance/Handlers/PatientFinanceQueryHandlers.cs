@@ -74,6 +74,8 @@ public sealed class GetPatientFinancialCasesQueryHandler(
         .Select(a => new PatientFinancialCaseDto(
             a.Id, a.PatientId, a.Patient.Id,
             (a.Patient.FirstName + " " + a.Patient.LastName).Trim(),
+            repo.PatientFiles.Where(f => f.PhoneNumber == a.Patient.PhoneNumber)
+                .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
             a.Patient.PhoneNumber, (int)a.Service, a.Service.ToString(),
             a.TotalAmount,
             a.Transactions.Sum(t => (decimal?)t.Amount) ?? 0,
@@ -94,7 +96,46 @@ public sealed class GetPatientFinancialCasesQueryHandler(
 public sealed class GetPatientFinancialCaseDetailsQueryHandler(
     IPatientFinanceRepository repo)
     : IQueryHandler<GetPatientFinancialCaseDetailsQuery,
-                    PatientFinancialCaseDetailsDto?> {public Task<PatientFinancialCaseDetailsDto?> HandleAsync(GetPatientFinancialCaseDetailsQuery q,CancellationToken ct=default)=>repo.Cases.AsNoTracking().Where(a=>a.Id==q.PatientFinancialCaseId).Select(a=>new PatientFinancialCaseDetailsDto(new(a.Id,a.PatientId,a.Patient.Id,(a.Patient.FirstName+" "+a.Patient.LastName).Trim(),a.Patient.PhoneNumber,(int)a.Service,a.Service.ToString(),a.TotalAmount,a.Transactions.Sum(t=>(decimal?)t.Amount)??0,a.TotalAmount-(a.Transactions.Sum(t=>(decimal?)t.Amount)??0),a.Debts.Where(d=>d.Status==PatientDebtStatus.Unpaid).Sum(d=>(decimal?)d.Amount)??0,a.AgreementType,a.Status,a.CreatedAt),a.Cheques.Count,a.Cheques.Sum(c=>(decimal?)c.Amount)??0,a.PromissoryNotes.Count,a.PromissoryNotes.Sum(n=>(decimal?)n.Amount)??0)).FirstOrDefaultAsync(ct);
+                    PatientFinancialCaseDetailsDto?> {
+  public Task<PatientFinancialCaseDetailsDto?> HandleAsync(
+      GetPatientFinancialCaseDetailsQuery q, CancellationToken ct = default) =>
+      repo.Cases.AsNoTracking()
+          .Where(a => a.Id == q.PatientFinancialCaseId)
+          .Select(a => new PatientFinancialCaseDetailsDto(
+              new(a.Id, a.PatientId, a.Patient.Id,
+                  (a.Patient.FirstName + " " + a.Patient.LastName).Trim(),
+                  repo.PatientFiles
+                      .Where(f => f.PhoneNumber == a.Patient.PhoneNumber)
+                      .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
+                  a.Patient.PhoneNumber, (int)a.Service, a.Service.ToString(),
+                  a.TotalAmount,
+                  a.Transactions.Sum(t => (decimal?)t.Amount) ?? 0,
+                  a.TotalAmount -
+                      (a.Transactions.Sum(t => (decimal?)t.Amount) ?? 0),
+                  a.Debts.Where(d => d.Status == PatientDebtStatus.Unpaid)
+                      .Sum(d => (decimal?)d.Amount) ?? 0,
+                  a.AgreementType, a.Status, a.CreatedAt),
+              a.Cheques.Count, a.Cheques.Sum(c => (decimal?)c.Amount) ?? 0,
+              a.PromissoryNotes.Count,
+              a.PromissoryNotes.Sum(n => (decimal?)n.Amount) ?? 0,
+              a.Cheques.OrderBy(c => c.DueDate).ThenBy(c => c.Id)
+                  .Select(c => new PatientChequeDto(
+                      c.Id, c.PatientFinancialCaseId, a.PatientId,
+                      (a.Patient.FirstName + " " + a.Patient.LastName).Trim(),
+                      repo.PatientFiles
+                          .Where(f => f.PhoneNumber == a.Patient.PhoneNumber)
+                          .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
+                      c.Amount, c.SayadNumber, c.OwnerName, c.DueDate, c.Status))
+                  .ToList(),
+              a.PromissoryNotes.OrderBy(n => n.DueDate).ThenBy(n => n.Id)
+                  .Select(n => new PatientPromissoryNoteDto(
+                      n.Id, n.PatientFinancialCaseId, a.PatientId,
+                      (a.Patient.FirstName + " " + a.Patient.LastName).Trim(),
+                      repo.PatientFiles
+                          .Where(f => f.PhoneNumber == a.Patient.PhoneNumber)
+                          .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
+                      n.SerialNumber, n.Amount, n.DueDate, n.Status)).ToList()))
+          .FirstOrDefaultAsync(ct);
 }
 public sealed class GetPatientFinancialCaseSummaryQueryHandler(
     IPatientFinanceRepository repo)
@@ -147,6 +188,9 @@ public sealed class GetPatientChequesQueryHandler(
                     (a.FinancialCase.Patient.FirstName + " " +
                      a.FinancialCase.Patient.LastName)
                         .Trim(),
+                    repo.PatientFiles
+                        .Where(f => f.PhoneNumber == a.FinancialCase.Patient.PhoneNumber)
+                        .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                     a.Amount, a.SayadNumber, a.OwnerName, a.DueDate, a.Status))
             .ToListAsync(ct);
     return new() { Items = items, TotalCount = count, PageNumber = p,
@@ -189,6 +233,9 @@ public sealed class GetPatientPromissoryNotesQueryHandler(
                                 (a.FinancialCase.Patient.FirstName + " " +
                                  a.FinancialCase.Patient.LastName)
                                     .Trim(),
+                                repo.PatientFiles
+                                    .Where(f => f.PhoneNumber == a.FinancialCase.Patient.PhoneNumber)
+                                    .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                                 a.SerialNumber, a.Amount, a.DueDate, a.Status))
                     .ToListAsync(ct);
     return new() { Items = items, TotalCount = count, PageNumber = p,
@@ -233,6 +280,9 @@ public sealed class GetPatientDebtsQueryHandler(IPatientFinanceRepository repo)
                                 (a.FinancialCase.Patient.FirstName + " " +
                                  a.FinancialCase.Patient.LastName)
                                     .Trim(),
+                                repo.PatientFiles
+                                    .Where(f => f.PhoneNumber == a.FinancialCase.Patient.PhoneNumber)
+                                    .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                                 a.FinancialCase.Patient.PhoneNumber,
                                 a.PatientFinancialCaseId,
                                 a.FinancialCase.Service.ToString(), a.Amount,
@@ -267,7 +317,13 @@ public sealed class GetPatientFinancialTransactionsQueryHandler(
                     .Take(z)
                     .Select(a => new PatientFinancialTransactionDto(
                                 a.Id, a.PatientFinancialCaseId,
-                                a.FinancialCase.PatientId, a.Amount, a.Type,
+                                a.FinancialCase.PatientId,
+                                (a.FinancialCase.Patient.FirstName + " " +
+                                 a.FinancialCase.Patient.LastName).Trim(),
+                                repo.PatientFiles
+                                    .Where(f => f.PhoneNumber == a.FinancialCase.Patient.PhoneNumber)
+                                    .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
+                                a.Amount, a.Type,
                                 a.SourceType, a.SourceId, a.CreatedAt))
                     .ToListAsync(ct);
     return new() { Items = items, TotalCount = count, PageNumber = p,
@@ -295,6 +351,9 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
                         (x.FinancialCase.Patient.FirstName + " " +
                          x.FinancialCase.Patient.LastName)
                             .Trim(),
+                        repo.PatientFiles
+                            .Where(f => f.PhoneNumber == x.FinancialCase.Patient.PhoneNumber)
+                            .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                         x.Amount, x.DueDate, (int)x.Status));
     var notes =
         repo.PromissoryNotes.AsNoTracking()
@@ -308,6 +367,9 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
                         (x.FinancialCase.Patient.FirstName + " " +
                          x.FinancialCase.Patient.LastName)
                             .Trim(),
+                        repo.PatientFiles
+                            .Where(f => f.PhoneNumber == x.FinancialCase.Patient.PhoneNumber)
+                            .Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                         x.Amount, x.DueDate, (int)x.Status));
     var all = q.Type == PatientFinancialCommitmentType.Cheque ? cheques
               : q.Type == PatientFinancialCommitmentType.PromissoryNote

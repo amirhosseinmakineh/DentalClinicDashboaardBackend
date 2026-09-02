@@ -20,7 +20,7 @@ public class UnitOfWork : IUnitOfWork
         CancellationToken cancellationToken = default,
         IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
     {
-        _transaction = await _context.Database.BeginTransactionAsync(isolationLevel, cancellationToken);
+        _transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

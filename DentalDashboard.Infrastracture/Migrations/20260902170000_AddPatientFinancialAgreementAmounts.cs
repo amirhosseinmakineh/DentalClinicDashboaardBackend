@@ -12,19 +12,21 @@ public partial class AddPatientFinancialAgreementAmounts : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.AddColumn<decimal>(
-            name: "DepositAmount",
-            table: "PatientFinancialCases",
-            type: "decimal(18,2)",
-            nullable: false,
-            defaultValue: 0m);
+        migrationBuilder.Sql("""
+IF COL_LENGTH(N'[dbo].[PatientFinancialCases]', N'DepositAmount') IS NULL
+BEGIN
+    ALTER TABLE [dbo].[PatientFinancialCases]
+        ADD [DepositAmount] decimal(18,2) NOT NULL
+            CONSTRAINT [DF_PatientFinancialCases_DepositAmount] DEFAULT (0);
+END;
 
-        migrationBuilder.AddColumn<decimal>(
-            name: "PrePaymentAmount",
-            table: "PatientFinancialCases",
-            type: "decimal(18,2)",
-            nullable: false,
-            defaultValue: 0m);
+IF COL_LENGTH(N'[dbo].[PatientFinancialCases]', N'PrePaymentAmount') IS NULL
+BEGIN
+    ALTER TABLE [dbo].[PatientFinancialCases]
+        ADD [PrePaymentAmount] decimal(18,2) NOT NULL
+            CONSTRAINT [DF_PatientFinancialCases_PrePaymentAmount] DEFAULT (0);
+END;
+""");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)

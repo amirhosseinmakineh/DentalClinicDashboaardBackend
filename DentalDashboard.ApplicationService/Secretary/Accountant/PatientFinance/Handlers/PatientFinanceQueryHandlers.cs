@@ -141,9 +141,61 @@ public sealed class GetPatientFinancialCaseDetailsQueryHandler(
           .FirstOrDefaultAsync(ct);
 }
 public sealed class GetPatientFinancialCaseSummaryQueryHandler(
-    IPatientFinanceRepository repo)
+    IPatientFinanceRepository patientFinanceRepository)
     : IQueryHandler<GetPatientFinancialCaseSummaryQuery,
-                    PatientFinancialCaseSummaryDto?> {public Task<PatientFinancialCaseSummaryDto?> HandleAsync(GetPatientFinancialCaseSummaryQuery q,CancellationToken ct=default)=>repo.Cases.AsNoTracking().Where(a=>a.Id==q.PatientFinancialCaseId).Select(a=>new PatientFinancialCaseSummaryDto(a.TotalAmount,a.Transactions.Where(t=>t.Type==PatientFinancialTransactionType.Payment).Sum(t=>(decimal?)t.Amount)??0,Math.Max(a.TotalAmount-(a.Transactions.Where(t=>t.Type==PatientFinancialTransactionType.Payment).Sum(t=>(decimal?)t.Amount)??0),0),a.Cheques.Where(c=>c.Status!=PatientChequeStatus.Cancelled).Sum(c=>(decimal?)c.Amount)??0,a.Cheques.Where(c=>c.Status==PatientChequeStatus.Paid).Sum(c=>(decimal?)c.Amount)??0,a.Cheques.Where(c=>c.Status==PatientChequeStatus.Pending).Sum(c=>(decimal?)c.Amount)??0,a.Cheques.Where(c=>c.Status==PatientChequeStatus.Unpaid).Sum(c=>(decimal?)c.Amount)??0,a.PromissoryNotes.Where(n=>n.Status!=PatientPromissoryNoteStatus.Cancelled).Sum(n=>(decimal?)n.Amount)??0,a.PromissoryNotes.Where(n=>n.Status==PatientPromissoryNoteStatus.Paid).Sum(n=>(decimal?)n.Amount)??0,a.PromissoryNotes.Where(n=>n.Status==PatientPromissoryNoteStatus.Pending).Sum(n=>(decimal?)n.Amount)??0,a.PromissoryNotes.Where(n=>n.Status==PatientPromissoryNoteStatus.Unpaid).Sum(n=>(decimal?)n.Amount)??0,a.Debts.Where(d=>d.Status==PatientDebtStatus.Unpaid).Sum(d=>(decimal?)d.Amount)??0)).FirstOrDefaultAsync(ct);
+                    PatientFinancialCaseSummaryDto?> {
+  public Task<PatientFinancialCaseSummaryDto?> HandleAsync(
+      GetPatientFinancialCaseSummaryQuery request,
+      CancellationToken cancellationToken = default) =>
+      patientFinanceRepository.Cases
+          .AsNoTracking()
+          .Where(financialCase =>
+              financialCase.Id == request.PatientFinancialCaseId)
+          .Select(financialCase => new PatientFinancialCaseSummaryDto(
+              financialCase.TotalAmount,
+              financialCase.Transactions
+                  .Where(transaction =>
+                      transaction.Type == PatientFinancialTransactionType.Payment)
+                  .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+              Math.Max(
+                  financialCase.TotalAmount -
+                  (financialCase.Transactions
+                      .Where(transaction =>
+                          transaction.Type == PatientFinancialTransactionType.Payment)
+                      .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
+                  0),
+              financialCase.Cheques
+                  .Where(cheque => cheque.Status != PatientChequeStatus.Cancelled)
+                  .Sum(cheque => (decimal?)cheque.Amount) ?? 0,
+              financialCase.Cheques
+                  .Where(cheque => cheque.Status == PatientChequeStatus.Paid)
+                  .Sum(cheque => (decimal?)cheque.Amount) ?? 0,
+              financialCase.Cheques
+                  .Where(cheque => cheque.Status == PatientChequeStatus.Pending)
+                  .Sum(cheque => (decimal?)cheque.Amount) ?? 0,
+              financialCase.Cheques
+                  .Where(cheque => cheque.Status == PatientChequeStatus.Unpaid)
+                  .Sum(cheque => (decimal?)cheque.Amount) ?? 0,
+              financialCase.PromissoryNotes
+                  .Where(promissoryNote =>
+                      promissoryNote.Status != PatientPromissoryNoteStatus.Cancelled)
+                  .Sum(promissoryNote => (decimal?)promissoryNote.Amount) ?? 0,
+              financialCase.PromissoryNotes
+                  .Where(promissoryNote =>
+                      promissoryNote.Status == PatientPromissoryNoteStatus.Paid)
+                  .Sum(promissoryNote => (decimal?)promissoryNote.Amount) ?? 0,
+              financialCase.PromissoryNotes
+                  .Where(promissoryNote =>
+                      promissoryNote.Status == PatientPromissoryNoteStatus.Pending)
+                  .Sum(promissoryNote => (decimal?)promissoryNote.Amount) ?? 0,
+              financialCase.PromissoryNotes
+                  .Where(promissoryNote =>
+                      promissoryNote.Status == PatientPromissoryNoteStatus.Unpaid)
+                  .Sum(promissoryNote => (decimal?)promissoryNote.Amount) ?? 0,
+              financialCase.Debts
+                  .Where(debt => debt.Status == PatientDebtStatus.Unpaid)
+                  .Sum(debt => (decimal?)debt.Amount) ?? 0))
+          .FirstOrDefaultAsync(cancellationToken);
 }
 public sealed class GetPatientFinancialSummaryQueryHandler(
     IPatientFinanceRepository repo)

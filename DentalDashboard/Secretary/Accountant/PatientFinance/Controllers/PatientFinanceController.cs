@@ -130,8 +130,9 @@ public sealed class PatientFinanceController(ICommandDispatcher commands, IQuery
         var result = await queries.DispatchAsync(new GetPatientFinancialCaseDetailsQuery(id), cancellationToken);
 
         return result is null
-            ? NotFound(Result.Failure("پرونده یافت نشد"))
-            : Ok(result);
+            ? NotFound(Result<object?>.Failure("پرونده مالی موردنظر یافت نشد."))
+            : Ok(Result<PatientFinancialCaseDetailsDto>.Success(
+                result, "اطلاعات پرونده مالی دریافت شد."));
     }
 
     [HttpGet("patient-financial-cases/{id:guid}/summary")]
@@ -140,8 +141,9 @@ public sealed class PatientFinanceController(ICommandDispatcher commands, IQuery
         var result = await queries.DispatchAsync(new GetPatientFinancialCaseSummaryQuery(id), cancellationToken);
 
         return result is null
-            ? NotFound(Result.Failure("پرونده یافت نشد"))
-            : Ok(result);
+            ? NotFound(Result<object?>.Failure("پرونده مالی موردنظر یافت نشد."))
+            : Ok(Result<PatientFinancialCaseSummaryDto>.Success(
+                result, "خلاصه مالی پرونده دریافت شد."));
     }
 
     [HttpGet("patients/{id:guid}/financial-summary")]

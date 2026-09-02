@@ -23,9 +23,7 @@ public sealed class GetPatientFinancialCasesQuery
 public sealed
     record GetPatientFinancialCaseDetailsQuery(Guid PatientFinancialCaseId)
     : IQuery<PatientFinancialCaseDetailsDto?>;
-public sealed
-    record GetPatientFinancialCaseSummaryQuery(Guid PatientFinancialCaseId)
-    : IQuery<PatientFinancialCaseSummaryDto?>;
+public sealed record GetPatientFinancialCaseSummaryQuery(Guid PatientFinancialCaseId): IQuery<PatientFinancialCaseSummaryDto?>;
 public sealed record GetPatientFinancialSummaryQuery(Guid PatientId)
     : IQuery<PatientFinancialSummaryDto?>;
 public sealed class GetPatientChequesQuery

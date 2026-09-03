@@ -85,9 +85,6 @@ public class GetBroadcastRealtimeLeadsQueryHandler
 
         var candidateBatch = await candidateProvider.GetActiveAsync(cancellationToken);
         var lead = candidateBatch.Lead;
-        if (candidateBatch.SourceType == LeadAssignmentSourceType.BurnedLeads &&
-            lead?.ConsultantProfileId == profile.Id)
-            lead = null;
 
         var leads = lead == null
             ? Array.Empty<BroadcastRealtimeLeadItemResponse>()

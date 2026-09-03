@@ -25,7 +25,6 @@ requireText(repository, "x.LeadAssignmentState == LeadAssignmentState.Pending", 
 requireText(repository, "IsolationLevel.Serializable", "serializable pickup transaction");
 requireText(repository, "context.LeadAssignmentSettings", "pickup source setting recheck");
 requireText(repository, "LeadAssignmentHistories.AddAsync", "assignment history write");
-requireText(repository, "ConsultantProfileId <> @consultantProfileId", "same-consultant reassignment guard");
 requireText(repository, "previousUnassignedLeads", "new-lead fallback query");
 requireText(repository, "!newLeads.Any()", "fallback only after new candidates are exhausted");
 requireText(repository, "NOT EXISTS (", "atomic new-lead priority guard");
@@ -36,6 +35,15 @@ requireText(assignmentService, '["leadLimitType"] = leadLimitType', "push lead s
 requireText(assignmentService, '? "لید سوخته"', "burned lead push title");
 requireText(broadcastHandler, "LeadLimitType = candidateBatch.SourceType", "polling lead source mapping");
 requireText(broadcastResponse, "public string LeadLimitType", "polling lead source contract");
+if (broadcastHandler.includes("lead?.ConsultantProfileId == profile.Id")) {
+  throw new Error("Burned lead must not be removed from the polling response for its previous consultant");
+}
+if (assignmentService.includes("lead.ConsultantProfileId == consultant.Id")) {
+  throw new Error("Burned lead must not be skipped during push broadcast for its previous consultant");
+}
+if (repository.includes("ConsultantProfileId <> @consultantProfileId")) {
+  throw new Error("A broadcast burned lead must remain eligible when its previous consultant picks it up");
+}
 if (assignmentService.includes("landing.yektanet.com/form/report/")) {
   throw new Error("Yektanet report URL must not be hardcoded in source");
 }

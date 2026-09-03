@@ -261,7 +261,7 @@ namespace DentalDashboard.Infrastracture.Repository
                     x.LeadAssignmentState == LeadAssignmentState.New &&
                     !x.PickUp,
                     cancellationToken);
-            if (lead == null || !IsEligibleForPickup(lead, sourceType, consultantProfileId, hasNewLead))
+            if (lead == null || !IsEligibleForPickup(lead, sourceType, hasNewLead))
                 return false;
 
             const string sql = @"
@@ -309,7 +309,6 @@ WHERE Id = @leadAssignmentId
       (@sourceType = @burnedSource
        AND ((IsDeleted = 1 AND ConsultantProfileId IS NULL)
             OR (IsDeleted = 0 AND ConsultantProfileId IS NOT NULL
-                AND ConsultantProfileId <> @consultantProfileId
                 AND LeadAssignmentState = @pendingState)))
   );";
 
@@ -351,12 +350,10 @@ WHERE Id = @leadAssignmentId
         private static bool IsEligibleForPickup(
             LeadAssignment lead,
             LeadAssignmentSourceType sourceType,
-            long consultantProfileId,
             bool hasNewLead) =>
             sourceType == LeadAssignmentSourceType.BurnedLeads
                 ? (lead.IsDeleted && lead.ConsultantProfileId == null) ||
                   (!lead.IsDeleted && lead.ConsultantProfileId != null &&
-                   lead.ConsultantProfileId != consultantProfileId &&
                    lead.LeadAssignmentState == LeadAssignmentState.Pending)
                 : (!lead.IsDeleted &&
                    lead.AssignmentType == LeadAssignmentType.RealTime &&

@@ -313,10 +313,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                if (sourceType == LeadAssignmentSourceType.BurnedLeads &&
-                    lead.ConsultantProfileId == consultant.Id)
-                    continue;
-
                 try
                 {
                     await pushNotificationService.SendAsync(

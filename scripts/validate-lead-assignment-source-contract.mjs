@@ -20,5 +20,6 @@ requireText(repository, "ConsultantProfileId <> @consultantProfileId", "same-con
 requireText(pickup, "Lead assignment succeeded", "successful assignment logging");
 requireText(migration, 'name: "LeadAssignmentSettings"', "settings migration");
 requireText(migration, 'name: "LeadAssignmentHistories"', "history migration");
+requireText(migration, "columnTypes: new[]", "designer-independent seed column types");
 
 console.log("Lead assignment source backend contract validation passed.");

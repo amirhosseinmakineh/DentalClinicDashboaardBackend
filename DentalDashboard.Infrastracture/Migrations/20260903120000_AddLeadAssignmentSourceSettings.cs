@@ -69,6 +69,7 @@ public partial class AddLeadAssignmentSourceSettings : Migration
         migrationBuilder.InsertData(
             table: "LeadAssignmentSettings",
             columns: new[] { "Id", "AssignmentSourceType", "CreatedAt", "UpdatedByAdminId", "UpdatedAt", "IsDeleted", "DeletedAt" },
+            columnTypes: new[] { "bigint", "int", "datetime2", "uniqueidentifier", "datetime2", "bit", "datetime2" },
             values: new object[] { 1L, 1, new DateTime(2026, 9, 3, 0, 0, 0, DateTimeKind.Utc), null, null, false, null });
 
         migrationBuilder.CreateIndex("IX_LeadAssignmentSettings_UpdatedByAdminId", "LeadAssignmentSettings", "UpdatedByAdminId");

@@ -12,6 +12,8 @@ using DentalDashboard.Domain.Secretary.Accountant.IRepositories;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
 using DentalDashboard.Infrastracture.Secretary.Accountant.PatientFinance.Repositories;
 using DentalDashboard.Infrastracture.Secretary.Accountant.Repositories;
+using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.IRepositories;
+using DentalDashboard.Infrastracture.Secretary.Accountant.SecretarySales.Repositories;
 namespace DentalDashboard.Infrastracture.Registration;
 public static class InfrastructureServiceRegistration
 {
@@ -45,6 +47,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IExpenseRepository, ExpenseRepository>();
         services.AddScoped<IPatientFinanceRepository, PatientFinanceRepository>();
         services.AddScoped<IPatientFileRepository, PatientFileRepository>();
+        services.AddScoped<ISecretarySalesRepository, SecretarySalesRepository>();
 
         return services;
     }

@@ -158,47 +158,60 @@ namespace DentalDashboard.ApplicationService.Services
                 .Trim();
         }
 
-        //public async Task AddLeadsAsync()
-        //{
-        //    var now = DateTime.Now;
-        //    var updatedLeads = await LeadsListAsync();
+        private async Task<int> ImportNewYektanetLeadsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.Now;
+            var yektanetLeads = await LeadsListAsync(cancellationToken);
 
-        //    if (updatedLeads.Length == 0)
-        //        return;
+            // LeadsListAsync returns an empty array when Yektanet has no rows,
+            // times out, or cannot be reached. In all of those cases the caller
+            // continues with the database fallback instead of stopping assignment.
+            if (yektanetLeads.Length == 0)
+                return 0;
 
-        //    var phoneNumbers = updatedLeads
-        //        .Where(x => !string.IsNullOrWhiteSpace(x.PhoneNumber))
-        //        .Select(x => x.PhoneNumber)
-        //        .Distinct()
-        //        .ToList();
+            var phoneNumbers = yektanetLeads
+                .Where(x => !string.IsNullOrWhiteSpace(x.PhoneNumber))
+                .Select(x => x.PhoneNumber.Trim())
+                .Distinct()
+                .ToList();
 
-        //    if (phoneNumbers.Count == 0)
-        //        return;
+            if (phoneNumbers.Count == 0)
+                return 0;
 
-        //    var existingPhoneNumbers = await leadAssignmentRepository
-        //        .GetExistingPhoneNumbersAsync(phoneNumbers);
+            var existingPhoneNumbers = await leadAssignmentRepository
+                .GetExistingPhoneNumbersAsync(phoneNumbers);
 
-        //    var newLeads = updatedLeads
-        //        .Where(x =>
-        //            !string.IsNullOrWhiteSpace(x.PhoneNumber) &&
-        //            !existingPhoneNumbers.Contains(x.PhoneNumber))
-        //        .ToList();
+            var newLeads = yektanetLeads
+                .Where(x =>
+                    !string.IsNullOrWhiteSpace(x.PhoneNumber) &&
+                    !existingPhoneNumbers.Contains(x.PhoneNumber.Trim()))
+                .GroupBy(x => x.PhoneNumber.Trim())
+                .Select(x => x.First())
+                .ToList();
 
-        //    if (newLeads.Count == 0)
-        //        return;
+            if (newLeads.Count == 0)
+                return 0;
 
-        //    foreach (var lead in newLeads)
-        //    {
-        //        lead.CreatedAt = now;
-        //        lead.CallDeadlineAt = null;
-        //        lead.AssignmentType = LeadAssignmentType.RealTime;
-        //        lead.RequiresThreeMinuteCall = true;
-        //        lead.LeadAssignmentState = LeadAssignmentState.New;
-        //    }
+            foreach (var lead in newLeads)
+            {
+                lead.PhoneNumber = lead.PhoneNumber?.Trim();
+                lead.CreatedAt = now;
+                lead.CallDeadlineAt = null;
+                lead.AssignmentType = LeadAssignmentType.RealTime;
+                lead.RequiresThreeMinuteCall = true;
+                lead.LeadAssignmentState = LeadAssignmentState.New;
+            }
 
-        //    await leadAssignmentRepository.AddRangeAsync(newLeads);
-        //    await leadAssignmentRepository.SaveChange();
-        //}
+            await leadAssignmentRepository.AddRangeAsync(newLeads);
+            await leadAssignmentRepository.SaveChange();
+
+            logger.LogInformation(
+                "Imported {LeadCount} new Yektanet leads for realtime assignment",
+                newLeads.Count);
+
+            return newLeads.Count;
+        }
 
         public async Task ReconcileMisclassifiedLeadStatesAsync()
         {
@@ -348,6 +361,43 @@ namespace DentalDashboard.ApplicationService.Services
                     candidateBatch.UsedFallback);
             }
 
+            // Burned-lead mode must not depend on Yektanet.
+            // Its existing database rules are used directly.
+            if (candidateBatch.SourceType == LeadAssignmentSourceType.BurnedLeads)
+            {
+                var burnedLead = await GetFallbackLeadAsync(candidateBatch.SourceType);
+
+                return new DispatchCandidate(
+                    burnedLead,
+                    candidateBatch.SourceType,
+                    burnedLead == null ? 0 : 1,
+                    burnedLead != null);
+            }
+
+            // Realtime/source mode:
+            // If no current candidate exists, try importing fresh Yektanet leads.
+            // LeadsListAsync safely returns an empty array on timeout/failure, so
+            // assignment never stops merely because Yektanet is unavailable.
+            var importedLeadCount = await ImportNewYektanetLeadsAsync();
+
+            if (importedLeadCount > 0)
+            {
+                candidateBatch = await candidateProvider
+                    .GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
+
+                if (candidateBatch.Lead != null)
+                {
+                    return new DispatchCandidate(
+                        candidateBatch.Lead,
+                        candidateBatch.SourceType,
+                        candidateBatch.CandidateCount,
+                        candidateBatch.UsedFallback);
+                }
+            }
+
+            // Yektanet timed out, failed, contained no leads, contained only leads
+            // already stored in the database, or the imported leads still produced
+            // no dispatch candidate. Use an existing unassigned realtime lead.
             var fallbackLead = await GetFallbackLeadAsync(candidateBatch.SourceType);
 
             return new DispatchCandidate(
@@ -445,10 +495,11 @@ namespace DentalDashboard.ApplicationService.Services
             {
                 var now = DateTime.Now;
 
-                // For burned Pending leads, the previous ConsultantProfileId is
-                // intentionally replaced with the consultant who picked the lead.
-                // Deleted/unassigned burned leads are restored and assigned to
-                // the consultant who picked them. The same database row is updated.
+                // IMPORTANT: the same LeadAssignment row is always updated on pickup.
+                // For a burned Pending lead ConsultantProfileId may already contain
+                // the previous consultant. Pickup intentionally overwrites that value
+                // with the consultant who has just picked the lead.
+                // Deleted/unassigned burned leads are restored and assigned as well.
                 lead.ConsultantProfileId = pickedByConsultantProfileId;
                 lead.IsDeleted = false;
                 lead.LeadAssignmentState = LeadAssignmentState.Assigned;

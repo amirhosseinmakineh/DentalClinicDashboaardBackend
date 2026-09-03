@@ -1,4 +1,5 @@
-﻿using DentalDashboard.Domain.Models;
+﻿using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.IRepositories;
 
 namespace DentalDashboard.Domain.IRepositories
@@ -8,8 +9,9 @@ namespace DentalDashboard.Domain.IRepositories
         Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId);
         Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take);
         Task<List<LeadAssignment>> GetRealtimeLeadsForDispatchAsync(int take, TimeSpan redispatchInterval);
-        Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync();
-        Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(TimeSpan redispatchInterval);
+        Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync(LeadAssignmentSourceType sourceType);
+        Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(LeadAssignmentSourceType sourceType, TimeSpan redispatchInterval);
+        Task<int> CountAssignmentCandidatesAsync(LeadAssignmentSourceType sourceType, CancellationToken cancellationToken = default);
         Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now);
         Task<int> CountUnassignedRealTimeLeadsAsync();
         Task<HashSet<string>> GetExistingPhoneNumbersAsync(

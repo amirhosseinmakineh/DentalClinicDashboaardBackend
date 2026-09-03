@@ -12,19 +12,25 @@ public class PickUpService : IPickupService
     private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
     private readonly IPushNotificationService pushNotificationService;
     private readonly IUnitOfWork unitOfWork;
+    private readonly ILeadAssignmentSettingRepository leadAssignmentSettingRepository;
+    private readonly Microsoft.Extensions.Logging.ILogger<PickUpService> logger;
 
     public PickUpService(
         ILeadAssignmentRepository leadAssignmentRepository,
         IConsultantProfileRepository consultantProfileRepository,
         ILeadAssignmentLimitService leadAssignmentLimitService,
         IPushNotificationService pushNotificationService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILeadAssignmentSettingRepository leadAssignmentSettingRepository,
+        Microsoft.Extensions.Logging.ILogger<PickUpService> logger)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.consultantProfileRepository = consultantProfileRepository;
         this.leadAssignmentLimitService = leadAssignmentLimitService;
         this.pushNotificationService = pushNotificationService;
         this.unitOfWork = unitOfWork;
+        this.leadAssignmentSettingRepository = leadAssignmentSettingRepository;
+        this.logger = logger;
     }
 
     public async Task<PickupLeadResult> PickupLeadAsync(
@@ -32,8 +38,16 @@ public class PickUpService : IPickupService
         long consultantProfileId,
         CancellationToken cancellationToken)
     {
+        var sourceType = (await leadAssignmentSettingRepository.GetCurrentAsync(cancellationToken))
+            ?.AssignmentSourceType ?? DentalDashboard.Domain.Enums.LeadAssignmentSourceType.NewLeads;
+
         if (!await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId))
         {
+            logger.LogWarning(
+                "Lead assignment failed because consultant limit was reached. AssignmentSourceType: {AssignmentSourceType}, LeadId: {LeadId}, ConsultantId: {ConsultantId}",
+                sourceType,
+                leadAssignmentId,
+                consultantProfileId);
             return new PickupLeadResult
             {
                 Status = PickupLeadStatus.DailyLimitReached,
@@ -49,6 +63,11 @@ public class PickUpService : IPickupService
 
         if (!pickedUp)
         {
+            logger.LogWarning(
+                "Lead assignment failed because candidate was no longer eligible. AssignmentSourceType: {AssignmentSourceType}, LeadId: {LeadId}, ConsultantId: {ConsultantId}",
+                sourceType,
+                leadAssignmentId,
+                consultantProfileId);
             return new PickupLeadResult
             {
                 Status = PickupLeadStatus.AlreadyTaken,
@@ -70,6 +89,12 @@ public class PickUpService : IPickupService
         var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
 
         await NotifyRealtimeLeadTakenAsync(leadAssignmentId, consultantProfileId);
+
+        logger.LogInformation(
+            "Lead assignment succeeded. AssignmentSourceType: {AssignmentSourceType}, LeadId: {LeadId}, ConsultantId: {ConsultantId}",
+            sourceType,
+            leadAssignmentId,
+            consultantProfileId);
 
         return new PickupLeadResult
         {

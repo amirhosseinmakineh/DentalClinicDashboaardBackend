@@ -14,15 +14,18 @@ public class GetBroadcastRealtimeLeadsQueryHandler
     private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly ILeadAssignmentRepository leadAssignmentRepository;
     private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
+    private readonly ILeadAssignmentCandidateProvider candidateProvider;
 
     public GetBroadcastRealtimeLeadsQueryHandler(
         IConsultantProfileRepository consultantProfileRepository,
         ILeadAssignmentRepository leadAssignmentRepository,
-        ILeadAssignmentLimitService leadAssignmentLimitService)
+        ILeadAssignmentLimitService leadAssignmentLimitService,
+        ILeadAssignmentCandidateProvider candidateProvider)
     {
         this.consultantProfileRepository = consultantProfileRepository;
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.leadAssignmentLimitService = leadAssignmentLimitService;
+        this.candidateProvider = candidateProvider;
     }
 
     public async Task<BroadcastRealtimeLeadsResponse> HandleAsync(
@@ -80,8 +83,11 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             };
         }
 
-        var lead = await leadAssignmentRepository
-            .GetActiveRealtimeBroadcastLeadAsync();
+        var candidateBatch = await candidateProvider.GetActiveAsync(cancellationToken);
+        var lead = candidateBatch.Lead;
+        if (candidateBatch.SourceType == LeadAssignmentSourceType.BurnedLeads &&
+            lead?.ConsultantProfileId == profile.Id)
+            lead = null;
 
         var leads = lead == null
             ? Array.Empty<BroadcastRealtimeLeadItemResponse>()

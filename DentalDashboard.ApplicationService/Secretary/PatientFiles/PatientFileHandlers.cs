@@ -307,12 +307,16 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
             if (patient is null)
                 return await Rollback("بیمار یافت نشد");
 
-            if (!await patientFileRepository.Reservations.AnyAsync(
-                    reservation =>
-                        reservation.LeadAssignmentId == patient.Id &&
-                        !reservation.IsDeleted &&
-                        !reservation.IsCanceled,
-                    cancellationToken))
+            var attendanceAt = await patientFileRepository.Reservations
+                .Where(reservation =>
+                    reservation.LeadAssignmentId == patient.Id &&
+                    !reservation.IsDeleted &&
+                    !reservation.IsCanceled)
+                .OrderByDescending(reservation => reservation.ReservationAt)
+                .Select(reservation => (DateTime?)reservation.ReservationAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (!attendanceAt.HasValue)
                 return await Rollback("بیمار رزرو معتبر ندارد");
 
             if (await patientFileRepository.PatientFiles.AnyAsync(
@@ -322,7 +326,9 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
                     cancellationToken))
                 return await Rollback("برای این بیمار قبلاً پرونده ایجاد شده است");
 
-            var fileNumber = await patientFileRepository.GetNextFileNumberWithLockAsync(cancellationToken);
+            var fileNumber = await patientFileRepository.GetNextFileNumberWithLockAsync(
+                DateOnly.FromDateTime(attendanceAt.Value),
+                cancellationToken);
             var patientName = PatientFileNames.Split(patient.UserName);
 
             var patientFile = new PatientFile
@@ -346,6 +352,11 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
                 await unitOfWork.RollbackAsync(cancellationToken);
                 return Result<CreatePatientFileResponse>.Failure(message);
             }
+        }
+        catch (InvalidOperationException exception)
+        {
+            await unitOfWork.RollbackAsync(cancellationToken);
+            return Result<CreatePatientFileResponse>.Failure(exception.Message);
         }
         catch
         {

@@ -9,5 +9,5 @@ public interface IPatientFileRepository
     IQueryable<Reservation> Reservations { get; }
     Task AddAsync(PatientFile entity, CancellationToken cancellationToken);
     Task AddRangeAsync(IEnumerable<PatientFile> entities, CancellationToken cancellationToken);
-    Task<long> GetNextFileNumberWithLockAsync(CancellationToken cancellationToken);
+    Task<long> GetNextFileNumberWithLockAsync(DateOnly attendanceDate, CancellationToken cancellationToken);
 }

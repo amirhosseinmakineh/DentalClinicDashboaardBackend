@@ -7,6 +7,7 @@ using DentalDashboard.Infrastracture.Repository;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace DentalDashboard.ApplicationService.Services
@@ -157,35 +158,47 @@ namespace DentalDashboard.ApplicationService.Services
                 .Trim();
         }
 
-        public async Task AddLeadsAsync()
-        {
-            var now = DateTime.Now;
-            var updatedLeads = await LeadsListAsync();
+        //public async Task AddLeadsAsync()
+        //{
+        //    var now = DateTime.Now;
+        //    var updatedLeads = await LeadsListAsync();
 
-            var existingPhoneNumbers = await leadAssignmentRepository.GetExistingPhoneNumbersAsync(
-                updatedLeads.Select(x => x.PhoneNumber));
+        //    if (updatedLeads.Length == 0)
+        //        return;
 
-            var newLeads = updatedLeads
-                .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
-                .ToList();
+        //    var phoneNumbers = updatedLeads
+        //        .Where(x => !string.IsNullOrWhiteSpace(x.PhoneNumber))
+        //        .Select(x => x.PhoneNumber)
+        //        .Distinct()
+        //        .ToList();
 
-            if (!newLeads.Any())
-            {
-                return;
-            }
+        //    if (phoneNumbers.Count == 0)
+        //        return;
 
-            foreach (var lead in newLeads)
-            {
-                lead.CreatedAt = now;
-                lead.CallDeadlineAt = null;
-                lead.AssignmentType = LeadAssignmentType.RealTime;
-                lead.RequiresThreeMinuteCall = true;
-                lead.LeadAssignmentState = LeadAssignmentState.New;
-            }
+        //    var existingPhoneNumbers = await leadAssignmentRepository
+        //        .GetExistingPhoneNumbersAsync(phoneNumbers);
 
-            await leadAssignmentRepository.AddRangeAsync(newLeads);
-            await leadAssignmentRepository.SaveChange();
-        }
+        //    var newLeads = updatedLeads
+        //        .Where(x =>
+        //            !string.IsNullOrWhiteSpace(x.PhoneNumber) &&
+        //            !existingPhoneNumbers.Contains(x.PhoneNumber))
+        //        .ToList();
+
+        //    if (newLeads.Count == 0)
+        //        return;
+
+        //    foreach (var lead in newLeads)
+        //    {
+        //        lead.CreatedAt = now;
+        //        lead.CallDeadlineAt = null;
+        //        lead.AssignmentType = LeadAssignmentType.RealTime;
+        //        lead.RequiresThreeMinuteCall = true;
+        //        lead.LeadAssignmentState = LeadAssignmentState.New;
+        //    }
+
+        //    await leadAssignmentRepository.AddRangeAsync(newLeads);
+        //    await leadAssignmentRepository.SaveChange();
+        //}
 
         public async Task ReconcileMisclassifiedLeadStatesAsync()
         {
@@ -248,10 +261,9 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidateBatch = await candidateProvider
-                .GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-            LogCandidateBatch(candidateBatch);
-            var lead = candidateBatch.Lead;
+            var candidate = await GetDispatchCandidateAsync();
+            LogCandidateBatch(candidate);
+            var lead = candidate.Lead;
 
             if (lead == null)
             {
@@ -263,7 +275,7 @@ namespace DentalDashboard.ApplicationService.Services
             if (!await NotifyConsultantsForRealtimeLeadAsync(
                     lead,
                     availableConsultants,
-                    candidateBatch.SourceType,
+                    candidate.SourceType,
                     isReminder))
                 return;
 
@@ -322,14 +334,83 @@ namespace DentalDashboard.ApplicationService.Services
             return notificationSent;
         }
 
-        private void LogCandidateBatch(LeadAssignmentCandidateBatch batch)
+        private async Task<DispatchCandidate> GetDispatchCandidateAsync()
+        {
+            var candidateBatch = await candidateProvider
+                .GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
+
+            if (candidateBatch.Lead != null)
+            {
+                return new DispatchCandidate(
+                    candidateBatch.Lead,
+                    candidateBatch.SourceType,
+                    candidateBatch.CandidateCount,
+                    candidateBatch.UsedFallback);
+            }
+
+            var fallbackLead = await GetFallbackLeadAsync(candidateBatch.SourceType);
+
+            return new DispatchCandidate(
+                fallbackLead,
+                candidateBatch.SourceType,
+                fallbackLead == null ? 0 : 1,
+                fallbackLead != null);
+        }
+
+        private async Task<LeadAssignment?> GetFallbackLeadAsync(
+            LeadAssignmentSourceType sourceType)
+        {
+            var redispatchBefore = DateTime.UtcNow.Subtract(RealtimeLeadRedispatchInterval);
+
+            if (sourceType == LeadAssignmentSourceType.BurnedLeads)
+            {
+                return await leadAssignmentRepository
+                    .GetAll()
+                    .IgnoreQueryFilters()
+                    .Where(x =>
+                        (
+                            x.IsDeleted &&
+                            x.ConsultantProfileId == null
+                        )
+                        ||
+                        (
+                            !x.IsDeleted &&
+                            x.LeadAssignmentState == LeadAssignmentState.Pending &&
+                            x.ConsultantProfileId != null
+                        ))
+                    .Where(x =>
+                        !x.NotificationSent ||
+                        !x.LastDispatchAt.HasValue ||
+                        x.LastDispatchAt <= redispatchBefore)
+                    .OrderBy(x => x.CreatedAt)
+                    .FirstOrDefaultAsync();
+            }
+
+            // Source/new-lead mode:
+            // If the current source has no new candidate, use an existing lead
+            // that has never been assigned to any consultant.
+            return await leadAssignmentRepository
+                .GetAll()
+                .Where(x =>
+                    !x.IsDeleted &&
+                    x.ConsultantProfileId == null &&
+                    x.AssignmentType == LeadAssignmentType.RealTime)
+                .Where(x =>
+                    !x.NotificationSent ||
+                    !x.LastDispatchAt.HasValue ||
+                    x.LastDispatchAt <= redispatchBefore)
+                .OrderBy(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        private void LogCandidateBatch(DispatchCandidate candidate)
         {
             logger.LogInformation(
                 "Lead assignment candidates selected. AssignmentSourceType: {AssignmentSourceType}, CandidateCount: {CandidateCount}, LeadId: {LeadId}, UsedFallback: {UsedFallback}",
-                batch.SourceType,
-                batch.CandidateCount,
-                batch.Lead?.Id,
-                batch.UsedFallback);
+                candidate.SourceType,
+                candidate.CandidateCount,
+                candidate.Lead?.Id,
+                candidate.UsedFallback);
         }
 
         private static (string Title, string Body) BuildRealtimeLeadNotificationContent(
@@ -355,6 +436,32 @@ namespace DentalDashboard.ApplicationService.Services
             long leadAssignmentId,
             long pickedByConsultantProfileId)
         {
+            var lead = await leadAssignmentRepository
+                .GetAll()
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(x => x.Id == leadAssignmentId);
+
+            if (lead != null)
+            {
+                var now = DateTime.Now;
+
+                // For burned Pending leads, the previous ConsultantProfileId is
+                // intentionally replaced with the consultant who picked the lead.
+                // Deleted/unassigned burned leads are restored and assigned to
+                // the consultant who picked them. The same database row is updated.
+                lead.ConsultantProfileId = pickedByConsultantProfileId;
+                lead.IsDeleted = false;
+                lead.LeadAssignmentState = LeadAssignmentState.Assigned;
+                lead.AssignedAt = now;
+                lead.UpdatedAt = now;
+                lead.PickUp = true;
+                lead.NotificationSent = false;
+                lead.LastDispatchAt = null;
+
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
+            }
+
             var consultants = await consultantProfileRepository.GetAll()
                 .Where(x => !x.IsDeleted && x.IsCompleteProfile)
                 .ToListAsync();
@@ -373,7 +480,6 @@ namespace DentalDashboard.ApplicationService.Services
                         ["silent"] = "true"
                     });
             }
-
         }
 
         public async Task<ExpireLeadRequeueResult> ExpireAndRequeueRealTimeLeadAsync(
@@ -513,10 +619,9 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidateBatch = await candidateProvider
-                .GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-            LogCandidateBatch(candidateBatch);
-            var lead = candidateBatch.Lead;
+            var candidate = await GetDispatchCandidateAsync();
+            LogCandidateBatch(candidate);
+            var lead = candidate.Lead;
 
             if (lead == null)
             {
@@ -528,7 +633,7 @@ namespace DentalDashboard.ApplicationService.Services
             if (!await NotifyConsultantsForRealtimeLeadAsync(
                     lead,
                     availableConsultants,
-                    candidateBatch.SourceType,
+                    candidate.SourceType,
                     isReminder))
                 return;
 
@@ -575,10 +680,9 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidateBatch = await candidateProvider
-                .GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-            LogCandidateBatch(candidateBatch);
-            var lead = candidateBatch.Lead;
+            var candidate = await GetDispatchCandidateAsync();
+            LogCandidateBatch(candidate);
+            var lead = candidate.Lead;
 
             if (lead == null)
             {
@@ -590,7 +694,7 @@ namespace DentalDashboard.ApplicationService.Services
             if (!await NotifyConsultantsForRealtimeLeadAsync(
                     lead,
                     availableConsultants,
-                    candidateBatch.SourceType,
+                    candidate.SourceType,
                     isReminder))
                 return;
 
@@ -639,10 +743,9 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidateBatch = await candidateProvider
-                .GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-            LogCandidateBatch(candidateBatch);
-            var lead = candidateBatch.Lead;
+            var candidate = await GetDispatchCandidateAsync();
+            LogCandidateBatch(candidate);
+            var lead = candidate.Lead;
 
             if (lead == null)
             {
@@ -654,7 +757,7 @@ namespace DentalDashboard.ApplicationService.Services
             if (!await NotifyConsultantsForRealtimeLeadAsync(
                     lead,
                     availableConsultants,
-                    candidateBatch.SourceType,
+                    candidate.SourceType,
                     isReminder))
                 return;
 
@@ -664,6 +767,12 @@ namespace DentalDashboard.ApplicationService.Services
             await leadAssignmentRepository.SaveChange();
 
         }
+        private sealed record DispatchCandidate(
+            LeadAssignment? Lead,
+            LeadAssignmentSourceType SourceType,
+            int CandidateCount,
+            bool UsedFallback);
+
         private async Task<IReadOnlyCollection<long>> ManageExcludeConsultants()
         {
             var excludeConsultants = new List<long>();

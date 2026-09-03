@@ -54,17 +54,28 @@ namespace DentalDashboard.Infrastracture.Repository
 
         private IQueryable<LeadAssignment> AssignmentCandidates(LeadAssignmentSourceType sourceType)
         {
-            return sourceType == LeadAssignmentSourceType.BurnedLeads
-                ? GetAll().Where(x =>
+            var allLeads = GetAll();
+            if (sourceType == LeadAssignmentSourceType.BurnedLeads)
+            {
+                return allLeads.Where(x =>
                     (x.IsDeleted && x.ConsultantProfileId == null) ||
                     (!x.IsDeleted && x.ConsultantProfileId != null &&
-                     x.LeadAssignmentState == LeadAssignmentState.Pending))
-                : GetAll().Where(x => !x.IsDeleted &&
+                     x.LeadAssignmentState == LeadAssignmentState.Pending));
+            }
+
+            var newLeads = allLeads.Where(x => !x.IsDeleted &&
                     x.AssignmentType == LeadAssignmentType.RealTime &&
                     x.ConsultantProfileId == null &&
                     x.ReportSubmittedAt == null &&
                     x.LeadAssignmentState == LeadAssignmentState.New &&
                     !x.PickUp);
+
+            var previousUnassignedLeads = allLeads.Where(x =>
+                x.IsDeleted &&
+                x.ConsultantProfileId == null &&
+                !newLeads.Any());
+
+            return newLeads.Concat(previousUnassignedLeads);
         }
 
         public async Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync(LeadAssignmentSourceType sourceType)
@@ -241,7 +252,16 @@ namespace DentalDashboard.Infrastracture.Repository
                 .FromSqlInterpolated($"SELECT * FROM LeadAssignments WITH (UPDLOCK, ROWLOCK) WHERE Id = {leadAssignmentId}")
                 .AsNoTracking()
                 .SingleOrDefaultAsync(cancellationToken);
-            if (lead == null || !IsEligibleForPickup(lead, sourceType, consultantProfileId))
+            var hasNewLead = sourceType == LeadAssignmentSourceType.NewLeads &&
+                await context.LeadAssignments.AnyAsync(x =>
+                    !x.IsDeleted &&
+                    x.AssignmentType == LeadAssignmentType.RealTime &&
+                    x.ConsultantProfileId == null &&
+                    x.ReportSubmittedAt == null &&
+                    x.LeadAssignmentState == LeadAssignmentState.New &&
+                    !x.PickUp,
+                    cancellationToken);
+            if (lead == null || !IsEligibleForPickup(lead, sourceType, consultantProfileId, hasNewLead))
                 return false;
 
             const string sql = @"
@@ -256,20 +276,35 @@ SET ConsultantProfileId = @consultantProfileId,
     LeadAssignmentState = @assignedState,
     AssignmentType = @realTimeType,
     RequiresThreeMinuteCall = 1,
-    ReportDescription = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE ReportDescription END,
-    ReportSubmittedAt = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE ReportSubmittedAt END,
-    ContactedAt = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE ContactedAt END,
-    CallResult = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE CallResult END,
+    ReportDescription = CASE WHEN @sourceType = @burnedSource OR IsDeleted = 1 THEN NULL ELSE ReportDescription END,
+    ReportSubmittedAt = CASE WHEN @sourceType = @burnedSource OR IsDeleted = 1 THEN NULL ELSE ReportSubmittedAt END,
+    ContactedAt = CASE WHEN @sourceType = @burnedSource OR IsDeleted = 1 THEN NULL ELSE ContactedAt END,
+    CallResult = CASE WHEN @sourceType = @burnedSource OR IsDeleted = 1 THEN NULL ELSE CallResult END,
     UpdatedAt = GETUTCDATE()
 WHERE Id = @leadAssignmentId
   AND (
       (@sourceType = @newSource
-       AND IsDeleted = 0
-       AND AssignmentType = @realTimeType
-       AND ConsultantProfileId IS NULL
-       AND ReportSubmittedAt IS NULL
-       AND LeadAssignmentState = @newState
-       AND PickUp = 0)
+       AND (
+           (IsDeleted = 0
+            AND AssignmentType = @realTimeType
+            AND ConsultantProfileId IS NULL
+            AND ReportSubmittedAt IS NULL
+            AND LeadAssignmentState = @newState
+            AND PickUp = 0)
+           OR
+           (IsDeleted = 1
+            AND ConsultantProfileId IS NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM LeadAssignments AS NewLead WITH (UPDLOCK, HOLDLOCK)
+                WHERE NewLead.IsDeleted = 0
+                  AND NewLead.AssignmentType = @realTimeType
+                  AND NewLead.ConsultantProfileId IS NULL
+                  AND NewLead.ReportSubmittedAt IS NULL
+                  AND NewLead.LeadAssignmentState = @newState
+                  AND NewLead.PickUp = 0)))
+       )
+      )
       OR
       (@sourceType = @burnedSource
        AND ((IsDeleted = 1 AND ConsultantProfileId IS NULL)
@@ -316,17 +351,19 @@ WHERE Id = @leadAssignmentId
         private static bool IsEligibleForPickup(
             LeadAssignment lead,
             LeadAssignmentSourceType sourceType,
-            long consultantProfileId) =>
+            long consultantProfileId,
+            bool hasNewLead) =>
             sourceType == LeadAssignmentSourceType.BurnedLeads
                 ? (lead.IsDeleted && lead.ConsultantProfileId == null) ||
                   (!lead.IsDeleted && lead.ConsultantProfileId != null &&
                    lead.ConsultantProfileId != consultantProfileId &&
                    lead.LeadAssignmentState == LeadAssignmentState.Pending)
-                : !lead.IsDeleted &&
-                  lead.AssignmentType == LeadAssignmentType.RealTime &&
-                  lead.ConsultantProfileId == null &&
-                  lead.ReportSubmittedAt == null &&
-                  lead.LeadAssignmentState == LeadAssignmentState.New &&
-                  !lead.PickUp;
+                : (!lead.IsDeleted &&
+                   lead.AssignmentType == LeadAssignmentType.RealTime &&
+                   lead.ConsultantProfileId == null &&
+                   lead.ReportSubmittedAt == null &&
+                   lead.LeadAssignmentState == LeadAssignmentState.New &&
+                   !lead.PickUp) ||
+                  (!hasNewLead && lead.IsDeleted && lead.ConsultantProfileId == null);
     }
 }

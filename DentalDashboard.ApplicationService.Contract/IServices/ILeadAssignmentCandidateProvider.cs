@@ -6,7 +6,8 @@ namespace DentalDashboard.ApplicationService.Contract.IServices;
 public sealed record LeadAssignmentCandidateBatch(
     LeadAssignmentSourceType SourceType,
     int CandidateCount,
-    LeadAssignment? Lead);
+    LeadAssignment? Lead,
+    bool UsedFallback);
 
 public interface ILeadAssignmentCandidateProvider
 {

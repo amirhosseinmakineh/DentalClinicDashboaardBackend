@@ -6,6 +6,7 @@ using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Repository;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace DentalDashboard.ApplicationService.Services

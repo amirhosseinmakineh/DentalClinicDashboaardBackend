@@ -4,7 +4,7 @@ using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
 
-public sealed class SecretarySaleService : BaseAuditableEntity<long>
+public sealed class SecretarySaleService : Framwork.Domain.BaseAuditableEntity<long>
 {
     public string Title { get; set; } = string.Empty;
     public decimal Price { get; set; }
@@ -13,7 +13,7 @@ public sealed class SecretarySaleService : BaseAuditableEntity<long>
     public ICollection<SecretarySale> Sales { get; set; } = [];
 }
 
-public sealed class SecretarySale : BaseAuditableEntity<long>
+public sealed class SecretarySale : Framwork.Domain.BaseAuditableEntity<long>
 {
     public Guid SecretaryUserId { get; set; }
     public Guid PatientUserId { get; set; }
@@ -31,7 +31,7 @@ public sealed class SecretarySale : BaseAuditableEntity<long>
     public ICollection<SecretaryWalletTransaction> WalletTransactions { get; set; } = [];
 }
 
-public sealed class SecretaryWallet : BaseAuditableEntity<long>
+public sealed class SecretaryWallet : Framwork.Domain.BaseAuditableEntity<long>
 {
     public Guid SecretaryUserId { get; set; }
     public decimal Balance { get; set; }
@@ -39,7 +39,7 @@ public sealed class SecretaryWallet : BaseAuditableEntity<long>
     public ICollection<SecretaryWalletTransaction> Transactions { get; set; } = [];
 }
 
-public sealed class SecretaryWalletTransaction : BaseAuditableEntity<long>
+public sealed class SecretaryWalletTransaction : Framwork.Domain.BaseAuditableEntity<long>
 {
     public long WalletId { get; set; }
     public Guid SecretaryUserId { get; set; }

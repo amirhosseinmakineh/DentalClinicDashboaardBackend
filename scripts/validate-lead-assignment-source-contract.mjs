@@ -10,6 +10,8 @@ const controller = read("DentalDashboard/Controllers/AdminLeadAssignmentSettings
 const pickup = read("DentalDashboard.ApplicationService/Services/PickUpService.cs");
 const candidateProvider = read("DentalDashboard.ApplicationService/Services/LeadAssignmentCandidateProvider.cs");
 const assignmentService = read("DentalDashboard.ApplicationService/Services/LeadAssignmentService.cs");
+const broadcastHandler = read("DentalDashboard.ApplicationService/Handlers/QueryHandlers/Consultant/GetBroadcastRealtimeLeadsQueryHandler.cs");
+const broadcastResponse = read("DentalDashboard.ApplicationService.Contract/Responses/ConsultantResponse/BroadcastRealtimeLeadResponse.cs");
 const migration = read("DentalDashboard.Infrastracture/Migrations/20260903120000_AddLeadAssignmentSourceSettings.cs");
 
 requireText(controller, '[Authorize(Roles = "Admin")]', "admin authorization");
@@ -30,6 +32,10 @@ requireText(repository, "NOT EXISTS (", "atomic new-lead priority guard");
 requireText(pickup, "Lead assignment succeeded", "successful assignment logging");
 requireText(assignmentService, "Yektanet lead request failed", "Yektanet failure fallback logging");
 requireText(assignmentService, '"Yektanet:LeadReportUrl"', "external Yektanet URL configuration");
+requireText(assignmentService, '["leadLimitType"] = leadLimitType', "push lead source payload");
+requireText(assignmentService, '? "لید سوخته"', "burned lead push title");
+requireText(broadcastHandler, "LeadLimitType = candidateBatch.SourceType", "polling lead source mapping");
+requireText(broadcastResponse, "public string LeadLimitType", "polling lead source contract");
 if (assignmentService.includes("landing.yektanet.com/form/report/")) {
   throw new Error("Yektanet report URL must not be hardcoded in source");
 }

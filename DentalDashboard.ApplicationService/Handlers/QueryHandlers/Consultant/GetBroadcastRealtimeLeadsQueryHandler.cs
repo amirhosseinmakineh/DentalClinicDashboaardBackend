@@ -99,6 +99,9 @@ public class GetBroadcastRealtimeLeadsQueryHandler
                     UserName = lead.UserName,
                     PhoneNumber = lead.PhoneNumber,
                     CreatedAt = lead.CreatedAt,
+                    LeadLimitType = candidateBatch.SourceType == LeadAssignmentSourceType.BurnedLeads
+                        ? "Burnt"
+                        : "Realtime",
                 },
             };
 

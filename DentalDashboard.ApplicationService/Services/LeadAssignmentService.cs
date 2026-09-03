@@ -305,7 +305,10 @@ namespace DentalDashboard.ApplicationService.Services
             LeadAssignmentSourceType sourceType,
             bool isReminder = false)
         {
-            var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
+            var leadLimitType = sourceType == LeadAssignmentSourceType.BurnedLeads
+                ? "Burnt"
+                : "Realtime";
+            var (title, body) = BuildRealtimeLeadNotificationContent(lead, sourceType, isReminder);
             var notificationSent = false;
 
             foreach (var consultant in consultants)
@@ -324,6 +327,7 @@ namespace DentalDashboard.ApplicationService.Services
                         {
                             ["leadId"] = lead.Id.ToString(),
                             ["type"] = "RealtimeLead",
+                            ["leadLimitType"] = leadLimitType,
                             ["userName"] = lead.UserName ?? string.Empty,
                             ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
                             ["isReminder"] = isReminder ? "true" : "false",
@@ -465,6 +469,7 @@ namespace DentalDashboard.ApplicationService.Services
 
         private static (string Title, string Body) BuildRealtimeLeadNotificationContent(
             LeadAssignment lead,
+            LeadAssignmentSourceType sourceType,
             bool isReminder)
         {
             var name = string.IsNullOrWhiteSpace(lead.UserName)
@@ -474,9 +479,12 @@ namespace DentalDashboard.ApplicationService.Services
                 ? "نامشخص"
                 : lead.PhoneNumber.Trim();
 
+            var leadTypeTitle = sourceType == LeadAssignmentSourceType.BurnedLeads
+                ? "لید سوخته"
+                : "لید جدید";
             var title = isReminder
-                ? $"یادآوری لید: {name}"
-                : $"لید جدید: {name}";
+                ? $"یادآوری {leadTypeTitle}: {name}"
+                : $"{leadTypeTitle}: {name}";
             var body = $"شماره تماس: {phone} — جهت دریافت روی اعلان کلیک کنید.";
 
             return (title, body);

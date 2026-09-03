@@ -15,7 +15,11 @@ public sealed class LeadAssignmentCandidateProvider(
         var sourceType = await GetSourceTypeAsync(cancellationToken);
         var count = await leads.CountAssignmentCandidatesAsync(sourceType, cancellationToken);
         var lead = await leads.GetCurrentRealtimeLeadForDispatchAsync(sourceType, redispatchInterval);
-        return new LeadAssignmentCandidateBatch(sourceType, count, lead);
+        return new LeadAssignmentCandidateBatch(
+            sourceType,
+            count,
+            lead,
+            sourceType == LeadAssignmentSourceType.NewLeads && lead?.IsDeleted == true);
     }
 
     public async Task<LeadAssignmentCandidateBatch> GetActiveAsync(
@@ -24,7 +28,11 @@ public sealed class LeadAssignmentCandidateProvider(
         var sourceType = await GetSourceTypeAsync(cancellationToken);
         var count = await leads.CountAssignmentCandidatesAsync(sourceType, cancellationToken);
         var lead = await leads.GetActiveRealtimeBroadcastLeadAsync(sourceType);
-        return new LeadAssignmentCandidateBatch(sourceType, count, lead);
+        return new LeadAssignmentCandidateBatch(
+            sourceType,
+            count,
+            lead,
+            sourceType == LeadAssignmentSourceType.NewLeads && lead?.IsDeleted == true);
     }
 
     private async Task<LeadAssignmentSourceType> GetSourceTypeAsync(CancellationToken cancellationToken)

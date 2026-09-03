@@ -6,6 +6,7 @@ using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Repository;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System.Net;
 
 namespace DentalDashboard.ApplicationService.Services
@@ -14,7 +15,8 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly HttpClient httpClient;
         private static readonly TimeSpan RealtimeLeadRedispatchInterval = TimeSpan.FromSeconds(6);
-        private const string url = "https://landing.yektanet.com/form/report/vSjrtffitGUytcOHgpLvEzttHcMQiELTANXzyAxTIywCuhjUaBzbMSTNFpZpxKuv";
+        private const string YektanetLeadReportUrlKey = "Yektanet:LeadReportUrl";
+        private readonly Uri? yektanetLeadReportUri;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadDomainService leadDomainService;
         private readonly IConsultantProfileRepository consultantProfileRepository;
@@ -33,6 +35,7 @@ namespace DentalDashboard.ApplicationService.Services
             IPushNotificationService pushNotificationService,
             IServiceLogRepository serviceLogRepository,
             ILeadAssignmentCandidateProvider candidateProvider,
+            IConfiguration configuration,
             Microsoft.Extensions.Logging.ILogger<LeadAssignmentService> logger)
         {
             this.httpClient = httpClient;
@@ -44,6 +47,13 @@ namespace DentalDashboard.ApplicationService.Services
             this.serviceLogRepository = serviceLogRepository;
             this.candidateProvider = candidateProvider;
             this.logger = logger;
+
+            var configuredUrl = configuration[YektanetLeadReportUrlKey];
+            if (Uri.TryCreate(configuredUrl, UriKind.Absolute, out var reportUri) &&
+                reportUri.Scheme == Uri.UriSchemeHttps)
+            {
+                yektanetLeadReportUri = reportUri;
+            }
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync(
@@ -51,6 +61,14 @@ namespace DentalDashboard.ApplicationService.Services
         {
             try
             {
+                if (yektanetLeadReportUri is null)
+                {
+                    logger.LogWarning(
+                        "Yektanet lead report URL is missing or invalid. Configure {ConfigurationKey}; assignment will use available database candidates",
+                        YektanetLeadReportUrlKey);
+                    return Array.Empty<LeadAssignment>();
+                }
+
                 if (!httpClient.DefaultRequestHeaders.UserAgent.Any())
                 {
                     httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
@@ -58,7 +76,7 @@ namespace DentalDashboard.ApplicationService.Services
                 }
 
                 using var response = await httpClient.GetAsync(
-                    url,
+                    yektanetLeadReportUri,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
 
@@ -113,16 +131,19 @@ namespace DentalDashboard.ApplicationService.Services
 
                 return leads.ToArray();
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
+                logger.LogWarning(ex, "Yektanet lead request timed out; assignment will use available database candidates");
                 return Array.Empty<LeadAssignment>();
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException ex)
             {
+                logger.LogWarning(ex, "Yektanet lead request failed; assignment will use available database candidates");
                 return Array.Empty<LeadAssignment>();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                logger.LogError(ex, "Unexpected Yektanet lead import failure; assignment will use available database candidates");
                 return Array.Empty<LeadAssignment>();
             }
         }
@@ -304,10 +325,11 @@ namespace DentalDashboard.ApplicationService.Services
         private void LogCandidateBatch(LeadAssignmentCandidateBatch batch)
         {
             logger.LogInformation(
-                "Lead assignment candidates selected. AssignmentSourceType: {AssignmentSourceType}, CandidateCount: {CandidateCount}, LeadId: {LeadId}",
+                "Lead assignment candidates selected. AssignmentSourceType: {AssignmentSourceType}, CandidateCount: {CandidateCount}, LeadId: {LeadId}, UsedFallback: {UsedFallback}",
                 batch.SourceType,
                 batch.CandidateCount,
-                batch.Lead?.Id);
+                batch.Lead?.Id,
+                batch.UsedFallback);
         }
 
         private static (string Title, string Body) BuildRealtimeLeadNotificationContent(

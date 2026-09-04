@@ -5,7 +5,6 @@ using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Time;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using System.Data;
 
 namespace DentalDashboard.Infrastracture.Repository
 {
@@ -52,35 +51,15 @@ namespace DentalDashboard.Infrastracture.Repository
                 .ToListAsync();
         }
 
-        private IQueryable<LeadAssignment> AssignmentCandidates(LeadAssignmentSourceType sourceType)
+        public async Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync()
         {
-            var allLeads = GetAll();
-            if (sourceType == LeadAssignmentSourceType.BurnedLeads)
-            {
-                return allLeads.Where(x =>
-                    (x.IsDeleted && x.ConsultantProfileId == null) ||
-                    (!x.IsDeleted && x.ConsultantProfileId != null &&
-                     x.LeadAssignmentState == LeadAssignmentState.Pending));
-            }
-
-            var newLeads = allLeads.Where(x => !x.IsDeleted &&
-                    x.AssignmentType == LeadAssignmentType.RealTime &&
-                    x.ConsultantProfileId == null &&
-                    x.ReportSubmittedAt == null &&
-                    x.LeadAssignmentState == LeadAssignmentState.New &&
-                    !x.PickUp);
-
-            var previousUnassignedLeads = allLeads.Where(x =>
-                x.IsDeleted &&
-                x.ConsultantProfileId == null &&
-                !newLeads.Any());
-
-            return newLeads.Concat(previousUnassignedLeads);
-        }
-
-        public async Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync(LeadAssignmentSourceType sourceType)
-        {
-            var baseQuery = AssignmentCandidates(sourceType);
+            var baseQuery = GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.AssignmentType == LeadAssignmentType.RealTime &&
+                            x.ConsultantProfileId == null &&
+                            x.ReportSubmittedAt == null &&
+                            x.LeadAssignmentState == LeadAssignmentState.New &&
+                            !x.PickUp);
 
             var inFlightLead = await baseQuery
                 .Where(x => x.NotificationSent)
@@ -99,10 +78,9 @@ namespace DentalDashboard.Infrastracture.Repository
         }
 
         public async Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(
-            LeadAssignmentSourceType sourceType,
             TimeSpan redispatchInterval)
         {
-            var lead = await GetActiveRealtimeBroadcastLeadAsync(sourceType);
+            var lead = await GetActiveRealtimeBroadcastLeadAsync();
             if (lead == null)
                 return null;
 
@@ -115,11 +93,6 @@ namespace DentalDashboard.Infrastracture.Repository
 
             return null;
         }
-
-        public Task<int> CountAssignmentCandidatesAsync(
-            LeadAssignmentSourceType sourceType,
-            CancellationToken cancellationToken = default) =>
-            AssignmentCandidates(sourceType).CountAsync(cancellationToken);
 
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
         {
@@ -236,131 +209,34 @@ namespace DentalDashboard.Infrastracture.Repository
             long consultantProfileId,
             CancellationToken cancellationToken)
         {
-            await using var transaction = await context.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
-                cancellationToken);
+            var sql = @"
+        UPDATE LeadAssignments
+        SET
+            ConsultantProfileId = @consultantProfileId,
+            PickUp = 1,
+            AssignedAt = GETUTCDATE(),
+            CallDeadlineAt = DATEADD(MINUTE, 3, GETUTCDATE()),
+            LeadAssignmentState = @assignedState
+        WHERE Id = @leadAssignmentId
+        AND ConsultantProfileId IS NULL
+        AND PickUp = 0
+    ";
 
-            var sourceType = await context.LeadAssignmentSettings
-                .AsNoTracking()
-                .Where(x => x.Id == LeadAssignmentSetting.SingletonId)
-                .Select(x => x.AssignmentSourceType)
-                .SingleOrDefaultAsync(cancellationToken);
-            if (!Enum.IsDefined(sourceType))
-                sourceType = LeadAssignmentSourceType.NewLeads;
+            var affectedRows = await context.Database
+                .ExecuteSqlRawAsync(
+                    sql,
+                    new SqlParameter(
+                        "@consultantProfileId",
+                        consultantProfileId),
+                    new SqlParameter(
+                        "@leadAssignmentId",
+                        leadAssignmentId),
+                    new SqlParameter(
+                        "@assignedState",
+                        (int)LeadAssignmentState.Assigned)
+                );
 
-            var lead = await context.LeadAssignments
-                .FromSqlInterpolated($"SELECT * FROM LeadAssignments WITH (UPDLOCK, ROWLOCK) WHERE Id = {leadAssignmentId}")
-                .AsNoTracking()
-                .SingleOrDefaultAsync(cancellationToken);
-            var hasNewLead = sourceType == LeadAssignmentSourceType.NewLeads &&
-                await context.LeadAssignments.AnyAsync(x =>
-                    !x.IsDeleted &&
-                    x.AssignmentType == LeadAssignmentType.RealTime &&
-                    x.ConsultantProfileId == null &&
-                    x.ReportSubmittedAt == null &&
-                    x.LeadAssignmentState == LeadAssignmentState.New &&
-                    !x.PickUp,
-                    cancellationToken);
-            if (lead == null || !IsEligibleForPickup(lead, sourceType, hasNewLead))
-                return false;
-
-            const string sql = @"
-UPDATE LeadAssignments WITH (UPDLOCK, ROWLOCK)
-SET ConsultantProfileId = @consultantProfileId,
-    IsDeleted = 0,
-    DeletedAt = NULL,
-    PickUp = 1,
-    AssignedAt = GETUTCDATE(),
-    CallDeadlineAt = DATEADD(MINUTE, 3, GETUTCDATE()),
-    CallInitiatedAt = NULL,
-    LeadAssignmentState = @assignedState,
-    AssignmentType = @realTimeType,
-    RequiresThreeMinuteCall = 1,
-    ReportDescription = CASE WHEN @sourceType = @burnedSource OR IsDeleted = 1 THEN NULL ELSE ReportDescription END,
-    ReportSubmittedAt = CASE WHEN @sourceType = @burnedSource OR IsDeleted = 1 THEN NULL ELSE ReportSubmittedAt END,
-    ContactedAt = CASE WHEN @sourceType = @burnedSource OR IsDeleted = 1 THEN NULL ELSE ContactedAt END,
-    CallResult = CASE WHEN @sourceType = @burnedSource OR IsDeleted = 1 THEN NULL ELSE CallResult END,
-    UpdatedAt = GETUTCDATE()
-WHERE Id = @leadAssignmentId
-  AND (
-      (@sourceType = @newSource
-       AND (
-           (IsDeleted = 0
-            AND AssignmentType = @realTimeType
-            AND ConsultantProfileId IS NULL
-            AND ReportSubmittedAt IS NULL
-            AND LeadAssignmentState = @newState
-            AND PickUp = 0)
-           OR
-           (IsDeleted = 1
-            AND ConsultantProfileId IS NULL
-            AND NOT EXISTS (
-                SELECT 1
-                FROM LeadAssignments AS NewLead WITH (UPDLOCK, HOLDLOCK)
-                WHERE NewLead.IsDeleted = 0
-                  AND NewLead.AssignmentType = @realTimeType
-                  AND NewLead.ConsultantProfileId IS NULL
-                  AND NewLead.ReportSubmittedAt IS NULL
-                  AND NewLead.LeadAssignmentState = @newState
-                  AND NewLead.PickUp = 0)))
-       )
-      )
-      OR
-      (@sourceType = @burnedSource
-       AND ((IsDeleted = 1 AND ConsultantProfileId IS NULL)
-            OR (IsDeleted = 0 AND ConsultantProfileId IS NOT NULL
-                AND LeadAssignmentState = @pendingState)))
-  );";
-
-            var affectedRows = await context.Database.ExecuteSqlRawAsync(
-                sql,
-                new SqlParameter("@consultantProfileId", consultantProfileId),
-                new SqlParameter("@leadAssignmentId", leadAssignmentId),
-                new SqlParameter("@assignedState", (int)LeadAssignmentState.Assigned),
-                new SqlParameter("@newState", (int)LeadAssignmentState.New),
-                new SqlParameter("@pendingState", (int)LeadAssignmentState.Pending),
-                new SqlParameter("@realTimeType", (int)LeadAssignmentType.RealTime),
-                new SqlParameter("@sourceType", (int)sourceType),
-                new SqlParameter("@newSource", (int)LeadAssignmentSourceType.NewLeads),
-                new SqlParameter("@burnedSource", (int)LeadAssignmentSourceType.BurnedLeads));
-
-            if (affectedRows != 1)
-                return false;
-
-            await context.LeadAssignmentHistories.AddAsync(new LeadAssignmentHistory
-            {
-                LeadAssignmentId = lead.Id,
-                PreviousConsultantProfileId = lead.ConsultantProfileId,
-                NewConsultantProfileId = consultantProfileId,
-                AssignmentSourceType = sourceType,
-                PreviousState = lead.LeadAssignmentState,
-                PreviousAssignedAt = lead.AssignedAt,
-                PreviousReportDescription = lead.ReportDescription,
-                PreviousReportSubmittedAt = lead.ReportSubmittedAt,
-                PreviousCallResult = lead.CallResult,
-                AssignedAt = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
-            }, cancellationToken);
-            await context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            return true;
+            return affectedRows == 1;
         }
-
-        private static bool IsEligibleForPickup(
-            LeadAssignment lead,
-            LeadAssignmentSourceType sourceType,
-            bool hasNewLead) =>
-            sourceType == LeadAssignmentSourceType.BurnedLeads
-                ? (lead.IsDeleted && lead.ConsultantProfileId == null) ||
-                  (!lead.IsDeleted && lead.ConsultantProfileId != null &&
-                   lead.LeadAssignmentState == LeadAssignmentState.Pending)
-                : (!lead.IsDeleted &&
-                   lead.AssignmentType == LeadAssignmentType.RealTime &&
-                   lead.ConsultantProfileId == null &&
-                   lead.ReportSubmittedAt == null &&
-                   lead.LeadAssignmentState == LeadAssignmentState.New &&
-                   !lead.PickUp) ||
-                  (!hasNewLead && lead.IsDeleted && lead.ConsultantProfileId == null);
     }
 }

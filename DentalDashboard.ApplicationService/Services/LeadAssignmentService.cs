@@ -6,8 +6,6 @@ using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Repository;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace DentalDashboard.ApplicationService.Services
@@ -16,16 +14,13 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly HttpClient httpClient;
         private static readonly TimeSpan RealtimeLeadRedispatchInterval = TimeSpan.FromSeconds(6);
-        private const string YektanetLeadReportUrlKey = "Yektanet:LeadReportUrl";
-        private readonly Uri? yektanetLeadReportUri;
+        private const string url = "https://landing.yektanet.com/form/report/vSjrtffitGUytcOHgpLvEzttHcMQiELTANXzyAxTIywCuhjUaBzbMSTNFpZpxKuv";
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadDomainService leadDomainService;
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
         private readonly IPushNotificationService pushNotificationService;
         private readonly IServiceLogRepository serviceLogRepository;
-        private readonly ILeadAssignmentCandidateProvider candidateProvider;
-        private readonly Microsoft.Extensions.Logging.ILogger<LeadAssignmentService> logger;
 
         public LeadAssignmentService(
             HttpClient httpClient,
@@ -34,10 +29,7 @@ namespace DentalDashboard.ApplicationService.Services
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentLimitService leadAssignmentLimitService,
             IPushNotificationService pushNotificationService,
-            IServiceLogRepository serviceLogRepository,
-            ILeadAssignmentCandidateProvider candidateProvider,
-            IConfiguration configuration,
-            Microsoft.Extensions.Logging.ILogger<LeadAssignmentService> logger)
+            IServiceLogRepository serviceLogRepository)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -46,15 +38,6 @@ namespace DentalDashboard.ApplicationService.Services
             this.leadAssignmentLimitService = leadAssignmentLimitService;
             this.pushNotificationService = pushNotificationService;
             this.serviceLogRepository = serviceLogRepository;
-            this.candidateProvider = candidateProvider;
-            this.logger = logger;
-
-            var configuredUrl = configuration[YektanetLeadReportUrlKey];
-            if (Uri.TryCreate(configuredUrl, UriKind.Absolute, out var reportUri) &&
-                reportUri.Scheme == Uri.UriSchemeHttps)
-            {
-                yektanetLeadReportUri = reportUri;
-            }
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync(
@@ -62,14 +45,6 @@ namespace DentalDashboard.ApplicationService.Services
         {
             try
             {
-                if (yektanetLeadReportUri is null)
-                {
-                    logger.LogWarning(
-                        "Yektanet lead report URL is missing or invalid. Configure {ConfigurationKey}; assignment will use available database candidates",
-                        YektanetLeadReportUrlKey);
-                    return Array.Empty<LeadAssignment>();
-                }
-
                 if (!httpClient.DefaultRequestHeaders.UserAgent.Any())
                 {
                     httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
@@ -77,7 +52,7 @@ namespace DentalDashboard.ApplicationService.Services
                 }
 
                 using var response = await httpClient.GetAsync(
-                    yektanetLeadReportUri,
+                    url,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
 
@@ -132,19 +107,16 @@ namespace DentalDashboard.ApplicationService.Services
 
                 return leads.ToArray();
             }
-            catch (TaskCanceledException ex)
+            catch (TaskCanceledException)
             {
-                logger.LogWarning(ex, "Yektanet lead request timed out; assignment will use available database candidates");
                 return Array.Empty<LeadAssignment>();
             }
-            catch (HttpRequestException ex)
+            catch (HttpRequestException)
             {
-                logger.LogWarning(ex, "Yektanet lead request failed; assignment will use available database candidates");
                 return Array.Empty<LeadAssignment>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogError(ex, "Unexpected Yektanet lead import failure; assignment will use available database candidates");
                 return Array.Empty<LeadAssignment>();
             }
         }
@@ -158,44 +130,25 @@ namespace DentalDashboard.ApplicationService.Services
                 .Trim();
         }
 
-        private async Task<int> ImportNewYektanetLeadsAsync(
-            CancellationToken cancellationToken = default)
+        public async Task AddLeadsAsync()
         {
             var now = DateTime.Now;
-            var yektanetLeads = await LeadsListAsync(cancellationToken);
+            var updatedLeads = await LeadsListAsync();
 
-            // LeadsListAsync returns an empty array when Yektanet has no rows,
-            // times out, or cannot be reached. In all of those cases the caller
-            // continues with the database fallback instead of stopping assignment.
-            if (yektanetLeads.Length == 0)
-                return 0;
+            var existingPhoneNumbers = await leadAssignmentRepository.GetExistingPhoneNumbersAsync(
+                updatedLeads.Select(x => x.PhoneNumber));
 
-            var phoneNumbers = yektanetLeads
-                .Where(x => !string.IsNullOrWhiteSpace(x.PhoneNumber))
-                .Select(x => x.PhoneNumber.Trim())
-                .Distinct()
+            var newLeads = updatedLeads
+                .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
                 .ToList();
 
-            if (phoneNumbers.Count == 0)
-                return 0;
-
-            var existingPhoneNumbers = await leadAssignmentRepository
-                .GetExistingPhoneNumbersAsync(phoneNumbers);
-
-            var newLeads = yektanetLeads
-                .Where(x =>
-                    !string.IsNullOrWhiteSpace(x.PhoneNumber) &&
-                    !existingPhoneNumbers.Contains(x.PhoneNumber.Trim()))
-                .GroupBy(x => x.PhoneNumber.Trim())
-                .Select(x => x.First())
-                .ToList();
-
-            if (newLeads.Count == 0)
-                return 0;
+            if (!newLeads.Any())
+            {
+                return;
+            }
 
             foreach (var lead in newLeads)
             {
-                lead.PhoneNumber = lead.PhoneNumber?.Trim();
                 lead.CreatedAt = now;
                 lead.CallDeadlineAt = null;
                 lead.AssignmentType = LeadAssignmentType.RealTime;
@@ -205,12 +158,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             await leadAssignmentRepository.AddRangeAsync(newLeads);
             await leadAssignmentRepository.SaveChange();
-
-            logger.LogInformation(
-                "Imported {LeadCount} new Yektanet leads for realtime assignment",
-                newLeads.Count);
-
-            return newLeads.Count;
         }
 
         public async Task ReconcileMisclassifiedLeadStatesAsync()
@@ -274,9 +221,8 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidate = await GetDispatchCandidateAsync();
-            LogCandidateBatch(candidate);
-            var lead = candidate.Lead;
+            var lead = await leadAssignmentRepository
+                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
 
             if (lead == null)
             {
@@ -285,12 +231,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            if (!await NotifyConsultantsForRealtimeLeadAsync(
-                    lead,
-                    availableConsultants,
-                    candidate.SourceType,
-                    isReminder))
-                return;
+            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -299,173 +240,33 @@ namespace DentalDashboard.ApplicationService.Services
 
         }
 
-        private async Task<bool> NotifyConsultantsForRealtimeLeadAsync(
+        private async Task NotifyConsultantsForRealtimeLeadAsync(
             LeadAssignment lead,
             IReadOnlyList<ConsultantProfile> consultants,
-            LeadAssignmentSourceType sourceType,
             bool isReminder = false)
         {
-            var leadLimitType = sourceType == LeadAssignmentSourceType.BurnedLeads
-                ? "Burnt"
-                : "Realtime";
-            var (title, body) = BuildRealtimeLeadNotificationContent(lead, sourceType, isReminder);
-            var notificationSent = false;
+            var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
 
             foreach (var consultant in consultants)
             {
-                try
-                {
-                    await pushNotificationService.SendAsync(
-                        consultant.UserId,
-                        title,
-                        body,
-                        new Dictionary<string, string>
-                        {
-                            ["leadId"] = lead.Id.ToString(),
-                            ["type"] = "RealtimeLead",
-                            ["leadLimitType"] = leadLimitType,
-                            ["userName"] = lead.UserName ?? string.Empty,
-                            ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
-                            ["isReminder"] = isReminder ? "true" : "false",
-                        });
-                    logger.LogInformation(
-                        "Lead assignment broadcast succeeded. LeadId: {LeadId}, ConsultantId: {ConsultantId}",
-                        lead.Id,
-                        consultant.Id);
-                    notificationSent = true;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(
-                        ex,
-                        "Lead assignment broadcast failed. LeadId: {LeadId}, ConsultantId: {ConsultantId}",
-                        lead.Id,
-                        consultant.Id);
-                }
+                await pushNotificationService.SendAsync(
+                    consultant.UserId,
+                    title,
+                    body,
+                    new Dictionary<string, string>
+                    {
+                        ["leadId"] = lead.Id.ToString(),
+                        ["type"] = "RealtimeLead",
+                        ["userName"] = lead.UserName ?? string.Empty,
+                        ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
+                        ["isReminder"] = isReminder ? "true" : "false",
+                    });
             }
 
-            return notificationSent;
-        }
-
-        private async Task<DispatchCandidate> GetDispatchCandidateAsync()
-        {
-            var candidateBatch = await candidateProvider
-                .GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-
-            if (candidateBatch.Lead != null)
-            {
-                return new DispatchCandidate(
-                    candidateBatch.Lead,
-                    candidateBatch.SourceType,
-                    candidateBatch.CandidateCount,
-                    candidateBatch.UsedFallback);
-            }
-
-            // Burned-lead mode must not depend on Yektanet.
-            // Its existing database rules are used directly.
-            if (candidateBatch.SourceType == LeadAssignmentSourceType.BurnedLeads)
-            {
-                var burnedLead = await GetFallbackLeadAsync(candidateBatch.SourceType);
-
-                return new DispatchCandidate(
-                    burnedLead,
-                    candidateBatch.SourceType,
-                    burnedLead == null ? 0 : 1,
-                    burnedLead != null);
-            }
-
-            // Realtime/source mode:
-            // If no current candidate exists, try importing fresh Yektanet leads.
-            // LeadsListAsync safely returns an empty array on timeout/failure, so
-            // assignment never stops merely because Yektanet is unavailable.
-            var importedLeadCount = await ImportNewYektanetLeadsAsync();
-
-            if (importedLeadCount > 0)
-            {
-                candidateBatch = await candidateProvider
-                    .GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-
-                if (candidateBatch.Lead != null)
-                {
-                    return new DispatchCandidate(
-                        candidateBatch.Lead,
-                        candidateBatch.SourceType,
-                        candidateBatch.CandidateCount,
-                        candidateBatch.UsedFallback);
-                }
-            }
-
-            // Yektanet timed out, failed, contained no leads, contained only leads
-            // already stored in the database, or the imported leads still produced
-            // no dispatch candidate. Use an existing unassigned realtime lead.
-            var fallbackLead = await GetFallbackLeadAsync(candidateBatch.SourceType);
-
-            return new DispatchCandidate(
-                fallbackLead,
-                candidateBatch.SourceType,
-                fallbackLead == null ? 0 : 1,
-                fallbackLead != null);
-        }
-
-        private async Task<LeadAssignment?> GetFallbackLeadAsync(
-            LeadAssignmentSourceType sourceType)
-        {
-            var redispatchBefore = DateTime.UtcNow.Subtract(RealtimeLeadRedispatchInterval);
-
-            if (sourceType == LeadAssignmentSourceType.BurnedLeads)
-            {
-                return await leadAssignmentRepository
-                    .GetAll()
-                    .IgnoreQueryFilters()
-                    .Where(x =>
-                        (
-                            x.IsDeleted &&
-                            x.ConsultantProfileId == null
-                        )
-                        ||
-                        (
-                            !x.IsDeleted &&
-                            x.LeadAssignmentState == LeadAssignmentState.Pending &&
-                            x.ConsultantProfileId != null
-                        ))
-                    .Where(x =>
-                        !x.NotificationSent ||
-                        !x.LastDispatchAt.HasValue ||
-                        x.LastDispatchAt <= redispatchBefore)
-                    .OrderBy(x => x.CreatedAt)
-                    .FirstOrDefaultAsync();
-            }
-
-            // Source/new-lead mode:
-            // If the current source has no new candidate, use an existing lead
-            // that has never been assigned to any consultant.
-            return await leadAssignmentRepository
-                .GetAll()
-                .Where(x =>
-                    !x.IsDeleted &&
-                    x.ConsultantProfileId == null &&
-                    x.AssignmentType == LeadAssignmentType.RealTime)
-                .Where(x =>
-                    !x.NotificationSent ||
-                    !x.LastDispatchAt.HasValue ||
-                    x.LastDispatchAt <= redispatchBefore)
-                .OrderBy(x => x.CreatedAt)
-                .FirstOrDefaultAsync();
-        }
-
-        private void LogCandidateBatch(DispatchCandidate candidate)
-        {
-            logger.LogInformation(
-                "Lead assignment candidates selected. AssignmentSourceType: {AssignmentSourceType}, CandidateCount: {CandidateCount}, LeadId: {LeadId}, UsedFallback: {UsedFallback}",
-                candidate.SourceType,
-                candidate.CandidateCount,
-                candidate.Lead?.Id,
-                candidate.UsedFallback);
         }
 
         private static (string Title, string Body) BuildRealtimeLeadNotificationContent(
             LeadAssignment lead,
-            LeadAssignmentSourceType sourceType,
             bool isReminder)
         {
             var name = string.IsNullOrWhiteSpace(lead.UserName)
@@ -475,12 +276,9 @@ namespace DentalDashboard.ApplicationService.Services
                 ? "نامشخص"
                 : lead.PhoneNumber.Trim();
 
-            var leadTypeTitle = sourceType == LeadAssignmentSourceType.BurnedLeads
-                ? "لید سوخته"
-                : "لید جدید";
             var title = isReminder
-                ? $"یادآوری {leadTypeTitle}: {name}"
-                : $"{leadTypeTitle}: {name}";
+                ? $"یادآوری لید: {name}"
+                : $"لید جدید: {name}";
             var body = $"شماره تماس: {phone} — جهت دریافت روی اعلان کلیک کنید.";
 
             return (title, body);
@@ -490,33 +288,6 @@ namespace DentalDashboard.ApplicationService.Services
             long leadAssignmentId,
             long pickedByConsultantProfileId)
         {
-            var lead = await leadAssignmentRepository
-                .GetAll()
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(x => x.Id == leadAssignmentId);
-
-            if (lead != null)
-            {
-                var now = DateTime.Now;
-
-                // IMPORTANT: the same LeadAssignment row is always updated on pickup.
-                // For a burned Pending lead ConsultantProfileId may already contain
-                // the previous consultant. Pickup intentionally overwrites that value
-                // with the consultant who has just picked the lead.
-                // Deleted/unassigned burned leads are restored and assigned as well.
-                lead.ConsultantProfileId = pickedByConsultantProfileId;
-                lead.IsDeleted = false;
-                lead.LeadAssignmentState = LeadAssignmentState.Assigned;
-                lead.AssignedAt = now;
-                lead.UpdatedAt = now;
-                lead.PickUp = true;
-                lead.NotificationSent = false;
-                lead.LastDispatchAt = null;
-
-                leadAssignmentRepository.Update(lead);
-                await leadAssignmentRepository.SaveChange();
-            }
-
             var consultants = await consultantProfileRepository.GetAll()
                 .Where(x => !x.IsDeleted && x.IsCompleteProfile)
                 .ToListAsync();
@@ -535,6 +306,7 @@ namespace DentalDashboard.ApplicationService.Services
                         ["silent"] = "true"
                     });
             }
+
         }
 
         public async Task<ExpireLeadRequeueResult> ExpireAndRequeueRealTimeLeadAsync(
@@ -674,9 +446,8 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidate = await GetDispatchCandidateAsync();
-            LogCandidateBatch(candidate);
-            var lead = candidate.Lead;
+            var lead = await leadAssignmentRepository
+                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
 
             if (lead == null)
             {
@@ -685,12 +456,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            if (!await NotifyConsultantsForRealtimeLeadAsync(
-                    lead,
-                    availableConsultants,
-                    candidate.SourceType,
-                    isReminder))
-                return;
+            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -735,9 +501,8 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidate = await GetDispatchCandidateAsync();
-            LogCandidateBatch(candidate);
-            var lead = candidate.Lead;
+            var lead = await leadAssignmentRepository
+                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
 
             if (lead == null)
             {
@@ -746,12 +511,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            if (!await NotifyConsultantsForRealtimeLeadAsync(
-                    lead,
-                    availableConsultants,
-                    candidate.SourceType,
-                    isReminder))
-                return;
+            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -798,9 +558,8 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidate = await GetDispatchCandidateAsync();
-            LogCandidateBatch(candidate);
-            var lead = candidate.Lead;
+            var lead = await leadAssignmentRepository
+                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
 
             if (lead == null)
             {
@@ -809,12 +568,7 @@ namespace DentalDashboard.ApplicationService.Services
 
             var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
 
-            if (!await NotifyConsultantsForRealtimeLeadAsync(
-                    lead,
-                    availableConsultants,
-                    candidate.SourceType,
-                    isReminder))
-                return;
+            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, isReminder);
 
             lead.NotificationSent = true;
             lead.LastDispatchAt = DateTime.UtcNow;
@@ -822,12 +576,6 @@ namespace DentalDashboard.ApplicationService.Services
             await leadAssignmentRepository.SaveChange();
 
         }
-        private sealed record DispatchCandidate(
-            LeadAssignment? Lead,
-            LeadAssignmentSourceType SourceType,
-            int CandidateCount,
-            bool UsedFallback);
-
         private async Task<IReadOnlyCollection<long>> ManageExcludeConsultants()
         {
             var excludeConsultants = new List<long>();

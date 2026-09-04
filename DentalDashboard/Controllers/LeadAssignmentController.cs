@@ -5,13 +5,12 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 
 namespace DentalDashboard.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class LeadAssignmentController : ControllerBase
+    public class LeadAssignmentController : DashboardApiControllerBase
     {
         private readonly IQueryDispatcher dispatcher;
         private readonly IPickupService pickupService;
@@ -51,13 +50,6 @@ namespace DentalDashboard.Controllers
 
             var result = await dispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
-        }
-
-        private bool TryGetCurrentUserId(out Guid userId)
-        {
-            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                        User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
-            return Guid.TryParse(value, out userId);
         }
 
         [HttpPost("{leadAssignmentId}/pickup")]

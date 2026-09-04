@@ -1,4 +1,5 @@
 using DentalDashboard.ApplicationService;
+using DentalDashboard.Accounting;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.BackgroundServices;
@@ -18,7 +19,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Services
 // ====================================
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddApplicationPart(typeof(AccountingModule).Assembly);
 builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -97,6 +100,7 @@ builder.Services.AddCors(options =>
     });
 });
 builder.Services.AddApplicationServices();
+builder.Services.AddAccountingModule();
 
 builder.Services.AddDomainServices();
 

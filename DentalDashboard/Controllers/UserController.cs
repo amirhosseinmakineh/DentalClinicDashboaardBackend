@@ -14,7 +14,7 @@ namespace DentalClinic.WebApi.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "Admin")]
-public class UserController : ControllerBase
+public class UserController : DashboardApiControllerBase
 {
     private readonly ICommandDispatcher dispatcher;
     private readonly IQueryDispatcher queryDispatcher;

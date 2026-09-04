@@ -12,13 +12,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace DentalDashboard.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ReservationController : ControllerBase
+    public class ReservationController : DashboardApiControllerBase
     {
         private readonly ICommandDispatcher commandDispatcher;
         private readonly IQueryDispatcher queryDispatcher;
@@ -257,10 +256,7 @@ namespace DentalDashboard.Controllers
         [Authorize]
         public async Task<IActionResult> UpdateSecretaryAnnouncement(UpdateSecretaryAnnouncementCommand command)
         {
-            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                              User.FindFirstValue("userId") ??
-                              User.FindFirstValue("Id");
-            if (!Guid.TryParse(userIdValue, out var secretaryUserId))
+            if (!TryGetCurrentUserId(out var secretaryUserId))
                 return Unauthorized();
 
             command.SecretaryUserId = secretaryUserId;
@@ -436,12 +432,6 @@ namespace DentalDashboard.Controllers
                 updatedAt = DateTime.UtcNow,
                 reservation = result.Data
             }, cancellationToken);
-        }
-
-        private bool TryGetCurrentUserId(out Guid userId)
-        {
-            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
-            return Guid.TryParse(value, out userId);
         }
 
     }

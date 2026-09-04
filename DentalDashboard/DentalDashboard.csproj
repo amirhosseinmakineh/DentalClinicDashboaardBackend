@@ -19,10 +19,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DentalDashboard.Accounting\DentalDashboard.Accounting.csproj" />
     <ProjectReference Include="..\DentalDashboard.ApplicationService.Contract\DentalDashboard.ApplicationService.Contract.csproj" />
     <ProjectReference Include="..\DentalDashboard.ApplicationService\DentalDashboard.ApplicationService.csproj" />
     <ProjectReference Include="..\DentalDashboard.Infrastracture\DentalDashboard.Infrastracture.csproj" />
     <ProjectReference Include="..\DentalDashboard.Utilities\DentalDashboard.Utilities.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Controllers\AdminSecretarySalesController.cs" />
+    <Compile Remove="Secretary\Accountant\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -10,7 +10,7 @@ namespace DentalDashboard.Controllers;
 [Route("api/admin/consultants")]
 [ApiController]
 [Authorize(Roles = "Admin")]
-public class AdminConsultantsController : ControllerBase
+public class AdminConsultantsController : DashboardApiControllerBase
 {
     private readonly IQueryDispatcher queryDispatcher;
     private readonly ICommandDispatcher commandDispatcher;

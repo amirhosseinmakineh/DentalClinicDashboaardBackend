@@ -9,7 +9,7 @@ namespace DentalDashboard.Controllers;
 
 [Route("api/admin/reports")]
 [ApiController]
-public class AdminReportsController : ControllerBase
+public class AdminReportsController : DashboardApiControllerBase
 {
     private readonly LeadCallReportExportService leadCallReportExportService;
     private readonly UsersExportService usersExportService;

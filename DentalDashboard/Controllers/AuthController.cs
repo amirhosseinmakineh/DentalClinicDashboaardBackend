@@ -11,7 +11,7 @@ namespace DentalDashboard.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController : ControllerBase
+    public class AuthController : DashboardApiControllerBase
     {
         private readonly ICommandDispatcher dispatcher;
 
@@ -47,11 +47,7 @@ namespace DentalDashboard.Controllers
             RegisterUserPushTokenCommand command,
             CancellationToken cancellationToken)
         {
-            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                              User.FindFirstValue("userId") ??
-                              User.FindFirstValue("Id");
-
-            if (!Guid.TryParse(userIdValue, out var userId))
+            if (!TryGetCurrentUserId(out var userId))
             {
                 return Ok(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
             }
@@ -70,11 +66,7 @@ namespace DentalDashboard.Controllers
                 return Ok(Result<AuthenticatedUserResponse>.Failure("کاربر احراز هویت نشده است"));
             }
 
-            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                              User.FindFirstValue("userId") ??
-                              User.FindFirstValue("Id");
-
-            if (!Guid.TryParse(userIdValue, out var userId))
+            if (!TryGetCurrentUserId(out var userId))
             {
                 return Ok(Result<AuthenticatedUserResponse>.Failure("شناسه کاربر در توکن معتبر نیست"));
             }
@@ -98,11 +90,7 @@ namespace DentalDashboard.Controllers
         [HttpPost("Logout")]
         public async Task<IActionResult> Logout(CancellationToken cancellationToken)
         {
-            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                              User.FindFirstValue("userId") ??
-                              User.FindFirstValue("Id");
-
-            if (!Guid.TryParse(userIdValue, out var userId))
+            if (!TryGetCurrentUserId(out var userId))
             {
                 return Ok(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
             }

@@ -6,7 +6,6 @@ using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Responses.Secretary;
 using DentalDashboard.ApplicationService.Contract.Responses;
@@ -19,7 +18,7 @@ namespace DentalDashboard.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class SecretaryController : ControllerBase
+public class SecretaryController : DashboardApiControllerBase
 {
     private readonly ICommandDispatcher dispatcher;
     private readonly IQueryDispatcher queryDispatcher;
@@ -239,8 +238,10 @@ public class SecretaryController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetAccess(CancellationToken cancellationToken)
     {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
-        if (!Guid.TryParse(claim, out var userId)) return Unauthorized();
+        if (!TryGetCurrentUserId(out var userId))
+        {
+            return Unauthorized();
+        }
         var access = await accessService.GetAccessAsync(userId, cancellationToken);
         if (!access.IsSecretary) return Forbid();
         return Ok(new
@@ -265,8 +266,10 @@ public class SecretaryController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetDashboardSummary(CancellationToken cancellationToken)
     {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
-        if (!Guid.TryParse(claim, out var userId)) return Unauthorized();
+        if (!TryGetCurrentUserId(out var userId))
+        {
+            return Unauthorized();
+        }
         if (!await accessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewReservations,
                 cancellationToken)) return Forbid();
         var result = await queryDispatcher.DispatchAsync(
@@ -275,11 +278,4 @@ public class SecretaryController : ControllerBase
         return Ok(result);
     }
 
-    private bool TryGetCurrentUserId(out Guid userId)
-    {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                    User.FindFirstValue("userId") ??
-                    User.FindFirstValue("Id");
-        return Guid.TryParse(claim, out userId);
-    }
 }

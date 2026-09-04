@@ -23,4 +23,10 @@
     <Folder Include="Requests\Lead\Commands\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Secretary\Accountant\**\*.cs" />
+    <Compile Include="..\DentalDashboard.Accounting\Integration\PatientFiles\Contracts\**\*.cs"
+             Link="Accounting\PatientFiles\Contracts\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

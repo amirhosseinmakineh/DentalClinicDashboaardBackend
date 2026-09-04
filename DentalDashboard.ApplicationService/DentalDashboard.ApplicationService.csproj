@@ -23,5 +23,9 @@
     <ProjectReference Include="..\DentalDashboard.Utilities\DentalDashboard.Utilities.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Secretary\Accountant\**\*.cs" />
+  </ItemGroup>
+
 
 </Project>

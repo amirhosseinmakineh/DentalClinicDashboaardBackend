@@ -14,4 +14,9 @@
     <ProjectReference Include="..\DentalDashboard.Framwork\DentalDashboard.Framwork.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\DentalDashboard.Accounting\Domain\**\*.cs"
+             Link="Accounting\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

@@ -9,7 +9,7 @@ namespace DentalDashboard.Controllers;
 
 [ApiController]
 [Route("api/secretary/patient-files")]
-public sealed class SecretaryPatientFilesController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher) : ControllerBase
+public sealed class SecretaryPatientFilesController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher) : DashboardApiControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] GetPatientFilesQuery query, CancellationToken cancellationToken) =>

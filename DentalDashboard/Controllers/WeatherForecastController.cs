@@ -4,7 +4,7 @@ namespace DentalDashboard.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class WeatherForecastController : ControllerBase
+    public class WeatherForecastController : DashboardApiControllerBase
     {
         private static readonly string[] Summaries =
         [

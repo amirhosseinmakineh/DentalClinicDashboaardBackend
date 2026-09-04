@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using DentalDashboard.ApplicationService.Contract.Dtos.Secretary;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.User.Queries.User;
@@ -12,7 +11,7 @@ namespace DentalDashboard.Controllers;
 [Route("api/admin/secretary")]
 [Route("api/admin/secretaries")]
 [Authorize(Roles = "Admin")]
-public sealed class AdminSecretaryController : ControllerBase
+public sealed class AdminSecretaryController : DashboardApiControllerBase
 {
     private readonly ISecretaryAccessService accessService;
     private readonly IQueryDispatcher queryDispatcher;
@@ -55,8 +54,10 @@ public sealed class AdminSecretaryController : ControllerBase
     public async Task<IActionResult> UpdateSchedule(Guid userId, UpdateSecretaryScheduleDto request,
         CancellationToken cancellationToken)
     {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
-        if (!Guid.TryParse(claim, out var adminUserId)) return Unauthorized();
+        if (!TryGetCurrentUserId(out var adminUserId))
+        {
+            return Unauthorized();
+        }
         var configurations = new Dictionary<DayOfWeek, IReadOnlyCollection<DentalDashboard.Domain.Enums.SecretaryPermissionType>>();
         var requested = request.DayPermissions.Count > 0
             ? request.DayPermissions

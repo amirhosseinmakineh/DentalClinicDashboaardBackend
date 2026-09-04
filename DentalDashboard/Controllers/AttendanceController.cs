@@ -7,7 +7,7 @@ namespace DentalDashboard.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AttendanceController : ControllerBase
+    public class AttendanceController : DashboardApiControllerBase
     {
         private readonly IQueryDispatcher dispatcher;
 

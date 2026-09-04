@@ -12,14 +12,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ConsultantController : ControllerBase
+    public class ConsultantController : DashboardApiControllerBase
     {
         private readonly ICommandDispatcher dispatcher;
         private readonly IQueryDispatcher queryDispatcher;
@@ -65,13 +64,6 @@ namespace DentalDashboard.Controllers
 
             var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
-        }
-
-        private bool TryGetCurrentUserId(out Guid userId)
-        {
-            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                        User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
-            return Guid.TryParse(value, out userId);
         }
 
         [HttpPost]

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 [Route("api/[controller]")]
 [ApiController]
-public class RoleController : ControllerBase
+public class RoleController : DashboardApiControllerBase
 {
     private readonly ICommandDispatcher dispatcher;
     private readonly IQueryDispatcher queryDispatcher;

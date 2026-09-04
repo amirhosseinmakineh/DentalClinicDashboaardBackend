@@ -1,0 +1,17 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace DentalDashboard.Domain.Secretary.Accountant.Enums;
+
+public enum PaymentMethod
+{
+    [Display(Name = "نقدی")]
+    Cash = 1,
+    [Display(Name = "کارتخوان")]
+    Pos = 2,
+    [Display(Name = "کارت به کارت")]
+    CardToCard = 3,
+    [Display(Name = "واریز بانکی")]
+    BankTransfer = 4,
+    [Display(Name = "سایر")]
+    Other = 5
+}

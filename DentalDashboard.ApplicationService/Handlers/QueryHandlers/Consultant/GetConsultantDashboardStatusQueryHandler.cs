@@ -48,11 +48,15 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
 
             var canGoOnline = !isAfterWorkEnd;
             var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
-            var todayReservationsCount = await reservationRepository.GetAll()
+            var activeReservations = reservationRepository.GetAll()
                 .AsNoTracking()
                 .Where(x => !x.IsDeleted &&
                             !x.IsCanceled &&
-                            x.ConsultantProfileId == profile.Id &&
+                            x.ConsultantProfileId == profile.Id);
+            var totalReservationsCount = await activeReservations
+                .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
+            var todayReservationsCount = await activeReservations
+                .Where(x =>
                             x.CreatedAt >= todayStartUtc &&
                             x.CreatedAt < todayEndUtc)
                 .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
@@ -69,6 +73,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 CanGoOnline = canGoOnline,
                 OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(isAfterWorkEnd),
                 TodayReservationsCount = todayReservationsCount,
+                TotalReservationsCount = totalReservationsCount,
                 TodayCallsCount = todayCallsCount,
                 DailyLimit = dailyLimitStatus.EffectiveDailyLimit,
                 TodayPickupCount = dailyLimitStatus.TodayPickupCount,

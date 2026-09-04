@@ -11,6 +11,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantRespon
         public string? OnlineStatusBlockReason { get; init; }
         public int TodayReservationsCount { get; init; }
         public int TotalReservationsCount { get; init; }
+        public int TotalReservedPatientsCount { get; init; }
         public int TodayCallsCount { get; init; }
         public int DailyLimit { get; init; }
         public int TodayPickupCount { get; init; }

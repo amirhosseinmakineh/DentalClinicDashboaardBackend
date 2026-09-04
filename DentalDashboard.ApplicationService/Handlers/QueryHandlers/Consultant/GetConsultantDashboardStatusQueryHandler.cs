@@ -54,6 +54,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                             !x.IsCanceled &&
                             x.ConsultantProfileId == profile.Id);
             var totalReservationsCount = await activeReservations
+                .CountAsync(cancellationToken);
+            var totalReservedPatientsCount = await activeReservations
                 .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
             var todayReservationsCount = await activeReservations
                 .Where(x =>
@@ -74,6 +76,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(isAfterWorkEnd),
                 TodayReservationsCount = todayReservationsCount,
                 TotalReservationsCount = totalReservationsCount,
+                TotalReservedPatientsCount = totalReservedPatientsCount,
                 TodayCallsCount = todayCallsCount,
                 DailyLimit = dailyLimitStatus.EffectiveDailyLimit,
                 TodayPickupCount = dailyLimitStatus.TodayPickupCount,

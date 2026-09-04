@@ -38,7 +38,7 @@ public sealed class ConsultantsDailySummaryService
             .Select(g => new
             {
                 ConsultantProfileId = g.Key,
-                Count = g.Count()
+                Count = g.Sum(x => x.PatientCount)
             });
 
         var result = await (
@@ -76,7 +76,7 @@ public sealed class ConsultantsDailySummaryService
         return result;
     }
 
-    public Task<int> GetTodayReservationsCountForConsultantAsync(
+    public async Task<int> GetTodayReservationsCountForConsultantAsync(
         long consultantProfileId,
         CancellationToken cancellationToken = default)
     {
@@ -84,15 +84,14 @@ public sealed class ConsultantsDailySummaryService
             IranTimeHelper.GetIranDayRangeAsUtc(
                 IranTimeHelper.TodayInIran());
 
-        return context.Reservations
+        return await context.Reservations
             .AsNoTracking()
-            .CountAsync(
-                x =>
-                    !x.IsDeleted &&
-                    !x.IsCanceled &&
-                    x.ConsultantProfileId == consultantProfileId &&
-                    x.CreatedAt >= startUtc &&
-                    x.CreatedAt < endUtc,
-                cancellationToken);
+            .Where(x =>
+                !x.IsDeleted &&
+                !x.IsCanceled &&
+                x.ConsultantProfileId == consultantProfileId &&
+                x.CreatedAt >= startUtc &&
+                x.CreatedAt < endUtc)
+            .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
     }
 }

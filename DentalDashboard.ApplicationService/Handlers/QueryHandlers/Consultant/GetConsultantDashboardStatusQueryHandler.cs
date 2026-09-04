@@ -50,13 +50,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
             var todayReservationsCount = await reservationRepository.GetAll()
                 .AsNoTracking()
-                .CountAsync(
-                    x => !x.IsDeleted &&
-                         !x.IsCanceled &&
-                         x.ConsultantProfileId == profile.Id &&
-                         x.CreatedAt >= todayStartUtc &&
-                         x.CreatedAt < todayEndUtc,
-                    cancellationToken);
+                .Where(x => !x.IsDeleted &&
+                            !x.IsCanceled &&
+                            x.ConsultantProfileId == profile.Id &&
+                            x.CreatedAt >= todayStartUtc &&
+                            x.CreatedAt < todayEndUtc)
+                .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
             var todayCallsCount = await leadAssignmentRepository.GetTodayCallCountAsync(profile.Id);
             var dailyLimitStatus = await leadAssignmentLimitService.GetDailyLimitStatusAsync(profile.Id);
 

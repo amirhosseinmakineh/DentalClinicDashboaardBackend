@@ -39,9 +39,9 @@ public class ConsultantsExportService
             .Select(g => new
             {
                 ConsultantProfileId = g.Key,
-                TotalReservations = g.Count(),
-                ActiveReservations = g.Count(x => !x.IsCanceled),
-                ConsultantConfirmed = g.Count(x => x.ConsultantAttendanceConfirmedAt != null)
+                TotalReservations = g.Sum(x => x.PatientCount),
+                ActiveReservations = g.Sum(x => x.IsCanceled ? 0 : x.PatientCount),
+                ConsultantConfirmed = g.Sum(x => x.ConsultantAttendanceConfirmedAt != null ? x.PatientCount : 0)
             })
             .ToDictionaryAsync(x => x.ConsultantProfileId, cancellationToken);
 
@@ -53,7 +53,7 @@ public class ConsultantsExportService
                         x.CreatedAt >= todayStartUtc &&
                         x.CreatedAt < todayEndUtc)
             .GroupBy(x => x.ConsultantProfileId)
-            .Select(g => new { ConsultantProfileId = g.Key, Count = g.Count() })
+            .Select(g => new { ConsultantProfileId = g.Key, Count = g.Sum(x => x.PatientCount) })
             .ToDictionaryAsync(x => x.ConsultantProfileId, x => x.Count, cancellationToken);
 
         var lines = new List<string>

@@ -96,11 +96,13 @@ namespace DentalDashboard.Infrastracture.Repository
 
         private IQueryable<LeadAssignment> BurnedLeads() =>
             context.LeadAssignments.IgnoreQueryFilters().Where(x =>
-                x.AssignmentType == LeadAssignmentType.RealTime &&
-                ((x.ConsultantProfileId == null && !x.PickUp) ||
-                 (x.ConsultantProfileId != null &&
-                  x.CallResult == LeadCallResult.NoAnswer &&
-                  x.ReportSubmittedAt != null)));
+                (x.IsDeleted &&
+                 x.ConsultantProfileId == null &&
+                 !x.PickUp) ||
+                (!x.IsDeleted &&
+                 x.ConsultantProfileId != null &&
+                 x.CallResult == LeadCallResult.NoAnswer &&
+                 x.ReportSubmittedAt != null));
 
         public async Task<LeadAssignment?> GetActiveBurnedLeadAsync()
         {
@@ -262,9 +264,11 @@ namespace DentalDashboard.Infrastracture.Repository
         WHERE Id = @leadAssignmentId
           AND ((@sourceType = @newSource AND IsDeleted = 0 AND ConsultantProfileId IS NULL
                 AND PickUp = 0 AND ReportSubmittedAt IS NULL AND LeadAssignmentState = @newState)
-            OR (@sourceType = @burnedSource AND AssignmentType = @realTimeType
-                AND ((ConsultantProfileId IS NULL AND PickUp = 0) OR (ConsultantProfileId IS NOT NULL
-                    AND CallResult = @noAnswerResult AND ReportSubmittedAt IS NOT NULL))))
+            OR (@sourceType = @burnedSource
+                AND ((IsDeleted = 1 AND ConsultantProfileId IS NULL AND PickUp = 0)
+                  OR (IsDeleted = 0 AND ConsultantProfileId IS NOT NULL
+                    AND CallResult = @noAnswerResult
+                    AND ReportSubmittedAt IS NOT NULL))))
     ";
 
             var affectedRows = await context.Database

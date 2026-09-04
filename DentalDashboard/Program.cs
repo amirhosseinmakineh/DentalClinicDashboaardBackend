@@ -157,6 +157,7 @@ using (var scope = app.Services.CreateScope())
 // Middleware
 // ====================================
 
+app.UseMiddleware<DentalDashboard.Middleware.RequestCancellationMiddleware>();
 
 //app.UseCors("CorsPolicy");
 app.UseCors("FrontendCors");

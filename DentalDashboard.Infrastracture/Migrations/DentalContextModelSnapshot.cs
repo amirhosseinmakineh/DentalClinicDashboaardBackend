@@ -243,7 +243,53 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("AssignmentType", "LeadAssignmentState", "ConsultantProfileId");
 
+                    b.HasIndex("IsDeleted", "LeadAssignmentState", "ConsultantProfileId", "CreatedAt");
+
                     b.ToTable("LeadAssignments");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignmentSetting", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("AssignmentSourceType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByAdminId");
+
+                    b.ToTable("LeadAssignmentSettings", t =>
+                        {
+                            t.HasCheckConstraint("CK_LeadAssignmentSettings_Singleton", "[Id] = 1");
+
+                            t.HasCheckConstraint("CK_LeadAssignmentSettings_SourceType", "[AssignmentSourceType] IN (1, 2)");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            AssignmentSourceType = 1,
+                            CreatedAt = new DateTime(2026, 9, 3, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false
+                        });
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.PatientProfile", b =>
@@ -830,6 +876,16 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasForeignKey("ConsultantProfileId");
 
                     b.Navigation("ConsultantProfile");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignmentSetting", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "UpdatedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("UpdatedByAdmin");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.PatientProfile", b =>

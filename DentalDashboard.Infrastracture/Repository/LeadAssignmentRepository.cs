@@ -94,6 +94,34 @@ namespace DentalDashboard.Infrastracture.Repository
             return null;
         }
 
+        private IQueryable<LeadAssignment> BurnedLeads() =>
+            context.LeadAssignments.IgnoreQueryFilters().Where(x =>
+                (x.IsDeleted &&
+                 x.ConsultantProfileId == null &&
+                 !x.PickUp) ||
+                (!x.IsDeleted &&
+                 x.ConsultantProfileId != null &&
+                 x.CallResult == LeadCallResult.NoAnswer &&
+                 x.ReportSubmittedAt != null));
+
+        public async Task<LeadAssignment?> GetActiveBurnedLeadAsync()
+        {
+            var candidates = BurnedLeads();
+            return await candidates.Where(x => x.NotificationSent).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync()
+                ?? await candidates.Where(x => !x.NotificationSent).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
+        }
+
+        public async Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval)
+        {
+            var lead = await GetActiveBurnedLeadAsync();
+            if (lead == null || !lead.NotificationSent)
+                return lead;
+
+            return lead.LastDispatchAt == null || lead.LastDispatchAt < DateTime.UtcNow.Subtract(redispatchInterval)
+                ? lead
+                : null;
+        }
+
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
         {
             return GetAll()
@@ -209,17 +237,38 @@ namespace DentalDashboard.Infrastracture.Repository
             long consultantProfileId,
             CancellationToken cancellationToken)
         {
+            var sourceType = await context.LeadAssignmentSettings.AsNoTracking()
+                .Where(x => x.Id == LeadAssignmentSetting.SingletonId)
+                .Select(x => x.AssignmentSourceType)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (!Enum.IsDefined(sourceType))
+                sourceType = LeadAssignmentSourceType.NewLeads;
+
             var sql = @"
-        UPDATE LeadAssignments
+        UPDATE LeadAssignments WITH (UPDLOCK, ROWLOCK)
         SET
             ConsultantProfileId = @consultantProfileId,
+            IsDeleted = 0,
+            DeletedAt = NULL,
             PickUp = 1,
             AssignedAt = GETUTCDATE(),
             CallDeadlineAt = DATEADD(MINUTE, 3, GETUTCDATE()),
-            LeadAssignmentState = @assignedState
+            CallInitiatedAt = NULL,
+            LeadAssignmentState = @assignedState,
+            AssignmentType = @realTimeType,
+            RequiresThreeMinuteCall = 1,
+            ReportDescription = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE ReportDescription END,
+            ReportSubmittedAt = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE ReportSubmittedAt END,
+            ContactedAt = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE ContactedAt END,
+            CallResult = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE CallResult END
         WHERE Id = @leadAssignmentId
-        AND ConsultantProfileId IS NULL
-        AND PickUp = 0
+          AND ((@sourceType = @newSource AND IsDeleted = 0 AND ConsultantProfileId IS NULL
+                AND PickUp = 0 AND ReportSubmittedAt IS NULL AND LeadAssignmentState = @newState)
+            OR (@sourceType = @burnedSource
+                AND ((IsDeleted = 1 AND ConsultantProfileId IS NULL AND PickUp = 0)
+                  OR (IsDeleted = 0 AND ConsultantProfileId IS NOT NULL
+                    AND CallResult = @noAnswerResult
+                    AND ReportSubmittedAt IS NOT NULL))))
     ";
 
             var affectedRows = await context.Database
@@ -233,7 +282,13 @@ namespace DentalDashboard.Infrastracture.Repository
                         leadAssignmentId),
                     new SqlParameter(
                         "@assignedState",
-                        (int)LeadAssignmentState.Assigned)
+                        (int)LeadAssignmentState.Assigned),
+                    new SqlParameter("@newState", (int)LeadAssignmentState.New),
+                    new SqlParameter("@noAnswerResult", (int)LeadCallResult.NoAnswer),
+                    new SqlParameter("@realTimeType", (int)LeadAssignmentType.RealTime),
+                    new SqlParameter("@sourceType", (int)sourceType),
+                    new SqlParameter("@newSource", (int)LeadAssignmentSourceType.NewLeads),
+                    new SqlParameter("@burnedSource", (int)LeadAssignmentSourceType.BurnedLeads)
                 );
 
             return affectedRows == 1;

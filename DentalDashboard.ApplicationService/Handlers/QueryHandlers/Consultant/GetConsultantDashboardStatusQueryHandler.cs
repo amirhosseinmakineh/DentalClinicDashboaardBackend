@@ -48,15 +48,20 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
 
             var canGoOnline = !isAfterWorkEnd;
             var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
-            var todayReservationsCount = await reservationRepository.GetAll()
+            var activeReservations = reservationRepository.GetAll()
                 .AsNoTracking()
-                .CountAsync(
-                    x => !x.IsDeleted &&
-                         !x.IsCanceled &&
-                         x.ConsultantProfileId == profile.Id &&
-                         x.CreatedAt >= todayStartUtc &&
-                         x.CreatedAt < todayEndUtc,
-                    cancellationToken);
+                .Where(x => !x.IsDeleted &&
+                            !x.IsCanceled &&
+                            x.ConsultantProfileId == profile.Id);
+            var totalReservationsCount = await activeReservations
+                .CountAsync(cancellationToken);
+            var totalReservedPatientsCount = await activeReservations
+                .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
+            var todayReservationsCount = await activeReservations
+                .Where(x =>
+                            x.CreatedAt >= todayStartUtc &&
+                            x.CreatedAt < todayEndUtc)
+                .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
             var todayCallsCount = await leadAssignmentRepository.GetTodayCallCountAsync(profile.Id);
             var dailyLimitStatus = await leadAssignmentLimitService.GetDailyLimitStatusAsync(profile.Id);
 
@@ -70,6 +75,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 CanGoOnline = canGoOnline,
                 OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(isAfterWorkEnd),
                 TodayReservationsCount = todayReservationsCount,
+                TotalReservationsCount = totalReservationsCount,
+                TotalReservedPatientsCount = totalReservedPatientsCount,
                 TodayCallsCount = todayCallsCount,
                 DailyLimit = dailyLimitStatus.EffectiveDailyLimit,
                 TodayPickupCount = dailyLimitStatus.TodayPickupCount,

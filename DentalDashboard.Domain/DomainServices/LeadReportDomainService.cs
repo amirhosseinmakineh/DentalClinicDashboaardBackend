@@ -13,7 +13,7 @@ namespace DentalDashboard.Domain.DomainServices
                 LeadCallResult.Contacted => LeadAssignmentState.Contacted,
                 LeadCallResult.Rejected => LeadAssignmentState.Rejected,
                 LeadCallResult.WrongNumber => LeadAssignmentState.Rejected,
-                LeadCallResult.NoAnswer => LeadAssignmentState.Pending,
+                LeadCallResult.NoAnswer => LeadAssignmentState.NoAnswer,
                 LeadCallResult.NeedFollowUp => LeadAssignmentState.Pending,
                 LeadCallResult.Busy => LeadAssignmentState.Pending,
                 LeadCallResult.PatientHungUp => LeadAssignmentState.Pending,

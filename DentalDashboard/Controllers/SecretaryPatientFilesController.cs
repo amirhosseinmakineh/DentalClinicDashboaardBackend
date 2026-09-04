@@ -25,11 +25,15 @@ public sealed class SecretaryPatientFilesController(ICommandDispatcher commandDi
 
     [HttpPost]
     public async Task<IActionResult> Create(CreatePatientFileRequest request, CancellationToken cancellationToken) =>
-        ToResponse(await commandDispatcher.DispatchAsync(new CreatePatientFileCommand(request.GetPatientId()), cancellationToken));
+        ToResponse(await commandDispatcher.DispatchAsync(
+            new CreatePatientFileCommand(request.GetPatientId(), request.Description),
+            cancellationToken));
 
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, UpdatePatientFileRequest request, CancellationToken cancellationToken) =>
-        Ok(await commandDispatcher.DispatchAsync(new UpdatePatientFileCommand(id, request.FirstName, request.LastName, request.PhoneNumber), cancellationToken));
+        Ok(await commandDispatcher.DispatchAsync(
+            new UpdatePatientFileCommand(id, request.FirstName, request.LastName, request.PhoneNumber, request.Description),
+            cancellationToken));
 
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken) =>
@@ -61,12 +65,17 @@ public sealed class CreatePatientFileRequest
     public long? Id { get; init; }
     public long? LeadAssignmentId { get; init; }
     public long? PatientReferenceId { get; init; }
+    public string? Description { get; init; }
 
     public long GetPatientId() =>
         PatientId ?? LeadAssignmentId ?? PatientReferenceId ?? Id ?? 0;
 }
 
-public sealed record UpdatePatientFileRequest(string FirstName, string LastName, string PhoneNumber);
+public sealed record UpdatePatientFileRequest(
+    string FirstName,
+    string LastName,
+    string PhoneNumber,
+    string? Description);
 
 public sealed class PatientFileImportForm
 {

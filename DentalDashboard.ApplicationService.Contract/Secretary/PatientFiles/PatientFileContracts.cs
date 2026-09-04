@@ -13,6 +13,7 @@ public sealed record PatientFileDto(
     string FirstName,
     string LastName,
     string PhoneNumber,
+    string? Description,
     PatientFileSourceType SourceType,
     DateTime CreatedAt,
     PatientFileFinanceDto? Finance)
@@ -133,13 +134,15 @@ public sealed class SearchPatientsEligibleForFileQuery : IQuery<Result<EligibleP
 }
 
 public sealed record CreatePatientFileCommand(
-    long PatientId) : ICommand<CreatePatientFileResponse>;
+    long PatientId,
+    string? Description) : ICommand<CreatePatientFileResponse>;
 
 public sealed record UpdatePatientFileCommand(
     long Id,
     string FirstName,
     string LastName,
-    string PhoneNumber) : ICommand;
+    string PhoneNumber,
+    string? Description) : ICommand;
 
 public sealed record DeletePatientFileCommand(
     long Id) : ICommand;

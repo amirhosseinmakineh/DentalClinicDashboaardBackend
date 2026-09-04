@@ -65,6 +65,7 @@ public sealed class GetPatientFilesQueryHandler(IPatientFileRepository patientFi
                 patientFile.FirstName,
                 patientFile.LastName,
                 patientFile.PhoneNumber,
+                patientFile.Description,
                 patientFile.SourceType,
                 patientFile.CreatedAt,
                 null))
@@ -91,6 +92,7 @@ public sealed class GetPatientFileByIdQueryHandler(IPatientFileRepository patien
                 patientFile.FirstName,
                 patientFile.LastName,
                 patientFile.PhoneNumber,
+                patientFile.Description,
                 patientFile.SourceType,
                 patientFile.CreatedAt,
                 null))
@@ -296,6 +298,10 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
         if (request.PatientId <= 0)
             return Result<CreatePatientFileResponse>.Failure("شناسه بیمار معتبر نیست");
 
+        var description = request.Description?.Trim();
+        if (description?.Length > 2000)
+            return Result<CreatePatientFileResponse>.Failure("توضیحات پرونده نمی‌تواند بیشتر از ۲۰۰۰ کاراکتر باشد");
+
         await unitOfWork.BeginTransactionAsync(cancellationToken);
 
         try
@@ -338,6 +344,7 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
                 FirstName = patientName.FirstName,
                 LastName = patientName.LastName,
                 PhoneNumber = patient.PhoneNumber.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description,
                 SourceType = PatientFileSourceType.System
             };
 
@@ -373,8 +380,10 @@ public sealed class UpdatePatientFileCommandHandler(IPatientFileRepository patie
         var firstName = request.FirstName?.Trim() ?? "";
         var lastName = request.LastName?.Trim() ?? "";
         var phoneNumber = request.PhoneNumber?.Trim() ?? "";
+        var description = request.Description?.Trim();
 
-        if (request.Id <= 0 || firstName.Length is 0 or > 100 || lastName.Length is 0 or > 100 || phoneNumber.Length is 0 or > 20)
+        if (request.Id <= 0 || firstName.Length is 0 or > 100 || lastName.Length is 0 or > 100 ||
+            phoneNumber.Length is 0 or > 20 || description?.Length > 2000)
             return Result.Failure("اطلاعات پرونده معتبر نیست");
 
         var patientFile = await patientFileRepository.PatientFiles.SingleOrDefaultAsync(
@@ -387,6 +396,7 @@ public sealed class UpdatePatientFileCommandHandler(IPatientFileRepository patie
         patientFile.FirstName = firstName;
         patientFile.LastName = lastName;
         patientFile.PhoneNumber = phoneNumber;
+        patientFile.Description = string.IsNullOrWhiteSpace(description) ? null : description;
         patientFile.UpdatedAt = DateTime.UtcNow;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);

@@ -13,6 +13,7 @@ public sealed class PatientFileConfiguration : IEntityTypeConfiguration<PatientF
         builder.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
         builder.Property(x => x.LastName).HasMaxLength(100).IsRequired();
         builder.Property(x => x.PhoneNumber).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.Description).HasMaxLength(2000);
         builder.Property(x => x.SourceType).IsRequired();
         builder.HasIndex(x => x.FileNumber).IsUnique();
         builder.HasIndex(x => x.PhoneNumber);

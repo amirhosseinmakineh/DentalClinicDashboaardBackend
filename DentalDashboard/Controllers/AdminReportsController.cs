@@ -4,6 +4,8 @@ using DentalDashboard.Utilities.Convertor;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DentalDashboard.Domain.Enums;
+using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Commands;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
 namespace DentalDashboard.Controllers;
 
@@ -19,6 +21,7 @@ public class AdminReportsController : ControllerBase
     private readonly ReservationsExportService reservationsExportService;
     private readonly DailyReservationsReportService dailyReservationsReportService;
     private readonly PatientFinanceAdminReportService patientFinanceAdminReportService;
+    private readonly ICommandDispatcher commandDispatcher;
 
     public AdminReportsController(
         LeadCallReportExportService leadCallReportExportService,
@@ -28,7 +31,8 @@ public class AdminReportsController : ControllerBase
         ConsultantsDailySummaryService consultantsDailySummaryService,
         ReservationsExportService reservationsExportService,
         DailyReservationsReportService dailyReservationsReportService,
-        PatientFinanceAdminReportService patientFinanceAdminReportService)
+        PatientFinanceAdminReportService patientFinanceAdminReportService,
+        ICommandDispatcher commandDispatcher)
     {
         this.leadCallReportExportService = leadCallReportExportService;
         this.usersExportService = usersExportService;
@@ -38,6 +42,30 @@ public class AdminReportsController : ControllerBase
         this.reservationsExportService = reservationsExportService;
         this.dailyReservationsReportService = dailyReservationsReportService;
         this.patientFinanceAdminReportService = patientFinanceAdminReportService;
+        this.commandDispatcher = commandDispatcher;
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("patient-finances/{id:guid}")]
+    public async Task<IActionResult> UpdatePatientFinance(
+        Guid id,
+        UpdatePatientFinancialCaseCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.Id = id;
+        var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("patient-finances/{id:guid}")]
+    public async Task<IActionResult> DeletePatientFinance(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await commandDispatcher.DispatchAsync(
+            new CancelPatientFinancialCaseCommand(id), cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
     [Authorize(Roles = "Admin")]

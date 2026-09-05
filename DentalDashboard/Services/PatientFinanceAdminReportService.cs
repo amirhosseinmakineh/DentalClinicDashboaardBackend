@@ -66,9 +66,9 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         var summary = await BuildSummaryAsync(query, cancellationToken);
         var page = Math.Max(1, filter.Page);
         var pageSize = Math.Clamp(filter.PageSize, 1, 100);
-        var items = await Project(query)
+        var items = await Project(query
             .OrderByDescending(item => item.CreatedAt)
-            .ThenByDescending(item => item.CaseId)
+            .ThenByDescending(item => item.Id))
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
@@ -82,9 +82,9 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
     {
         var query = BuildQuery(filter);
         var summary = await BuildSummaryAsync(query, cancellationToken);
-        var items = await Project(query)
+        var items = await Project(query
             .OrderByDescending(item => item.CreatedAt)
-            .ThenByDescending(item => item.CaseId)
+            .ThenByDescending(item => item.Id))
             .ToListAsync(cancellationToken);
 
         using var workbook = new XLWorkbook();
@@ -221,39 +221,43 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase> query,
         CancellationToken cancellationToken)
     {
-        var values = await query.GroupBy(_ => 1).Select(group => new
+        var values = await query.Select(item => new
         {
-            CaseCount = group.Count(),
-            TotalAmount = group.Sum(item => item.TotalAmount),
-            PrePaymentAmount = group.Sum(item => item.PrePaymentAmount),
-            DepositAmount = group.Sum(item => item.DepositAmount),
-            PaidAmount = group.Sum(item => item.Transactions
+            item.TotalAmount,
+            item.PrePaymentAmount,
+            item.DepositAmount,
+            PaidAmount = item.Transactions
                 .Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
-                .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
-            UnpaidDebtAmount = group.Sum(item => item.Debts
+                .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+            UnpaidDebtAmount = item.Debts
                 .Where(debt => debt.Status == PatientDebtStatus.Unpaid)
-                .Sum(debt => (decimal?)debt.Amount) ?? 0),
-            ChequeAmount = group.Sum(item => item.Cheques
+                .Sum(debt => (decimal?)debt.Amount) ?? 0,
+            ChequeAmount = item.Cheques
                 .Where(cheque => cheque.Status != PatientChequeStatus.Cancelled)
-                .Sum(cheque => (decimal?)cheque.Amount) ?? 0),
-            PromissoryNoteAmount = group.Sum(item => item.PromissoryNotes
+                .Sum(cheque => (decimal?)cheque.Amount) ?? 0,
+            PromissoryNoteAmount = item.PromissoryNotes
                 .Where(note => note.Status != PatientPromissoryNoteStatus.Cancelled)
-                .Sum(note => (decimal?)note.Amount) ?? 0)
-        }).SingleOrDefaultAsync(cancellationToken);
+                .Sum(note => (decimal?)note.Amount) ?? 0
+        }).ToListAsync(cancellationToken);
 
-        if (values is null)
+        if (values.Count == 0)
             return new(0, 0, 0, 0, 0, 0, 0, 0, 0);
 
+        var totalAmount = values.Sum(item => item.TotalAmount);
+        var prePaymentAmount = values.Sum(item => item.PrePaymentAmount);
+        var depositAmount = values.Sum(item => item.DepositAmount);
+        var paidAmount = values.Sum(item => item.PaidAmount);
+
         return new(
-            values.CaseCount,
-            values.TotalAmount,
-            values.PrePaymentAmount,
-            values.DepositAmount,
-            values.PaidAmount,
-            Math.Max(values.TotalAmount - values.PrePaymentAmount - values.DepositAmount - values.PaidAmount, 0),
-            values.UnpaidDebtAmount,
-            values.ChequeAmount,
-            values.PromissoryNoteAmount);
+            values.Count,
+            totalAmount,
+            prePaymentAmount,
+            depositAmount,
+            paidAmount,
+            Math.Max(totalAmount - prePaymentAmount - depositAmount - paidAmount, 0),
+            values.Sum(item => item.UnpaidDebtAmount),
+            values.Sum(item => item.ChequeAmount),
+            values.Sum(item => item.PromissoryNoteAmount));
     }
 
     private static string AgreementLabel(PatientFinancialAgreementType value) => value switch

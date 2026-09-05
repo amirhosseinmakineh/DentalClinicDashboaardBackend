@@ -41,7 +41,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     out var appointmentError))
                 return Result<CreateReservationResponse>.Failure(appointmentError!);
 
-            if (appointmentDateTime <= IranTimeHelper.IranLocalNow)
+            if (!command.AllowHistoricalReservation &&
+                appointmentDateTime <= IranTimeHelper.IranLocalNow)
                 return Result<CreateReservationResponse>.Failure("زمان رزرو باید در آینده باشد");
 
             if (command.ReservationType == ReservationType.AfterSalesService &&

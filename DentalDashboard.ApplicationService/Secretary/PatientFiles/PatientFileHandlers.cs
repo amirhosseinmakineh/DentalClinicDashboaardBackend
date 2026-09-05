@@ -71,7 +71,11 @@ public sealed class GetPatientFilesQueryHandler(IPatientFileRepository patientFi
                 null))
             .ToListAsync(cancellationToken);
 
-        patientFiles = await PatientFileFinanceLoader.AttachAsync(patientFiles, patientFinanceRepository, cancellationToken);
+        patientFiles = await PatientFileFinanceLoader.AttachAsync(
+            patientFiles,
+            patientFileRepository,
+            patientFinanceRepository,
+            cancellationToken);
 
         return Result<PatientFilePageResponse>.Success(
             new(patientFiles, request.Page, request.PageSize, totalCount));
@@ -99,7 +103,11 @@ public sealed class GetPatientFileByIdQueryHandler(IPatientFileRepository patien
             .SingleOrDefaultAsync(cancellationToken);
 
         if (patientFile is not null)
-            patientFile = (await PatientFileFinanceLoader.AttachAsync([patientFile], patientFinanceRepository, cancellationToken))[0];
+            patientFile = (await PatientFileFinanceLoader.AttachAsync(
+                [patientFile],
+                patientFileRepository,
+                patientFinanceRepository,
+                cancellationToken))[0];
 
         return patientFile is null
             ? Result<PatientFileDto>.Failure("پرونده بیمار یافت نشد")
@@ -111,13 +119,44 @@ internal static class PatientFileFinanceLoader
 {
     public static async Task<List<PatientFileDto>> AttachAsync(
         IReadOnlyList<PatientFileDto> patientFiles,
+        IPatientFileRepository patientFileRepository,
         IPatientFinanceRepository patientFinanceRepository,
         CancellationToken cancellationToken)
     {
         if (patientFiles.Count == 0)
             return [];
 
-        var phoneNumbers = patientFiles.Select(patientFile => patientFile.PhoneNumber).Distinct().ToList();
+        var phoneNumbers = patientFiles
+            .Select(patientFile => patientFile.PhoneNumber)
+            .Distinct()
+            .ToList();
+        var patientReferenceIds = patientFiles
+            .Where(patientFile => patientFile.PatientId.HasValue)
+            .Select(patientFile => patientFile.PatientId!.Value)
+            .Distinct()
+            .ToList();
+
+        var reservationPatientLinks = await patientFileRepository.Reservations
+            .AsNoTracking()
+            .Where(reservation =>
+                !reservation.IsDeleted &&
+                reservation.PatientUserId.HasValue &&
+                patientReferenceIds.Contains(reservation.LeadAssignmentId))
+            .OrderByDescending(reservation => reservation.ReservationAt)
+            .ThenByDescending(reservation => reservation.Id)
+            .Select(reservation => new
+            {
+                reservation.LeadAssignmentId,
+                PatientUserId = reservation.PatientUserId!.Value
+            })
+            .ToListAsync(cancellationToken);
+
+        var patientUserIdByReferenceId = reservationPatientLinks
+            .GroupBy(link => link.LeadAssignmentId)
+            .ToDictionary(group => group.Key, group => group.First().PatientUserId);
+        var linkedPatientUserIds = patientUserIdByReferenceId.Values
+            .Distinct()
+            .ToList();
 
         var financialPatients = await patientFinanceRepository.Patients
             .AsNoTracking()
@@ -125,13 +164,17 @@ internal static class PatientFileFinanceLoader
                 !patient.IsDeleted &&
                 patient.PatientProfile != null &&
                 !patient.PatientProfile.IsDeleted &&
-                phoneNumbers.Contains(patient.PhoneNumber))
+                (linkedPatientUserIds.Contains(patient.Id) ||
+                 phoneNumbers.Contains(patient.PhoneNumber)))
             .Select(patient => new { patient.Id, patient.PhoneNumber })
             .ToListAsync(cancellationToken);
 
         var financialPatientIdByPhoneNumber = financialPatients
             .GroupBy(patient => patient.PhoneNumber)
             .ToDictionary(group => group.Key, group => (Guid?)group.First().Id);
+        var validFinancialPatientIds = financialPatients
+            .Select(patient => patient.Id)
+            .ToHashSet();
 
         var financialCases = await patientFinanceRepository.Cases
             .AsNoTracking()
@@ -202,7 +245,21 @@ internal static class PatientFileFinanceLoader
 
         return patientFiles.Select(patientFile =>
         {
-            financialPatientIdByPhoneNumber.TryGetValue(patientFile.PhoneNumber, out var financialPatientId);
+            Guid? financialPatientId = null;
+            if (patientFile.PatientId.HasValue &&
+                patientUserIdByReferenceId.TryGetValue(
+                    patientFile.PatientId.Value,
+                    out var linkedPatientUserId) &&
+                validFinancialPatientIds.Contains(linkedPatientUserId))
+            {
+                financialPatientId = linkedPatientUserId;
+            }
+            else
+            {
+                financialPatientIdByPhoneNumber.TryGetValue(
+                    patientFile.PhoneNumber,
+                    out financialPatientId);
+            }
 
             if (!financialCasesByPhoneNumber.TryGetValue(patientFile.PhoneNumber, out var patientFinancialCases))
                 return patientFile with { FinancialPatientId = financialPatientId };

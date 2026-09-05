@@ -368,6 +368,7 @@ namespace DentalDashboard.Controllers
                 command.OwnerType = access.IsSecretary
                     ? DentalDashboard.Domain.Enums.ReservationOwnerType.Secretary
                     : DentalDashboard.Domain.Enums.ReservationOwnerType.Consultant;
+                command.AllowHistoricalReservation = access.IsSecretary || isOwnConsultantReservation;
             }
             var result = await commandDispatcher.DispatchAsync(command);
             return result.IsSuccess ? Ok(result) : BadRequest(result);

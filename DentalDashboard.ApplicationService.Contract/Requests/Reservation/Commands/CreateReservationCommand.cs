@@ -25,5 +25,8 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
 
         [System.Text.Json.Serialization.JsonIgnore]
         public Guid? OwnerUserId { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool AllowHistoricalReservation { get; set; }
     }
 }

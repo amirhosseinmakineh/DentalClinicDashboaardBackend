@@ -1,8 +1,7 @@
 ﻿using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Infrastracture.Context;
 using System.Data;
-
-
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 public class UnitOfWork : IUnitOfWork

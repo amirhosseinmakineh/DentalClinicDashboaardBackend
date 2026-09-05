@@ -1,6 +1,8 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.Framwork.DependencyInjection;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 

@@ -190,7 +190,12 @@ internal static class PatientFileFinanceLoader
                     financialCase.Service.ToString(),
                     financialCase.TotalAmount,
                     financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0,
-                    financialCase.TotalAmount - (financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0),
+                    Math.Max(
+                        financialCase.TotalAmount -
+                        financialCase.PrePaymentAmount -
+                        financialCase.DepositAmount -
+                        (financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0),
+                        0),
                     financialCase.Debts
                         .Where(debt => debt.Status == PatientDebtStatus.Unpaid)
                         .Sum(debt => (decimal?)debt.Amount) ?? 0,
@@ -275,7 +280,7 @@ internal static class PatientFileFinanceLoader
                 patientFinancialCases[0].PatientId,
                 totalTreatmentAmount,
                 totalPaidAmount,
-                totalTreatmentAmount - totalPaidAmount,
+                activeFinancialCases.Sum(financialCase => financialCase.Case.RemainingAmount),
                 activeFinancialCases.Sum(financialCase => financialCase.Case.TotalDebtAmount),
                 patientFinancialCases.Count(financialCase => financialCase.Case.Status == PatientFinancialCaseStatus.Active),
                 activeFinancialCases.Sum(financialCase => financialCase.Case.Cheques.Count(cheque => cheque.Status == PatientChequeStatus.Unpaid)),

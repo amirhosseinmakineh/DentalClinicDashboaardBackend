@@ -49,7 +49,7 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ کل باید بیشتر از صفر باشد");
     if (c.PrePaymentAmount < 0 || c.DepositAmount < 0 ||
-        c.PrePaymentAmount > c.TotalAmount || c.DepositAmount > c.TotalAmount)
+        c.PrePaymentAmount + c.DepositAmount > c.TotalAmount)
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ پیش‌پرداخت یا ودیعه معتبر نیست");
     if (!Enum.IsDefined(c.AgreementType))
@@ -170,7 +170,7 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
           "مبلغ کل نمی‌تواند کمتر از پرداخت قطعی " +
           "باشد");
     if (c.PrePaymentAmount < 0 || c.DepositAmount < 0 ||
-        c.PrePaymentAmount > c.TotalAmount || c.DepositAmount > c.TotalAmount)
+        c.PrePaymentAmount + c.DepositAmount + paid > c.TotalAmount)
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ پیش‌پرداخت یا ودیعه معتبر نیست");
     x.TotalAmount = c.TotalAmount;

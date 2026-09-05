@@ -141,6 +141,8 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                     .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
                 Math.Max(
                     financialCase.TotalAmount -
+                    financialCase.PrePaymentAmount -
+                    financialCase.DepositAmount -
                     (financialCase.Transactions
                         .Where(transaction =>
                             transaction.Type == PatientFinancialTransactionType.Payment)
@@ -218,6 +220,8 @@ public sealed class GetPatientFinancialCaseDetailsQueryHandler(
                         .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
                     Math.Max(
                         financialCase.TotalAmount -
+                        financialCase.PrePaymentAmount -
+                        financialCase.DepositAmount -
                         (financialCase.Transactions
                             .Where(transaction =>
                                 transaction.Type == PatientFinancialTransactionType.Payment)
@@ -302,6 +306,8 @@ public sealed class GetPatientFinancialCaseSummaryQueryHandler(
                   .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
               Math.Max(
                   financialCase.TotalAmount -
+                  financialCase.PrePaymentAmount -
+                  financialCase.DepositAmount -
                   (financialCase.Transactions
                       .Where(transaction =>
                           transaction.Type == PatientFinancialTransactionType.Payment)

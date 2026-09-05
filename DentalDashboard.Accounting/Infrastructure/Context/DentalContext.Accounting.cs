@@ -1,6 +1,6 @@
-using DentalDashboard.Domain.Secretary.Accountant.Entities;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
+using DentalDashboard.Accounting.Domain.Entities;
+using DentalDashboard.Accounting.Domain.PatientFinance.Entities;
+using DentalDashboard.Accounting.Domain.SecretarySales.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Infrastracture.Context;

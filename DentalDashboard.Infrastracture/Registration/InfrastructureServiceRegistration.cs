@@ -1,4 +1,5 @@
-﻿using DentalDashboard.Domain.IRepositories;
+﻿using DentalDashboard.Accounting.Infrastructure.Registration;
+using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Infrastracture.Repository;
 using Microsoft.EntityFrameworkCore;

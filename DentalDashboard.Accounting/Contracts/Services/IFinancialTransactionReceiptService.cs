@@ -1,7 +1,7 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.DTOs;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Queries;
+using DentalDashboard.Accounting.Contracts.DTOs;
+using DentalDashboard.Accounting.Contracts.Queries;
 
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Services;
+namespace DentalDashboard.Accounting.Contracts.Services;
 
 public interface IFinancialTransactionReceiptService
 {

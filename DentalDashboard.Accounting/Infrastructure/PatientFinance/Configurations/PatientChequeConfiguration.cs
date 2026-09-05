@@ -1,8 +1,8 @@
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
+using DentalDashboard.Accounting.Domain.PatientFinance.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace DentalDashboard.Infrastracture.Secretary.Accountant.PatientFinance
+namespace DentalDashboard.Accounting.Infrastructure.PatientFinance
     .Configurations;
 
 public sealed class PatientChequeConfiguration

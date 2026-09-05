@@ -1,11 +1,11 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Commands;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.DTOs;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Queries;
-using DentalDashboard.Domain.Secretary.Accountant.Enums;
+using DentalDashboard.Accounting.Contracts.Commands;
+using DentalDashboard.Accounting.Contracts.DTOs;
+using DentalDashboard.Accounting.Contracts.Queries;
+using DentalDashboard.Accounting.Domain.Enums;
 using FluentValidation;
-using DentalDashboard.ApplicationService.Secretary.Accountant;
+using DentalDashboard.Accounting.Application;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.Validators;
+namespace DentalDashboard.Accounting.Application.Validators;
 
 public sealed class CreateSecretaryFinancialTransactionCommandValidator
     : AbstractValidator<CreateSecretaryFinancialTransactionCommand>

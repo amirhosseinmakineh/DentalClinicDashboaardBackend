@@ -1,16 +1,16 @@
 using System.Data;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Commands;
+using DentalDashboard.Accounting.Contracts.PatientFinance.Commands;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
+using DentalDashboard.Accounting.Domain.PatientFinance.Entities;
+using DentalDashboard.Accounting.Domain.PatientFinance.Enums;
+using DentalDashboard.Accounting.Domain.PatientFinance.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance.Handlers;
+namespace DentalDashboard.Accounting.Application.PatientFinance.Handlers;
 
 public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
     IPatientFinanceRepository repository,

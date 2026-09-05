@@ -1,6 +1,6 @@
 using DentalDashboard.Domain.Models;
 
-namespace DentalDashboard.Domain.Secretary.Accountant.Entities;
+namespace DentalDashboard.Accounting.Domain.Entities;
 
 public sealed class ExpenseCategory : BaseAuditableEntity<long>
 {

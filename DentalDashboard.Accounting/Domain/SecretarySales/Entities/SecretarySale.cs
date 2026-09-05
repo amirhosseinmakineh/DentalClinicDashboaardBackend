@@ -1,8 +1,8 @@
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Enums;
+using DentalDashboard.Accounting.Domain.SecretarySales.Enums;
 using DentalDashboard.Framwork.Domain;
 
-namespace DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
+namespace DentalDashboard.Accounting.Domain.SecretarySales.Entities;
 
 public sealed class SecretarySale : BaseAuditableEntity<long>
 {

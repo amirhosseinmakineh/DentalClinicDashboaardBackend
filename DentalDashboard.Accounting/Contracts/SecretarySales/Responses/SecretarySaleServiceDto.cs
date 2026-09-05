@@ -1,6 +1,6 @@
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Enums;
+using DentalDashboard.Accounting.Domain.SecretarySales.Enums;
 
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales;
+namespace DentalDashboard.Accounting.Contracts.SecretarySales;
 
 public sealed record SecretarySaleServiceDto(
     long Id,

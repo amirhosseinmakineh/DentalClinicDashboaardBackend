@@ -1,12 +1,12 @@
-using DentalDashboard.Domain.Secretary.Accountant.IRepositories;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.IRepositories;
-using DentalDashboard.Infrastracture.Secretary.Accountant.PatientFinance.Repositories;
-using DentalDashboard.Infrastracture.Secretary.Accountant.Repositories;
-using DentalDashboard.Infrastracture.Secretary.Accountant.SecretarySales.Repositories;
+using DentalDashboard.Accounting.Domain.IRepositories;
+using DentalDashboard.Accounting.Domain.PatientFinance.IRepositories;
+using DentalDashboard.Accounting.Domain.SecretarySales.IRepositories;
+using DentalDashboard.Accounting.Infrastructure.PatientFinance.Repositories;
+using DentalDashboard.Accounting.Infrastructure.Repositories;
+using DentalDashboard.Accounting.Infrastructure.SecretarySales.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace DentalDashboard.Infrastracture.Registration;
+namespace DentalDashboard.Accounting.Infrastructure.Registration;
 
 public static class AccountingInfrastructureRegistration
 {

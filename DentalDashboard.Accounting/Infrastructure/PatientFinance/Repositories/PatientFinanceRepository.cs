@@ -1,8 +1,8 @@
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
+using DentalDashboard.Accounting.Domain.PatientFinance.Entities;
+using DentalDashboard.Accounting.Domain.PatientFinance.IRepositories;
 using DentalDashboard.Infrastracture.Context;
 
-namespace DentalDashboard.Infrastracture.Secretary.Accountant.PatientFinance.Repositories;
+namespace DentalDashboard.Accounting.Infrastructure.PatientFinance.Repositories;
 
 public sealed class PatientFinanceRepository(DentalContext context)
     : IPatientFinanceRepository

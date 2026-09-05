@@ -1,10 +1,10 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Queries;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
+using DentalDashboard.Accounting.Contracts.PatientFinance.Queries;
+using DentalDashboard.Accounting.Domain.PatientFinance.Enums;
+using DentalDashboard.Accounting.Domain.PatientFinance.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance.Handlers;
+namespace DentalDashboard.Accounting.Application.PatientFinance.Handlers;
 
 public sealed class GetPatientFinancialCaseSummaryQueryHandler(
     IPatientFinanceRepository patientFinanceRepository)

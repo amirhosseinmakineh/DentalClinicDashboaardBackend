@@ -1,6 +1,6 @@
 using DentalDashboard.Accounting.Integration.PatientFiles.Services;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Services;
-using DentalDashboard.ApplicationService.Secretary.Accountant.Services;
+using DentalDashboard.Accounting.Contracts.Services;
+using DentalDashboard.Accounting.Application.Services;
 using DentalDashboard.Framwork.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 

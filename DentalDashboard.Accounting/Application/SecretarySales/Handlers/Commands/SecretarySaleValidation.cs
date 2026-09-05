@@ -1,9 +1,9 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.IRepositories;
+using DentalDashboard.Accounting.Contracts.SecretarySales;
+using DentalDashboard.Accounting.Domain.SecretarySales.Entities;
+using DentalDashboard.Accounting.Domain.SecretarySales.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.SecretarySales.Handlers;
+namespace DentalDashboard.Accounting.Application.SecretarySales.Handlers;
 
 internal static class SecretarySaleValidation
 {

@@ -1,8 +1,8 @@
-using DentalDashboard.Domain.Secretary.Accountant.Entities;
+using DentalDashboard.Accounting.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace DentalDashboard.Infrastracture.Secretary.Accountant.Configurations;
+namespace DentalDashboard.Accounting.Infrastructure.Configurations;
 
 public sealed class ExpenseCategoryConfiguration : IEntityTypeConfiguration<ExpenseCategory>
 {

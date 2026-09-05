@@ -1,12 +1,11 @@
-using DentalDashboard.Accounting.Controllers;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales.Commands;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales.Queries;
+using DentalDashboard.Accounting.Contracts.SecretarySales.Commands;
+using DentalDashboard.Accounting.Contracts.SecretarySales.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DentalDashboard.Secretary.Accountant.SecretarySales.Controllers;
+namespace DentalDashboard.Accounting.Controllers;
 
 [ApiController]
 [Authorize(Roles = "Secretary")]

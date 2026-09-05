@@ -1,8 +1,8 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.DTOs;
-using DentalDashboard.Domain.Secretary.Accountant.Entities;
-using DentalDashboard.Domain.Secretary.Accountant.Enums;
+using DentalDashboard.Accounting.Contracts.DTOs;
+using DentalDashboard.Accounting.Domain.Entities;
+using DentalDashboard.Accounting.Domain.Enums;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.Mappings;
+namespace DentalDashboard.Accounting.Application.Mappings;
 
 internal static class SecretaryFinancialTransactionMapper
 {

@@ -1,9 +1,9 @@
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Enums;
+using DentalDashboard.Accounting.Domain.SecretarySales.Entities;
+using DentalDashboard.Accounting.Domain.SecretarySales.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace DentalDashboard.Infrastracture.Secretary.Accountant.SecretarySales.Configurations;
+namespace DentalDashboard.Accounting.Infrastructure.SecretarySales.Configurations;
 
 public sealed class SecretaryWalletTransactionConfiguration : IEntityTypeConfiguration<SecretaryWalletTransaction>
 {

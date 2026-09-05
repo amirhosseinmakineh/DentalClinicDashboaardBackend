@@ -1,4 +1,4 @@
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Commands;
+namespace DentalDashboard.Accounting.Contracts.PatientFinance.Commands;
 
 public sealed record CreatePatientChequeDto(
     decimal Amount,

@@ -1,5 +1,5 @@
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Commands;
+namespace DentalDashboard.Accounting.Contracts.Commands;
 
 public sealed record DeleteSecretaryFinancialTransactionCommand(long Id) : ICommand;

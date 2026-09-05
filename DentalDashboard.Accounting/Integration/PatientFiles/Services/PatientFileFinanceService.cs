@@ -1,6 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
+using DentalDashboard.Accounting.Domain.PatientFinance.Enums;
+using DentalDashboard.Accounting.Domain.PatientFinance.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Accounting.Integration.PatientFiles.Services;

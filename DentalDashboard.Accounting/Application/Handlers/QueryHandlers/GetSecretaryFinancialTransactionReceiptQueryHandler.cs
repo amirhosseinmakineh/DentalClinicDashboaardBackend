@@ -1,11 +1,11 @@
-using DentalDashboard.ApplicationService.Secretary.Accountant.Mappings;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Services;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Queries;
-using DentalDashboard.Domain.Secretary.Accountant.IRepositories;
+using DentalDashboard.Accounting.Application.Mappings;
+using DentalDashboard.Accounting.Contracts.Services;
+using DentalDashboard.Accounting.Contracts.Queries;
+using DentalDashboard.Accounting.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.Handlers.QueryHandlers;
+namespace DentalDashboard.Accounting.Application.Handlers.QueryHandlers;
 
 public sealed class GetSecretaryFinancialTransactionReceiptQueryHandler(
     ISecretaryAccountRepository repository,

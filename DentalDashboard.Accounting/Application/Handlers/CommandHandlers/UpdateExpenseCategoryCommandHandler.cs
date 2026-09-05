@@ -1,10 +1,10 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Commands;
-using DentalDashboard.Domain.Secretary.Accountant.IRepositories;
+using DentalDashboard.Accounting.Contracts.Commands;
+using DentalDashboard.Accounting.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.Handlers.CommandHandlers;
+namespace DentalDashboard.Accounting.Application.Handlers.CommandHandlers;
 
 public sealed class UpdateExpenseCategoryCommandHandler
     : ICommandHandler<UpdateExpenseCategoryCommand, ExpenseCategoryResponse>

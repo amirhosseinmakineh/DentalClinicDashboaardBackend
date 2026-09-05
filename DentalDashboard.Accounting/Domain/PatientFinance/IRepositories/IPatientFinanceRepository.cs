@@ -1,7 +1,7 @@
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
+using DentalDashboard.Accounting.Domain.PatientFinance.Entities;
 using DentalDashboard.Domain.Models;
 
-namespace DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
+namespace DentalDashboard.Accounting.Domain.PatientFinance.IRepositories;
 
 public interface IPatientFinanceRepository
 {

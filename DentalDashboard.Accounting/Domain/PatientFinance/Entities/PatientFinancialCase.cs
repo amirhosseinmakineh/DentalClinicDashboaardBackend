@@ -1,8 +1,8 @@
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
+using DentalDashboard.Accounting.Domain.PatientFinance.Enums;
 
-namespace DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
+namespace DentalDashboard.Accounting.Domain.PatientFinance.Entities;
 
 public sealed class PatientFinancialCase : BaseAuditableEntity<Guid>
 {

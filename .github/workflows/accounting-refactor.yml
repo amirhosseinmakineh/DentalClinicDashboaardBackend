@@ -1,0 +1,30 @@
+name: Accounting Refactor
+
+on:
+  push:
+    branches: [restore-old-lead-flow]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore DentalDashboard.slnx
+
+      - name: Validate accounting boundaries
+        run: bash scripts/validate-accounting-boundaries.sh
+
+      - name: Validate financial contracts
+        run: |
+          node scripts/validate-secretary-sales-contract.mjs
+          node scripts/validate-patient-file-number-contract.mjs
+
+      - name: Build
+        run: dotnet build DentalDashboard.slnx --configuration Release --no-restore

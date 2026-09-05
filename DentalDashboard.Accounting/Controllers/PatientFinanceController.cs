@@ -1,13 +1,12 @@
-using DentalDashboard.Accounting.Controllers;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Commands;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Queries;
+using DentalDashboard.Accounting.Contracts.PatientFinance.Commands;
+using DentalDashboard.Accounting.Contracts.PatientFinance.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DentalDashboard.Secretary.Accountant.PatientFinance.Controllers;
+namespace DentalDashboard.Accounting.Controllers;
 
 [ApiController]
 [Authorize]

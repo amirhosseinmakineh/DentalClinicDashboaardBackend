@@ -1,4 +1,4 @@
-namespace DentalDashboard.ApplicationService.Secretary.Accountant;
+namespace DentalDashboard.Accounting.Application;
 
 internal static class SecretaryAccountConstants
 {

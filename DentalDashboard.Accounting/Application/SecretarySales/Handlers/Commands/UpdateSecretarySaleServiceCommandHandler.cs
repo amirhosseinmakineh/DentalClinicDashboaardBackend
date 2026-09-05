@@ -1,15 +1,15 @@
 using System.Data;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales.Commands;
+using DentalDashboard.Accounting.Contracts.SecretarySales;
+using DentalDashboard.Accounting.Contracts.SecretarySales.Commands;
 using DentalDashboard.Domain.IRepositories;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Enums;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.IRepositories;
+using DentalDashboard.Accounting.Domain.SecretarySales.Entities;
+using DentalDashboard.Accounting.Domain.SecretarySales.Enums;
+using DentalDashboard.Accounting.Domain.SecretarySales.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.SecretarySales.Handlers;
+namespace DentalDashboard.Accounting.Application.SecretarySales.Handlers;
 
 public sealed class UpdateSecretarySaleServiceCommandHandler(
     ISecretarySalesRepository repository,

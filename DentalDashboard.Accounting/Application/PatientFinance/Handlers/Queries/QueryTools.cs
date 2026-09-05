@@ -1,7 +1,7 @@
 using System.Globalization;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Queries;
+using DentalDashboard.Accounting.Contracts.PatientFinance.Queries;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance.Handlers;
+namespace DentalDashboard.Accounting.Application.PatientFinance.Handlers;
 
 internal static class QueryTools
 {

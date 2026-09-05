@@ -1,6 +1,6 @@
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Queries;
+namespace DentalDashboard.Accounting.Contracts.Queries;
 
 public sealed class GetSecretaryFinancialTransactionReceiptQuery : IQuery<FinancialTransactionReceiptResponse?>
 {

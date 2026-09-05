@@ -1,6 +1,6 @@
-using DentalDashboard.Domain.Secretary.Accountant.Enums;
+using DentalDashboard.Accounting.Domain.Enums;
 
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.DTOs;
+namespace DentalDashboard.Accounting.Contracts.DTOs;
 
 public sealed record SecretaryFinancialTransactionPage(
     IReadOnlyList<SecretaryFinancialTransactionDto> Items,

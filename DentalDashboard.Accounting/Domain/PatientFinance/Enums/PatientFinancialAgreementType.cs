@@ -1,4 +1,4 @@
-namespace DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
+namespace DentalDashboard.Accounting.Domain.PatientFinance.Enums;
 
 public enum PatientFinancialAgreementType
 {

@@ -1,6 +1,6 @@
 using DentalDashboard.Framwork.Domain;
 
-namespace DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
+namespace DentalDashboard.Accounting.Domain.SecretarySales.Entities;
 
 public sealed class SecretarySaleService : BaseAuditableEntity<long>
 {

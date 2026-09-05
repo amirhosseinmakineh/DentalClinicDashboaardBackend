@@ -1,6 +1,5 @@
-using DentalDashboard.Accounting.Controllers;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Commands;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Queries;
+using DentalDashboard.Accounting.Contracts.Commands;
+using DentalDashboard.Accounting.Contracts.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -8,7 +7,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DentalDashboard.Secretary.Accountant.Controllers;
+namespace DentalDashboard.Accounting.Controllers;
 
 [ApiController]
 [Authorize]

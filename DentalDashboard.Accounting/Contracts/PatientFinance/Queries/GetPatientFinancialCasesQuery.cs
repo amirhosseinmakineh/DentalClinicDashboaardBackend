@@ -1,8 +1,8 @@
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
+using DentalDashboard.Accounting.Domain.PatientFinance.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Domain.Models;
 
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance
+namespace DentalDashboard.Accounting.Contracts.PatientFinance
     .Queries;
 
 public sealed class GetPatientFinancialCasesQuery

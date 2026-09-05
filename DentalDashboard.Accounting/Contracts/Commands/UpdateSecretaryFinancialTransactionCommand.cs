@@ -1,7 +1,7 @@
-using DentalDashboard.Domain.Secretary.Accountant.Enums;
+using DentalDashboard.Accounting.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Commands;
+namespace DentalDashboard.Accounting.Contracts.Commands;
 
 public sealed class UpdateSecretaryFinancialTransactionCommand
     : ICommand<CreateSecretaryFinancialTransactionResponse>

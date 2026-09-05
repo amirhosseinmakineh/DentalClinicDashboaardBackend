@@ -1,11 +1,11 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Services;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.DTOs;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Queries;
+using DentalDashboard.Accounting.Contracts.Services;
+using DentalDashboard.Accounting.Contracts.DTOs;
+using DentalDashboard.Accounting.Contracts.Queries;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.Services;
+namespace DentalDashboard.Accounting.Application.Services;
 
 public sealed class FinancialTransactionReceiptService : IFinancialTransactionReceiptService
 {

@@ -1,12 +1,12 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales;
+using DentalDashboard.Accounting.Contracts.SecretarySales;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Pagination;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales.Queries;
+using DentalDashboard.Accounting.Contracts.SecretarySales.Queries;
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.IRepositories;
+using DentalDashboard.Accounting.Domain.SecretarySales.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.SecretarySales.Handlers;
+namespace DentalDashboard.Accounting.Application.SecretarySales.Handlers;
 
 public sealed class SearchSecretarySalePatientsQueryHandler(
     ISecretarySalesRepository repository)

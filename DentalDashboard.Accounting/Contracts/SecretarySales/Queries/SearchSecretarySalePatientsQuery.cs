@@ -1,10 +1,10 @@
 using System.Text.Json.Serialization;
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Enums;
+using DentalDashboard.Accounting.Domain.SecretarySales.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales;
+using DentalDashboard.Accounting.Contracts.SecretarySales;
 
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.SecretarySales.Queries;
+namespace DentalDashboard.Accounting.Contracts.SecretarySales.Queries;
 
 public sealed class SearchSecretarySalePatientsQuery : IQuery<PaginatedResult<SecretarySalePatientDto>>
 {

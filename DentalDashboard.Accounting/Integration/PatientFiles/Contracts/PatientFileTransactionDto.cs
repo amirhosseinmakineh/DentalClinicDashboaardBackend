@@ -1,4 +1,4 @@
-using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
+using DentalDashboard.Accounting.Domain.PatientFinance.Enums;
 
 namespace DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles;
 

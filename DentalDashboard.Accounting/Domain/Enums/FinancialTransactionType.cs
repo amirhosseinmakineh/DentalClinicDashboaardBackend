@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace DentalDashboard.Domain.Secretary.Accountant.Enums;
+namespace DentalDashboard.Accounting.Domain.Enums;
 
 public enum FinancialTransactionType
 {

@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
-namespace DentalDashboard.Domain.Secretary.Accountant.Enums;
+namespace DentalDashboard.Accounting.Domain.Enums;
 
 public static class SecretaryAccountEnumExtensions
 {

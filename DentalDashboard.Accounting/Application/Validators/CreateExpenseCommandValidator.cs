@@ -1,7 +1,7 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Commands;
+using DentalDashboard.Accounting.Contracts.Commands;
 using FluentValidation;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.Validators;
+namespace DentalDashboard.Accounting.Application.Validators;
 
 public sealed class CreateExpenseCommandValidator : AbstractValidator<CreateExpenseCommand>
 {

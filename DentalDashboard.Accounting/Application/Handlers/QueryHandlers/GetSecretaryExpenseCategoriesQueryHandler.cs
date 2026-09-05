@@ -1,11 +1,11 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.DTOs;
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Queries;
-using DentalDashboard.Domain.Secretary.Accountant.IRepositories;
+using DentalDashboard.Accounting.Contracts.DTOs;
+using DentalDashboard.Accounting.Contracts.Queries;
+using DentalDashboard.Accounting.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.Handlers.QueryHandlers;
+namespace DentalDashboard.Accounting.Application.Handlers.QueryHandlers;
 
 public sealed class GetSecretaryExpenseCategoriesQueryHandler(
     ISecretaryAccountRepository repository)

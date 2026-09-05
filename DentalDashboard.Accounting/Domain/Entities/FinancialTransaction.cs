@@ -1,7 +1,7 @@
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Domain.Secretary.Accountant.Enums;
+using DentalDashboard.Accounting.Domain.Enums;
 
-namespace DentalDashboard.Domain.Secretary.Accountant.Entities;
+namespace DentalDashboard.Accounting.Domain.Entities;
 
 public sealed class FinancialTransaction : BaseAuditableEntity<long>
 {

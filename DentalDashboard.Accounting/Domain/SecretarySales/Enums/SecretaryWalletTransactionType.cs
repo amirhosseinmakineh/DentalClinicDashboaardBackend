@@ -1,4 +1,4 @@
-namespace DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Enums;
+namespace DentalDashboard.Accounting.Domain.SecretarySales.Enums;
 
 public enum SecretaryWalletTransactionType
 {

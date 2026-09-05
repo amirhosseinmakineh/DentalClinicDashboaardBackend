@@ -1,7 +1,7 @@
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
+using DentalDashboard.Accounting.Domain.SecretarySales.Entities;
 
-namespace DentalDashboard.Domain.Secretary.Accountant.SecretarySales.IRepositories;
+namespace DentalDashboard.Accounting.Domain.SecretarySales.IRepositories;
 
 public interface ISecretarySalesRepository
 {

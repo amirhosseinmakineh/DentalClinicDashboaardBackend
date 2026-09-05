@@ -1,9 +1,9 @@
-using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.DTOs;
-using DentalDashboard.Domain.Secretary.Accountant.Enums;
+using DentalDashboard.Accounting.Contracts.DTOs;
+using DentalDashboard.Accounting.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Domain;
 
-namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Queries;
+namespace DentalDashboard.Accounting.Contracts.Queries;
 
 public sealed class GetSecretaryFinancialTransactionsQuery : IQuery<Result<SecretaryFinancialTransactionPage>>
 {

@@ -1,9 +1,9 @@
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.IRepositories;
+using DentalDashboard.Accounting.Domain.SecretarySales.Entities;
+using DentalDashboard.Accounting.Domain.SecretarySales.IRepositories;
 using DentalDashboard.Infrastracture.Context;
 
-namespace DentalDashboard.Infrastracture.Secretary.Accountant.SecretarySales.Repositories;
+namespace DentalDashboard.Accounting.Infrastructure.SecretarySales.Repositories;
 
 public sealed class SecretarySalesRepository(DentalContext context) : ISecretarySalesRepository
 {

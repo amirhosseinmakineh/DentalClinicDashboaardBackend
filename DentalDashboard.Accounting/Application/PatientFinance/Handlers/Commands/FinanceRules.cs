@@ -1,6 +1,6 @@
 using DentalDashboard.Utilities.Time;
 
-namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance.Handlers;
+namespace DentalDashboard.Accounting.Application.PatientFinance.Handlers;
 
 internal static class FinanceRules
 {

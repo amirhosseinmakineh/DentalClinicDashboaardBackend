@@ -107,8 +107,16 @@ namespace DentalDashboard.Infrastracture.Repository
         public async Task<LeadAssignment?> GetActiveBurnedLeadAsync()
         {
             var candidates = BurnedLeads();
-            return await candidates.Where(x => x.NotificationSent).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync()
-                ?? await candidates.Where(x => !x.NotificationSent).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
+            return await candidates
+                .Where(x => x.NotificationSent)
+                .OrderByDescending(x => x.CreatedAt)
+                .ThenByDescending(x => x.Id)
+                .FirstOrDefaultAsync()
+                ?? await candidates
+                    .Where(x => !x.NotificationSent)
+                    .OrderByDescending(x => x.CreatedAt)
+                    .ThenByDescending(x => x.Id)
+                    .FirstOrDefaultAsync();
         }
 
         public async Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval)

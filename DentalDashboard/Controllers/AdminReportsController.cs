@@ -18,6 +18,7 @@ public class AdminReportsController : ControllerBase
     private readonly ConsultantsDailySummaryService consultantsDailySummaryService;
     private readonly ReservationsExportService reservationsExportService;
     private readonly DailyReservationsReportService dailyReservationsReportService;
+    private readonly PatientFinanceAdminReportService patientFinanceAdminReportService;
 
     public AdminReportsController(
         LeadCallReportExportService leadCallReportExportService,
@@ -26,7 +27,8 @@ public class AdminReportsController : ControllerBase
         ConsultantsExportService consultantsExportService,
         ConsultantsDailySummaryService consultantsDailySummaryService,
         ReservationsExportService reservationsExportService,
-        DailyReservationsReportService dailyReservationsReportService)
+        DailyReservationsReportService dailyReservationsReportService,
+        PatientFinanceAdminReportService patientFinanceAdminReportService)
     {
         this.leadCallReportExportService = leadCallReportExportService;
         this.usersExportService = usersExportService;
@@ -35,6 +37,35 @@ public class AdminReportsController : ControllerBase
         this.consultantsDailySummaryService = consultantsDailySummaryService;
         this.reservationsExportService = reservationsExportService;
         this.dailyReservationsReportService = dailyReservationsReportService;
+        this.patientFinanceAdminReportService = patientFinanceAdminReportService;
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("patient-finances")]
+    public async Task<IActionResult> GetPatientFinances(
+        [FromQuery] PatientFinanceAdminReportFilter filter,
+        CancellationToken cancellationToken)
+    {
+        if (filter.FromDate.HasValue && filter.ToDate.HasValue && filter.FromDate > filter.ToDate)
+            return BadRequest(new { message = "تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد." });
+
+        return Ok(await patientFinanceAdminReportService.GetAsync(filter, cancellationToken));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("patient-finances/export")]
+    public async Task<IActionResult> ExportPatientFinances(
+        [FromQuery] PatientFinanceAdminReportFilter filter,
+        CancellationToken cancellationToken)
+    {
+        if (filter.FromDate.HasValue && filter.ToDate.HasValue && filter.FromDate > filter.ToDate)
+            return BadRequest(new { message = "تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد." });
+
+        var file = await patientFinanceAdminReportService.ExportExcelAsync(filter, cancellationToken);
+        return File(
+            file,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"patient-finance-report-{TodayPersianFileDate()}.xlsx");
     }
 
     [Authorize(Roles = "Admin")]

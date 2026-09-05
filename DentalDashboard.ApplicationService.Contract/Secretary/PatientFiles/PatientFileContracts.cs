@@ -93,6 +93,9 @@ public sealed record CreatePatientFileResponse(
     long Id,
     long FileNumber);
 
+public sealed record PatientFileFinancialIdentityResponse(
+    Guid FinancialPatientId);
+
 public sealed record ImportPatientFileError(
     int Row,
     string Field,
@@ -136,6 +139,9 @@ public sealed class SearchPatientsEligibleForFileQuery : IQuery<Result<EligibleP
 public sealed record CreatePatientFileCommand(
     long PatientId,
     string? Description) : ICommand<CreatePatientFileResponse>;
+
+public sealed record EnsurePatientFileFinancialIdentityCommand(
+    long PatientFileId) : ICommand<PatientFileFinancialIdentityResponse>;
 
 public sealed record UpdatePatientFileCommand(
     long Id,

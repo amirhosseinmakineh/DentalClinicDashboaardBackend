@@ -1,5 +1,6 @@
 using ClosedXML.Excel;
 using System.IO.Compression;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
@@ -9,6 +10,7 @@ using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using DentalDashboard.Utilities.Hasher;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -426,6 +428,120 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
         {
             await unitOfWork.RollbackAsync(cancellationToken);
             return Result<CreatePatientFileResponse>.Failure(exception.Message);
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+}
+
+public sealed class EnsurePatientFileFinancialIdentityCommandHandler(
+    IPatientFileRepository patientFileRepository,
+    IUserRepository userRepository,
+    IPatientProfileRepository patientProfileRepository,
+    IRoleService roleService,
+    IUnitOfWork unitOfWork)
+    : ICommandHandler<EnsurePatientFileFinancialIdentityCommand, PatientFileFinancialIdentityResponse>
+{
+    private const string PatientRoleName = "Patient";
+
+    public async Task<Result<PatientFileFinancialIdentityResponse>> HandleAsync(
+        EnsurePatientFileFinancialIdentityCommand request,
+        CancellationToken cancellationToken = default)
+    {
+        var patientFile = await patientFileRepository.PatientFiles
+            .SingleOrDefaultAsync(
+                file => file.Id == request.PatientFileId && !file.IsDeleted,
+                cancellationToken);
+
+        if (patientFile is null)
+            return Result<PatientFileFinancialIdentityResponse>.Failure("پرونده بیمار یافت نشد");
+
+        var phoneNumber = patientFile.PhoneNumber.Trim();
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+            return Result<PatientFileFinancialIdentityResponse>.Failure("شماره تماس بیمار معتبر نیست");
+
+        await unitOfWork.BeginTransactionAsync(
+            cancellationToken,
+            System.Data.IsolationLevel.Serializable);
+
+        try
+        {
+            var patientUser = await userRepository.GetAll()
+                .IgnoreQueryFilters()
+                .SingleOrDefaultAsync(
+                    user => user.PhoneNumber == phoneNumber,
+                    cancellationToken);
+
+            if (patientUser?.IsDeleted == true)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result<PatientFileFinancialIdentityResponse>.Failure(
+                    "حساب کاربری مرتبط با این شماره تماس غیرفعال است");
+            }
+
+            if (patientUser is null)
+            {
+                patientUser = new User
+                {
+                    Id = Guid.NewGuid(),
+                    FirstName = patientFile.FirstName,
+                    LastName = patientFile.LastName,
+                    PhoneNumber = phoneNumber,
+                    PasswordHash = PasswordHasher.HashPassword(Guid.NewGuid().ToString("N")),
+                    IsActive = true,
+                    IsCompleteProfile = false
+                };
+
+                await userRepository.AddAsync(patientUser);
+            }
+
+            var patientProfile = await patientProfileRepository.GetAll()
+                .IgnoreQueryFilters()
+                .SingleOrDefaultAsync(
+                    profile => profile.UserId == patientUser.Id,
+                    cancellationToken);
+
+            if (patientProfile is null)
+            {
+                patientProfile = new PatientProfile
+                {
+                    UserId = patientUser.Id,
+                    NationalCode = string.Empty
+                };
+                await patientProfileRepository.AddAsync(patientProfile);
+            }
+            else if (patientProfile.IsDeleted)
+            {
+                patientProfile.IsDeleted = false;
+                patientProfile.DeletedAt = null;
+                patientProfile.UpdatedAt = DateTime.UtcNow;
+                patientProfileRepository.Update(patientProfile);
+            }
+
+            await roleService.AddRoleToUser(patientUser.Id, PatientRoleName);
+
+            if (patientFile.PatientReferenceId.HasValue)
+            {
+                var reservations = await patientFileRepository.Reservations
+                    .Where(reservation =>
+                        !reservation.IsDeleted &&
+                        reservation.LeadAssignmentId == patientFile.PatientReferenceId.Value &&
+                        !reservation.PatientUserId.HasValue)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var reservation in reservations)
+                {
+                    reservation.PatientUserId = patientUser.Id;
+                    reservation.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            await unitOfWork.CommitAsync(cancellationToken);
+            return Result<PatientFileFinancialIdentityResponse>.Success(
+                new(patientUser.Id));
         }
         catch
         {

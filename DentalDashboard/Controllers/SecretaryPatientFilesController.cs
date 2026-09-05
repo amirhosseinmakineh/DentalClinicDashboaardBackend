@@ -29,6 +29,12 @@ public sealed class SecretaryPatientFilesController(ICommandDispatcher commandDi
             new CreatePatientFileCommand(request.GetPatientId(), request.Description),
             cancellationToken));
 
+    [HttpPost("{id:long}/financial-identity")]
+    public async Task<IActionResult> EnsureFinancialIdentity(long id, CancellationToken cancellationToken) =>
+        ToResponse(await commandDispatcher.DispatchAsync(
+            new EnsurePatientFileFinancialIdentityCommand(id),
+            cancellationToken));
+
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, UpdatePatientFileRequest request, CancellationToken cancellationToken) =>
         Ok(await commandDispatcher.DispatchAsync(

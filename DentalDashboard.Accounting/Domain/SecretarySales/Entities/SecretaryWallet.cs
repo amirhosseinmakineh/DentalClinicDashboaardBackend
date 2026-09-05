@@ -1,5 +1,4 @@
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.Accounting.Domain.SecretarySales.Entities;
 

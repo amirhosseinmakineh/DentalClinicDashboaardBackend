@@ -1,6 +1,5 @@
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Accounting.Domain.SecretarySales.Enums;
-using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.Accounting.Domain.SecretarySales.Entities;
 

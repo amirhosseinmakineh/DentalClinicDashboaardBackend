@@ -3,16 +3,16 @@ set -euo pipefail
 
 module_root="DentalDashboard.Accounting"
 
-if rg -n "DbContext|DentalContext" \
+if grep -RInE "DbContext|DentalContext" \
   "$module_root/Application" \
   "$module_root/Controllers" \
   "$module_root/Integration" \
-  --glob '*.cs'; then
+  --include='*.cs'; then
   echo "Accounting application/controller code must not depend on DbContext." >&2
   exit 1
 fi
 
-if rg -n "namespace DentalDashboard\.(ApplicationService|Domain|Infrastracture|Secretary\.Accountant|Controllers)" \
+if grep -RInE "namespace DentalDashboard\.(ApplicationService|Domain|Infrastracture|Secretary\.Accountant|Controllers)" \
   "$module_root/Application" \
   "$module_root/Contracts" \
   "$module_root/Controllers" \
@@ -22,7 +22,7 @@ if rg -n "namespace DentalDashboard\.(ApplicationService|Domain|Infrastracture|S
   "$module_root/Infrastructure/Repositories" \
   "$module_root/Infrastructure/Registration" \
   "$module_root/Infrastructure/SecretarySales" \
-  --glob '*.cs'; then
+  --include='*.cs'; then
   echo "Accounting code leaked into a legacy namespace." >&2
   exit 1
 fi

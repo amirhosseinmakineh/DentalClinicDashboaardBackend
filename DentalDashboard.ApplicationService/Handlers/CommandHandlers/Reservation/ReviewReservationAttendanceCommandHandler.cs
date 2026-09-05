@@ -39,6 +39,12 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (!patientReceivedService.HasValue)
                 return Result.Failure("وضعیت انجام یا عدم انجام خدمت باید مشخص شود");
 
+            var doctorName = command.DoctorName?.Trim();
+            if (patientReceivedService.Value && string.IsNullOrWhiteSpace(doctorName))
+                return Result.Failure("نام دکتر برای تایید حضور الزامی است");
+            if (doctorName?.Length > 120)
+                return Result.Failure("نام دکتر نمی‌تواند بیشتر از ۱۲۰ کاراکتر باشد");
+
             var profile = await consultantProfileRepository.GetAll()
                 .FirstOrDefaultAsync(x => x.Id == reservation.ConsultantProfileId, cancellationToken);
             if (profile == null || profile.IsDeleted)
@@ -56,14 +62,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             reservation.AttendanceScoreValue = null;
             reservation.AttendanceScoreAppliedAt = DateTime.UtcNow;
             reservation.UpdatedAt = DateTime.UtcNow;
-            reservation.DoctorName = command.DoctorName;
+            reservation.DoctorName = patientReceivedService.Value ? doctorName : null;
 
             reservationRepository.Update(reservation);
             await reservationRepository.SaveChange();
 
             return Result.Success(patientReceivedService.Value
-                ? "انجام خدمت برای بیمار تایید شد"
-                : "عدم انجام خدمت برای بیمار ثبت و رزرو رد شد");
+                ? "حضور بیمار تایید شد"
+                : "عدم حضور بیمار ثبت شد");
         }
     }
 }

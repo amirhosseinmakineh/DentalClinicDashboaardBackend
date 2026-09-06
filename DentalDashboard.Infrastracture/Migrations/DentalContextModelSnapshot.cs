@@ -399,6 +399,19 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("ConsultantAttendanceConfirmedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool?>("ConsultantRewardApprovedByAdmin")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("ConsultantRewardAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("ConsultantRewardReviewedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ConsultantRewardReviewedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ConsultantAttendanceNote")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -513,6 +526,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("SecretaryAnnouncementUserId", "SecretaryAnnouncementUpdatedAt");
 
                     b.HasIndex("ConsultantProfileId", "ReservationAt", "IsCanceled");
+
+                    b.HasIndex("ConsultantRewardApprovedByAdmin", "SecretaryReviewedAt");
 
                     b.HasIndex("OwnerType", "OwnerUserId", "CreatedAt");
 

@@ -22,6 +22,11 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.Property(x => x.PatientCount)
                 .HasDefaultValue(1);
 
+            builder.Property(x => x.ConsultantRewardAmount)
+                .HasPrecision(18, 2);
+
+            builder.HasIndex(x => new { x.ConsultantRewardApprovedByAdmin, x.SecretaryReviewedAt });
+
             builder.Property(x => x.DoctorName)
                 .HasMaxLength(150);
 

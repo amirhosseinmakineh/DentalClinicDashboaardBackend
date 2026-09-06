@@ -26,6 +26,10 @@ public class Reservation : BaseAuditableEntity<long>
     public Guid? SecretaryUserId { get; set; }
     public bool? SecretaryApprovedConsultantConfirmation { get; set; }
     public string? SecretaryReviewNote { get; set; }
+    public bool? ConsultantRewardApprovedByAdmin { get; set; }
+    public decimal? ConsultantRewardAmount { get; set; }
+    public Guid? ConsultantRewardReviewedByAdminId { get; set; }
+    public DateTime? ConsultantRewardReviewedAt { get; set; }
     public SecretaryAnnouncementStatus? SecretaryAnnouncementStatus { get; set; }
     public string? SecretaryAnnouncement { get; set; }
     // A secretary follow-up is stored on its existing reservation; no separate table is required.

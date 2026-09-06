@@ -48,16 +48,49 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (!profile.IsCompleteProfile)
                 return Result<AddConsultantPatientLeadResponse>.Failure("پروفایل مشاور کامل نیست");
 
-            var hasActiveLead = await leadAssignmentRepository.GetAll()
-                .AnyAsync(x => !x.IsDeleted &&
-                               x.ConsultantProfileId == command.ConsultantProfileId &&
-                               x.PhoneNumber == phoneNumber &&
-                               x.ReportSubmittedAt == null &&
-                               x.LeadAssignmentState != LeadAssignmentState.Expired &&
-                               x.LeadAssignmentState != LeadAssignmentState.Rejected,
+            var activeLead = await leadAssignmentRepository.GetAll()
+                .FirstOrDefaultAsync(x => !x.IsDeleted &&
+                                          x.ConsultantProfileId == command.ConsultantProfileId &&
+                                          x.PhoneNumber == phoneNumber &&
+                                          x.ReportSubmittedAt == null &&
+                                          x.LeadAssignmentState != LeadAssignmentState.Expired &&
+                                          x.LeadAssignmentState != LeadAssignmentState.Rejected,
                     cancellationToken);
 
-            if (hasActiveLead)
+            // A burned lead becomes active again when it is dispatched to a consultant.
+            // If the consultant subsequently adds that same person as their own patient,
+            // reuse the dispatched row instead of rejecting the request or creating a
+            // second lead for the same phone number.
+            if (activeLead?.AssignmentType == LeadAssignmentType.RealTime)
+            {
+                var now = DateTime.Now;
+                activeLead.UserName = userName;
+                activeLead.AssignmentType = LeadAssignmentType.ConsultantPatient;
+                activeLead.LeadAssignmentState = LeadAssignmentState.Assigned;
+                activeLead.AssignedAt ??= now;
+                activeLead.RequiresThreeMinuteCall = false;
+                activeLead.CallDeadlineAt = null;
+                activeLead.PatientCity = command.PatientCity?.Trim();
+                activeLead.PatientRegion = command.PatientRegion?.Trim();
+                activeLead.SecondaryPhoneNumber = command.SecondaryPhoneNumber?.Trim();
+                activeLead.ReportDescription = command.ReportDescription?.Trim();
+                activeLead.UpdatedAt = now;
+
+                leadAssignmentRepository.Update(activeLead);
+                await leadAssignmentRepository.SaveChange();
+
+                return Result<AddConsultantPatientLeadResponse>.Success(new AddConsultantPatientLeadResponse
+                {
+                    LeadAssignmentId = activeLead.Id,
+                    ConsultantProfileId = profile.Id,
+                    UserName = activeLead.UserName,
+                    PhoneNumber = activeLead.PhoneNumber,
+                    AssignmentType = activeLead.AssignmentType,
+                    LeadAssignmentState = activeLead.LeadAssignmentState
+                }, "بیمار با موفقیت ثبت شد");
+            }
+
+            if (activeLead != null)
                 return Result<AddConsultantPatientLeadResponse>.Failure(
                     "برای این شماره تماس، لید فعال دیگری نزد شما وجود دارد");
 

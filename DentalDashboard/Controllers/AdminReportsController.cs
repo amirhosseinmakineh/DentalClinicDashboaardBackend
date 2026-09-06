@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Commands;
+using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Queries;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using DentalDashboard.Framwork.Domain;
 
 namespace DentalDashboard.Controllers;
 
@@ -22,6 +25,7 @@ public class AdminReportsController : ControllerBase
     private readonly DailyReservationsReportService dailyReservationsReportService;
     private readonly PatientFinanceAdminReportService patientFinanceAdminReportService;
     private readonly ICommandDispatcher commandDispatcher;
+    private readonly IQueryDispatcher queryDispatcher;
 
     public AdminReportsController(
         LeadCallReportExportService leadCallReportExportService,
@@ -32,7 +36,8 @@ public class AdminReportsController : ControllerBase
         ReservationsExportService reservationsExportService,
         DailyReservationsReportService dailyReservationsReportService,
         PatientFinanceAdminReportService patientFinanceAdminReportService,
-        ICommandDispatcher commandDispatcher)
+        ICommandDispatcher commandDispatcher,
+        IQueryDispatcher queryDispatcher)
     {
         this.leadCallReportExportService = leadCallReportExportService;
         this.usersExportService = usersExportService;
@@ -43,6 +48,68 @@ public class AdminReportsController : ControllerBase
         this.dailyReservationsReportService = dailyReservationsReportService;
         this.patientFinanceAdminReportService = patientFinanceAdminReportService;
         this.commandDispatcher = commandDispatcher;
+        this.queryDispatcher = queryDispatcher;
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("patient-finances/{id:guid}/details")]
+    public async Task<IActionResult> GetPatientFinanceDetails(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await queryDispatcher.DispatchAsync(
+            new GetPatientFinancialCaseDetailsQuery(id), cancellationToken);
+
+        return result is null
+            ? NotFound(Result<object?>.Failure("پرونده مالی موردنظر یافت نشد."))
+            : Ok(Result<PatientFinancialCaseDetailsDto>.Success(
+                result, "اطلاعات پرونده مالی دریافت شد."));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("patient-finances/cheques/{id:long}")]
+    public async Task<IActionResult> UpdatePatientCheque(
+        long id,
+        UpdatePatientChequeCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.ChequeId = id;
+        var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("patient-finances/cheques/{id:long}")]
+    public async Task<IActionResult> DeletePatientCheque(
+        long id,
+        CancellationToken cancellationToken)
+    {
+        var result = await commandDispatcher.DispatchAsync(
+            new DeletePatientChequeCommand(id), cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("patient-finances/promissory-notes/{id:long}")]
+    public async Task<IActionResult> UpdatePatientPromissoryNote(
+        long id,
+        UpdatePatientPromissoryNoteCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.PromissoryNoteId = id;
+        var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("patient-finances/promissory-notes/{id:long}")]
+    public async Task<IActionResult> DeletePatientPromissoryNote(
+        long id,
+        CancellationToken cancellationToken)
+    {
+        var result = await commandDispatcher.DispatchAsync(
+            new DeletePatientPromissoryNoteCommand(id), cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
     [Authorize(Roles = "Admin")]

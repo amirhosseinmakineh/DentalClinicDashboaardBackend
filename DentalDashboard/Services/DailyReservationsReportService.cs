@@ -160,13 +160,13 @@ public class DailyReservationsReportService(DentalContext context)
             includeAll ? null : reportDate.ToPersianDate(),
             IranTimeHelper.ToIranLocalTime(DateTime.UtcNow).ToPersianDateTimeString(),
             new DailyReservationsReportSummary(
-                items.Count,
-                items.Count(x => !x.IsCanceled),
-                items.Count(x => x.IsCanceled),
-                items.Count(x => x.RequestStatus == DailyReservationRequestStatus.PendingSecretaryReview),
-                items.Count(x => x.RequestStatus == DailyReservationRequestStatus.Confirmed),
-                items.Count(x => x.RequestStatus == DailyReservationRequestStatus.Rescheduled),
-                items.Count(x => x.RequestStatus == DailyReservationRequestStatus.Rejected),
+                items.Sum(x => Math.Max(1, x.PatientCount)),
+                items.Where(x => !x.IsCanceled).Sum(x => Math.Max(1, x.PatientCount)),
+                items.Where(x => x.IsCanceled).Sum(x => Math.Max(1, x.PatientCount)),
+                items.Where(x => x.RequestStatus == DailyReservationRequestStatus.PendingSecretaryReview).Sum(x => Math.Max(1, x.PatientCount)),
+                items.Where(x => x.RequestStatus == DailyReservationRequestStatus.Confirmed).Sum(x => Math.Max(1, x.PatientCount)),
+                items.Where(x => x.RequestStatus == DailyReservationRequestStatus.Rescheduled).Sum(x => Math.Max(1, x.PatientCount)),
+                items.Where(x => x.RequestStatus == DailyReservationRequestStatus.Rejected).Sum(x => Math.Max(1, x.PatientCount)),
                 items.Select(x => x.ConsultantProfileId).Distinct().Count()),
             items);
     }

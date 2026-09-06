@@ -162,9 +162,19 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     var x = await repo.Cases.FirstOrDefaultAsync(x => x.Id == c.Id, ct);
     if (x is null)
       return Result<PatientFinancialCaseIdResponse>.Failure("پرونده یافت نشد");
-    if (x.Status != PatientFinancialCaseStatus.Active)
+    if (x.Status == PatientFinancialCaseStatus.Cancelled)
       return Result<PatientFinancialCaseIdResponse>.Failure(
-          "فقط پرونده فعال قابل ویرایش است");var paid=await repo.Transactions.Where(t=>t.PatientFinancialCaseId==c.Id).SumAsync(t=>(decimal?)t.Amount,ct)??0;
+          "پرونده لغوشده قابل ویرایش نیست");
+    var paid = await repo.Transactions
+        .Where(transaction => transaction.PatientFinancialCaseId == c.Id &&
+                              transaction.Type == PatientFinancialTransactionType.Payment)
+        .SumAsync(transaction => (decimal?)transaction.Amount, ct) ?? 0;
+    var commitments = (await repo.Cheques
+        .Where(item => item.PatientFinancialCaseId == c.Id)
+        .SumAsync(item => (decimal?)item.Amount, ct) ?? 0) +
+        (await repo.PromissoryNotes
+        .Where(item => item.PatientFinancialCaseId == c.Id)
+        .SumAsync(item => (decimal?)item.Amount, ct) ?? 0);
     if (c.TotalAmount <= 0 || c.TotalAmount < paid)
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ کل نمی‌تواند کمتر از پرداخت قطعی " +
@@ -173,10 +183,16 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
         c.PrePaymentAmount + c.DepositAmount + paid > c.TotalAmount)
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ پیش‌پرداخت یا ودیعه معتبر نیست");
+    if (commitments > c.TotalAmount)
+      return Result<PatientFinancialCaseIdResponse>.Failure(
+          "مبلغ کل نمی‌تواند کمتر از مجموع چک‌ها و سفته‌ها باشد");
     x.TotalAmount = c.TotalAmount;
     x.PrePaymentAmount = c.PrePaymentAmount;
     x.DepositAmount = c.DepositAmount;
     x.AgreementType = c.AgreementType;
+    x.Status = c.PrePaymentAmount + c.DepositAmount + paid >= c.TotalAmount
+        ? PatientFinancialCaseStatus.Completed
+        : PatientFinancialCaseStatus.Active;
     x.UpdatedAt = DateTime.UtcNow;
     await uow.SaveChangesAsync();
     return Result<PatientFinancialCaseIdResponse>.Success(new(x.Id));
@@ -196,23 +212,29 @@ public sealed class CancelPatientFinancialCaseCommandHandler(
         await uow.RollbackAsync(ct);
         return Result<PatientFinancialCaseIdResponse>.Failure("پرونده یافت نشد");
       }
-      if (x.Status != PatientFinancialCaseStatus.Active) {
+      if (x.Status == PatientFinancialCaseStatus.Cancelled) {
         await uow.RollbackAsync(ct);
         return Result<PatientFinancialCaseIdResponse>.Failure(
-            "فقط پرونده فعال قابل لغو است");
+            "پرونده قبلاً حذف شده است");
       }
-      if (x.AgreementType != PatientFinancialAgreementType.Deposit) {
+      var hasCheques = await repo.Cheques.AnyAsync(
+          cheque => cheque.PatientFinancialCaseId == c.Id, ct);
+      var hasNotes = await repo.PromissoryNotes.AnyAsync(
+          note => note.PatientFinancialCaseId == c.Id, ct);
+      if (hasCheques || hasNotes) {
         await uow.RollbackAsync(ct);
         return Result<PatientFinancialCaseIdResponse>.Failure(
-            "لغو مالی فقط برای توافق ودیعه امکان‌پذیر است.");
+            "ابتدا همه چک‌ها و سفته‌های این پرونده را حذف کنید.");
       }
-      if (await repo.Transactions.AnyAsync(t =>
-              t.PatientFinancialCaseId == c.Id &&
-              t.Type == PatientFinancialTransactionType.Payment, ct)) {
+      if (await repo.Transactions.AnyAsync(transaction =>
+              transaction.PatientFinancialCaseId == c.Id, ct) ||
+          await repo.Debts.AnyAsync(debt => debt.PatientFinancialCaseId == c.Id, ct)) {
         await uow.RollbackAsync(ct);
         return Result<PatientFinancialCaseIdResponse>.Failure(
-            "پس از ثبت اولین پرداخت، لغو مالی بیمار امکان‌پذیر نیست.");
+            "سوابق پرداخت یا بدهی پرونده هنوز حذف نشده است.");
       }
+      x.IsDeleted = true;
+      x.DeletedAt = DateTime.UtcNow;
       x.Status = PatientFinancialCaseStatus.Cancelled;
       x.UpdatedAt = DateTime.UtcNow;
       await uow.CommitAsync(ct);
@@ -249,10 +271,9 @@ public sealed class UpdatePatientChequeCommandHandler(
         await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure("چک یافت نشد");
       }
-      if (cheque.Status != PatientChequeStatus.Pending) {
+      if (string.IsNullOrWhiteSpace(c.SayadNumber) || c.SayadNumber.Trim().Length > 32 || c.DueDate == default) {
         await uow.RollbackAsync(ct);
-        return Result<PatientFinanceIdResponse>.Failure(
-            "چک تأیید یا رد شده است و دیگر قابل ویرایش نیست.");
+        return Result<PatientFinanceIdResponse>.Failure("شماره صیادی یا تاریخ سررسید معتبر نیست");
       }
       var otherCommitments = await repo.Cheques
           .Where(x => x.PatientFinancialCaseId == cheque.PatientFinancialCaseId &&
@@ -266,9 +287,29 @@ public sealed class UpdatePatientChequeCommandHandler(
         return Result<PatientFinanceIdResponse>.Failure(
             "مجموع تعهدات نمی‌تواند از مبلغ کل پرونده بیشتر باشد");
       }
+      var paidWithoutCurrentCheque = await repo.Transactions
+          .Where(transaction =>
+              transaction.PatientFinancialCaseId == cheque.PatientFinancialCaseId &&
+              !(transaction.SourceType == PatientFinancialTransactionSourceType.Cheque &&
+                transaction.SourceId == cheque.Id))
+          .SumAsync(transaction => (decimal?)transaction.Amount, ct) ?? 0;
+      var payment = await repo.Transactions.FirstOrDefaultAsync(transaction =>
+          transaction.SourceType == PatientFinancialTransactionSourceType.Cheque &&
+          transaction.SourceId == cheque.Id, ct);
+      if (payment is not null) payment.Amount = c.Amount;
+      var debt = await repo.Debts.FirstOrDefaultAsync(item =>
+          item.SourceType == PatientDebtSourceType.Cheque && item.SourceId == cheque.Id, ct);
+      if (debt is not null) debt.Amount = c.Amount;
       cheque.Amount = c.Amount;
+      cheque.SayadNumber = c.SayadNumber.Trim();
       cheque.OwnerName = c.OwnerName.Trim();
+      cheque.DueDate = c.DueDate;
       cheque.UpdatedAt = DateTime.UtcNow;
+      var paidAfterUpdate = paidWithoutCurrentCheque + (payment is null ? 0 : c.Amount);
+      cheque.FinancialCase.Status = cheque.FinancialCase.PrePaymentAmount +
+          cheque.FinancialCase.DepositAmount + paidAfterUpdate >= cheque.FinancialCase.TotalAmount
+          ? PatientFinancialCaseStatus.Completed
+          : PatientFinancialCaseStatus.Active;
       await uow.CommitAsync(ct);
       return Result<PatientFinanceIdResponse>.Success(
           new(cheque.Id), "اطلاعات چک با موفقیت ویرایش شد.");
@@ -300,10 +341,9 @@ public sealed class UpdatePatientPromissoryNoteCommandHandler(
         await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure("سفته یافت نشد");
       }
-      if (note.Status != PatientPromissoryNoteStatus.Pending) {
+      if (string.IsNullOrWhiteSpace(c.SerialNumber) || c.SerialNumber.Trim().Length > 64 || c.DueDate == default) {
         await uow.RollbackAsync(ct);
-        return Result<PatientFinanceIdResponse>.Failure(
-            "سفته تأیید یا رد شده است و دیگر قابل ویرایش نیست.");
+        return Result<PatientFinanceIdResponse>.Failure("شماره سریال یا تاریخ سررسید معتبر نیست");
       }
       var otherCommitments = await repo.PromissoryNotes
           .Where(x => x.PatientFinancialCaseId == note.PatientFinancialCaseId &&
@@ -317,8 +357,28 @@ public sealed class UpdatePatientPromissoryNoteCommandHandler(
         return Result<PatientFinanceIdResponse>.Failure(
             "مجموع تعهدات نمی‌تواند از مبلغ کل پرونده بیشتر باشد");
       }
+      var paidWithoutCurrentNote = await repo.Transactions
+          .Where(transaction =>
+              transaction.PatientFinancialCaseId == note.PatientFinancialCaseId &&
+              !(transaction.SourceType == PatientFinancialTransactionSourceType.PromissoryNote &&
+                transaction.SourceId == note.Id))
+          .SumAsync(transaction => (decimal?)transaction.Amount, ct) ?? 0;
+      var payment = await repo.Transactions.FirstOrDefaultAsync(transaction =>
+          transaction.SourceType == PatientFinancialTransactionSourceType.PromissoryNote &&
+          transaction.SourceId == note.Id, ct);
+      if (payment is not null) payment.Amount = c.Amount;
+      var debt = await repo.Debts.FirstOrDefaultAsync(item =>
+          item.SourceType == PatientDebtSourceType.PromissoryNote && item.SourceId == note.Id, ct);
+      if (debt is not null) debt.Amount = c.Amount;
       note.Amount = c.Amount;
+      note.SerialNumber = c.SerialNumber.Trim();
+      note.DueDate = c.DueDate;
       note.UpdatedAt = DateTime.UtcNow;
+      var paidAfterUpdate = paidWithoutCurrentNote + (payment is null ? 0 : c.Amount);
+      note.FinancialCase.Status = note.FinancialCase.PrePaymentAmount +
+          note.FinancialCase.DepositAmount + paidAfterUpdate >= note.FinancialCase.TotalAmount
+          ? PatientFinancialCaseStatus.Completed
+          : PatientFinancialCaseStatus.Active;
       await uow.CommitAsync(ct);
       return Result<PatientFinanceIdResponse>.Success(
           new(note.Id), "اطلاعات سفته با موفقیت ویرایش شد.");
@@ -326,6 +386,78 @@ public sealed class UpdatePatientPromissoryNoteCommandHandler(
       await uow.RollbackAsync(ct);
       throw;
     }
+  }
+}
+
+public sealed class DeletePatientChequeCommandHandler(
+    IPatientFinanceRepository repo, IUnitOfWork uow)
+    : ICommandHandler<DeletePatientChequeCommand, PatientFinanceIdResponse> {
+  public async Task<Result<PatientFinanceIdResponse>> HandleAsync(
+      DeletePatientChequeCommand command, CancellationToken ct = default) {
+    await uow.BeginTransactionAsync(ct, IsolationLevel.Serializable);
+    try {
+      var cheque = await repo.Cheques.Include(item => item.FinancialCase)
+          .FirstOrDefaultAsync(item => item.Id == command.ChequeId, ct);
+      if (cheque is null) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure("چک یافت نشد");
+      }
+      var payments = await repo.Transactions.Where(transaction =>
+          transaction.SourceType == PatientFinancialTransactionSourceType.Cheque &&
+          transaction.SourceId == cheque.Id).ToListAsync(ct);
+      var debts = await repo.Debts.Where(debt =>
+          debt.SourceType == PatientDebtSourceType.Cheque && debt.SourceId == cheque.Id)
+          .ToListAsync(ct);
+      foreach (var payment in payments) { payment.IsDeleted = true; payment.DeletedAt = DateTime.UtcNow; }
+      foreach (var debt in debts) { debt.IsDeleted = true; debt.DeletedAt = DateTime.UtcNow; debt.Status = PatientDebtStatus.Cancelled; }
+      cheque.IsDeleted = true;
+      cheque.DeletedAt = DateTime.UtcNow;
+      var remainingPaid = await repo.Transactions.Where(transaction =>
+          transaction.PatientFinancialCaseId == cheque.PatientFinancialCaseId &&
+          !(transaction.SourceType == PatientFinancialTransactionSourceType.Cheque && transaction.SourceId == cheque.Id))
+          .SumAsync(transaction => (decimal?)transaction.Amount, ct) ?? 0;
+      cheque.FinancialCase.Status = cheque.FinancialCase.PrePaymentAmount +
+          cheque.FinancialCase.DepositAmount + remainingPaid >= cheque.FinancialCase.TotalAmount
+          ? PatientFinancialCaseStatus.Completed : PatientFinancialCaseStatus.Active;
+      await uow.CommitAsync(ct);
+      return Result<PatientFinanceIdResponse>.Success(new(cheque.Id), "چک و آثار مالی آن حذف شد.");
+    } catch { await uow.RollbackAsync(ct); throw; }
+  }
+}
+
+public sealed class DeletePatientPromissoryNoteCommandHandler(
+    IPatientFinanceRepository repo, IUnitOfWork uow)
+    : ICommandHandler<DeletePatientPromissoryNoteCommand, PatientFinanceIdResponse> {
+  public async Task<Result<PatientFinanceIdResponse>> HandleAsync(
+      DeletePatientPromissoryNoteCommand command, CancellationToken ct = default) {
+    await uow.BeginTransactionAsync(ct, IsolationLevel.Serializable);
+    try {
+      var note = await repo.PromissoryNotes.Include(item => item.FinancialCase)
+          .FirstOrDefaultAsync(item => item.Id == command.PromissoryNoteId, ct);
+      if (note is null) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure("سفته یافت نشد");
+      }
+      var payments = await repo.Transactions.Where(transaction =>
+          transaction.SourceType == PatientFinancialTransactionSourceType.PromissoryNote &&
+          transaction.SourceId == note.Id).ToListAsync(ct);
+      var debts = await repo.Debts.Where(debt =>
+          debt.SourceType == PatientDebtSourceType.PromissoryNote && debt.SourceId == note.Id)
+          .ToListAsync(ct);
+      foreach (var payment in payments) { payment.IsDeleted = true; payment.DeletedAt = DateTime.UtcNow; }
+      foreach (var debt in debts) { debt.IsDeleted = true; debt.DeletedAt = DateTime.UtcNow; debt.Status = PatientDebtStatus.Cancelled; }
+      note.IsDeleted = true;
+      note.DeletedAt = DateTime.UtcNow;
+      var remainingPaid = await repo.Transactions.Where(transaction =>
+          transaction.PatientFinancialCaseId == note.PatientFinancialCaseId &&
+          !(transaction.SourceType == PatientFinancialTransactionSourceType.PromissoryNote && transaction.SourceId == note.Id))
+          .SumAsync(transaction => (decimal?)transaction.Amount, ct) ?? 0;
+      note.FinancialCase.Status = note.FinancialCase.PrePaymentAmount +
+          note.FinancialCase.DepositAmount + remainingPaid >= note.FinancialCase.TotalAmount
+          ? PatientFinancialCaseStatus.Completed : PatientFinancialCaseStatus.Active;
+      await uow.CommitAsync(ct);
+      return Result<PatientFinanceIdResponse>.Success(new(note.Id), "سفته و آثار مالی آن حذف شد.");
+    } catch { await uow.RollbackAsync(ct); throw; }
   }
 }
 

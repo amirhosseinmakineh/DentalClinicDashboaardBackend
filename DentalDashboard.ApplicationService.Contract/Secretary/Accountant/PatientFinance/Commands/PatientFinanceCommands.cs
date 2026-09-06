@@ -64,7 +64,9 @@ public sealed class UpdatePatientChequeCommand
   [JsonIgnore]
   public long ChequeId { get; set; }
   public decimal Amount { get; set; }
+  public string SayadNumber { get; set; } = string.Empty;
   public string OwnerName { get; set; } = string.Empty;
+  public DateTime DueDate { get; set; }
   [JsonExtensionData]
   public Dictionary<string, JsonElement>? AdditionalFields { get; set; }
 }
@@ -73,9 +75,15 @@ public sealed class UpdatePatientPromissoryNoteCommand
   [JsonIgnore]
   public long PromissoryNoteId { get; set; }
   public decimal Amount { get; set; }
+  public string SerialNumber { get; set; } = string.Empty;
+  public DateTime DueDate { get; set; }
   [JsonExtensionData]
   public Dictionary<string, JsonElement>? AdditionalFields { get; set; }
 }
+public sealed record DeletePatientChequeCommand(long ChequeId)
+    : ICommand<PatientFinanceIdResponse>;
+public sealed record DeletePatientPromissoryNoteCommand(long PromissoryNoteId)
+    : ICommand<PatientFinanceIdResponse>;
 public sealed class UpdatePatientPromissoryNoteStatusCommand
     : ICommand<PatientFinanceIdResponse> {
   [JsonIgnore]

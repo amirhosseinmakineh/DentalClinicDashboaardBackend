@@ -84,11 +84,23 @@ public sealed class PatientFinanceController(ICommandDispatcher commands, IQuery
         return Write(await commands.DispatchAsync(command, cancellationToken));
     }
 
+    [HttpDelete("patient-cheques/{id:long}")]
+    public async Task<IActionResult> DeleteCheque(long id, CancellationToken cancellationToken)
+    {
+        return Write(await commands.DispatchAsync(new DeletePatientChequeCommand(id), cancellationToken));
+    }
+
     [HttpPut("patient-promissory-notes/{id:long}")]
     public async Task<IActionResult> UpdateNote(long id, UpdatePatientPromissoryNoteCommand command, CancellationToken cancellationToken)
     {
         command.PromissoryNoteId = id;
         return Write(await commands.DispatchAsync(command, cancellationToken));
+    }
+
+    [HttpDelete("patient-promissory-notes/{id:long}")]
+    public async Task<IActionResult> DeleteNote(long id, CancellationToken cancellationToken)
+    {
+        return Write(await commands.DispatchAsync(new DeletePatientPromissoryNoteCommand(id), cancellationToken));
     }
 
     [HttpPut("patient-promissory-notes/{id:long}/status")]

@@ -1,4 +1,5 @@
 ﻿using DentalDashboard.Domain.Models;
+using DentalDashboard.Domain.PatientReferrals;
 using Microsoft.EntityFrameworkCore;
 using DentalDashboard.Domain.Secretary.Accountant.Entities;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
@@ -12,6 +13,9 @@ namespace DentalDashboard.Infrastracture.Context
         {
 
         }
+        public DbSet<PatientReferral> PatientReferrals => Set<PatientReferral>();
+        public DbSet<PatientWallet> PatientWallets => Set<PatientWallet>();
+        public DbSet<PatientWalletTransaction> PatientWalletTransactions => Set<PatientWalletTransaction>();
         public DbSet<User> Users => Set<User>();
         public DbSet<Role> Roles => Set<Role>();
         public DbSet<UserRole> UserRoles => Set<UserRole>();

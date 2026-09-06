@@ -160,6 +160,23 @@ using (var scope = app.Services.CreateScope())
 
 app.UseMiddleware<DentalDashboard.Middleware.RequestCancellationMiddleware>();
 
+// Authenticated API data must never be served from a browser, CDN or proxy cache.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers.CacheControl = "no-store, no-cache, max-age=0, must-revalidate";
+            context.Response.Headers.Pragma = "no-cache";
+            context.Response.Headers.Expires = "0";
+            return Task.CompletedTask;
+        });
+    }
+
+    await next();
+});
+
 //app.UseCors("CorsPolicy");
 app.UseCors("FrontendCors");
 

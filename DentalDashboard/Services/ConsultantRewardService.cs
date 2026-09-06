@@ -22,8 +22,12 @@ public sealed class ConsultantRewardService(DentalContext context)
     public async Task<ConsultantWalletReport> GetConsultantWalletAsync(
         Guid consultantUserId, CancellationToken cancellationToken)
     {
-        var items = await EligibleRewards()
-            .Where(x => x.ConsultantProfile.UserId == consultantUserId)
+        var items = await context.Reservations.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.OwnerType != ReservationOwnerType.Secretary &&
+                x.ConsultantProfile.UserId == consultantUserId &&
+                (x.ConsultantRewardApprovedByAdmin == true ||
+                 (!x.IsDeleted && !x.IsCanceled && x.ConsultantRewardEligibleAt != null &&
+                  x.SecretaryApprovedConsultantConfirmation == true)))
             .OrderByDescending(x => x.SecretaryReviewedAt)
             .Select(x => new ConsultantRewardItem(
                 x.Id, x.ConsultantProfileId, x.ConsultantProfile.UserId,
@@ -54,7 +58,8 @@ public sealed class ConsultantRewardService(DentalContext context)
         {
             "Approved" => query.Where(x => x.ConsultantRewardApprovedByAdmin == true),
             "Rejected" => query.Where(x => x.ConsultantRewardApprovedByAdmin == false),
-            "Pending" => query.Where(x => x.ConsultantRewardApprovedByAdmin == null),
+            "Pending" => query.Where(x => x.ConsultantRewardApprovedByAdmin == null &&
+                                         x.ConsultantRewardEligibleAt != null),
             _ => query
         };
 
@@ -68,7 +73,8 @@ public sealed class ConsultantRewardService(DentalContext context)
                 x.PatientCount, x.ConsultantRewardAmount ?? x.PatientCount * RewardPerPatient,
                 x.ConsultantRewardApprovedByAdmin == true ? "Approved" :
                     x.ConsultantRewardApprovedByAdmin == false ? "Rejected" :
-                    x.SecretaryApprovedConsultantConfirmation == true ? "Pending" : "WaitingSecretary",
+                    x.ConsultantRewardEligibleAt != null ? "Pending" :
+                    x.SecretaryApprovedConsultantConfirmation == true ? "LegacyNotEligible" : "WaitingSecretary",
                 x.SecretaryApprovedConsultantConfirmation == true ? "Approved" :
                     x.SecretaryApprovedConsultantConfirmation == false ? "Rejected" : "Waiting",
                 x.SecretaryReviewedAt, x.ConsultantRewardReviewedAt))
@@ -88,7 +94,8 @@ public sealed class ConsultantRewardService(DentalContext context)
         if (reservation.OwnerType == ReservationOwnerType.Secretary)
             return (false, "این رزرو توسط مشاور ثبت نشده است.");
         if (reservation.AttendanceConfirmationStatus != ReservationAttendanceConfirmationStatus.SecretaryApproved ||
-            reservation.SecretaryApprovedConsultantConfirmation != true)
+            reservation.SecretaryApprovedConsultantConfirmation != true ||
+            reservation.ConsultantRewardEligibleAt is null)
             return (false, "ابتدا منشی باید حضور بیمار را تأیید کند.");
         if (reservation.ConsultantRewardApprovedByAdmin.HasValue)
             return (false, "پاداش این رزرو قبلاً توسط ادمین بررسی شده است.");
@@ -105,11 +112,4 @@ public sealed class ConsultantRewardService(DentalContext context)
             ? "پاداش تأیید و کیف پول مشاور شارژ شد."
             : "پاداش رزرو رد شد.");
     }
-
-    private IQueryable<DentalDashboard.Domain.Models.Reservation> EligibleRewards() =>
-        context.Reservations.AsNoTracking().Where(x =>
-            !x.IsDeleted && !x.IsCanceled &&
-            x.OwnerType != ReservationOwnerType.Secretary &&
-            x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryApproved &&
-            x.SecretaryApprovedConsultantConfirmation == true);
 }

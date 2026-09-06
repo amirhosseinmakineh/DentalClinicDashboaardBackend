@@ -402,6 +402,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool?>("ConsultantRewardApprovedByAdmin")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("ConsultantRewardEligibleAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<decimal?>("ConsultantRewardAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");

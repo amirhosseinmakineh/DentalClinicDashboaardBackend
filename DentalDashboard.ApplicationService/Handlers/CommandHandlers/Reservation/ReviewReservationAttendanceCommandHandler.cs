@@ -63,6 +63,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             reservation.AttendanceScoreAppliedAt = DateTime.UtcNow;
             reservation.UpdatedAt = DateTime.UtcNow;
             reservation.DoctorName = patientReceivedService.Value ? doctorName : null;
+            reservation.ConsultantRewardEligibleAt =
+                patientReceivedService.Value &&
+                reservation.OwnerType != ReservationOwnerType.Secretary
+                    ? DateTime.UtcNow
+                    : null;
 
             reservationRepository.Update(reservation);
             await reservationRepository.SaveChange();

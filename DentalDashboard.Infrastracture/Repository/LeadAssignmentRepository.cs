@@ -245,7 +245,11 @@ namespace DentalDashboard.Infrastracture.Repository
             long consultantProfileId,
             CancellationToken cancellationToken)
         {
-            var sourceType = await context.LeadAssignmentSettings.AsNoTracking()
+            var preferredSourceType = await context.ConsultantProfiles.AsNoTracking()
+                .Where(x => x.Id == consultantProfileId && !x.IsDeleted)
+                .Select(x => x.PreferredLeadSourceType)
+                .SingleOrDefaultAsync(cancellationToken);
+            var sourceType = preferredSourceType ?? await context.LeadAssignmentSettings.AsNoTracking()
                 .Where(x => x.Id == LeadAssignmentSetting.SingletonId)
                 .Select(x => x.AssignmentSourceType)
                 .SingleOrDefaultAsync(cancellationToken);

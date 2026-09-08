@@ -116,6 +116,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("PreferredLeadSourceType")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -133,7 +136,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("ConsultantProfiles");
+                    b.ToTable("ConsultantProfiles", t =>
+                        {
+                            t.HasCheckConstraint("CK_ConsultantProfiles_PreferredLeadSourceType", "[PreferredLeadSourceType] IS NULL OR [PreferredLeadSourceType] IN (1, 2)");
+                        });
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignment", b =>

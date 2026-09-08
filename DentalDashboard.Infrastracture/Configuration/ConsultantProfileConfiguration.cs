@@ -8,6 +8,10 @@ namespace DentalDashboard.Infrastracture.Configuration
     {
         public void Configure(EntityTypeBuilder<ConsultantProfile> builder)
         {
+            builder.ToTable("ConsultantProfiles", table =>
+                table.HasCheckConstraint(
+                    "CK_ConsultantProfiles_PreferredLeadSourceType",
+                    "[PreferredLeadSourceType] IS NULL OR [PreferredLeadSourceType] IN (1, 2)"));
         }
     }
 }

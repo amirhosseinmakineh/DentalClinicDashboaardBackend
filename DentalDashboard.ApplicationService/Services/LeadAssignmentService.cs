@@ -28,6 +28,7 @@ namespace DentalDashboard.ApplicationService.Services
         private readonly IPushNotificationService pushNotificationService;
         private readonly IServiceLogRepository serviceLogRepository;
         private readonly ILeadAssignmentCandidateProvider candidateProvider;
+        private readonly ILeadAssignmentSettingRepository leadAssignmentSettingRepository;
 
         public LeadAssignmentService(
             HttpClient httpClient,
@@ -37,7 +38,8 @@ namespace DentalDashboard.ApplicationService.Services
             ILeadAssignmentLimitService leadAssignmentLimitService,
             IPushNotificationService pushNotificationService,
             IServiceLogRepository serviceLogRepository,
-            ILeadAssignmentCandidateProvider candidateProvider)
+            ILeadAssignmentCandidateProvider candidateProvider,
+            ILeadAssignmentSettingRepository leadAssignmentSettingRepository)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -47,6 +49,7 @@ namespace DentalDashboard.ApplicationService.Services
             this.pushNotificationService = pushNotificationService;
             this.serviceLogRepository = serviceLogRepository;
             this.candidateProvider = candidateProvider;
+            this.leadAssignmentSettingRepository = leadAssignmentSettingRepository;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync(
@@ -259,23 +262,40 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidate = await candidateProvider.GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-            var lead = candidate.Lead;
+            await DispatchToConsultantsBySourceAsync(availableConsultants);
 
-            if (lead == null)
+        }
+
+        private async Task DispatchToConsultantsBySourceAsync(
+            IReadOnlyList<ConsultantProfile> consultants)
+        {
+            var globalSetting = await leadAssignmentSettingRepository.GetCurrentAsync();
+            var fallbackSource = globalSetting?.AssignmentSourceType ?? LeadAssignmentSourceType.NewLeads;
+
+            foreach (var group in consultants.GroupBy(consultant =>
+                         consultant.PreferredLeadSourceType is { } preferred && Enum.IsDefined(preferred)
+                             ? preferred
+                             : fallbackSource))
             {
-                return;
+                var candidate = await candidateProvider.GetCurrentForDispatchAsync(
+                    group.Key,
+                    RealtimeLeadRedispatchInterval);
+                var lead = candidate.Lead;
+                if (lead is null)
+                    continue;
+
+                var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
+                await NotifyConsultantsForRealtimeLeadAsync(
+                    lead,
+                    group.ToList(),
+                    candidate.SourceType,
+                    isReminder);
+
+                lead.NotificationSent = true;
+                lead.LastDispatchAt = DateTime.UtcNow;
             }
 
-            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
-
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, candidate.SourceType, isReminder);
-
-            lead.NotificationSent = true;
-            lead.LastDispatchAt = DateTime.UtcNow;
-
             await leadAssignmentRepository.SaveChange();
-
         }
 
         private async Task NotifyConsultantsForRealtimeLeadAsync(
@@ -486,22 +506,7 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidate = await candidateProvider.GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-            var lead = candidate.Lead;
-
-            if (lead == null)
-            {
-                return;
-            }
-
-            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
-
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, candidate.SourceType, isReminder);
-
-            lead.NotificationSent = true;
-            lead.LastDispatchAt = DateTime.UtcNow;
-
-            await leadAssignmentRepository.SaveChange();
+            await DispatchToConsultantsBySourceAsync(availableConsultants);
 
         }
 
@@ -541,22 +546,7 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidate = await candidateProvider.GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-            var lead = candidate.Lead;
-
-            if (lead == null)
-            {
-                return;
-            }
-
-            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
-
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, candidate.SourceType, isReminder);
-
-            lead.NotificationSent = true;
-            lead.LastDispatchAt = DateTime.UtcNow;
-
-            await leadAssignmentRepository.SaveChange();
+            await DispatchToConsultantsBySourceAsync(availableConsultants);
 
         }
 
@@ -598,22 +588,7 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
             }
 
-            var candidate = await candidateProvider.GetCurrentForDispatchAsync(RealtimeLeadRedispatchInterval);
-            var lead = candidate.Lead;
-
-            if (lead == null)
-            {
-                return;
-            }
-
-            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
-
-            await NotifyConsultantsForRealtimeLeadAsync(lead, availableConsultants, candidate.SourceType, isReminder);
-
-            lead.NotificationSent = true;
-            lead.LastDispatchAt = DateTime.UtcNow;
-
-            await leadAssignmentRepository.SaveChange();
+            await DispatchToConsultantsBySourceAsync(availableConsultants);
 
         }
         private async Task<IReadOnlyCollection<long>> ManageExcludeConsultants()

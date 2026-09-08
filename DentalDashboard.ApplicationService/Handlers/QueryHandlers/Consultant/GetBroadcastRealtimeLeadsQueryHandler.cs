@@ -83,7 +83,7 @@ public class GetBroadcastRealtimeLeadsQueryHandler
             };
         }
 
-        var candidate = await candidateProvider.GetActiveAsync(cancellationToken);
+        var candidate = await candidateProvider.GetActiveAsync(profile.Id, cancellationToken);
         var lead = candidate.Lead;
 
         var leads = lead == null

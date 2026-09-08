@@ -34,4 +34,29 @@ public sealed class AdminLeadAssignmentSettingsController(
         var result = await commands.DispatchAsync(command, cancellationToken);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
+
+    [HttpGet("consultants")]
+    public async Task<IActionResult> GetConsultants(CancellationToken cancellationToken) =>
+        Ok(await queries.DispatchAsync(
+            new GetConsultantLeadAssignmentSettingsQuery(),
+            cancellationToken));
+
+    [HttpPut("consultants/{consultantProfileId:long}")]
+    public async Task<IActionResult> UpdateConsultant(
+        long consultantProfileId,
+        UpdateConsultantLeadAssignmentSettingCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                User.FindFirstValue("userId") ??
+                User.FindFirstValue("Id"),
+                out var adminUserId))
+            return Unauthorized();
+
+        command.AdminUserId = adminUserId;
+        command.ConsultantProfileId = consultantProfileId;
+        var result = await commands.DispatchAsync(command, cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
 }

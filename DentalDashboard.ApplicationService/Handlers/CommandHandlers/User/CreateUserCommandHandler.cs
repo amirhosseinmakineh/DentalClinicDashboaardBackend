@@ -69,6 +69,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 if (command.RoleName == "Consultant")
                 {
                     await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                    user.IsCompleteProfile = false;
+                    user.IsActive = false;
                 }
 
                 await unitOfWork.CommitAsync();

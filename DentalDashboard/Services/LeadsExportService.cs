@@ -1,6 +1,7 @@
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Convertor;
+using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Services;
@@ -108,13 +109,13 @@ public class LeadsExportService(DentalContext context)
         var query = context.LeadAssignments.AsNoTracking().Where(x => !x.IsDeleted);
         if (filter.From.HasValue)
         {
-            var from = filter.From.Value.ToDateTime(TimeOnly.MinValue);
-            query = query.Where(x => x.CreatedAt >= from);
+            var (fromUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(filter.From.Value);
+            query = query.Where(x => x.CreatedAt >= fromUtc);
         }
         if (filter.To.HasValue)
         {
-            var toExclusive = filter.To.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
-            query = query.Where(x => x.CreatedAt < toExclusive);
+            var (toExclusiveUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(filter.To.Value.AddDays(1));
+            query = query.Where(x => x.CreatedAt < toExclusiveUtc);
         }
         if (filter.ConsultantProfileId.HasValue)
             query = query.Where(x => x.ConsultantProfileId == filter.ConsultantProfileId);

@@ -63,18 +63,18 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             // second lead for the same phone number.
             if (activeLead?.AssignmentType == LeadAssignmentType.RealTime)
             {
-                var now = DateTime.Now;
+                var reactivatedAt = DateTime.Now;
                 activeLead.UserName = userName;
                 activeLead.AssignmentType = LeadAssignmentType.ConsultantPatient;
                 activeLead.LeadAssignmentState = LeadAssignmentState.Assigned;
-                activeLead.AssignedAt ??= now;
+                activeLead.AssignedAt ??= reactivatedAt;
                 activeLead.RequiresThreeMinuteCall = false;
                 activeLead.CallDeadlineAt = null;
                 activeLead.PatientCity = command.PatientCity?.Trim();
                 activeLead.PatientRegion = command.PatientRegion?.Trim();
                 activeLead.SecondaryPhoneNumber = command.SecondaryPhoneNumber?.Trim();
                 activeLead.ReportDescription = command.ReportDescription?.Trim();
-                activeLead.UpdatedAt = now;
+                activeLead.UpdatedAt = reactivatedAt;
 
                 leadAssignmentRepository.Update(activeLead);
                 await leadAssignmentRepository.SaveChange();

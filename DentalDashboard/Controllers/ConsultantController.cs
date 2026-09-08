@@ -200,9 +200,24 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("GetLeads")]
-        public async Task<IActionResult> GetLeads([FromQuery]GetLeadsQuery query)
+        [Authorize(Roles = "Admin,Consultant")]
+        public async Task<IActionResult> GetLeads(
+            [FromQuery] GetLeadsQuery query,
+            CancellationToken cancellationToken)
         {
-            var result = await queryDispatcher.DispatchAsync(query);
+            if (!User.IsInRole("Admin"))
+            {
+                if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+                var profileId = await consultantProfileRepository.GetAll()
+                    .AsNoTracking()
+                    .Where(x => !x.IsDeleted && x.UserId == userId)
+                    .Select(x => (long?)x.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (!profileId.HasValue) return Forbid();
+                query.ProfileId = profileId.Value;
+            }
+
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
         }
 

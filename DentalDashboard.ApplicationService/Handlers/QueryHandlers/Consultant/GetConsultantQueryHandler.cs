@@ -64,7 +64,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             return new PaginatedResult<ConsultantResponse>
             {
                 Items = consultants,
-                TotalCount = totalCount
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
             };
         }
     }

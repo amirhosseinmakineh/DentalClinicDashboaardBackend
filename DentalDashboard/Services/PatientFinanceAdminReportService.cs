@@ -1,6 +1,7 @@
 using ClosedXML.Excel;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
+using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Services;
@@ -175,9 +176,18 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         if (filter.Status.HasValue)
             query = query.Where(item => item.Status == filter.Status.Value);
         if (filter.FromDate.HasValue)
-            query = query.Where(item => item.CreatedAt >= filter.FromDate.Value);
+        {
+            var fromDate = DateOnly.FromDateTime(filter.FromDate.Value);
+            var (startUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(fromDate);
+            query = query.Where(item => item.CreatedAt >= startUtc);
+        }
+
         if (filter.ToDate.HasValue)
-            query = query.Where(item => item.CreatedAt < filter.ToDate.Value.Date.AddDays(1));
+        {
+            var toDate = DateOnly.FromDateTime(filter.ToDate.Value);
+            var (nextDayStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(toDate.AddDays(1));
+            query = query.Where(item => item.CreatedAt < nextDayStartUtc);
+        }
 
         return query;
     }
@@ -254,7 +264,9 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             prePaymentAmount,
             depositAmount,
             paidAmount,
-            Math.Max(totalAmount - prePaymentAmount - depositAmount - paidAmount, 0),
+            values.Sum(item => Math.Max(
+                item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - item.PaidAmount,
+                0)),
             values.Sum(item => item.UnpaidDebtAmount),
             values.Sum(item => item.ChequeAmount),
             values.Sum(item => item.PromissoryNoteAmount));

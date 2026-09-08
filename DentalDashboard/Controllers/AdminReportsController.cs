@@ -14,6 +14,7 @@ namespace DentalDashboard.Controllers;
 
 [Route("api/admin/reports")]
 [ApiController]
+[Authorize(Roles = "Admin")]
 public class AdminReportsController : ControllerBase
 {
     private readonly LeadCallReportExportService leadCallReportExportService;
@@ -269,10 +270,15 @@ public class AdminReportsController : ControllerBase
     [HttpGet("lead-call-reports/export")]
     public async Task<IActionResult> ExportLeadCallReports([FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken cancellationToken)
     {
-        var toExclusive = to?.Date.AddDays(1) ?? DateTime.Today.AddDays(1);
-        var fromInclusive = from?.Date ?? toExclusive.AddDays(-1);
+        var toDate = DateOnly.FromDateTime(to ?? IranTimeHelper.IranLocalNow);
+        var fromDate = DateOnly.FromDateTime(from ?? toDate.ToDateTime(TimeOnly.MinValue));
+        if (fromDate > toDate)
+            return BadRequest(new { message = "تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد." });
+
+        var (fromInclusive, _) = IranTimeHelper.GetIranDayRangeAsUtc(fromDate);
+        var (toExclusive, _) = IranTimeHelper.GetIranDayRangeAsUtc(toDate.AddDays(1));
         var file = await leadCallReportExportService.ExportCsvAsync(fromInclusive, toExclusive, cancellationToken);
-        return File(file, "text/csv; charset=utf-8", $"lead-call-reports-{PersianFileDate(DateOnly.FromDateTime(fromInclusive))}-{PersianFileDate(DateOnly.FromDateTime(toExclusive.AddDays(-1)))}.csv");
+        return File(file, "text/csv; charset=utf-8", $"lead-call-reports-{PersianFileDate(fromDate)}-{PersianFileDate(toDate)}.csv");
     }
 
     [HttpGet("reservations/export")]

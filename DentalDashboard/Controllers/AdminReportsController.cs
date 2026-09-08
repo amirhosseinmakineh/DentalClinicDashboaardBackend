@@ -14,6 +14,7 @@ namespace DentalDashboard.Controllers;
 
 [Route("api/admin/reports")]
 [ApiController]
+[Authorize(Roles = "Admin")]
 public class AdminReportsController : ControllerBase
 {
     private readonly LeadCallReportExportService leadCallReportExportService;

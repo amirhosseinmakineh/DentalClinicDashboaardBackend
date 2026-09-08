@@ -111,13 +111,19 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("SecretaryReservations")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Secretary")]
         public async Task<IActionResult> GetSecretaryReservations([FromQuery] GetSecretaryReservationsQuery query)
         {
             if (!TryGetCurrentUserId(out var userId))
                 return Unauthorized();
 
-            var hasPermission = await secretaryAccessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewReservations);
+            if (User.IsInRole("Admin"))
+            {
+                query.IsAdmin = true;
+                return Ok(await queryDispatcher.DispatchAsync(query));
+            }
+
+            var hasPermission = await secretaryAccessService.HasPermissionAsync(userId, SecretaryPermissionType.ViewReservations);
 
             if (!hasPermission)
                 return Forbid();
@@ -130,11 +136,16 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("/api/reservations")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Secretary")]
         public async Task<IActionResult> GetReservations([FromQuery] GetSecretaryReservationsQuery query)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-            if (!await secretaryAccessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewReservations)) return Forbid();
+            if (User.IsInRole("Admin"))
+            {
+                query.IsAdmin = true;
+                return Ok(await queryDispatcher.DispatchAsync(query));
+            }
+            if (!await secretaryAccessService.HasPermissionAsync(userId, SecretaryPermissionType.ViewReservations)) return Forbid();
             query.SecretaryUserId = userId;
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
@@ -334,16 +345,29 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("ConsultantPatientProfiles")]
+        [Authorize(Roles = "Consultant,Secretary,Admin")]
         public async Task<IActionResult> GetConsultantPatientProfiles(
-            [FromQuery] GetConsultantPatientProfilesQuery query)
+            [FromQuery] GetConsultantPatientProfilesQuery query,
+            CancellationToken cancellationToken)
         {
-            if (TryGetCurrentUserId(out var userId))
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            if (User.IsInRole("Consultant"))
             {
-                var access = await secretaryAccessService.GetAccessAsync(userId);
-                if (access.IsSecretary && !await secretaryAccessService.HasPermissionAsync(userId,
-                    DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewPatients)) return Forbid();
+                var consultantProfileId = await GetConsultantProfileIdAsync(userId, cancellationToken);
+                if (!consultantProfileId.HasValue) return Forbid();
+                query.ConsultantProfileId = consultantProfileId.Value;
             }
-            var result = await queryDispatcher.DispatchAsync(query);
+            else if (User.IsInRole("Secretary") &&
+                     !await secretaryAccessService.HasPermissionAsync(
+                         userId,
+                         SecretaryPermissionType.ViewPatients,
+                         cancellationToken))
+            {
+                return Forbid();
+            }
+
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
         }
 
@@ -375,23 +399,71 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost("CompletePatientProfile")]
-        public async Task<IActionResult> CompletePatientProfile(CompleteReservationPatientProfileCommand command)
+        [Authorize(Roles = "Consultant,Secretary,Admin")]
+        public async Task<IActionResult> CompletePatientProfile(
+            CompleteReservationPatientProfileCommand command,
+            CancellationToken cancellationToken)
         {
-            var result = await commandDispatcher.DispatchAsync(command);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            var reservation = await reservationRepository.GetAll()
+                .AsNoTracking()
+                .Where(item => item.Id == command.ReservationId && !item.IsDeleted)
+                .Select(item => new { item.Id, item.ConsultantProfileId })
+                .FirstOrDefaultAsync(cancellationToken);
+            if (reservation is null) return NotFound(Result.Failure("رزرو یافت نشد"));
+
+            if (User.IsInRole("Consultant"))
+            {
+                var consultantProfileId = await GetConsultantProfileIdAsync(userId, cancellationToken);
+                if (!consultantProfileId.HasValue ||
+                    reservation.ConsultantProfileId != consultantProfileId.Value)
+                    return Forbid();
+            }
+            else if (User.IsInRole("Secretary") &&
+                     (!await secretaryAccessService.HasPermissionAsync(
+                          userId,
+                          SecretaryPermissionType.ViewPatients,
+                          cancellationToken) ||
+                      !await secretaryAccessService.CanAccessReservationAsync(
+                          userId,
+                          reservation.Id,
+                          cancellationToken)))
+            {
+                return Forbid();
+            }
+
+            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
             return Ok(result);
         }
 
         [HttpGet("DueConfirmations")]
-        public async Task<IActionResult> GetDueConfirmations([FromQuery] GetDueReservationConfirmationsQuery query)
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> GetDueConfirmations(
+            [FromQuery] GetDueReservationConfirmationsQuery query,
+            CancellationToken cancellationToken)
         {
-            var result = await queryDispatcher.DispatchAsync(query);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var consultantProfileId = await GetConsultantProfileIdAsync(userId, cancellationToken);
+            if (!consultantProfileId.HasValue) return Forbid();
+
+            query.ConsultantProfileId = consultantProfileId.Value;
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
         }
 
         [HttpPost("ConfirmAttendance")]
-        public async Task<IActionResult> ConfirmAttendance(ConfirmReservationAttendanceCommand command)
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> ConfirmAttendance(
+            ConfirmReservationAttendanceCommand command,
+            CancellationToken cancellationToken)
         {
-            var result = await commandDispatcher.DispatchAsync(command);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var consultantProfileId = await GetConsultantProfileIdAsync(userId, cancellationToken);
+            if (!consultantProfileId.HasValue) return Forbid();
+
+            command.ConsultantProfileId = consultantProfileId.Value;
+            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
             return Ok(result);
         }
 
@@ -438,6 +510,14 @@ namespace DentalDashboard.Controllers
                 reservation = result.Data
             }, cancellationToken);
         }
+
+        private async Task<long?> GetConsultantProfileIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken) =>
+            await consultantProfileRepository.GetAll()
+                .Where(profile => profile.UserId == userId && !profile.IsDeleted)
+                .Select(profile => (long?)profile.Id)
+                .FirstOrDefaultAsync(cancellationToken);
 
         private bool TryGetCurrentUserId(out Guid userId)
         {

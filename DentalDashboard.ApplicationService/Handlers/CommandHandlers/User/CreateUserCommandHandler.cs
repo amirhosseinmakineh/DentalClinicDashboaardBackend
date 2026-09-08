@@ -41,6 +41,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 if (exists)
                 {
+                    await unitOfWork.RollbackAsync();
                     return Result<CreateUserResponse>.Failure(
                         "کاربری با این شماره موبایل قبلاً ثبت شده است");
                 }
@@ -54,8 +55,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                     BirthDate = command.BirthDate,
                     Gender = command.Gender,
                     AvatarImageName = command.AvatarImageName,
-                    IsActive = false,
-                    IsCompleteProfile = false,
+                    IsActive = command.IsActive,
+                    IsCompleteProfile = command.IsCompleteProfile,
                     SecretaryType = string.Equals(command.RoleName, "Secretary", StringComparison.OrdinalIgnoreCase)
                         ? command.SecretaryType ?? DentalDashboard.Domain.Enums.SecretaryType.Main
                         : null,

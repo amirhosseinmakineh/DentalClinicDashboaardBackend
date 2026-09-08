@@ -91,8 +91,7 @@ public class DailyReservationsReportService(DentalContext context)
         bool includeAll = false,
         CancellationToken cancellationToken = default)
     {
-        var now = DateTime.Now;
-        var reportDate = date ?? DateOnly.FromDateTime(now);
+        var reportDate = date ?? IranTimeHelper.TodayInIran();
         var query = BuildQuery(reportDate, reservationOwnerType, consultantProfileId,
             secretaryUserId, requestStatus, includeAll);
         var rows = await query
@@ -114,6 +113,7 @@ public class DailyReservationsReportService(DentalContext context)
                 x.LeadAssignment.AttendanceProbabilityPercent,
                 x.PatientCount,
                 x.ReservationAt,
+                x.InitialReservationAt,
                 x.CreatedAt,
                 x.UpdatedAt,
                 x.AttendanceConfirmationStatus,
@@ -131,7 +131,11 @@ public class DailyReservationsReportService(DentalContext context)
         var items = rows.Select(x =>
         {
             var status = GetRequestStatus(
-                x.IsCanceled, x.UpdatedAt, x.AttendanceConfirmationStatus);
+                x.IsCanceled,
+                x.ReservationAt,
+                x.InitialReservationAt,
+                x.AttendanceConfirmationStatus,
+                x.SecretaryAnnouncementStatus);
             var visitStatus = GetVisitResultStatus(
                 x.IsCanceled, x.AttendanceConfirmationStatus, x.ConsultantSaysPatientAttended);
             return new DailyReservationReportItem(
@@ -226,17 +230,21 @@ public class DailyReservationsReportService(DentalContext context)
         if (includeAll)
             return query;
 
-        // مقایسه مستقیم با تاریخ ذخیره‌شده در Backend/Database
         var startDate = date.ToDateTime(TimeOnly.MinValue);
         var endDate = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var (createdFromUtc, createdToUtcInclusive) =
+            IranTimeHelper.GetIranDayRangeAsUtc(date);
+        var createdToUtcExclusive = createdToUtcInclusive.AddMilliseconds(1);
 
         if (reservationOwnerType.HasValue)
         {
+            query = query.Where(x => x.OwnerType == reservationOwnerType.Value);
+
             if (reservationOwnerType == ReservationOwnerType.Consultant)
             {
                 query = query.Where(x =>
-            x.CreatedAt >= startDate &&
-            x.CreatedAt < endDate);
+                    x.CreatedAt >= createdFromUtc &&
+                    x.CreatedAt < createdToUtcExclusive);
             }
             else
             {
@@ -268,20 +276,38 @@ public class DailyReservationsReportService(DentalContext context)
             DailyReservationRequestStatus.Canceled => query.Where(x => x.IsCanceled),
             DailyReservationRequestStatus.Rejected => query.Where(x => !x.IsCanceled && x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryRejected),
             DailyReservationRequestStatus.Confirmed => query.Where(x => !x.IsCanceled && x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.SecretaryApproved),
-            DailyReservationRequestStatus.Rescheduled => query.Where(x => !x.IsCanceled && x.UpdatedAt != null && x.AttendanceConfirmationStatus != ReservationAttendanceConfirmationStatus.SecretaryApproved && x.AttendanceConfirmationStatus != ReservationAttendanceConfirmationStatus.SecretaryRejected),
-            DailyReservationRequestStatus.PendingSecretaryReview => query.Where(x => !x.IsCanceled && x.UpdatedAt == null && (x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent || x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent)),
-            DailyReservationRequestStatus.WaitingPatientConfirmation => query.Where(x => !x.IsCanceled && x.UpdatedAt == null && x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation),
-            DailyReservationRequestStatus.NeedsFollowUp => query.Where(x => false),
+            DailyReservationRequestStatus.Rescheduled => query.Where(x => !x.IsCanceled &&
+                (x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.RescheduleRequested ||
+                 (x.InitialReservationAt != DateTime.MinValue && x.ReservationAt != x.InitialReservationAt))),
+            DailyReservationRequestStatus.PendingSecretaryReview => query.Where(x => !x.IsCanceled &&
+                x.SecretaryAnnouncementStatus != SecretaryAnnouncementStatus.CallAgain &&
+                x.SecretaryAnnouncementStatus != SecretaryAnnouncementStatus.RescheduleRequested &&
+                (x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
+                 x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent)),
+            DailyReservationRequestStatus.WaitingPatientConfirmation => query.Where(x => !x.IsCanceled &&
+                x.SecretaryAnnouncementStatus != SecretaryAnnouncementStatus.CallAgain &&
+                x.SecretaryAnnouncementStatus != SecretaryAnnouncementStatus.RescheduleRequested &&
+                x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation),
+            DailyReservationRequestStatus.NeedsFollowUp => query.Where(x => !x.IsCanceled &&
+                x.SecretaryAnnouncementStatus == SecretaryAnnouncementStatus.CallAgain),
             _ => query
         };
 
     private static DailyReservationRequestStatus GetRequestStatus(
-        bool isCanceled, DateTime? updatedAt, ReservationAttendanceConfirmationStatus attendanceStatus)
+        bool isCanceled,
+        DateTime reservationAt,
+        DateTime initialReservationAt,
+        ReservationAttendanceConfirmationStatus attendanceStatus,
+        SecretaryAnnouncementStatus? announcementStatus)
     {
         if (isCanceled) return DailyReservationRequestStatus.Canceled;
         if (attendanceStatus == ReservationAttendanceConfirmationStatus.SecretaryRejected) return DailyReservationRequestStatus.Rejected;
         if (attendanceStatus == ReservationAttendanceConfirmationStatus.SecretaryApproved) return DailyReservationRequestStatus.Confirmed;
-        if (updatedAt.HasValue) return DailyReservationRequestStatus.Rescheduled;
+        if (announcementStatus == SecretaryAnnouncementStatus.CallAgain)
+            return DailyReservationRequestStatus.NeedsFollowUp;
+        if (announcementStatus == SecretaryAnnouncementStatus.RescheduleRequested ||
+            (initialReservationAt != DateTime.MinValue && reservationAt != initialReservationAt))
+            return DailyReservationRequestStatus.Rescheduled;
         return attendanceStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation
             ? DailyReservationRequestStatus.WaitingPatientConfirmation
             : DailyReservationRequestStatus.PendingSecretaryReview;

@@ -2,11 +2,13 @@
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DentalDashboard.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class AttendanceController : ControllerBase
     {
         private readonly IQueryDispatcher dispatcher;

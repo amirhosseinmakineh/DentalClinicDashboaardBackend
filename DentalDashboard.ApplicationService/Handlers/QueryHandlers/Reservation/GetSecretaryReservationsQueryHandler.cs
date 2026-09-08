@@ -31,11 +31,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             var pageNumber = Math.Max(query.PageNumber, 1);
             var pageSize = Math.Clamp(query.PageSize, 1, 100);
 
-            var access = await secretaryAccessService.GetAccessAsync(query.SecretaryUserId, cancellationToken);
-
-            if (!access.IsSecretary)
+            if (!query.IsAdmin)
             {
-                return EmptyResult(pageNumber, pageSize);
+                var access = await secretaryAccessService.GetAccessAsync(query.SecretaryUserId, cancellationToken);
+                if (!access.IsSecretary)
+                    return EmptyResult(pageNumber, pageSize);
             }
 
             var reservations = reservationRepository.GetAll()
@@ -71,9 +71,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             // Patient search
             // ------------------------------------------------------------
 
-            if (!string.IsNullOrWhiteSpace(query.Search))
+            var patientSearch = !string.IsNullOrWhiteSpace(query.Search)
+                ? query.Search
+                : query.SearchText;
+            if (!string.IsNullOrWhiteSpace(patientSearch))
             {
-                var search = query.Search.Trim();
+                var search = patientSearch.Trim();
 
                 reservations = reservations.Where(x =>
                     x.LeadAssignment.UserName.Contains(search) ||
@@ -105,17 +108,27 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             // ReservationAt date range in Iran wall-clock time
             // ------------------------------------------------------------
 
-            if (query.FromDate.HasValue)
+            if (query.Date.HasValue)
             {
-                var fromDate = IranTimeHelper.GetDateInIran(query.FromDate.Value);
+                var (start, _) = IranTimeHelper.GetIranLocalDayRange(query.Date.Value);
+                var endExclusive = query.Date.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+                reservations = reservations.Where(x =>
+                    x.ReservationAt >= start && x.ReservationAt < endExclusive);
+            }
+
+            var fromValue = query.FromDate ?? query.From;
+            if (!query.Date.HasValue && fromValue.HasValue)
+            {
+                var fromDate = IranTimeHelper.GetDateInIran(fromValue.Value);
                 var (start, _) = IranTimeHelper.GetIranLocalDayRange(fromDate);
 
                 reservations = reservations.Where(x => x.ReservationAt >= start);
             }
 
-            if (query.ToDate.HasValue)
+            var toValue = query.ToDate ?? query.To;
+            if (!query.Date.HasValue && toValue.HasValue)
             {
-                var toDate = IranTimeHelper.GetDateInIran(query.ToDate.Value);
+                var toDate = IranTimeHelper.GetDateInIran(toValue.Value);
                 var toDateExclusive = toDate.AddDays(1).ToDateTime(TimeOnly.MinValue);
 
                 reservations = reservations.Where(x => x.ReservationAt < toDateExclusive);
@@ -136,13 +149,32 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             // Attendance status
             // ------------------------------------------------------------
 
-            if (query.AttendanceStatus.HasValue)
+            var attendanceStatus = query.AttendanceStatus ?? query.AttendanceConfirmationStatus;
+            if (attendanceStatus.HasValue)
             {
-                var status = query.AttendanceStatus.Value;
+                var status = attendanceStatus.Value;
 
                 reservations = reservations.Where(x =>
                     x.AttendanceConfirmationStatus == status);
             }
+
+            if (query.OnlyWaitingForSecretaryReview)
+            {
+                reservations = reservations.Where(x =>
+                    x.SecretaryReviewedAt == null &&
+                    (x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
+                     x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent));
+            }
+
+            if (query.OnlyConsultantAttendanceConfirmed)
+            {
+                reservations = reservations.Where(x =>
+                    x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
+                    x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
+            }
+
+            if (query.OnlyDue)
+                reservations = reservations.Where(x => x.ReservationAt <= IranTimeHelper.IranLocalNow);
 
             if (!string.IsNullOrWhiteSpace(query.ReservationStatus))
             {

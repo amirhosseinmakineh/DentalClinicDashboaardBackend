@@ -68,11 +68,20 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
             .DistinctBy(x => x.Id)
             .ToList();
 
+        var hasConsultantRole = userRoles.Any(role => role.RoleName == "Consultant");
+        var consultantProfileIsComplete =
+            user.ConsultantProfile is { IsDeleted: false, IsCompleteProfile: true };
+
+        // ConsultantProfile is the source of truth for consultant onboarding.
+        // Keeping User in sync ensures both the login response and JWT route the
+        // consultant to profile completion instead of the operational dashboard.
+        if (hasConsultantRole && user.IsCompleteProfile != consultantProfileIsComplete)
+            user.IsCompleteProfile = consultantProfileIsComplete;
+
         var canCompleteConsultantOnboarding =
             !user.IsActive &&
-            userRoles.Any(role => role.RoleName == "Consultant") &&
-            (user.ConsultantProfile is null ||
-             user.ConsultantProfile is { IsDeleted: false, IsCompleteProfile: false });
+            hasConsultantRole &&
+            !consultantProfileIsComplete;
 
         if (!user.IsActive && !canCompleteConsultantOnboarding)
         {

@@ -4,9 +4,10 @@ using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Repository;
-using HtmlAgilityPack;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -14,7 +15,12 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly HttpClient httpClient;
         private static readonly TimeSpan RealtimeLeadRedispatchInterval = TimeSpan.FromSeconds(6);
-        private const string url = "https://landing.yektanet.com/form/report/vSjrtffitGUytcOHgpLvEzttHcMQiELTANXzyAxTIywCuhjUaBzbMSTNFpZpxKuv";
+        private const string GoogleSheetUrl =
+            "https://docs.google.com/spreadsheets/d/1VvgKqW-53obpDHR-b1bHRVvW2VXjHj0cjXcDsxve2w8/export?format=xlsx&gid=1527887863";
+        private const string FullNameHeader = "نام و نام خانوادگی";
+        private const string PhoneNumberHeader = "شماره تماس";
+        private static readonly Regex IranianMobileRegex =
+            new("^09\\d{9}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadDomainService leadDomainService;
         private readonly IConsultantProfileRepository consultantProfileRepository;
@@ -55,7 +61,7 @@ namespace DentalDashboard.ApplicationService.Services
                 }
 
                 using var response = await httpClient.GetAsync(
-                    url,
+                    GoogleSheetUrl,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
 
@@ -63,7 +69,7 @@ namespace DentalDashboard.ApplicationService.Services
                 {
                     CreatedAt = DateTime.UtcNow,
                     DeletedAt = null,
-                    LogName = "Yektanet",
+                    LogName = "GoogleSheetsLeadCapture",
                     ResponseLog = response.ReasonPhrase
                 };
                 await serviceLogRepository.AddAsync(log);
@@ -71,54 +77,59 @@ namespace DentalDashboard.ApplicationService.Services
 
                 response.EnsureSuccessStatusCode();
 
-                var html = await response.Content.ReadAsStringAsync(
-                    cancellationToken);
-
-                var document = new HtmlDocument();
-                document.LoadHtml(html);
-
-                var rows = document.DocumentNode
-                    .SelectNodes("//table//tr");
-
-                if (rows == null || rows.Count <= 1)
+                await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using var workbook = new XLWorkbook(stream);
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet is null)
                     return Array.Empty<LeadAssignment>();
 
-                var leads = new List<LeadAssignment>();
+                const int headerRowNumber = 2;
+                var headerColumns = worksheet.Row(headerRowNumber)
+                    .CellsUsed()
+                    .Where(cell => !string.IsNullOrWhiteSpace(cell.GetString()))
+                    .ToDictionary(
+                        cell => Clean(cell.GetString()),
+                        cell => cell.Address.ColumnNumber,
+                        StringComparer.Ordinal);
 
-                foreach (var row in rows.Skip(1))
+                if (!headerColumns.TryGetValue(FullNameHeader, out var fullNameColumn) ||
+                    !headerColumns.TryGetValue(PhoneNumberHeader, out var phoneNumberColumn))
                 {
-                    var cells = row.SelectNodes(".//td");
+                    throw new InvalidDataException(
+                        $"Google Sheet must contain '{FullNameHeader}' and '{PhoneNumberHeader}' headers in row {headerRowNumber}.");
+                }
 
-                    if (cells == null || cells.Count < 10)
+                var lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? headerRowNumber;
+                var leadsByPhoneNumber = new Dictionary<string, LeadAssignment>(StringComparer.Ordinal);
+
+                for (var rowNumber = headerRowNumber + 1; rowNumber <= lastRowNumber; rowNumber++)
+                {
+                    var userName = Clean(worksheet.Cell(rowNumber, fullNameColumn).GetString());
+                    var phoneNumber = NormalizePhoneNumber(
+                        worksheet.Cell(rowNumber, phoneNumberColumn).GetFormattedString());
+
+                    if (string.IsNullOrWhiteSpace(userName) ||
+                        !IranianMobileRegex.IsMatch(phoneNumber) ||
+                        leadsByPhoneNumber.ContainsKey(phoneNumber))
+                    {
                         continue;
+                    }
 
-                    var userName = Clean(cells[2].InnerText);
-                    var phoneNumber = Clean(cells[3].InnerText);
-                    var createAtText = Clean(cells[9].InnerText);
-
-                    DateTime.TryParse(
-                        createAtText,
-                        out var createdAt);
-
-                    leads.Add(new LeadAssignment
+                    leadsByPhoneNumber.Add(phoneNumber, new LeadAssignment
                     {
                         UserName = userName,
                         PhoneNumber = phoneNumber,
-                        CreatedAt = createdAt
+                        CreatedAt = DateTime.Now
                     });
                 }
 
-                return leads.ToArray();
+                return leadsByPhoneNumber.Values.ToArray();
             }
             catch (TaskCanceledException)
             {
                 return Array.Empty<LeadAssignment>();
             }
             catch (HttpRequestException)
-            {
-                return Array.Empty<LeadAssignment>();
-            }
-            catch (Exception)
             {
                 return Array.Empty<LeadAssignment>();
             }
@@ -131,6 +142,30 @@ namespace DentalDashboard.ApplicationService.Services
                 .Replace("\r", "")
                 .Replace("\t", "")
                 .Trim();
+        }
+
+        private static string NormalizePhoneNumber(string value)
+        {
+            var normalized = Clean(value)
+                .Replace('۰', '0').Replace('۱', '1').Replace('۲', '2')
+                .Replace('۳', '3').Replace('۴', '4').Replace('۵', '5')
+                .Replace('۶', '6').Replace('۷', '7').Replace('۸', '8').Replace('۹', '9')
+                .Replace('٠', '0').Replace('١', '1').Replace('٢', '2')
+                .Replace('٣', '3').Replace('٤', '4').Replace('٥', '5')
+                .Replace('٦', '6').Replace('٧', '7').Replace('٨', '8').Replace('٩', '9')
+                .Replace(" ", string.Empty)
+                .Replace("-", string.Empty)
+                .Replace("(", string.Empty)
+                .Replace(")", string.Empty);
+
+            if (normalized.StartsWith("+98", StringComparison.Ordinal))
+                normalized = $"0{normalized[3..]}";
+            else if (normalized.StartsWith("0098", StringComparison.Ordinal))
+                normalized = $"0{normalized[4..]}";
+            else if (normalized.StartsWith("98", StringComparison.Ordinal) && normalized.Length == 12)
+                normalized = $"0{normalized[2..]}";
+
+            return normalized;
         }
 
         public async Task AddLeadsAsync()

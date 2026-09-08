@@ -90,8 +90,7 @@ public class DailyReservationsReportService(DentalContext context)
         bool includeAll = false,
         CancellationToken cancellationToken = default)
     {
-        var now = DateTime.Now;
-        var reportDate = date ?? DateOnly.FromDateTime(now);
+        var reportDate = date ?? IranTimeHelper.TodayInIran();
         var query = BuildQuery(reportDate, reservationOwnerType, consultantProfileId,
             secretaryUserId, requestStatus, includeAll);
         var rows = await query

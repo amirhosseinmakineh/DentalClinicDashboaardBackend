@@ -12,9 +12,17 @@ public sealed class GetSecretaryReservationsQuery
     public string? ConsultantName { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
+    public DateOnly? Date { get; set; }
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+    public string? SearchText { get; set; }
     public ReservationType? ReservationType { get; set; }
     public SecretaryAnnouncementStatus? SecretaryAnnouncementStatus { get; set; }
     public ReservationAttendanceConfirmationStatus? AttendanceStatus { get; set; }
+    public ReservationAttendanceConfirmationStatus? AttendanceConfirmationStatus { get; set; }
+    public bool OnlyWaitingForSecretaryReview { get; set; }
+    public bool OnlyConsultantAttendanceConfirmed { get; set; }
+    public bool OnlyDue { get; set; }
     public string? ReservationStatus { get; set; }
     public bool IncludeCanceled { get; set; }
     public int PageNumber { get; set; } = 1;
@@ -22,4 +30,6 @@ public sealed class GetSecretaryReservationsQuery
     public string SortDirection { get; set; } = "asc";
     [JsonIgnore]
     public Guid SecretaryUserId { get; set; }
+    [JsonIgnore]
+    public bool IsAdmin { get; set; }
 }

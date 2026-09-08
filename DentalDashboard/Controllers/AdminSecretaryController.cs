@@ -46,7 +46,7 @@ public sealed class AdminSecretaryController : ControllerBase
             days = days.Select(x => x.ToString()),dayPermissions = days.Select(day => new
             {
                 day = day.ToString(),
-                permissions = permissions.GetValueOrDefault(day, []).Select(x => x.ToString())
+                permissions = permissions.GetValueOrDefault(day, []).Select(x => (int)x)
             })
         });
     }

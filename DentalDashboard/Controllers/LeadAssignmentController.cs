@@ -1,11 +1,13 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
+using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Controllers
 {
@@ -17,17 +19,20 @@ namespace DentalDashboard.Controllers
         private readonly IPickupService pickupService;
         private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
         private readonly ISecretaryAccessService secretaryAccessService;
+        private readonly IConsultantProfileRepository consultantProfileRepository;
 
         public LeadAssignmentController(
             IQueryDispatcher dispatcher,
             IPickupService pickupService,
             ILeadAssignmentLimitService leadAssignmentLimitService,
-            ISecretaryAccessService secretaryAccessService)
+            ISecretaryAccessService secretaryAccessService,
+            IConsultantProfileRepository consultantProfileRepository)
         {
             this.dispatcher = dispatcher;
             this.pickupService = pickupService;
             this.leadAssignmentLimitService = leadAssignmentLimitService;
             this.secretaryAccessService = secretaryAccessService;
+            this.consultantProfileRepository = consultantProfileRepository;
         }
 
         [HttpGet]
@@ -61,14 +66,25 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost("{leadAssignmentId}/pickup")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> Pickup(
             long leadAssignmentId,
             long consultantProfileId,
             CancellationToken cancellationToken)
         {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            var ownConsultantProfileId = await consultantProfileRepository.GetAll()
+                .Where(profile => profile.UserId == userId && !profile.IsDeleted)
+                .Select(profile => (long?)profile.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (!ownConsultantProfileId.HasValue) return Forbid();
+            if (consultantProfileId != ownConsultantProfileId.Value) return Forbid();
+
             var result = await pickupService.PickupLeadAsync(
                 leadAssignmentId,
-                consultantProfileId,
+                ownConsultantProfileId.Value,
                 cancellationToken);
 
             if (result.Status == PickupLeadStatus.Success)

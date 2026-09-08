@@ -75,10 +75,23 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CompleteProfile(CompleteConsultantProfileCommand command)
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> CompleteProfile(
+            CompleteConsultantProfileCommand command,
+            CancellationToken cancellationToken)
         {
-            var result = await dispatcher.DispatchAsync(command);
-            return Ok(result);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            command.UserId = userId;
+            command.IsCompleteProfile = true;
+            command.ProfileId = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
+                .Where(profile => profile.UserId == userId && !profile.IsDeleted)
+                .Select(profile => profile.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var result = await dispatcher.DispatchAsync(command, cancellationToken);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
         [HttpPost("SetAvalableConsultant")]
         public async Task<IActionResult> SetAvalableConsultant(SetAvailableCommand command)

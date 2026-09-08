@@ -14,17 +14,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
         private readonly IUnitOfWork unitOfWork;
         private readonly IRoleService roleService;
         private readonly IConsultantProfileService consultantProfileService;
+        private readonly IConsultantProfileRepository consultantProfileRepository;
 
         public UpdateUserCommandHandler(
             IUnitOfWork unitOfWork,
             IUserRepository userRepository,
             IRoleService roleService,
-            IConsultantProfileService consultantProfileService)
+            IConsultantProfileService consultantProfileService,
+            IConsultantProfileRepository consultantProfileRepository)
         {
             this.unitOfWork = unitOfWork;
             this.userRepository = userRepository;
             this.roleService = roleService;
             this.consultantProfileService = consultantProfileService;
+            this.consultantProfileRepository = consultantProfileRepository;
         }
 
         public async Task<Result<UpdateUserResponse>> HandleAsync(
@@ -71,7 +74,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                     if (command.RoleName == "Consultant")
                     {
-                        await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                        var profileId = await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                        user.IsCompleteProfile = profileId.HasValue && await consultantProfileRepository
+                            .GetAll()
+                            .AnyAsync(profile => profile.Id == profileId.Value &&
+                                !profile.IsDeleted && profile.IsCompleteProfile,
+                                cancellationToken);
+                        if (!user.IsCompleteProfile)
+                            user.IsActive = false;
                     }
                 }
 

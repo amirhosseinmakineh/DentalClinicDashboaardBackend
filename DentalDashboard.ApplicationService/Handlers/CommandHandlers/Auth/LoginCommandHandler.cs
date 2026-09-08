@@ -53,11 +53,6 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
             return Result<LoginResponse>.Failure("کاربری با این مشخصات یافت نشد");
         }
 
-        if (!user.IsActive)
-        {
-            return Result<LoginResponse>.Failure("حساب کاربری غیرفعال است");
-        }
-
         var isValidPassword = PasswordHasher.VerifyPassword(
             command.PasswordHash,
             user.PasswordHash);
@@ -65,6 +60,23 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
         if (!isValidPassword)
         {
             return Result<LoginResponse>.Failure("رمز عبور اشتباه است");
+        }
+
+        var userRoles = user.UserRoles
+            .Where(x => !x.IsDeleted && x.Role != null && !x.Role.IsDeleted)
+            .Select(x => x.Role!)
+            .DistinctBy(x => x.Id)
+            .ToList();
+
+        var canCompleteConsultantOnboarding =
+            !user.IsActive &&
+            userRoles.Any(role => role.RoleName == "Consultant") &&
+            (user.ConsultantProfile is null ||
+             user.ConsultantProfile is { IsDeleted: false, IsCompleteProfile: false });
+
+        if (!user.IsActive && !canCompleteConsultantOnboarding)
+        {
+            return Result<LoginResponse>.Failure("حساب کاربری غیرفعال است");
         }
 
         user.LastSeenAt = DateTime.UtcNow;
@@ -76,12 +88,6 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
             user.Id,
             UserPresenceEventType.Login,
             cancellationToken: cancellationToken);
-
-        var userRoles = user.UserRoles
-            .Where(x => !x.IsDeleted && x.Role != null && !x.Role.IsDeleted)
-            .Select(x => x.Role!)
-            .DistinctBy(x => x.Id)
-            .ToList();
 
         if (userRoles.Count == 0)
         {

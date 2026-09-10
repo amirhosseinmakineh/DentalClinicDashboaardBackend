@@ -234,27 +234,6 @@ public class DailyReservationsReportService(DentalContext context)
             ? query.Where(x => x.ReservationAt >= startUtc && x.ReservationAt < nextDayStartUtc)
             : query.Where(x => x.CreatedAt >= startUtc && x.CreatedAt < nextDayStartUtc);
 
-        if (reservationOwnerType.HasValue)
-        {
-            if (reservationOwnerType.Value == ReservationOwnerType.Secretary)
-            {
-                // Older reservations were incorrectly persisted as Consultant
-                // even though OwnerUserId belonged to a secretary. Keep those
-                // records visible without rewriting production data.
-                query = query.Where(x =>
-                    x.OwnerType == ReservationOwnerType.Secretary ||
-                    (x.OwnerUserId.HasValue && context.UserRoles.Any(userRole =>
-                        !userRole.IsDeleted &&
-                        userRole.UserId == x.OwnerUserId.Value &&
-                        !userRole.Role.IsDeleted &&
-                        userRole.Role.RoleName.ToLower() == "secretary")));
-            }
-            else
-            {
-                query = query.Where(x => x.OwnerType == reservationOwnerType.Value);
-            }
-        }
-
         if (consultantProfileId.HasValue)
             query = query.Where(x =>
                 x.ConsultantProfileId == consultantProfileId.Value);

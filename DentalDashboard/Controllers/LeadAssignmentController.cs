@@ -74,17 +74,24 @@ namespace DentalDashboard.Controllers
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
 
-            var ownConsultantProfileId = await consultantProfileRepository.GetAll()
+            var ownConsultantProfile = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
                 .Where(profile => profile.UserId == userId && !profile.IsDeleted)
-                .Select(profile => (long?)profile.Id)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            if (!ownConsultantProfileId.HasValue) return Forbid();
-            if (consultantProfileId != ownConsultantProfileId.Value) return Forbid();
+            if (ownConsultantProfile == null) return Forbid();
+            if (consultantProfileId != ownConsultantProfile.Id) return Forbid();
+            if (!ownConsultantProfile.IsCompleteProfile ||
+                !ownConsultantProfile.IsAvailable ||
+                !ownConsultantProfile.IsOnline)
+            {
+                return Conflict(Result.Failure(
+                    "برای دریافت لید باید حضور ثبت‌شده و وضعیت آنلاین داشته باشید"));
+            }
 
             var result = await pickupService.PickupLeadAsync(
                 leadAssignmentId,
-                ownConsultantProfileId.Value,
+                ownConsultantProfile.Id,
                 cancellationToken);
 
             if (result.Status == PickupLeadStatus.Success)

@@ -168,8 +168,27 @@ namespace DentalDashboard.Controllers
         [HttpGet("CanPickupLead")]
         public async Task<IActionResult> CanPickupLead(
             [FromQuery] long profileId,
-            [FromServices] ILeadAssignmentLimitService leadAssignmentLimitService)
+            [FromServices] ILeadAssignmentLimitService leadAssignmentLimitService,
+            CancellationToken cancellationToken)
         {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var profile = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == profileId &&
+                                          x.UserId == userId &&
+                                          !x.IsDeleted,
+                    cancellationToken);
+            if (profile == null) return Forbid();
+
+            if (!profile.IsCompleteProfile || !profile.IsAvailable || !profile.IsOnline)
+            {
+                return Ok(Result<object>.Success(new
+                {
+                    canPickup = false,
+                    message = "برای دریافت لید باید حضور ثبت‌شده و وضعیت آنلاین داشته باشید"
+                }));
+            }
+
             var limitStatus = await leadAssignmentLimitService
                 .GetDailyLimitStatusAsync(profileId);
 
@@ -278,11 +297,22 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Consultant")]
         [HttpGet("GetBroadcastRealtimeLeads")]
         public async Task<IActionResult> GetBroadcastRealtimeLeads(
-            [FromQuery] GetBroadcastRealtimeLeadsQuery query)
+            [FromQuery] GetBroadcastRealtimeLeadsQuery query,
+            CancellationToken cancellationToken)
         {
-            var result = await queryDispatcher.DispatchAsync(query);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var profileId = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.UserId == userId && !x.IsDeleted)
+                .Select(x => (long?)x.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (!profileId.HasValue) return Forbid();
+            query.ProfileId = profileId.Value;
+
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(Result<object>.Success(result));
         }
 

@@ -172,6 +172,16 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<int?>("CallResult")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("ClosedByConsultantAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ClosureReason")
+                        .HasColumnType("int");
+
                     b.Property<long?>("ConsultantProfileId")
                         .HasColumnType("bigint");
 

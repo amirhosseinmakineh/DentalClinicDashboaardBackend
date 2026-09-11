@@ -21,7 +21,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
         public async Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(GetLeadsQuery query, CancellationToken cancellationToken = default)
         {
             var leadsQuery = leadAssignmentRepository.GetAll()
-                .Where(x => !x.IsDeleted && x.ConsultantProfileId == query.ProfileId);
+                .Where(x => !x.IsDeleted &&
+                            x.ConsultantProfileId == query.ProfileId &&
+                            x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant);
 
             if (query.leadAssignmentState.HasValue)
             {
@@ -96,7 +98,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 AttendanceProbabilityPercent = x.AttendanceProbabilityPercent,
                 SecondaryPhoneNumber = x.SecondaryPhoneNumber,
                 HasActiveReservation = reservationRepository.GetAll()
-                    .Any(r => r.LeadAssignmentId == x.Id)
+                    .Any(r => !r.IsDeleted && !r.IsCanceled && r.LeadAssignmentId == x.Id),
+                ClosedByConsultantAt = x.ClosedByConsultantAt,
+                ClosureReason = x.ClosureReason,
+                ClosureDescription = x.ClosureDescription
             });
 
             return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads,cancellationToken);
@@ -175,6 +180,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     AssignedAt = x.AssignedAt,
                     ContactedAt = x.ContactedAt,
                     ReportSubmittedAt = x.ReportSubmittedAt,
+                    ClosedByConsultantAt = x.ClosedByConsultantAt,
+                    ClosureReason = x.ClosureReason,
+                    ClosureDescription = x.ClosureDescription,
                 });
             if (query.leadAssignmentState.HasValue)
             {

@@ -6,7 +6,7 @@ namespace DentalDashboard.ApplicationService.Services
 {
     public class LeadAssignmentLimitService : ILeadAssignmentLimitService
     {
-        public const int SystemDefaultDailyLimit = 10;
+        public const int SystemDefaultDailyLimit = int.MaxValue;
 
         private readonly ILeadAssignmentRepository _repository;
         private readonly IConsultantProfileRepository _consultantProfileRepository;
@@ -23,20 +23,19 @@ namespace DentalDashboard.ApplicationService.Services
 
         public async Task<bool> CanPickupLeadAsync(long consultantProfileId)
         {
-            var status = await GetDailyLimitStatusAsync(consultantProfileId);
-            return status.CanPickup;
+            await Task.CompletedTask;
+            return true;
         }
 
         public async Task<ConsultantDailyLimitStatus> GetDailyLimitStatusAsync(long consultantProfileId)
         {
-            var effectiveLimit = await GetEffectiveDailyLimitAsync(consultantProfileId);
             var count = await _repository.GetTodayPickupCountAsync(consultantProfileId);
 
             return new ConsultantDailyLimitStatus
             {
-                EffectiveDailyLimit = effectiveLimit,
+                EffectiveDailyLimit = int.MaxValue,
                 TodayPickupCount = count,
-                CanPickup = count < effectiveLimit
+                CanPickup = true
             };
         }
 

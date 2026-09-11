@@ -42,10 +42,20 @@ public class UserController : ControllerBase
         var result = await dispatcher.DispatchAsync(command);
         return Ok(result);
     }
-    [HttpDelete]
-    public async Task<IActionResult> DeleteUser([FromQuery]DeleteUserCommand command)
+    [HttpDelete("{userId:guid}")]
+    public async Task<IActionResult> DeleteUser(Guid userId, CancellationToken cancellationToken)
     {
-        var result = await dispatcher.DispatchAsync(command);
-        return Ok(result);
+        var result = await dispatcher.DispatchAsync(
+            new DeleteUserCommand { UserId = userId }, cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> DeleteUserLegacy(
+        [FromQuery] DeleteUserCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await dispatcher.DispatchAsync(command, cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 }

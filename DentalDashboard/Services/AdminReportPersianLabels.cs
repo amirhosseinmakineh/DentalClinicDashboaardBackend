@@ -33,6 +33,7 @@ public static class AdminReportPersianLabels
         LeadAssignmentState.Expired => "منقضی شده",
         LeadAssignmentState.Rejected => "رد شده",
         LeadAssignmentState.NoAnswer => "پاسخ نداد",
+        LeadAssignmentState.ClosedByConsultant => "بسته‌شده توسط مشاور",
         _ => "نامشخص"
     };
 

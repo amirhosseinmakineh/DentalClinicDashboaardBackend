@@ -29,5 +29,8 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
         public string? BusinessName { get; set; }
         public int? AttendanceProbabilityPercent { get; set; }
         public string? SecondaryPhoneNumber { get; set; }
+        public DateTime? ClosedByConsultantAt { get; set; }
+        public LeadClosureReason? ClosureReason { get; set; }
+        public string? ClosureDescription { get; set; }
     }
 }

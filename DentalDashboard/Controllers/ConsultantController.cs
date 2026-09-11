@@ -212,6 +212,28 @@ namespace DentalDashboard.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Consultant")]
+        [HttpPost("leads/{leadAssignmentId:long}/close")]
+        public async Task<IActionResult> CloseLead(
+            long leadAssignmentId,
+            [FromBody] CloseLeadCommand command,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            var profileId = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => !x.IsDeleted && x.UserId == userId)
+                .Select(x => (long?)x.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (!profileId.HasValue) return Forbid();
+
+            command.LeadAssignmentId = leadAssignmentId;
+            command.ConsultantProfileId = profileId.Value;
+            var result = await dispatcher.DispatchAsync(command, cancellationToken);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
         [HttpGet("GetLeads")]
         [Authorize(Roles = "Admin,Consultant")]
         public async Task<IActionResult> GetLeads(

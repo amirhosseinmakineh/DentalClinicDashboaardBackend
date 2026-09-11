@@ -51,4 +51,10 @@ public class LeadAssignment : BaseAuditableEntity<long>
     public int DispatchLevel { get; set; }
 
     public DateTime? LastDispatchAt { get; set; }
+
+    public DateTime? ClosedByConsultantAt { get; set; }
+
+    public LeadClosureReason? ClosureReason { get; set; }
+
+    public string? ClosureDescription { get; set; }
 }

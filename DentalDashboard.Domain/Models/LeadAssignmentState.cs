@@ -14,5 +14,7 @@
 
     Rejected = 7,
 
-    NoAnswer = 8
+    NoAnswer = 8,
+
+    ClosedByConsultant = 9
 }

@@ -101,6 +101,7 @@ namespace DentalDashboard.Infrastracture.Repository
                  !x.PickUp) ||
                 (!x.IsDeleted &&
                  x.ConsultantProfileId != null &&
+                 x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant &&
                  x.CallResult == LeadCallResult.NoAnswer &&
                  x.ReportSubmittedAt != null));
 
@@ -279,6 +280,7 @@ namespace DentalDashboard.Infrastracture.Repository
             OR (@sourceType = @burnedSource
                 AND ((IsDeleted = 1 AND ConsultantProfileId IS NULL AND PickUp = 0)
                   OR (IsDeleted = 0 AND ConsultantProfileId IS NOT NULL
+                    AND LeadAssignmentState <> @closedByConsultantState
                     AND CallResult = @noAnswerResult
                     AND ReportSubmittedAt IS NOT NULL))))
     ";
@@ -296,6 +298,7 @@ namespace DentalDashboard.Infrastracture.Repository
                         "@assignedState",
                         (int)LeadAssignmentState.Assigned),
                     new SqlParameter("@newState", (int)LeadAssignmentState.New),
+                    new SqlParameter("@closedByConsultantState", (int)LeadAssignmentState.ClosedByConsultant),
                     new SqlParameter("@noAnswerResult", (int)LeadCallResult.NoAnswer),
                     new SqlParameter("@realTimeType", (int)LeadAssignmentType.RealTime),
                     new SqlParameter("@sourceType", (int)sourceType),

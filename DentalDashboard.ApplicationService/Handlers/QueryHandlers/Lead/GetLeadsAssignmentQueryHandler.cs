@@ -21,6 +21,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
         public async Task<PaginatedResult<LeadsAssignmentItemsResponse>> HandleAsync(GetLeadsQuery query, CancellationToken cancellationToken = default)
         {
             var leadsQuery = leadAssignmentRepository.GetAll()
+                .AsNoTracking()
                 .Where(x => !x.IsDeleted &&
                             x.ConsultantProfileId == query.ProfileId &&
                             x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant);
@@ -48,7 +49,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 leadsQuery = leadsQuery.Where(x =>
                     x.UserName.Contains(searchText) ||
                     x.PhoneNumber.Contains(searchText) ||
-                    (x.SecondaryPhoneNumber != null && x.SecondaryPhoneNumber.Contains(searchText)));
+                    (x.SecondaryPhoneNumber != null && x.SecondaryPhoneNumber.Contains(searchText)) ||
+                    (x.PatientCity != null && x.PatientCity.Contains(searchText)) ||
+                    (x.PatientRegion != null && x.PatientRegion.Contains(searchText)) ||
+                    (x.ReportDescription != null && x.ReportDescription.Contains(searchText)));
             }
 
             if (!string.IsNullOrWhiteSpace(query.UserName))
@@ -104,13 +108,13 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 ClosureDescription = x.ClosureDescription
             });
 
-            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads,cancellationToken);
+            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, query.PageNumber, query.PageSize, cancellationToken);
         }
     }
 
     internal static class LeadAssignmentPagination
     {
-        public static async Task<PaginatedResult<LeadsAssignmentItemsResponse>> ToPaginatedResultAsync(
+        public static async Task<PaginatedResult<LeadsAssignmentItemsResponse>> ToUnpaginatedResultAsync(
             IQueryable<LeadsAssignmentItemsResponse> query,
             CancellationToken cancellationToken)
         {
@@ -121,10 +125,36 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 .ThenByDescending(x => x.Id)
                 .ToListAsync(cancellationToken);
 
-            return new PaginatedResult<LeadsAssignmentItemsResponse>()
+            return new PaginatedResult<LeadsAssignmentItemsResponse>
             {
                 Items = items,
                 TotalCount = totalCount
+            };
+        }
+
+        public static async Task<PaginatedResult<LeadsAssignmentItemsResponse>> ToPaginatedResultAsync(
+            IQueryable<LeadsAssignmentItemsResponse> query,
+            int requestedPageNumber,
+            int requestedPageSize,
+            CancellationToken cancellationToken)
+        {
+            var pageNumber = Math.Clamp(requestedPageNumber, 1, 1_000_000);
+            var pageSize = Math.Clamp(requestedPageSize, 1, 100);
+            var totalCount = await query.CountAsync(cancellationToken);
+            var items = await query
+                .OrderByDescending(x => x.AssignedAt.HasValue)
+                .ThenByDescending(x => x.AssignedAt)
+                .ThenByDescending(x => x.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return new PaginatedResult<LeadsAssignmentItemsResponse>()
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
             };
         }
     }
@@ -200,7 +230,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     x.UserName.Contains(searchText) || x.PhoneNumber.Contains(searchText));
             }
 
-            return await LeadAssignmentPagination.ToPaginatedResultAsync(allLeads, cancellationToken);
+            return await LeadAssignmentPagination.ToUnpaginatedResultAsync(allLeads, cancellationToken);
         }
     }
 }

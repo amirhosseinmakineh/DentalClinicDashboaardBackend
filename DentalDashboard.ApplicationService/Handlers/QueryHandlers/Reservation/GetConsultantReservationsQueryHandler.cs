@@ -29,10 +29,20 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             if (!query.IncludeCanceled)
                 reservations = reservations.Where(x => !x.IsCanceled);
 
-            if (query.From.HasValue)
+            if (query.FromDate.HasValue)
+            {
+                var from = query.FromDate.Value.ToDateTime(TimeOnly.MinValue);
+                reservations = reservations.Where(x => x.ReservationAt >= from);
+            }
+            else if (query.From.HasValue)
                 reservations = reservations.Where(x => x.ReservationAt >= query.From.Value);
 
-            if (query.To.HasValue)
+            if (query.ToDate.HasValue && query.ToDate.Value < DateOnly.MaxValue)
+            {
+                var toExclusive = query.ToDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+                reservations = reservations.Where(x => x.ReservationAt < toExclusive);
+            }
+            else if (query.To.HasValue)
                 reservations = reservations.Where(x => x.ReservationAt <= query.To.Value);
 
             if (query.OnlySecretaryReviewed == true)

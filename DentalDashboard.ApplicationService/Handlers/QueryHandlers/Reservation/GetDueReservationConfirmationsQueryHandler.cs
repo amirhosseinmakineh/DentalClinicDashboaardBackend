@@ -19,11 +19,24 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
         {
             var now = query.Now ?? DateTime.Now;
 
-            return await reservationRepository.GetAll()
+            var reservations = reservationRepository.GetAll()
                 .Where(x => x.ConsultantProfileId == query.ConsultantProfileId &&
                             !x.IsCanceled &&
                             x.ReservationAt <= now &&
-                            x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation)
+                            x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation);
+
+            if (query.FromDate.HasValue)
+            {
+                var from = query.FromDate.Value.ToDateTime(TimeOnly.MinValue);
+                reservations = reservations.Where(x => x.ReservationAt >= from);
+            }
+            if (query.ToDate.HasValue && query.ToDate.Value < DateOnly.MaxValue)
+            {
+                var toExclusive = query.ToDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+                reservations = reservations.Where(x => x.ReservationAt < toExclusive);
+            }
+
+            return await reservations
                 .OrderBy(x => x.ReservationAt)
                 .Select(x => new ReservationItemResponse
                 {

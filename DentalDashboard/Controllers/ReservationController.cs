@@ -290,6 +290,9 @@ namespace DentalDashboard.Controllers
             [FromQuery] GetConsultantReservationsQuery query,
             CancellationToken cancellationToken)
         {
+            if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
+                return BadRequest(Result.Failure("تاریخ شروع نباید بعد از تاریخ پایان باشد"));
+
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
 
             var consultantProfileId = await consultantProfileRepository.GetAll()
@@ -441,6 +444,9 @@ namespace DentalDashboard.Controllers
             [FromQuery] GetDueReservationConfirmationsQuery query,
             CancellationToken cancellationToken)
         {
+            if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
+                return BadRequest(Result.Failure("تاریخ شروع نباید بعد از تاریخ پایان باشد"));
+
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
             var consultantProfileId = await GetConsultantProfileIdAsync(userId, cancellationToken);
             if (!consultantProfileId.HasValue) return Forbid();

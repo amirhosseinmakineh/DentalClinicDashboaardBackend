@@ -2,6 +2,7 @@ using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IDomainService;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Utilities.Time;
@@ -45,8 +46,20 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 throw new InvalidOperationException("پروفایل مشاور حذف شده است");
 
             var isAfterWorkEnd = leadDomainService.IsAfterWorkEnd(DateTime.Now);
+            var isWorkingTime = leadDomainService.IsWorkingTime(DateTime.Now);
 
-            var canGoOnline = !isAfterWorkEnd;
+            var canGoOnline = isWorkingTime &&
+                profile.IsCompleteProfile && profile.IsAvailable;
+            var pendingLeadsCount = await leadAssignmentRepository.GetAll()
+                .CountAsync(x => !x.IsDeleted && x.ConsultantProfileId == profile.Id &&
+                    x.LeadAssignmentState == LeadAssignmentState.Pending, cancellationToken);
+            var pendingReportCount = await leadAssignmentRepository.GetAll()
+                .CountAsync(x => !x.IsDeleted && x.ConsultantProfileId == profile.Id &&
+                    x.ReportSubmittedAt == null, cancellationToken);
+            var uncalledWithoutReportCount = await leadAssignmentRepository.GetAll()
+                .CountAsync(x => !x.IsDeleted && x.ConsultantProfileId == profile.Id &&
+                    x.ReportSubmittedAt == null && x.CallInitiatedAt == null, cancellationToken);
+            var isNewLeadBlocked = pendingLeadsCount >= 10 || pendingReportCount > 0;
             var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
             var activeReservations = reservationRepository.GetAll()
                 .AsNoTracking()
@@ -73,7 +86,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 LastOnlineAt = profile.LastOnlineAt,
                 LastOfflineAt = profile.LastOfflineAt,
                 CanGoOnline = canGoOnline,
-                OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(isAfterWorkEnd),
+                OnlineStatusBlockReason = !profile.IsCompleteProfile ? "پروفایل مشاور کامل نیست"
+                    : !profile.IsAvailable ? "ابتدا حضور خود را ثبت کنید"
+                    : !isWorkingTime ? ResolveOnlineStatusBlockReason(isAfterWorkEnd)
+                        ?? "امکان آنلاین شدن قبل از ساعت ۹ صبح وجود ندارد"
+                    : null,
                 TodayReservationsCount = todayReservationsCount,
                 TotalReservationsCount = totalReservationsCount,
                 TotalReservedPatientsCount = totalReservedPatientsCount,
@@ -82,7 +99,15 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 TodayPickupCount = dailyLimitStatus.TodayPickupCount,
                 RemainingDailyCapacity = Math.Max(
                     0,
-                    dailyLimitStatus.EffectiveDailyLimit - dailyLimitStatus.TodayPickupCount)
+                    dailyLimitStatus.EffectiveDailyLimit - dailyLimitStatus.TodayPickupCount),
+                PendingReportCount = pendingReportCount,
+                UncalledWithoutReportCount = uncalledWithoutReportCount,
+                IsNewLeadBlocked = isNewLeadBlocked,
+                ShouldShowWorkloadNotification = isNewLeadBlocked,
+                WorkloadNotificationMessage = isNewLeadBlocked
+                    ? pendingReportCount > 0 ? "ابتدا گزارش لیدهای بدون گزارش را ثبت کنید"
+                        : "تعداد لیدهای در حال پیگیری به سقف مجاز رسیده است"
+                    : null
             };
         }
 

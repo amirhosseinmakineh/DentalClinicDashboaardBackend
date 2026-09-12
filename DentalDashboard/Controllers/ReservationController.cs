@@ -372,21 +372,19 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin,Secretary,Consultant")]
         public async Task<IActionResult> CreateReservation(CreateReservationCommand command)
         {
-            if (TryGetCurrentUserId(out var userId))
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
             {
                 var access = await secretaryAccessService.GetAccessAsync(userId);
                 var isOwnConsultantReservation = await consultantProfileRepository.GetAll()
                     .AnyAsync(x => x.UserId == userId && !x.IsDeleted &&
                                    x.Id == command.ConsultantProfileId);
 
-                if (access.IsSecretary && !isOwnConsultantReservation &&
-                    !await secretaryAccessService.HasPermissionAsync(userId,
-                    DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation))
-                    return StatusCode(StatusCodes.Status403Forbidden,
-                        Result.Failure("شما دسترسی ایجاد رزرو را ندارید"));
+                if (!User.IsInRole("Admin") && !isOwnConsultantReservation &&
+                    (!access.IsSecretary || !await secretaryAccessService.HasPermissionAsync(userId,
+                        SecretaryPermissionType.CreateReservation))) return Forbid();
 
                 command.OwnerUserId = userId;
                 command.OwnerType = access.IsSecretary
@@ -468,17 +466,20 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPut]
-        [Authorize]
+        [Authorize(Roles = "Admin,Secretary,Consultant")]
         public async Task<IActionResult> UpdateReservation(UpdateReservationCommand command)
         {
-            if (TryGetCurrentUserId(out var userId))
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
             {
                 var access = await secretaryAccessService.GetAccessAsync(userId);
                 var isOwnConsultantReservation = await consultantProfileRepository.GetAll()
                     .AnyAsync(x => x.UserId == userId && !x.IsDeleted &&
                                    x.Id == command.ConsultantProfileId);
 
-                if (access.IsSecretary && !isOwnConsultantReservation)
+                if (!User.IsInRole("Admin") && !isOwnConsultantReservation && !access.IsSecretary)
+                    return Forbid();
+
+                if (access.IsSecretary && !isOwnConsultantReservation && !User.IsInRole("Admin"))
                 {
                     if (!await secretaryAccessService.HasPermissionAsync(userId,
                             DentalDashboard.Domain.Enums.SecretaryPermissionType.EditReservations) ||

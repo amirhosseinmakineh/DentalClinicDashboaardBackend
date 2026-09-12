@@ -16,5 +16,10 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantRespon
         public int DailyLimit { get; init; }
         public int TodayPickupCount { get; init; }
         public int RemainingDailyCapacity { get; init; }
+        public int PendingReportCount { get; init; }
+        public int UncalledWithoutReportCount { get; init; }
+        public bool IsNewLeadBlocked { get; init; }
+        public bool ShouldShowWorkloadNotification { get; init; }
+        public string? WorkloadNotificationMessage { get; init; }
     }
 }

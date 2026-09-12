@@ -62,12 +62,18 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             ConsultantProfile profile,
             CancellationToken cancellationToken)
         {
+            if (!profile.IsCompleteProfile)
+                return Result.Failure("پروفایل مشاور کامل نیست");
+
+            if (!profile.IsAvailable)
+                return Result.Failure("ابتدا حضور خود را ثبت کنید");
+
             // بیزینس قبلی:
             // بعد از ساعت پایان کار امکان آنلاین شدن وجود ندارد.
-            if (leadDomainService.IsAfterWorkEnd(DateTime.Now))
+            if (!leadDomainService.IsWorkingTime(DateTime.Now))
             {
                 return Result.Failure(
-                    "امکان آنلاین شدن بعد از ساعت ۹ شب وجود ندارد");
+                    "امکان آنلاین شدن فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد");
             }
 
             // تعداد لیدهای در حال پیگیری

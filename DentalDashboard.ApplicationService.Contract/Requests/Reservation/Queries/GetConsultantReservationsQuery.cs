@@ -10,6 +10,9 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queri
         public long ConsultantProfileId { get; set; }
         public DateTime? From { get; set; }
         public DateTime? To { get; set; }
+        // Appointment dates in Iran local calendar time. Unlike From/To, ToDate includes the full day.
+        public DateOnly? FromDate { get; set; }
+        public DateOnly? ToDate { get; set; }
         public bool IncludeCanceled { get; set; } = false;
         public bool? OnlySecretaryReviewed { get; set; }
         public string? SearchText { get; set; }

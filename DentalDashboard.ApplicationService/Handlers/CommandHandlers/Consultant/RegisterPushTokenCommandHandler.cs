@@ -79,11 +79,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                         "طول subscription از حد مجاز دیتابیس بیشتر است. بک‌اند را به آخرین نسخه به‌روز کنید.");
                 }
 
-                return Result.Failure($"ثبت subscription در دیتابیس انجام نشد: {inner}");
+                return Result.Failure("ثبت subscription در دیتابیس انجام نشد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Result.Failure($"ثبت subscription انجام نشد: {ex.Message}");
+                return Result.Failure("ثبت subscription انجام نشد");
             }
         }
     }

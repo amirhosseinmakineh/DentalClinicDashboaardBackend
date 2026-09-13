@@ -36,7 +36,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet]
-        [Authorize]
+        [Authorize(Roles = "Admin,Secretary")]
         public async Task<IActionResult> Get(
             [FromQuery] GetAllLeadsQuery query,
             CancellationToken cancellationToken)

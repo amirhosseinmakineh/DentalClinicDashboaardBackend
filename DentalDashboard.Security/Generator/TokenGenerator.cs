@@ -17,7 +17,8 @@ namespace DentalDashboard.Security.Generator
         public string GenerateToken(User user, List<Role> roles)
         {
             var jwtSetting = configuration.GetSection("JwtSettings");
-            var expiryMinutes = Convert.ToDouble(jwtSetting["ExpiryMinutes"] ?? "60");
+            var configuredExpiryMinutes = Convert.ToDouble(jwtSetting["ExpiryMinutes"] ?? "60");
+            var expiryMinutes = Math.Clamp(configuredExpiryMinutes, 5, 480);
             var secret = jwtSetting["SecretKey"];
             var audience = jwtSetting["Audience"];
             var issuer = jwtSetting["Issuer"];

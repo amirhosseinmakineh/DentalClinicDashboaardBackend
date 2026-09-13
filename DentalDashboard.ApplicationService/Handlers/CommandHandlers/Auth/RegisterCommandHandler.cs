@@ -78,10 +78,10 @@ public class RegisterCommandHandler : ICommandHandler<RegisterCommand, RegisterR
                 },
                 "ثبت نام با موفقیت انجام شد");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             await unitOfWork.RollbackAsync();
-            return Result<RegisterResponse>.Failure($"خطا در ثبت نام: {ex.Message}");
+            return Result<RegisterResponse>.Failure("خطا در ثبت نام");
         }
     }
 }

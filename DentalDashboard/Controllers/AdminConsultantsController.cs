@@ -34,9 +34,9 @@ public class AdminConsultantsController : ControllerBase
             var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = "پروفایل مشاور یافت نشد" });
         }
     }
 

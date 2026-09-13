@@ -9,6 +9,7 @@ namespace DentalDashboard.Controllers;
 
 [ApiController]
 [Route("api/secretary/patient-files")]
+[Authorize(Roles = "Admin,Secretary")]
 public sealed class SecretaryPatientFilesController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher) : ControllerBase
 {
     [HttpGet]

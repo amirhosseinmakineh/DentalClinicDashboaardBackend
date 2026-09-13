@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DentalDashboard.Secretary.Accountant.PatientFinance.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Roles = "Admin,Secretary")]
 [Route("api/secretary")]
 public sealed class PatientFinanceController(ICommandDispatcher commands, IQueryDispatcher queries) : ControllerBase
 {

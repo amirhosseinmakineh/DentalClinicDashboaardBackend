@@ -58,14 +58,13 @@ public class RegisterUserPushTokenCommandHandler : ICommandHandler<RegisterUserP
 
             return Result.Success("توکن نوتیفیکیشن ثبت شد");
         }
-        catch (DbUpdateException ex)
+        catch (DbUpdateException)
         {
-            var inner = ex.InnerException?.Message ?? ex.Message;
-            return Result.Failure($"ثبت subscription در دیتابیس انجام نشد: {inner}");
+            return Result.Failure("ثبت subscription در دیتابیس انجام نشد");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return Result.Failure($"ثبت subscription انجام نشد: {ex.Message}");
+            return Result.Failure("ثبت subscription انجام نشد");
         }
     }
 }

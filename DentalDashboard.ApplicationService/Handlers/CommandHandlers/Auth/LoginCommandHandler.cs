@@ -62,6 +62,9 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
             return Result<LoginResponse>.Failure("رمز عبور اشتباه است");
         }
 
+        if (PasswordHasher.NeedsRehash(user.PasswordHash))
+            user.PasswordHash = PasswordHasher.HashPassword(command.PasswordHash);
+
         var userRoles = user.UserRoles
             .Where(x => !x.IsDeleted && x.Role != null && !x.Role.IsDeleted)
             .Select(x => x.Role!)

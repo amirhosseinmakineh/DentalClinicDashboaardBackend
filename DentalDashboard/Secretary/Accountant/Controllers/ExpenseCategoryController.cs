@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DentalDashboard.Secretary.Accountant.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Roles = "Admin,Secretary")]
 [Route("api/secretary/expense-categories")]
 public sealed class ExpenseCategoryController : ControllerBase
 {

@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using DentalDashboard.Hubs;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,7 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
+        ClockSkew = TimeSpan.FromMinutes(1),
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
@@ -67,7 +69,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 //builder.Services.AddCors(options =>
 //{
@@ -83,17 +90,20 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendCors", policy =>
     {
+        var allowedOrigins = new List<string>
+        {
+            "https://drsaeedmoghadam.com",
+            "https://www.drsaeedmoghadam.com",
+            "https://drmoghadam.runflare.run"
+        };
+
+        if (builder.Environment.IsDevelopment())
+            allowedOrigins.Add("http://localhost:4200");
+
         policy
-            .WithOrigins(
-    "https://drsaeedmoghadam.com",
-    "https://www.drsaeedmoghadam.com",
-    "http://localhost:4200",
-    "https://drmoghadam.runflare.run",
-    "http://drsaeedmoghadam.com"
-)
+            .WithOrigins(allowedOrigins.ToArray())
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
     });
 });
 builder.Services.AddApplicationServices();
@@ -159,6 +169,36 @@ using (var scope = app.Services.CreateScope())
 // ====================================
 
 app.UseMiddleware<DentalDashboard.Middleware.RequestCancellationMiddleware>();
+
+app.UseExceptionHandler(exceptionHandler =>
+{
+    exceptionHandler.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            type = "https://httpstatuses.com/500",
+            title = "خطای داخلی سرور",
+            status = StatusCodes.Status500InternalServerError,
+            detail = "در پردازش درخواست خطایی رخ داد"
+        });
+    });
+});
+
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
+        context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
 
 // Authenticated API data must never be served from a browser, CDN or proxy cache.
 app.Use(async (context, next) =>

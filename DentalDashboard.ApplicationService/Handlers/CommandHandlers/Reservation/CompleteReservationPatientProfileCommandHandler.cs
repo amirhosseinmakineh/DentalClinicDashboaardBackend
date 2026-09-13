@@ -108,10 +108,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     RoleName = PatientRoleName
                 }, "پرونده بیمار برای رزرو با موفقیت تشکیل شد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await unitOfWork.RollbackAsync();
-                return Result<CompleteReservationPatientProfileResponse>.Failure($"خطا در تشکیل پرونده بیمار: {ex.Message}");
+                return Result<CompleteReservationPatientProfileResponse>.Failure("خطا در تشکیل پرونده بیمار");
             }
         }
     }

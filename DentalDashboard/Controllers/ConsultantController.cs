@@ -48,7 +48,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("GetConsultants")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Secretary,Consultant")]
         public async Task<IActionResult> GetConsultants(
             [FromQuery]GetConsultantQuery query,
             CancellationToken cancellationToken)
@@ -146,6 +146,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("WebPushPublicKey")]
+        [AllowAnonymous]
         public IActionResult WebPushPublicKey([FromServices] IConfiguration configuration)
         {
             var publicKey = configuration["WebPush:VapidPublicKey"]
@@ -160,6 +161,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpGet("WebPushHealth")]
+        [Authorize(Roles = "Admin")]
         public IActionResult WebPushHealth([FromServices] IConfiguration configuration)
         {
             var publicKey = configuration["WebPush:VapidPublicKey"]

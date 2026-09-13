@@ -11,7 +11,7 @@ using FluentValidation;
 namespace DentalDashboard.Secretary.Accountant.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Roles = "Admin,Secretary")]
 [Route("api/secretary/account")]
 public sealed class SecretaryAccountController : ControllerBase
 {

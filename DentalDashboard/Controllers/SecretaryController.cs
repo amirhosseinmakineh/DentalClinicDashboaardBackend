@@ -19,6 +19,7 @@ namespace DentalDashboard.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = "Admin,Secretary")]
 public class SecretaryController : ControllerBase
 {
     private readonly ICommandDispatcher dispatcher;
@@ -253,10 +254,15 @@ public class SecretaryController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Secretary")]
     public async Task<IActionResult> CompleteProfile(
         CompleteSecretaryProfileCommand command,
         CancellationToken cancellationToken)
     {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized();
+
+        command.UserId = userId;
         var result = await dispatcher.DispatchAsync(command, cancellationToken);
         return Ok(result);
     }

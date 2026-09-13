@@ -99,13 +99,11 @@ namespace DentalDashboard.Controllers
 
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
-                    message = ex.Message,
-                    inner = ex.InnerException?.Message,
-                    stack = ex.StackTrace
+                    message = "در پردازش درخواست خطایی رخ داد"
                 });
             }
         }

@@ -83,10 +83,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 return Result<CreateUserResponse>.Success(response,"ثبت کاربر جدید با موفقیت انجام شد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await unitOfWork.RollbackAsync();
-                return Result<CreateUserResponse>.Failure($"خطا در ایجاد کاربر: {ex.Message}");
+                return Result<CreateUserResponse>.Failure("خطا در ایجاد کاربر");
             }
         }
     }

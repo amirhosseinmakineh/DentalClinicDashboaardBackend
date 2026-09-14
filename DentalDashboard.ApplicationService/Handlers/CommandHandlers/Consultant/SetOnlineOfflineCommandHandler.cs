@@ -94,6 +94,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             // تعداد لیدهایی که گزارش برایشان ثبت نشده
             var unSubmittedReportCount = profile.CallAssignments.Count(x =>
                 !x.IsDeleted &&
+                x.ConsultantProfileId == profile.Id &&
+                x.AssignmentType == LeadAssignmentType.RealTime &&
+                x.LeadAssignmentState == LeadAssignmentState.Assigned &&
                 x.ReportSubmittedAt == null);
 
             // بیزینس جدید:

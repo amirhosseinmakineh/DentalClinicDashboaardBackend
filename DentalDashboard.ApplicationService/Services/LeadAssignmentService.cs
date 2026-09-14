@@ -605,7 +605,10 @@ namespace DentalDashboard.ApplicationService.Services
                 var pendingLeadsCount = consultant.CallAssignments.Count(x =>
                     x.LeadAssignmentState == LeadAssignmentState.Pending);
                 var unSubmitReportLead = consultant.CallAssignments
-                    .Count(x => x.ConsultantProfileId == consultant.Id &&
+                    .Count(x => !x.IsDeleted &&
+                                x.ConsultantProfileId == consultant.Id &&
+                                x.AssignmentType == LeadAssignmentType.RealTime &&
+                                x.LeadAssignmentState == LeadAssignmentState.Assigned &&
                                 x.ReportSubmittedAt == null);
 
                 if (pendingLeadsCount >= 20)

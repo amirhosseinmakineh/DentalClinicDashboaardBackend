@@ -3,7 +3,7 @@ name: Backend container build
 on:
   pull_request:
   push:
-    branches: [develop, stage, production]
+    branches: [codex-lflotm, develop, stage, production]
 
 jobs:
   docker-build:

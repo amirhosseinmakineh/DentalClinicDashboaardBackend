@@ -1,0 +1,13 @@
+.git
+.github
+.vs
+**/bin
+**/obj
+**/*.user
+**/*.suo
+*.md
+docs
+Dockerfile*
+docker-compose*
+DentalDashboard/appsettings*.json
+!DentalDashboard/appsettings.Container.json

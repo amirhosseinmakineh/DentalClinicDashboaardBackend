@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using DentalDashboard.Hubs;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var jwtSecretKey = jwtSettings["SecretKey"];
@@ -90,11 +92,18 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendCors", policy =>
     {
-        var allowedOrigins = new List<string>
+        var allowedOrigins = builder.Configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>()?
+            .Where(origin => !string.IsNullOrWhiteSpace(origin))
+            .Select(origin => origin.Trim().TrimEnd('/'))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? new List<string>
         {
             "https://drsaeedmoghadam.com",
             "https://www.drsaeedmoghadam.com",
-            "https://drmoghadam.runflare.run"
+            "https://drmoghadam.runflare.run",
+            "https://stage.drsaeedmoghadam.com"
         };
 
         if (builder.Environment.IsDevelopment())
@@ -235,5 +244,11 @@ if (app.Environment.IsDevelopment())
 
 app.MapControllers();
 app.MapHub<ReservationsHub>("/hubs/reservations");
+app.MapHealthChecks("/healthz").AllowAnonymous();
+app.MapGet("/readyz", async (DentalContext dbContext, CancellationToken cancellationToken) =>
+    await dbContext.Database.CanConnectAsync(cancellationToken)
+        ? Results.Ok(new { status = "ready" })
+        : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
+    .AllowAnonymous();
 
 app.Run();

@@ -34,6 +34,15 @@ public sealed class GetPatientFilesQueryHandler(IPatientFileRepository patientFi
 
         var patientFilesQuery = patientFileRepository.PatientFiles.AsNoTracking();
 
+        if (!request.IsAdmin)
+        {
+            if (!request.SecretaryUserId.HasValue)
+                return Result<PatientFilePageResponse>.Failure("هویت منشی معتبر نیست");
+
+            patientFilesQuery = patientFilesQuery.Where(
+                patientFile => patientFile.SecretaryUserId == request.SecretaryUserId.Value);
+        }
+
         if (request.FileNumber.HasValue)
             patientFilesQuery = patientFilesQuery.Where(patientFile => patientFile.FileNumber == request.FileNumber);
 
@@ -90,7 +99,9 @@ public sealed class GetPatientFileByIdQueryHandler(IPatientFileRepository patien
     {
         var patientFile = await patientFileRepository.PatientFiles
             .AsNoTracking()
-            .Where(patientFile => patientFile.Id == request.Id)
+            .Where(patientFile =>
+                patientFile.Id == request.Id &&
+                (request.IsAdmin || patientFile.SecretaryUserId == request.SecretaryUserId))
             .Select(patientFile => new PatientFileDto(
                 patientFile.Id,
                 patientFile.PatientReferenceId,
@@ -359,55 +370,54 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
 {
     public async Task<Result<CreatePatientFileResponse>> HandleAsync(CreatePatientFileCommand request, CancellationToken cancellationToken = default)
     {
-        if (request.PatientId <= 0)
-            return Result<CreatePatientFileResponse>.Failure("شناسه بیمار معتبر نیست");
-
+        var firstName = request.FirstName?.Trim() ?? string.Empty;
+        var lastName = request.LastName?.Trim() ?? string.Empty;
+        var phoneNumber = request.PhoneNumber?.Trim() ?? string.Empty;
         var description = request.Description?.Trim();
+
+        if (request.SecretaryUserId == Guid.Empty)
+            return Result<CreatePatientFileResponse>.Failure("هویت منشی معتبر نیست");
+
+        if (firstName.Length is 0 or > 100 || lastName.Length is 0 or > 100)
+            return Result<CreatePatientFileResponse>.Failure("نام و نام خانوادگی بیمار الزامی و حداکثر ۱۰۰ کاراکتر است");
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(phoneNumber, @"^09\d{9}$"))
+            return Result<CreatePatientFileResponse>.Failure("شماره موبایل باید با 09 شروع شود و ۱۱ رقم باشد");
+
         if (description?.Length > 2000)
             return Result<CreatePatientFileResponse>.Failure("توضیحات پرونده نمی‌تواند بیشتر از ۲۰۰۰ کاراکتر باشد");
 
-        await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await unitOfWork.BeginTransactionAsync(
+            cancellationToken,
+            System.Data.IsolationLevel.Serializable);
 
         try
         {
-            var patient = await patientFileRepository.Patients.SingleOrDefaultAsync(
-                patient => patient.Id == request.PatientId && !patient.IsDeleted,
-                cancellationToken);
-
-            if (patient is null)
-                return await Rollback("بیمار یافت نشد");
-
-            var attendanceAt = await patientFileRepository.Reservations
-                .Where(reservation =>
-                    reservation.LeadAssignmentId == patient.Id &&
-                    !reservation.IsDeleted &&
-                    !reservation.IsCanceled)
-                .OrderByDescending(reservation => reservation.ReservationAt)
-                .Select(reservation => (DateTime?)reservation.ReservationAt)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (!attendanceAt.HasValue)
-                return await Rollback("بیمار رزرو معتبر ندارد");
-
-            if (await patientFileRepository.PatientFiles.AnyAsync(
+            var duplicateExists = await patientFileRepository.PatientFiles
+                .AnyAsync(
                     patientFile =>
-                        patientFile.PatientReferenceId == patient.Id &&
-                        patientFile.SourceType == PatientFileSourceType.System,
-                    cancellationToken))
-                return await Rollback("برای این بیمار قبلاً پرونده ایجاد شده است");
+                        patientFile.SecretaryUserId == request.SecretaryUserId &&
+                        patientFile.PhoneNumber == phoneNumber,
+                    cancellationToken);
+
+            if (duplicateExists)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result<CreatePatientFileResponse>.Failure("این بیمار قبلاً توسط شما ثبت شده است");
+            }
 
             var fileNumber = await patientFileRepository.GetNextFileNumberWithLockAsync(
-                DateOnly.FromDateTime(attendanceAt.Value),
+                DateOnly.FromDateTime(DateTime.UtcNow),
                 cancellationToken);
-            var patientName = PatientFileNames.Split(patient.UserName);
 
             var patientFile = new PatientFile
             {
-                PatientReferenceId = patient.Id,
+                PatientReferenceId = null,
+                SecretaryUserId = request.SecretaryUserId,
                 FileNumber = fileNumber,
-                FirstName = patientName.FirstName,
-                LastName = patientName.LastName,
-                PhoneNumber = patient.PhoneNumber.Trim(),
+                FirstName = firstName,
+                LastName = lastName,
+                PhoneNumber = phoneNumber,
                 Description = string.IsNullOrWhiteSpace(description) ? null : description,
                 SourceType = PatientFileSourceType.System
             };
@@ -417,17 +427,11 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
 
             return Result<CreatePatientFileResponse>.Success(
                 new(patientFile.Id, patientFile.FileNumber));
-
-            async Task<Result<CreatePatientFileResponse>> Rollback(string message)
-            {
-                await unitOfWork.RollbackAsync(cancellationToken);
-                return Result<CreatePatientFileResponse>.Failure(message);
-            }
         }
-        catch (InvalidOperationException exception)
+        catch (DbUpdateException)
         {
             await unitOfWork.RollbackAsync(cancellationToken);
-            return Result<CreatePatientFileResponse>.Failure(exception.Message);
+            return Result<CreatePatientFileResponse>.Failure("این بیمار قبلاً توسط شما ثبت شده است");
         }
         catch
         {
@@ -453,7 +457,10 @@ public sealed class EnsurePatientFileFinancialIdentityCommandHandler(
     {
         var patientFile = await patientFileRepository.PatientFiles
             .SingleOrDefaultAsync(
-                file => file.Id == request.PatientFileId && !file.IsDeleted,
+                file =>
+                    file.Id == request.PatientFileId &&
+                    !file.IsDeleted &&
+                    (request.IsAdmin || file.SecretaryUserId == request.SecretaryUserId),
                 cancellationToken);
 
         if (patientFile is null)
@@ -565,11 +572,23 @@ public sealed class UpdatePatientFileCommandHandler(IPatientFileRepository patie
             return Result.Failure("اطلاعات پرونده معتبر نیست");
 
         var patientFile = await patientFileRepository.PatientFiles.SingleOrDefaultAsync(
-            patientFile => patientFile.Id == request.Id,
+            patientFile =>
+                patientFile.Id == request.Id &&
+                (request.IsAdmin || patientFile.SecretaryUserId == request.SecretaryUserId),
             cancellationToken);
 
         if (patientFile is null)
             return Result.Failure("پرونده بیمار یافت نشد");
+
+        var duplicateExists = await patientFileRepository.PatientFiles.AnyAsync(
+            other =>
+                other.Id != request.Id &&
+                other.SecretaryUserId == patientFile.SecretaryUserId &&
+                other.PhoneNumber == phoneNumber,
+            cancellationToken);
+
+        if (duplicateExists)
+            return Result.Failure("این بیمار قبلاً توسط شما ثبت شده است");
 
         patientFile.FirstName = firstName;
         patientFile.LastName = lastName;
@@ -588,7 +607,9 @@ public sealed class DeletePatientFileCommandHandler(IPatientFileRepository patie
     public async Task<Result> HandleAsync(DeletePatientFileCommand request, CancellationToken cancellationToken = default)
     {
         var patientFile = await patientFileRepository.PatientFiles.SingleOrDefaultAsync(
-            patientFile => patientFile.Id == request.Id,
+            patientFile =>
+                patientFile.Id == request.Id &&
+                (request.IsAdmin || patientFile.SecretaryUserId == request.SecretaryUserId),
             cancellationToken);
 
         if (patientFile is null)
@@ -740,7 +761,8 @@ public sealed class ImportPatientFilesCommandHandler(IPatientFileRepository pati
                     LastName = row.LastName,
                     FileNumber = row.FileNumber,
                     PhoneNumber = row.PhoneNumber,
-                    SourceType = PatientFileSourceType.Legacy
+                    SourceType = PatientFileSourceType.Legacy,
+                    SecretaryUserId = request.SecretaryUserId
                 }),
                 cancellationToken);
 

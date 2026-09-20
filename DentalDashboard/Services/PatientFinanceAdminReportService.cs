@@ -9,6 +9,8 @@ namespace DentalDashboard.Services;
 public sealed class PatientFinanceAdminReportFilter
 {
     public string? Search { get; set; }
+    public string? PatientName { get; set; }
+    public long? FileNumber { get; set; }
     public int? ServiceId { get; set; }
     public PatientFinancialAgreementType? AgreementType { get; set; }
     public PatientFinancialCaseStatus? Status { get; set; }
@@ -67,14 +69,40 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         var summary = await BuildSummaryAsync(query, cancellationToken);
         var page = Math.Max(1, filter.Page);
         var pageSize = Math.Clamp(filter.PageSize, 1, 100);
-        var items = await Project(query
-            .OrderByDescending(item => item.CreatedAt)
-            .ThenByDescending(item => item.Id))
+        var patientIds = await query
+            .GroupBy(item => item.PatientId)
+            .Select(group => new
+            {
+                PatientId = group.Key,
+                LastCaseAt = group.Max(item => item.CreatedAt)
+            })
+            .OrderByDescending(item => item.LastCaseAt)
+            .ThenBy(item => item.PatientId)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(item => item.PatientId)
             .ToListAsync(cancellationToken);
 
-        return new(items, summary.CaseCount, page, pageSize, summary);
+        var projectedItems = await Project(query
+            .Where(item => patientIds.Contains(item.PatientId)))
+            .ToListAsync(cancellationToken);
+
+        var itemByPatientId = projectedItems
+            .GroupBy(item => item.PatientId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderByDescending(item => item.CreatedAt)
+                    .ThenByDescending(item => item.CaseId)
+                    .First());
+        var items = patientIds.Select(patientId => itemByPatientId[patientId]).ToList();
+
+        var patientCount = await query
+            .Select(item => item.PatientId)
+            .Distinct()
+            .CountAsync(cancellationToken);
+
+        return new(items, patientCount, page, pageSize, summary);
     }
 
     public async Task<byte[]> ExportExcelAsync(
@@ -96,7 +124,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             "ردیف", "نام بیمار", "شماره تماس", "شماره پرونده", "خدمت",
             "مبلغ کل", "پیش‌پرداخت", "ودیعه", "پرداخت قطعی", "مانده",
             "بدهی باز", "مبلغ چک‌ها", "مبلغ سفته‌ها", "نوع توافق",
-            "وضعیت پرونده", "ثبت‌کننده", "تاریخ ثبت", "شناسه پرونده مالی"
+            "وضعیت پرونده", "تاریخ ثبت"
         };
 
         for (var column = 0; column < headers.Length; column++)
@@ -121,9 +149,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             sheet.Cell(row, 13).Value = item.PromissoryNoteAmount;
             sheet.Cell(row, 14).Value = AgreementLabel(item.AgreementType);
             sheet.Cell(row, 15).Value = StatusLabel(item.Status);
-            sheet.Cell(row, 16).Value = item.CreatedBy;
-            sheet.Cell(row, 17).Value = item.CreatedAt;
-            sheet.Cell(row, 18).Value = item.CaseId.ToString();
+            sheet.Cell(row, 16).Value = item.CreatedAt;
         }
 
         var summaryRow = items.Count + 3;
@@ -143,7 +169,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         headerRange.Style.Font.FontColor = XLColor.White;
         sheet.Range(summaryRow, 1, summaryRow, headers.Length).Style.Font.Bold = true;
         sheet.Range(2, 6, summaryRow, 13).Style.NumberFormat.Format = "#,##0.###";
-        sheet.Column(17).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
+        sheet.Column(16).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
         sheet.SheetView.FreezeRows(1);
         sheet.RangeUsed()?.SetAutoFilter();
         sheet.Columns().AdjustToContents(10, 35);
@@ -167,6 +193,21 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
                 repository.PatientFiles.Any(file =>
                     file.PhoneNumber == item.Patient.PhoneNumber &&
                     file.FileNumber.ToString().Contains(search)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.PatientName))
+        {
+            var patientName = filter.PatientName.Trim();
+            query = query.Where(item =>
+                (item.Patient.FirstName + " " + item.Patient.LastName).Contains(patientName));
+        }
+
+        if (filter.FileNumber.HasValue)
+        {
+            var fileNumber = filter.FileNumber.Value;
+            query = query.Where(item => repository.PatientFiles.Any(file =>
+                file.PhoneNumber == item.Patient.PhoneNumber &&
+                file.FileNumber == fileNumber));
         }
 
         if (filter.ServiceId.HasValue)

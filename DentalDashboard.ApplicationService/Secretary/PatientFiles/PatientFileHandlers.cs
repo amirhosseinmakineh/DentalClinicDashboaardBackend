@@ -25,6 +25,22 @@ internal static class PatientFileNames
     }
 }
 
+internal static class PatientFileScope
+{
+    // Patient files belong to the clinic and are shared by all authenticated secretaries.
+    // SecretaryUserId is retained as creator/audit metadata, not as a visibility boundary.
+    public static IQueryable<PatientFile> AccessibleTo(
+        this IQueryable<PatientFile> query,
+        Guid? secretaryUserId,
+        bool isAdmin)
+    {
+        if (isAdmin || secretaryUserId.HasValue)
+            return query;
+
+        return query.Where(_ => false);
+    }
+}
+
 public sealed class GetPatientFilesQueryHandler(IPatientFileRepository patientFileRepository, IPatientFinanceRepository patientFinanceRepository) : IQueryHandler<GetPatientFilesQuery, Result<PatientFilePageResponse>>
 {
     public async Task<Result<PatientFilePageResponse>> HandleAsync(GetPatientFilesQuery request, CancellationToken cancellationToken = default)
@@ -32,15 +48,14 @@ public sealed class GetPatientFilesQueryHandler(IPatientFileRepository patientFi
         if (request.Page < 1 || request.PageSize is < 1 or > 100)
             return Result<PatientFilePageResponse>.Failure("مقادیر صفحه‌بندی معتبر نیستند");
 
-        var patientFilesQuery = patientFileRepository.PatientFiles.AsNoTracking();
+        var patientFilesQuery = patientFileRepository.PatientFiles
+            .AsNoTracking()
+            .AccessibleTo(request.SecretaryUserId, request.IsAdmin);
 
         if (!request.IsAdmin)
         {
             if (!request.SecretaryUserId.HasValue)
                 return Result<PatientFilePageResponse>.Failure("هویت منشی معتبر نیست");
-
-            patientFilesQuery = patientFilesQuery.Where(
-                patientFile => patientFile.SecretaryUserId == request.SecretaryUserId.Value);
         }
 
         if (request.FileNumber.HasValue)
@@ -99,9 +114,8 @@ public sealed class GetPatientFileByIdQueryHandler(IPatientFileRepository patien
     {
         var patientFile = await patientFileRepository.PatientFiles
             .AsNoTracking()
-            .Where(patientFile =>
-                patientFile.Id == request.Id &&
-                (request.IsAdmin || patientFile.SecretaryUserId == request.SecretaryUserId))
+            .AccessibleTo(request.SecretaryUserId, request.IsAdmin)
+            .Where(patientFile => patientFile.Id == request.Id)
             .Select(patientFile => new PatientFileDto(
                 patientFile.Id,
                 patientFile.PatientReferenceId,
@@ -396,14 +410,13 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
             var duplicateExists = await patientFileRepository.PatientFiles
                 .AnyAsync(
                     patientFile =>
-                        patientFile.SecretaryUserId == request.SecretaryUserId &&
                         patientFile.PhoneNumber == phoneNumber,
                     cancellationToken);
 
             if (duplicateExists)
             {
                 await unitOfWork.RollbackAsync(cancellationToken);
-                return Result<CreatePatientFileResponse>.Failure("این بیمار قبلاً توسط شما ثبت شده است");
+                return Result<CreatePatientFileResponse>.Failure("این بیمار قبلاً در سیستم ثبت شده است");
             }
 
             var fileNumber = await patientFileRepository.GetNextFileNumberWithLockAsync(
@@ -431,7 +444,7 @@ public sealed class CreatePatientFileCommandHandler(IPatientFileRepository patie
         catch (DbUpdateException)
         {
             await unitOfWork.RollbackAsync(cancellationToken);
-            return Result<CreatePatientFileResponse>.Failure("این بیمار قبلاً توسط شما ثبت شده است");
+            return Result<CreatePatientFileResponse>.Failure("این بیمار قبلاً در سیستم ثبت شده است");
         }
         catch
         {
@@ -456,11 +469,11 @@ public sealed class EnsurePatientFileFinancialIdentityCommandHandler(
         CancellationToken cancellationToken = default)
     {
         var patientFile = await patientFileRepository.PatientFiles
+            .AccessibleTo(request.SecretaryUserId, request.IsAdmin)
             .SingleOrDefaultAsync(
                 file =>
                     file.Id == request.PatientFileId &&
-                    !file.IsDeleted &&
-                    (request.IsAdmin || file.SecretaryUserId == request.SecretaryUserId),
+                    !file.IsDeleted,
                 cancellationToken);
 
         if (patientFile is null)
@@ -571,11 +584,9 @@ public sealed class UpdatePatientFileCommandHandler(IPatientFileRepository patie
             phoneNumber.Length is 0 or > 20 || description?.Length > 2000)
             return Result.Failure("اطلاعات پرونده معتبر نیست");
 
-        var patientFile = await patientFileRepository.PatientFiles.SingleOrDefaultAsync(
-            patientFile =>
-                patientFile.Id == request.Id &&
-                (request.IsAdmin || patientFile.SecretaryUserId == request.SecretaryUserId),
-            cancellationToken);
+        var patientFile = await patientFileRepository.PatientFiles
+            .AccessibleTo(request.SecretaryUserId, request.IsAdmin)
+            .SingleOrDefaultAsync(patientFile => patientFile.Id == request.Id, cancellationToken);
 
         if (patientFile is null)
             return Result.Failure("پرونده بیمار یافت نشد");
@@ -583,12 +594,11 @@ public sealed class UpdatePatientFileCommandHandler(IPatientFileRepository patie
         var duplicateExists = await patientFileRepository.PatientFiles.AnyAsync(
             other =>
                 other.Id != request.Id &&
-                other.SecretaryUserId == patientFile.SecretaryUserId &&
                 other.PhoneNumber == phoneNumber,
             cancellationToken);
 
         if (duplicateExists)
-            return Result.Failure("این بیمار قبلاً توسط شما ثبت شده است");
+            return Result.Failure("این بیمار قبلاً در سیستم ثبت شده است");
 
         patientFile.FirstName = firstName;
         patientFile.LastName = lastName;
@@ -606,11 +616,9 @@ public sealed class DeletePatientFileCommandHandler(IPatientFileRepository patie
 {
     public async Task<Result> HandleAsync(DeletePatientFileCommand request, CancellationToken cancellationToken = default)
     {
-        var patientFile = await patientFileRepository.PatientFiles.SingleOrDefaultAsync(
-            patientFile =>
-                patientFile.Id == request.Id &&
-                (request.IsAdmin || patientFile.SecretaryUserId == request.SecretaryUserId),
-            cancellationToken);
+        var patientFile = await patientFileRepository.PatientFiles
+            .AccessibleTo(request.SecretaryUserId, request.IsAdmin)
+            .SingleOrDefaultAsync(patientFile => patientFile.Id == request.Id, cancellationToken);
 
         if (patientFile is null)
             return Result.Failure("پرونده بیمار یافت نشد");

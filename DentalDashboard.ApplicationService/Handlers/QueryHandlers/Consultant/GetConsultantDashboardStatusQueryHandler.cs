@@ -76,8 +76,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
             var todayReservationsCount = await activeReservations
                 .Where(x =>
-                            x.CreatedAt >= todayStartUtc &&
-                            x.CreatedAt < todayEndUtc)
+                            x.ReservationAt >= todayStartUtc &&
+                            x.ReservationAt < todayEndUtc)
                 .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
             var todayCallsCount = await leadAssignmentRepository.GetTodayCallCountAsync(profile.Id);
             var dailyLimitStatus = await leadAssignmentLimitService.GetDailyLimitStatusAsync(profile.Id);

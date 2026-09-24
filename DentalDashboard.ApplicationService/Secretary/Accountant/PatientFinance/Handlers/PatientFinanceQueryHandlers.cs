@@ -153,7 +153,7 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                     .Sum(debt => (decimal?)debt.Amount) ?? 0,
                 financialCase.AgreementType,
                 financialCase.Status,
-                financialCase.CreatedAt))
+                financialCase.CreatedAt) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems })
             .ToListAsync(cancellationToken);
 
         var casesByPatient = matchingCases
@@ -232,7 +232,7 @@ public sealed class GetPatientFinancialCaseDetailsQueryHandler(
                         .Sum(debt => (decimal?)debt.Amount) ?? 0,
                     financialCase.AgreementType,
                     financialCase.Status,
-                    financialCase.CreatedAt),
+                    financialCase.CreatedAt) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems },
                 financialCase.Cheques.Count(
                     cheque => cheque.Status != PatientChequeStatus.Cancelled),
                 financialCase.Cheques

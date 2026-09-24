@@ -39,7 +39,22 @@ public sealed record PatientFinanceAdminReportItem(
     PatientFinancialAgreementType AgreementType,
     PatientFinancialCaseStatus Status,
     string CreatedBy,
-    DateTime CreatedAt);
+    DateTime CreatedAt)
+{
+    public decimal BalanceAmount { get; init; }
+    public string? PaymentMethod { get; init; }
+    public string? InstallmentStatus { get; init; }
+    public string? GuaranteeDocument { get; init; }
+    public DateTime? GuaranteeDate { get; init; }
+    public decimal? GuaranteeAmount { get; init; }
+    public string? GuaranteeChequeRegistration { get; init; }
+    public string? Notes { get; init; }
+    public string? ConsultantName { get; init; }
+    public string? ReviewItems { get; init; }
+    public DateTime? ChequeDate { get; init; }
+    public string? ChequeRegistration { get; init; }
+}
+
 
 public sealed record PatientFinanceAdminReportSummary(
     int CaseCount,
@@ -121,10 +136,12 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         sheet.RightToLeft = true;
         var headers = new[]
         {
-            "ردیف", "نام بیمار", "شماره تماس", "شماره پرونده", "خدمت",
-            "مبلغ کل", "پیش‌پرداخت", "ودیعه", "پرداخت قطعی", "مانده",
+            "ردیف", "نام و نام خانوادگی", "شماره تماس", "شماره پرونده", "شرح خدمات",
+            "مبلغ خدمات", "پیش‌پرداخت", "بیعانه", "مبلغ پرداختی", "مانده",
             "بدهی باز", "مبلغ چک‌ها", "مبلغ سفته‌ها", "نوع توافق",
-            "وضعیت پرونده", "تاریخ ثبت"
+            "وضعیت پرونده", "تاریخ", "نحوه پرداخت", "وضعیت اقساط",
+            "تاریخ چک", "ثبت چک", "سند تضمین", "تاریخ ضمانت", "مبلغ ضمانت",
+            "ثبت چک ضمانت", "توضیحات", "نام مشاور", "مواردی که باید چک شود", "مانده بدهکاری/بستانکاری"
         };
 
         for (var column = 0; column < headers.Length; column++)
@@ -150,6 +167,18 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             sheet.Cell(row, 14).Value = AgreementLabel(item.AgreementType);
             sheet.Cell(row, 15).Value = StatusLabel(item.Status);
             sheet.Cell(row, 16).Value = item.CreatedAt;
+            sheet.Cell(row, 17).Value = item.PaymentMethod ?? "";
+            sheet.Cell(row, 18).Value = item.InstallmentStatus ?? "";
+            if (item.ChequeDate.HasValue) sheet.Cell(row, 19).Value = item.ChequeDate.Value;
+            sheet.Cell(row, 20).Value = item.ChequeRegistration ?? "";
+            sheet.Cell(row, 21).Value = item.GuaranteeDocument ?? "";
+            if (item.GuaranteeDate.HasValue) sheet.Cell(row, 22).Value = item.GuaranteeDate.Value;
+            if (item.GuaranteeAmount.HasValue) sheet.Cell(row, 23).Value = item.GuaranteeAmount.Value;
+            sheet.Cell(row, 24).Value = item.GuaranteeChequeRegistration ?? "";
+            sheet.Cell(row, 25).Value = item.Notes ?? "";
+            sheet.Cell(row, 26).Value = item.ConsultantName ?? "";
+            sheet.Cell(row, 27).Value = item.ReviewItems ?? "";
+            sheet.Cell(row, 28).Value = item.BalanceAmount;
         }
 
         var summaryRow = items.Count + 3;
@@ -170,6 +199,10 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         sheet.Range(summaryRow, 1, summaryRow, headers.Length).Style.Font.Bold = true;
         sheet.Range(2, 6, summaryRow, 13).Style.NumberFormat.Format = "#,##0.###";
         sheet.Column(16).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
+        sheet.Column(19).Style.DateFormat.Format = "yyyy/MM/dd";
+        sheet.Column(22).Style.DateFormat.Format = "yyyy/MM/dd";
+        sheet.Column(23).Style.NumberFormat.Format = "#,##0.###";
+        sheet.Column(28).Style.NumberFormat.Format = "#,##0.###";
         sheet.SheetView.FreezeRows(1);
         sheet.RangeUsed()?.SetAutoFilter();
         sheet.Columns().AdjustToContents(10, 35);
@@ -266,7 +299,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             item.AgreementType,
             item.Status,
             (item.CreatedByUser.FirstName + " " + item.CreatedByUser.LastName).Trim(),
-            item.CreatedAt));
+            item.CreatedAt) { BalanceAmount = item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = item.PaymentMethod, InstallmentStatus = item.InstallmentStatus, GuaranteeDocument = item.GuaranteeDocument, GuaranteeDate = item.GuaranteeDate, GuaranteeAmount = item.GuaranteeAmount, GuaranteeChequeRegistration = item.GuaranteeChequeRegistration, Notes = item.Notes, ConsultantName = item.ConsultantName, ReviewItems = item.ReviewItems, ChequeDate = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => (DateTime?)cheque.DueDate).FirstOrDefault(), ChequeRegistration = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => cheque.SayadNumber).FirstOrDefault() });
 
     private async Task<PatientFinanceAdminReportSummary> BuildSummaryAsync(
         IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase> query,

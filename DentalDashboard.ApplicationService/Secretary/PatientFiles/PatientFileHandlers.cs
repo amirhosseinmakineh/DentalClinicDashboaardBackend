@@ -267,7 +267,7 @@ internal static class PatientFileFinanceLoader
                             transaction.SourceType,
                             transaction.SourceId,
                             transaction.CreatedAt))
-                        .ToList())
+                        .ToList()) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems }
             })
             .ToListAsync(cancellationToken);
 

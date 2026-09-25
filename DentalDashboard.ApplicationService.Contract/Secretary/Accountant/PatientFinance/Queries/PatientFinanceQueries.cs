@@ -95,6 +95,8 @@ public sealed record PatientFinancialCaseDto(
     public string? Notes { get; init; }
     public string? ConsultantName { get; init; }
     public string? ReviewItems { get; init; }
+    public IReadOnlyList<DateTime> ChequeDates { get; init; } = [];
+    public IReadOnlyList<string> ChequeRegistrations { get; init; } = [];
 }
 public sealed record PatientFinancialCaseDetailsDto(
     PatientFinancialCaseDto Case, int ChequeCount, decimal ChequeAmount,

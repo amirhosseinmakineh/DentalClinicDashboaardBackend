@@ -53,6 +53,8 @@ public sealed record PatientFinanceAdminReportItem(
     public string? ReviewItems { get; init; }
     public DateTime? ChequeDate { get; init; }
     public string? ChequeRegistration { get; init; }
+    public IReadOnlyList<DateTime> ChequeDates { get; init; } = [];
+    public IReadOnlyList<string> ChequeRegistrations { get; init; } = [];
 }
 
 
@@ -84,40 +86,15 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         var summary = await BuildSummaryAsync(query, cancellationToken);
         var page = Math.Max(1, filter.Page);
         var pageSize = Math.Clamp(filter.PageSize, 1, 100);
-        var patientIds = await query
-            .GroupBy(item => item.PatientId)
-            .Select(group => new
-            {
-                PatientId = group.Key,
-                LastCaseAt = group.Max(item => item.CreatedAt)
-            })
-            .OrderByDescending(item => item.LastCaseAt)
-            .ThenBy(item => item.PatientId)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(item => item.PatientId)
-            .ToListAsync(cancellationToken);
-
+        var totalCount = await query.CountAsync(cancellationToken);
         var projectedItems = await Project(query
-            .Where(item => patientIds.Contains(item.PatientId)))
+            .OrderByDescending(item => item.CreatedAt)
+            .ThenByDescending(item => item.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize))
             .ToListAsync(cancellationToken);
-
-        var itemByPatientId = projectedItems
-            .GroupBy(item => item.PatientId)
-            .ToDictionary(
-                group => group.Key,
-                group => group
-                    .OrderByDescending(item => item.CreatedAt)
-                    .ThenByDescending(item => item.CaseId)
-                    .First());
-        var items = patientIds.Select(patientId => itemByPatientId[patientId]).ToList();
-
-        var patientCount = await query
-            .Select(item => item.PatientId)
-            .Distinct()
-            .CountAsync(cancellationToken);
-
-        return new(items, patientCount, page, pageSize, summary);
+        var items = await WithAllChequesAsync(projectedItems, cancellationToken);
+        return new(items, totalCount, page, pageSize, summary);
     }
 
     public async Task<byte[]> ExportExcelAsync(
@@ -126,10 +103,11 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
     {
         var query = BuildQuery(filter);
         var summary = await BuildSummaryAsync(query, cancellationToken);
-        var items = await Project(query
+        var projectedItems = await Project(query
             .OrderByDescending(item => item.CreatedAt)
             .ThenByDescending(item => item.Id))
             .ToListAsync(cancellationToken);
+        var items = await WithAllChequesAsync(projectedItems, cancellationToken);
 
         using var workbook = new XLWorkbook();
         var sheet = workbook.Worksheets.Add("گزارش حسابداری بیماران");
@@ -169,8 +147,8 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             sheet.Cell(row, 16).Value = item.CreatedAt;
             sheet.Cell(row, 17).Value = item.PaymentMethod ?? "";
             sheet.Cell(row, 18).Value = item.InstallmentStatus ?? "";
-            if (item.ChequeDate.HasValue) sheet.Cell(row, 19).Value = item.ChequeDate.Value;
-            sheet.Cell(row, 20).Value = item.ChequeRegistration ?? "";
+            sheet.Cell(row, 19).Value = string.Join("، ", item.ChequeDates.Select(date => date.ToString("yyyy/MM/dd")));
+            sheet.Cell(row, 20).Value = string.Join("، ", item.ChequeRegistrations);
             sheet.Cell(row, 21).Value = item.GuaranteeDocument ?? "";
             if (item.GuaranteeDate.HasValue) sheet.Cell(row, 22).Value = item.GuaranteeDate.Value;
             if (item.GuaranteeAmount.HasValue) sheet.Cell(row, 23).Value = item.GuaranteeAmount.Value;
@@ -199,7 +177,6 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         sheet.Range(summaryRow, 1, summaryRow, headers.Length).Style.Font.Bold = true;
         sheet.Range(2, 6, summaryRow, 13).Style.NumberFormat.Format = "#,##0.###";
         sheet.Column(16).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
-        sheet.Column(19).Style.DateFormat.Format = "yyyy/MM/dd";
         sheet.Column(22).Style.DateFormat.Format = "yyyy/MM/dd";
         sheet.Column(23).Style.NumberFormat.Format = "#,##0.###";
         sheet.Column(28).Style.NumberFormat.Format = "#,##0.###";
@@ -285,8 +262,9 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             item.TotalAmount,
             item.PrePaymentAmount,
             item.DepositAmount,
-            item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
-                .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+            item.PrePaymentAmount + item.DepositAmount +
+            (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
+                .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
             Math.Max(item.TotalAmount - item.PrePaymentAmount - item.DepositAmount -
                 (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
                     .Sum(transaction => (decimal?)transaction.Amount) ?? 0), 0),
@@ -301,6 +279,31 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             (item.CreatedByUser.FirstName + " " + item.CreatedByUser.LastName).Trim(),
             item.CreatedAt) { BalanceAmount = item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = item.PaymentMethod, InstallmentStatus = item.InstallmentStatus, GuaranteeDocument = item.GuaranteeDocument, GuaranteeDate = item.GuaranteeDate, GuaranteeAmount = item.GuaranteeAmount, GuaranteeChequeRegistration = item.GuaranteeChequeRegistration, Notes = item.Notes, ConsultantName = item.ConsultantName, ReviewItems = item.ReviewItems, ChequeDate = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => (DateTime?)cheque.DueDate).FirstOrDefault(), ChequeRegistration = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => cheque.SayadNumber).FirstOrDefault() });
 
+    private async Task<List<PatientFinanceAdminReportItem>> WithAllChequesAsync(
+        List<PatientFinanceAdminReportItem> items,
+        CancellationToken cancellationToken)
+    {
+        if (items.Count == 0) return items;
+
+        var caseIds = items.Select(item => item.CaseId).ToArray();
+        var cheques = await repository.Cheques.AsNoTracking()
+            .Where(cheque => caseIds.Contains(cheque.PatientFinancialCaseId) &&
+                cheque.Status != PatientChequeStatus.Cancelled)
+            .OrderBy(cheque => cheque.DueDate)
+            .ThenBy(cheque => cheque.Id)
+            .Select(cheque => new { cheque.PatientFinancialCaseId, cheque.DueDate, cheque.SayadNumber })
+            .ToListAsync(cancellationToken);
+        var byCase = cheques.GroupBy(cheque => cheque.PatientFinancialCaseId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+        return items.Select(item => byCase.TryGetValue(item.CaseId, out var rows)
+            ? item with
+            {
+                ChequeDates = rows.Select(row => row.DueDate).ToArray(),
+                ChequeRegistrations = rows.Select(row => row.SayadNumber).ToArray()
+            }
+            : item).ToList();
+    }
+
     private async Task<PatientFinanceAdminReportSummary> BuildSummaryAsync(
         IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase> query,
         CancellationToken cancellationToken)
@@ -310,9 +313,10 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             item.TotalAmount,
             item.PrePaymentAmount,
             item.DepositAmount,
-            PaidAmount = item.Transactions
+            PaidAmount = item.PrePaymentAmount + item.DepositAmount +
+                (item.Transactions
                 .Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
-                .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+                .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
             UnpaidDebtAmount = item.Debts
                 .Where(debt => debt.Status == PatientDebtStatus.Unpaid)
                 .Sum(debt => (decimal?)debt.Amount) ?? 0,
@@ -339,7 +343,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             depositAmount,
             paidAmount,
             values.Sum(item => Math.Max(
-                item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - item.PaidAmount,
+                item.TotalAmount - item.PaidAmount,
                 0)),
             values.Sum(item => item.UnpaidDebtAmount),
             values.Sum(item => item.ChequeAmount),

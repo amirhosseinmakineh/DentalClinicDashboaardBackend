@@ -89,30 +89,13 @@ public sealed class GetPatientFinancialCasesQueryHandler(
 
         var (pageNumber, pageSize) = QueryTools.Page(request);
 
-        // This endpoint is the patient list for the finance area. A patient can
-        // have several financial cases, but must only consume one row/page slot.
-        // The most recently created matching case represents that patient.
-        var totalCount = await financialCasesQuery
-            .Select(financialCase => financialCase.PatientId)
-            .Distinct()
-            .CountAsync(cancellationToken);
+        var totalCount = await financialCasesQuery.CountAsync(cancellationToken);
 
-        var patientIds = await financialCasesQuery
-            .GroupBy(financialCase => financialCase.PatientId)
-            .Select(patientGroup => new
-            {
-                PatientId = patientGroup.Key,
-                LastCaseAt = patientGroup.Max(financialCase => financialCase.CreatedAt)
-            })
-            .OrderByDescending(patient => patient.LastCaseAt)
-            .ThenBy(patient => patient.PatientId)
+        var projectedItems = await financialCasesQuery
+            .OrderByDescending(financialCase => financialCase.CreatedAt)
+            .ThenByDescending(financialCase => financialCase.Id)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .Select(patient => patient.PatientId)
-            .ToListAsync(cancellationToken);
-
-        var matchingCases = await financialCasesQuery
-            .Where(financialCase => patientIds.Contains(financialCase.PatientId))
             .Select(financialCase => new PatientFinancialCaseDto(
                 financialCase.Id,
                 financialCase.PatientId,
@@ -135,10 +118,11 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                 financialCase.TotalAmount,
                 financialCase.PrePaymentAmount,
                 financialCase.DepositAmount,
-                financialCase.Transactions
+                financialCase.PrePaymentAmount + financialCase.DepositAmount +
+                (financialCase.Transactions
                     .Where(transaction =>
                         transaction.Type == PatientFinancialTransactionType.Payment)
-                    .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+                    .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
                 Math.Max(
                     financialCase.TotalAmount -
                     financialCase.PrePaymentAmount -
@@ -155,19 +139,23 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                 financialCase.Status,
                 financialCase.CreatedAt) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems })
             .ToListAsync(cancellationToken);
-
-        var casesByPatient = matchingCases
-            .GroupBy(financialCase => financialCase.PatientId)
-            .ToDictionary(
-                patientGroup => patientGroup.Key,
-                patientGroup => patientGroup
-                    .OrderByDescending(financialCase => financialCase.CreatedAt)
-                    .ThenByDescending(financialCase => financialCase.Id)
-                    .First());
-
-        var items = patientIds
-            .Select(patientId => casesByPatient[patientId])
-            .ToList();
+        var caseIds = projectedItems.Select(item => item.Id).ToArray();
+        var cheques = await patientFinanceRepository.Cheques.AsNoTracking()
+            .Where(cheque => caseIds.Contains(cheque.PatientFinancialCaseId) &&
+                cheque.Status != PatientChequeStatus.Cancelled)
+            .OrderBy(cheque => cheque.DueDate)
+            .ThenBy(cheque => cheque.Id)
+            .Select(cheque => new { cheque.PatientFinancialCaseId, cheque.DueDate, cheque.SayadNumber })
+            .ToListAsync(cancellationToken);
+        var chequesByCase = cheques.GroupBy(cheque => cheque.PatientFinancialCaseId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+        var items = projectedItems.Select(item => chequesByCase.TryGetValue(item.Id, out var rows)
+            ? item with
+            {
+                ChequeDates = rows.Select(row => row.DueDate).ToArray(),
+                ChequeRegistrations = rows.Select(row => row.SayadNumber).ToArray()
+            }
+            : item).ToList();
 
         return new()
         {
@@ -214,10 +202,11 @@ public sealed class GetPatientFinancialCaseDetailsQueryHandler(
                     financialCase.TotalAmount,
                     financialCase.PrePaymentAmount,
                     financialCase.DepositAmount,
-                    financialCase.Transactions
+                    financialCase.PrePaymentAmount + financialCase.DepositAmount +
+                    (financialCase.Transactions
                         .Where(transaction =>
                             transaction.Type == PatientFinancialTransactionType.Payment)
-                        .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+                        .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
                     Math.Max(
                         financialCase.TotalAmount -
                         financialCase.PrePaymentAmount -
@@ -300,10 +289,11 @@ public sealed class GetPatientFinancialCaseSummaryQueryHandler(
               financialCase.Id == request.PatientFinancialCaseId)
           .Select(financialCase => new PatientFinancialCaseSummaryDto(
               financialCase.TotalAmount,
-              financialCase.Transactions
+              financialCase.PrePaymentAmount + financialCase.DepositAmount +
+              (financialCase.Transactions
                   .Where(transaction =>
                       transaction.Type == PatientFinancialTransactionType.Payment)
-                  .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+                  .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
               Math.Max(
                   financialCase.TotalAmount -
                   financialCase.PrePaymentAmount -
@@ -368,11 +358,15 @@ public sealed class GetPatientFinancialSummaryQueryHandler(
                 financialCase => (decimal?)financialCase.TotalAmount,
                 cancellationToken) ?? 0;
 
-        var paidAmount = await patientFinanceRepository.Transactions
-            .Where(transaction =>
-                transaction.FinancialCase.PatientId == request.PatientId)
-            .SumAsync(
-                transaction => (decimal?)transaction.Amount,
+        var paidAmount = await patientFinanceRepository.Cases
+            .Where(financialCase =>
+                financialCase.PatientId == request.PatientId &&
+                financialCase.Status != PatientFinancialCaseStatus.Cancelled)
+            .SumAsync(financialCase =>
+                (decimal?)(financialCase.PrePaymentAmount + financialCase.DepositAmount) +
+                (financialCase.Transactions
+                    .Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
+                    .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
                 cancellationToken) ?? 0;
 
         return new(

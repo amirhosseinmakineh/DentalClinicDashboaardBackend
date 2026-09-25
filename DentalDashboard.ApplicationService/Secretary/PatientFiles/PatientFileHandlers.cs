@@ -214,9 +214,13 @@ internal static class PatientFileFinanceLoader
                 Case = new PatientFileFinancialCaseDto(
                     financialCase.Id,
                     (int)financialCase.Service,
+                    financialCase.Service == DentalServiceType.Composite ? "کامپوزیت" :
+                    financialCase.Service == DentalServiceType.Implant ? "ایمپلنت" :
+                    financialCase.Service == DentalServiceType.Laminate ? "لمینت" :
                     financialCase.Service.ToString(),
                     financialCase.TotalAmount,
-                    financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+                    financialCase.PrePaymentAmount + financialCase.DepositAmount +
+                    (financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0),
                     Math.Max(
                         financialCase.TotalAmount -
                         financialCase.PrePaymentAmount -
@@ -267,7 +271,7 @@ internal static class PatientFileFinanceLoader
                             transaction.SourceType,
                             transaction.SourceId,
                             transaction.CreatedAt))
-                        .ToList()) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems }
+                        .ToList()) { PrePaymentAmount = financialCase.PrePaymentAmount, DepositAmount = financialCase.DepositAmount, BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems }
             })
             .ToListAsync(cancellationToken);
 

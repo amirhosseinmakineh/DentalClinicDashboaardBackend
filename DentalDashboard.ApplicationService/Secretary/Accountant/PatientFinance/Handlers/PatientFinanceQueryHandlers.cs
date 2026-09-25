@@ -358,16 +358,20 @@ public sealed class GetPatientFinancialSummaryQueryHandler(
                 financialCase => (decimal?)financialCase.TotalAmount,
                 cancellationToken) ?? 0;
 
-        var paidAmount = await patientFinanceRepository.Cases
+        var upfrontAmount = await patientFinanceRepository.Cases
             .Where(financialCase =>
                 financialCase.PatientId == request.PatientId &&
                 financialCase.Status != PatientFinancialCaseStatus.Cancelled)
             .SumAsync(financialCase =>
-                (decimal?)(financialCase.PrePaymentAmount + financialCase.DepositAmount) +
-                (financialCase.Transactions
-                    .Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
-                    .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
+                (decimal?)(financialCase.PrePaymentAmount + financialCase.DepositAmount),
                 cancellationToken) ?? 0;
+        var settledAmount = await patientFinanceRepository.Transactions
+            .Where(transaction =>
+                transaction.FinancialCase.PatientId == request.PatientId &&
+                transaction.FinancialCase.Status != PatientFinancialCaseStatus.Cancelled &&
+                transaction.Type == PatientFinancialTransactionType.Payment)
+            .SumAsync(transaction => (decimal?)transaction.Amount, cancellationToken) ?? 0;
+        var paidAmount = upfrontAmount + settledAmount;
 
         return new(
             request.PatientId,

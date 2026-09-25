@@ -87,6 +87,9 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
       PatientId = patient.Id, Service = (DentalServiceType)c.ServiceId,
       TotalAmount = c.TotalAmount, PrePaymentAmount = c.PrePaymentAmount,
       DepositAmount = c.DepositAmount, AgreementType = c.AgreementType,
+      Status = c.PrePaymentAmount + c.DepositAmount >= c.TotalAmount
+          ? PatientFinancialCaseStatus.Completed
+          : PatientFinancialCaseStatus.Active,
       CreatedByUserId = c.ActorUserId,
       PaymentMethod = c.PaymentMethod, InstallmentStatus = c.InstallmentStatus, GuaranteeDocument = c.GuaranteeDocument, GuaranteeDate = c.GuaranteeDate, GuaranteeAmount = c.GuaranteeAmount, GuaranteeChequeRegistration = c.GuaranteeChequeRegistration, Notes = c.Notes, ConsultantName = c.ConsultantName, ReviewItems = c.ReviewItems
     };

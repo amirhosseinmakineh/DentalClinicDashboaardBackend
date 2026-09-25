@@ -48,6 +48,8 @@ public sealed record PatientFileFinancialCaseDto(
     IReadOnlyList<PatientFileDebtDto> Debts,
     IReadOnlyList<PatientFileTransactionDto> Transactions)
 {
+    public decimal PrePaymentAmount { get; init; }
+    public decimal DepositAmount { get; init; }
     public decimal BalanceAmount { get; init; }
     public string? PaymentMethod { get; init; }
     public string? InstallmentStatus { get; init; }

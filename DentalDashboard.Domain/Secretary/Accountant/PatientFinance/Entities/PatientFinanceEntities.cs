@@ -10,6 +10,15 @@ public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
   public decimal TotalAmount { get; set; }
   public decimal PrePaymentAmount { get; set; }
   public decimal DepositAmount { get; set; }
+  public string? PaymentMethod { get; set; }
+  public string? InstallmentStatus { get; set; }
+  public string? GuaranteeDocument { get; set; }
+  public DateTime? GuaranteeDate { get; set; }
+  public decimal? GuaranteeAmount { get; set; }
+  public string? GuaranteeChequeRegistration { get; set; }
+  public string? Notes { get; set; }
+  public string? ConsultantName { get; set; }
+  public string? ReviewItems { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
   public PatientFinancialCaseStatus Status {
     get; set;

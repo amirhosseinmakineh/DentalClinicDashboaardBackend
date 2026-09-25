@@ -46,7 +46,21 @@ public sealed record PatientFileFinancialCaseDto(
     IReadOnlyList<PatientFileChequeDto> Cheques,
     IReadOnlyList<PatientFilePromissoryNoteDto> PromissoryNotes,
     IReadOnlyList<PatientFileDebtDto> Debts,
-    IReadOnlyList<PatientFileTransactionDto> Transactions);
+    IReadOnlyList<PatientFileTransactionDto> Transactions)
+{
+    public decimal PrePaymentAmount { get; init; }
+    public decimal DepositAmount { get; init; }
+    public decimal BalanceAmount { get; init; }
+    public string? PaymentMethod { get; init; }
+    public string? InstallmentStatus { get; init; }
+    public string? GuaranteeDocument { get; init; }
+    public DateTime? GuaranteeDate { get; init; }
+    public decimal? GuaranteeAmount { get; init; }
+    public string? GuaranteeChequeRegistration { get; init; }
+    public string? Notes { get; init; }
+    public string? ConsultantName { get; init; }
+    public string? ReviewItems { get; init; }
+}
 
 public sealed record PatientFileChequeDto(
     long Id,
@@ -120,6 +134,8 @@ public sealed record EligiblePatientPageResponse(
 
 public sealed class GetPatientFilesQuery : IQuery<Result<PatientFilePageResponse>>
 {
+    public Guid? SecretaryUserId { get; set; }
+    public bool IsAdmin { get; set; }
     public string? Search { get; init; }
     public long? FileNumber { get; init; }
     public PatientFileSourceType? SourceType { get; init; }
@@ -127,7 +143,7 @@ public sealed class GetPatientFilesQuery : IQuery<Result<PatientFilePageResponse
     public int PageSize { get; init; } = 20;
 }
 
-public sealed record GetPatientFileByIdQuery(long Id) : IQuery<Result<PatientFileDto>>;
+public sealed record GetPatientFileByIdQuery(long Id, Guid? SecretaryUserId, bool IsAdmin) : IQuery<Result<PatientFileDto>>;
 
 public sealed class SearchPatientsEligibleForFileQuery : IQuery<Result<EligiblePatientPageResponse>>
 {
@@ -137,23 +153,33 @@ public sealed class SearchPatientsEligibleForFileQuery : IQuery<Result<EligibleP
 }
 
 public sealed record CreatePatientFileCommand(
-    long PatientId,
-    string? Description) : ICommand<CreatePatientFileResponse>;
+    string FirstName,
+    string LastName,
+    string PhoneNumber,
+    string? Description,
+    Guid SecretaryUserId) : ICommand<CreatePatientFileResponse>;
 
 public sealed record EnsurePatientFileFinancialIdentityCommand(
-    long PatientFileId) : ICommand<PatientFileFinancialIdentityResponse>;
+    long PatientFileId,
+    Guid? SecretaryUserId,
+    bool IsAdmin) : ICommand<PatientFileFinancialIdentityResponse>;
 
 public sealed record UpdatePatientFileCommand(
     long Id,
     string FirstName,
     string LastName,
     string PhoneNumber,
-    string? Description) : ICommand;
+    string? Description,
+    Guid? SecretaryUserId,
+    bool IsAdmin) : ICommand;
 
 public sealed record DeletePatientFileCommand(
-    long Id) : ICommand;
+    long Id,
+    Guid? SecretaryUserId,
+    bool IsAdmin) : ICommand;
 
 public sealed record ImportPatientFilesCommand(
     Stream Content,
     string FileName,
-    long Length) : ICommand<ImportPatientFilesResponse>;
+    long Length,
+    Guid SecretaryUserId) : ICommand<ImportPatientFilesResponse>;

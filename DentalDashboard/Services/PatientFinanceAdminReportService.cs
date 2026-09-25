@@ -102,7 +102,6 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         CancellationToken cancellationToken = default)
     {
         var query = BuildQuery(filter);
-        var summary = await BuildSummaryAsync(query, cancellationToken);
         var projectedItems = await Project(query
             .OrderByDescending(item => item.CreatedAt)
             .ThenByDescending(item => item.Id))
@@ -114,12 +113,10 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         sheet.RightToLeft = true;
         var headers = new[]
         {
-            "ردیف", "نام و نام خانوادگی", "شماره تماس", "شماره پرونده", "شرح خدمات",
-            "مبلغ خدمات", "پیش‌پرداخت", "بیعانه", "مبلغ پرداختی", "مانده",
-            "بدهی باز", "مبلغ چک‌ها", "مبلغ سفته‌ها", "نوع توافق",
-            "وضعیت پرونده", "تاریخ", "نحوه پرداخت", "وضعیت اقساط",
-            "تاریخ چک", "ثبت چک", "سند تضمین", "تاریخ ضمانت", "مبلغ ضمانت",
-            "ثبت چک ضمانت", "توضیحات", "نام مشاور", "مواردی که باید چک شود", "مانده بدهکاری/بستانکاری"
+            "ردیف", "تاریخ", "نام و نام خانوادگی", "شرح خدمات", "مبلغ خدمات",
+            "نحوه پرداخت", "وضعیت اقساط", "تاریخ چک", "ثبت چک", "مبلغ پرداختی",
+            "بیعانه", "مانده بدهکاری/بستانکاری", "سند تضمین", "تاریخ ضمانت",
+            "مبلغ ضمانت", "ثبت چک ضمانت", "توضیحات", "نام مشاور", "مواردی که باید چک شود"
         };
 
         for (var column = 0; column < headers.Length; column++)
@@ -130,56 +127,34 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             var item = items[index];
             var row = index + 2;
             sheet.Cell(row, 1).Value = index + 1;
-            sheet.Cell(row, 2).Value = item.PatientName;
-            sheet.Cell(row, 3).Value = item.PhoneNumber;
-            sheet.Cell(row, 4).Value = item.FileNumber;
-            sheet.Cell(row, 5).Value = item.ServiceName;
-            sheet.Cell(row, 6).Value = item.TotalAmount;
-            sheet.Cell(row, 7).Value = item.PrePaymentAmount;
-            sheet.Cell(row, 8).Value = item.DepositAmount;
-            sheet.Cell(row, 9).Value = item.PaidAmount;
-            sheet.Cell(row, 10).Value = item.RemainingAmount;
-            sheet.Cell(row, 11).Value = item.UnpaidDebtAmount;
-            sheet.Cell(row, 12).Value = item.ChequeAmount;
-            sheet.Cell(row, 13).Value = item.PromissoryNoteAmount;
-            sheet.Cell(row, 14).Value = AgreementLabel(item.AgreementType);
-            sheet.Cell(row, 15).Value = StatusLabel(item.Status);
-            sheet.Cell(row, 16).Value = item.CreatedAt;
-            sheet.Cell(row, 17).Value = item.PaymentMethod ?? "";
-            sheet.Cell(row, 18).Value = item.InstallmentStatus ?? "";
-            sheet.Cell(row, 19).Value = string.Join("، ", item.ChequeDates.Select(date => date.ToString("yyyy/MM/dd")));
-            sheet.Cell(row, 20).Value = string.Join("، ", item.ChequeRegistrations);
-            sheet.Cell(row, 21).Value = item.GuaranteeDocument ?? "";
-            if (item.GuaranteeDate.HasValue) sheet.Cell(row, 22).Value = item.GuaranteeDate.Value;
-            if (item.GuaranteeAmount.HasValue) sheet.Cell(row, 23).Value = item.GuaranteeAmount.Value;
-            sheet.Cell(row, 24).Value = item.GuaranteeChequeRegistration ?? "";
-            sheet.Cell(row, 25).Value = item.Notes ?? "";
-            sheet.Cell(row, 26).Value = item.ConsultantName ?? "";
-            sheet.Cell(row, 27).Value = item.ReviewItems ?? "";
-            sheet.Cell(row, 28).Value = item.BalanceAmount;
+            sheet.Cell(row, 2).Value = item.CreatedAt;
+            sheet.Cell(row, 3).Value = item.PatientName;
+            sheet.Cell(row, 4).Value = item.ServiceName;
+            sheet.Cell(row, 5).Value = item.TotalAmount;
+            sheet.Cell(row, 6).Value = item.PaymentMethod ?? "";
+            sheet.Cell(row, 7).Value = item.InstallmentStatus ?? "";
+            sheet.Cell(row, 8).Value = string.Join("، ", item.ChequeDates.Select(date => date.ToString("yyyy/MM/dd")));
+            sheet.Cell(row, 9).Value = string.Join("، ", item.ChequeRegistrations);
+            sheet.Cell(row, 10).Value = item.PaidAmount;
+            sheet.Cell(row, 11).Value = item.DepositAmount;
+            sheet.Cell(row, 12).Value = item.BalanceAmount;
+            sheet.Cell(row, 13).Value = item.GuaranteeDocument ?? "";
+            if (item.GuaranteeDate.HasValue) sheet.Cell(row, 14).Value = item.GuaranteeDate.Value;
+            if (item.GuaranteeAmount.HasValue) sheet.Cell(row, 15).Value = item.GuaranteeAmount.Value;
+            sheet.Cell(row, 16).Value = item.GuaranteeChequeRegistration ?? "";
+            sheet.Cell(row, 17).Value = item.Notes ?? "";
+            sheet.Cell(row, 18).Value = item.ConsultantName ?? "";
+            sheet.Cell(row, 19).Value = item.ReviewItems ?? "";
         }
-
-        var summaryRow = items.Count + 3;
-        sheet.Cell(summaryRow, 1).Value = "جمع گزارش";
-        sheet.Cell(summaryRow, 6).Value = summary.TotalAmount;
-        sheet.Cell(summaryRow, 7).Value = summary.PrePaymentAmount;
-        sheet.Cell(summaryRow, 8).Value = summary.DepositAmount;
-        sheet.Cell(summaryRow, 9).Value = summary.PaidAmount;
-        sheet.Cell(summaryRow, 10).Value = summary.RemainingAmount;
-        sheet.Cell(summaryRow, 11).Value = summary.UnpaidDebtAmount;
-        sheet.Cell(summaryRow, 12).Value = summary.ChequeAmount;
-        sheet.Cell(summaryRow, 13).Value = summary.PromissoryNoteAmount;
 
         var headerRange = sheet.Range(1, 1, 1, headers.Length);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#0F766E");
         headerRange.Style.Font.FontColor = XLColor.White;
-        sheet.Range(summaryRow, 1, summaryRow, headers.Length).Style.Font.Bold = true;
-        sheet.Range(2, 6, summaryRow, 13).Style.NumberFormat.Format = "#,##0.###";
-        sheet.Column(16).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
-        sheet.Column(22).Style.DateFormat.Format = "yyyy/MM/dd";
-        sheet.Column(23).Style.NumberFormat.Format = "#,##0.###";
-        sheet.Column(28).Style.NumberFormat.Format = "#,##0.###";
+        foreach (var column in new[] { 5, 10, 11, 12, 15 })
+            sheet.Column(column).Style.NumberFormat.Format = "#,##0.###";
+        sheet.Column(2).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
+        sheet.Column(14).Style.DateFormat.Format = "yyyy/MM/dd";
         sheet.SheetView.FreezeRows(1);
         sheet.RangeUsed()?.SetAutoFilter();
         sheet.Columns().AdjustToContents(10, 35);
@@ -350,18 +325,4 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             values.Sum(item => item.PromissoryNoteAmount));
     }
 
-    private static string AgreementLabel(PatientFinancialAgreementType value) => value switch
-    {
-        PatientFinancialAgreementType.PrePayment => "پیش‌پرداخت",
-        PatientFinancialAgreementType.Deposit => "ودیعه",
-        _ => value.ToString()
-    };
-
-    private static string StatusLabel(PatientFinancialCaseStatus value) => value switch
-    {
-        PatientFinancialCaseStatus.Active => "فعال",
-        PatientFinancialCaseStatus.Completed => "تسویه‌شده",
-        PatientFinancialCaseStatus.Cancelled => "لغوشده",
-        _ => value.ToString()
-    };
 }

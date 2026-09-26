@@ -15,9 +15,6 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Consultant.Querie
         public TimeOnly? CheckOutTime { get; set; }
         public AttendanceStatus? Status { get; set; }
         public string? Description { get; set; }
-        public ScoreType? ScoreType { get; set; }
-        public int ScoreValue { get; set; }
-        public string? ScoreValueDescription { get; set; }
         public LeadAssignmentState? LeadAssignmentState { get; set; }
         public LeadAssignmentType? leadAssignmentType { get; set; }
         public int PageNumber { get; set; } = 1;

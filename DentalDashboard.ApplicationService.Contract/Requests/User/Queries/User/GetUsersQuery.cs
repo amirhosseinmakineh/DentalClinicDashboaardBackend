@@ -7,6 +7,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.User.Queries.User
 
 public class GetUsersQuery : IQuery<PaginatedResult<UserItemResponse>>
 {
+    public string? Search { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? RoleName { get; set; }
@@ -14,6 +15,7 @@ public class GetUsersQuery : IQuery<PaginatedResult<UserItemResponse>>
     public Gender? Gender { get; set; }
     public bool? IsCompleteName { get; set; }
     public bool? IsActive { get; set; }
+    public SecretaryType? SecretaryType { get; set; }
     public DateTime? CreateDate { get; set; }
     public DateTime? UpdateDate { get; set; }
     public DateTime? DeleteDate { get; set; }

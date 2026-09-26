@@ -1,6 +1,5 @@
-﻿using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.Domain.Enums;
-using DentalDashboard.Domain.IDomainService;
+﻿using DentalDashboard.ApplicationService.Contract.Dtos.Consultant;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;
@@ -11,16 +10,13 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly IConsultantProfileRepository repository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
-        private readonly IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy;
 
         public ConsultantProfileService(
             IConsultantProfileRepository repository,
-            ILeadAssignmentRepository leadAssignmentRepository,
-            IOfflineLeadAssignmentStrategy offlineLeadAssignmentStrategy)
+            ILeadAssignmentRepository leadAssignmentRepository)
         {
             this.repository = repository;
             this.leadAssignmentRepository = leadAssignmentRepository;
-            this.offlineLeadAssignmentStrategy = offlineLeadAssignmentStrategy;
         }
 
         public async Task<long?> EnsureProfileExistsAsync(Guid userId)
@@ -79,13 +75,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (isOnline)
             {
-                var hasPendingOfflineLeads =
-                    await leadAssignmentRepository
-                        .HasPendingOfflineLeadsAsync(consultantProfileId);
-
-                if (hasPendingOfflineLeads)
-                    throw new InvalidOperationException("ابتدا لیدهای آفلاین خود را بررسی کنید.");
-
                 var hasActiveRealTimeLead =
                     await leadAssignmentRepository
                         .HasActiveRealTimeLeadAsync(consultantProfileId);
@@ -98,36 +87,11 @@ namespace DentalDashboard.ApplicationService.Services
             }
             else
             {
-                var now = DateTime.Now;
                 consultant.IsOnline = false;
-                consultant.LastOfflineAt = now;
-
-                await AssignOfflineQueueToConsultantAsync(consultant, now);
+                consultant.LastOfflineAt = DateTime.Now;
             }
 
             await repository.SaveChange();
-        }
-
-        public async Task AssignOfflineQueueAsync()
-        {
-            var consultants = await repository.GetAvailableConsultantsForOfflineAssignmentAsync();
-            if (!consultants.Any())
-                return;
-
-            var dailyAssignedCounts = await leadAssignmentRepository.GetDailyAssignedOfflineLeadCountsAsync(
-                consultants.Select(x => x.Id),
-                DateTime.Now);
-            var totalRemainingDailyCapacity = consultants
-                .Sum(x => Math.Max(5 - dailyAssignedCounts.GetValueOrDefault(x.Id), 0));
-            if (totalRemainingDailyCapacity <= 0)
-                return;
-
-            var leads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(totalRemainingDailyCapacity);
-            if (!leads.Any())
-                return;
-
-            offlineLeadAssignmentStrategy.Assign(leads, consultants, dailyAssignedCounts);
-            await leadAssignmentRepository.SaveChange();
         }
 
         public async Task SetPresentStatusAsync(long consultantProfileId, bool isPresent)
@@ -155,36 +119,9 @@ namespace DentalDashboard.ApplicationService.Services
                 consultant.IsOnline = false;
                 consultant.WorkEndTime = now.TimeOfDay;
                 consultant.LastOfflineAt = now;
-
-                await AssignOfflineQueueToConsultantAsync(consultant, now);
             }
 
             await repository.SaveChange();
         }
-        private async Task AssignOfflineQueueToConsultantAsync(ConsultantProfile consultant, DateTime assignedAt)
-        {
-            var dailyAssignedCounts = await leadAssignmentRepository.GetDailyAssignedOfflineLeadCountsAsync(
-                new[] { consultant.Id },
-                assignedAt);
-
-            var remainingCapacity = Math.Max(5 - dailyAssignedCounts.GetValueOrDefault(consultant.Id), 0);
-            if (remainingCapacity <= 0)
-                return;
-
-            var leads = await leadAssignmentRepository.GetPendingOfflineLeadsAsync(remainingCapacity);
-            if (!leads.Any())
-                return;
-
-            foreach (var lead in leads)
-            {
-                lead.ConsultantProfileId = consultant.Id;
-                lead.AssignedAt = assignedAt;
-                lead.LeadAssignmentState = LeadAssignmentState.Assigned;
-                lead.AssignmentType = LeadAssignmentType.OfflineQueue;
-                lead.RequiresThreeMinuteCall = false;
-                lead.CallDeadlineAt = null;
-            }
-        }
-
     }
 }

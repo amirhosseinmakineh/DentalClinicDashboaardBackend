@@ -1,0 +1,43 @@
+@if (alerts.length > 0) {
+  <div class="realtime-lead-alert-layer" aria-live="assertive">
+    @for (alert of alerts; track alert.leadId) {
+      <section class="realtime-lead-alert-card">
+        <div class="realtime-lead-alert-card__pulse" aria-hidden="true"></div>
+
+        <header class="realtime-lead-alert-card__header">
+          <span class="material-symbols-outlined realtime-lead-alert-card__icon" aria-hidden="true">
+            campaign
+          </span>
+          <div>
+            <h2>{{ alert.title }}</h2>
+            <p>{{ alert.body }}</p>
+          </div>
+        </header>
+
+        <p class="realtime-lead-alert-card__hint">
+          اولین مشاوری که بردارد، لید را می‌گیرد. شما ۳ دقیقه برای تماس دارید.
+        </p>
+
+        <div class="realtime-lead-alert-card__actions">
+          <button
+            type="button"
+            class="realtime-lead-alert-card__pickup"
+            [disabled]="alert.isSubmitting"
+            (click)="pickup(alert.leadId)"
+          >
+            {{ alert.isSubmitting ? 'در حال برداشتن...' : 'برداریدش!' }}
+          </button>
+
+          <button
+            type="button"
+            class="realtime-lead-alert-card__dismiss"
+            [disabled]="alert.isSubmitting"
+            (click)="dismiss(alert.leadId)"
+          >
+            رد کردن
+          </button>
+        </div>
+      </section>
+    }
+  </div>
+}

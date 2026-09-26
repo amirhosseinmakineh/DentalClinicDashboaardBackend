@@ -1,13 +1,20 @@
+using DentalDashboard.Domain.Enums;
+
 namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse
 {
     public class ReservationItemResponse
     {
         public long Id { get; set; }
+        public long ReservationId { get; set; }
         public long LeadAssignmentId { get; set; }
         public long ConsultantProfileId { get; set; }
         public Guid? PatientUserId { get; set; }
         public bool RequiresPatientProfile { get; set; }
         public DateTime ReservationAt { get; set; }
+        public string ReservationAtPersian { get; set; } = default!;
+        public DateTime AppointmentDateTime { get; set; }
+        public int PatientCount { get; set; }
+        public DateTime CreatedAt { get; set; }
         public string PatientName { get; set; } = default!;
         public string PatientPhoneNumber { get; set; } = default!;
         public string? SecondaryPhoneNumber { get; set; }
@@ -15,6 +22,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public string? PatientRegion { get; set; }
         public string? BusinessName { get; set; }
         public int? AttendanceProbabilityPercent { get; set; }
+        public string? AttendancePrediction { get; set; }
         public ReservationAttendanceConfirmationStatus AttendanceConfirmationStatus { get; set; }
         public DateTime? ConsultantAttendanceConfirmedAt { get; set; }
         public bool? ConsultantSaysPatientAttended { get; set; }
@@ -23,11 +31,19 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public Guid? SecretaryUserId { get; set; }
         public bool? SecretaryApprovedConsultantConfirmation { get; set; }
         public string? SecretaryReviewNote { get; set; }
+        public SecretaryAnnouncementStatus? SecretaryAnnouncementStatus { get; set; }
+        public string? SecretaryAnnouncement { get; set; }
+        public DateTime? SecretaryAnnouncementUpdatedAt { get; set; }
+        public Guid? SecretaryAnnouncementUserId { get; set; }
+        public string? SecretaryAnnouncementUserName { get; set; }
         public bool IsAttendanceScoreApplied { get; set; }
         public int? AttendanceScoreValue { get; set; }
         public DateTime? AttendanceScoreAppliedAt { get; set; }
         public bool IsDueForConsultantConfirmation { get; set; }
+        public bool CanEdit { get; set; }
         public string? Description { get; set; }
+        public string? DoctorName { get; set; }
         public bool IsCanceled { get; set; }
+        public List<DentalServiceType> DentalServices { get; set; } = [];
     }
 }

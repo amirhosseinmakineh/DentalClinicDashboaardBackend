@@ -2,9 +2,18 @@
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Infrastracture.Repository;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using DentalDashboard.Framwork.IRepositories;
+using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.Infrastracture.Services;
+using DentalDashboard.Domain.Secretary.Accountant.IRepositories;
+using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
+using DentalDashboard.Infrastracture.Secretary.Accountant.PatientFinance.Repositories;
+using DentalDashboard.Infrastracture.Secretary.Accountant.Repositories;
+using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.IRepositories;
+using DentalDashboard.Infrastracture.Secretary.Accountant.SecretarySales.Repositories;
 namespace DentalDashboard.Infrastracture.Registration;
 public static class InfrastructureServiceRegistration
 {
@@ -16,6 +25,8 @@ public static class InfrastructureServiceRegistration
         {
             options.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"));
+            options.ConfigureWarnings(warnings =>
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 
         services.AddScoped(typeof(IBaseRepository<,>),typeof(BaseRepository<,>));
@@ -26,10 +37,18 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IConsultantProfileRepository, ConsultantProfileRepository>();
         services.AddScoped<IPatientProfileRepository, PatientProfileRepository>();
         services.AddScoped<ILeadAssignmentRepository, LeadAssignmentRepository>();
+        services.AddScoped<ILeadAssignmentSettingRepository, LeadAssignmentSettingRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
-        services.AddScoped<IScoreLogRepository, ScoreLogRepository>();
         services.AddScoped<IReservationRepository, ReservationRepository>();
-
+        services.AddScoped<IUserPresenceLogRepository, UserPresenceLogRepository>();
+        services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
+        services.AddScoped<ISecretaryAccessService, SecretaryAccessService>();
+        services.AddScoped<IServiceLogRepository, ServiceLogRepository>();
+        services.AddScoped<ISecretaryAccountRepository, SecretaryAccountRepository>();
+        services.AddScoped<IExpenseRepository, ExpenseRepository>();
+        services.AddScoped<IPatientFinanceRepository, PatientFinanceRepository>();
+        services.AddScoped<IPatientFileRepository, PatientFileRepository>();
+        services.AddScoped<ISecretarySalesRepository, SecretarySalesRepository>();
 
         return services;
     }

@@ -12,5 +12,9 @@
 
     Expired = 6,
 
-    Rejected = 7
+    Rejected = 7,
+
+    NoAnswer = 8,
+
+    ClosedByConsultant = 9
 }

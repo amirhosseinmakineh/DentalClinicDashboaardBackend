@@ -45,17 +45,13 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (reservation.PatientUserId.HasValue)
                 return Result<CompleteReservationPatientProfileResponse>.Failure("برای این رزرو قبلا پرونده بیمار تشکیل شده است");
 
+            if (reservation.LeadAssignment == null)
+                return Result<CompleteReservationPatientProfileResponse>.Failure("اطلاعات لید این رزرو یافت نشد");
+
+            if (string.IsNullOrWhiteSpace(command.PhoneNumber))
+                return Result<CompleteReservationPatientProfileResponse>.Failure("شماره موبایل بیمار الزامی است");
+
             var phoneNumber = command.PhoneNumber.Trim();
-
-            if (string.IsNullOrWhiteSpace(command.NationalCode))
-                return Result<CompleteReservationPatientProfileResponse>.Failure("کد ملی بیمار الزامی است");
-
-            if (string.IsNullOrWhiteSpace(command.Address))
-                return Result<CompleteReservationPatientProfileResponse>.Failure("آدرس بیمار الزامی است");
-
-            var nationalCode = command.NationalCode.Trim();
-            var address = command.Address.Trim();
-
 
             if (reservation.LeadAssignment.PhoneNumber != phoneNumber)
                 return Result<CompleteReservationPatientProfileResponse>.Failure("شماره موبایل بیمار باید با شماره لید رزرو شده یکسان باشد");
@@ -86,11 +82,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 var patientProfile = new PatientProfile
                 {
                     UserId = user.Id,
-                    NationalCode = nationalCode,
-                    Address = address,
-                    EmergencyPhoneNumber = command.EmergencyPhoneNumber,
-                    InsuranceName = command.InsuranceName,
-                    Notes = command.Notes,
+                    NationalCode = string.Empty,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -109,16 +101,17 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     LeadAssignmentId = reservation.LeadAssignmentId,
                     ConsultantProfileId = reservation.ConsultantProfileId,
                     ReservationAt = reservation.ReservationAt,
+                    DoctorName = reservation.DoctorName,
                     PatientName = $"{user.FirstName} {user.LastName}",
                     PatientPhoneNumber = user.PhoneNumber,
                     IsCompleteProfile = user.IsCompleteProfile,
                     RoleName = PatientRoleName
                 }, "پرونده بیمار برای رزرو با موفقیت تشکیل شد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await unitOfWork.RollbackAsync();
-                return Result<CompleteReservationPatientProfileResponse>.Failure($"خطا در تشکیل پرونده بیمار: {ex.Message}");
+                return Result<CompleteReservationPatientProfileResponse>.Failure("خطا در تشکیل پرونده بیمار");
             }
         }
     }

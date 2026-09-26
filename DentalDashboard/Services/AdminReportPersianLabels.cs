@@ -28,10 +28,12 @@ public static class AdminReportPersianLabels
         LeadAssignmentState.New => "جدید",
         LeadAssignmentState.Assigned => "تخصیص‌یافته",
         LeadAssignmentState.Contacted => "تماس گرفته شده",
-        LeadAssignmentState.Pending => "در انتظار",
+        LeadAssignmentState.Pending => "پیگیری",
         LeadAssignmentState.Converted => "تبدیل شده",
         LeadAssignmentState.Expired => "منقضی شده",
         LeadAssignmentState.Rejected => "رد شده",
+        LeadAssignmentState.NoAnswer => "پاسخ نداد",
+        LeadAssignmentState.ClosedByConsultant => "بسته‌شده توسط مشاور",
         _ => "نامشخص"
     };
 
@@ -43,13 +45,14 @@ public static class AdminReportPersianLabels
         LeadCallResult.NoAnswer => "پاسخ نداد",
         LeadCallResult.WrongNumber => "شماره اشتباه",
         LeadCallResult.NeedFollowUp => "نیاز به پیگیری",
+        LeadCallResult.Busy => "اشغال",
+        LeadCallResult.PatientHungUp => "قطع تماس توسط بیمار",
         _ => "نامشخص"
     };
 
     public static string ToPersian(this LeadAssignmentType type) => type switch
     {
         LeadAssignmentType.RealTime => "آنی",
-        LeadAssignmentType.OfflineQueue => "صف آفلاین",
         LeadAssignmentType.ConsultantPatient => "بیمار مشاور",
         _ => "نامشخص"
     };

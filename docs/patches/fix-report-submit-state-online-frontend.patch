@@ -1,0 +1,86 @@
+diff --git a/src/app/core/consultant/consultant-dashboard.service.ts b/src/app/core/consultant/consultant-dashboard.service.ts
+index f486897..7ac05ad 100644
+--- a/src/app/core/consultant/consultant-dashboard.service.ts
++++ b/src/app/core/consultant/consultant-dashboard.service.ts
+@@ -704,6 +704,7 @@ export class ConsultantDashboardService {
+         this.readBoolean(
+           source,
+           "isAvailable",
++          "IsAvailable",
+           "available",
+           "consultantIsAvailable",
+         ) ?? false,
+@@ -711,6 +712,7 @@ export class ConsultantDashboardService {
+         this.readBoolean(
+           source,
+           "isOnline",
++          "IsOnline",
+           "online",
+           "consultantIsOnline",
+           "isConsultantOnline",
+diff --git a/src/app/pages/consultant-dashboard/consultant-dashboard.component.ts b/src/app/pages/consultant-dashboard/consultant-dashboard.component.ts
+index 43bffb2..b2edd3d 100644
+--- a/src/app/pages/consultant-dashboard/consultant-dashboard.component.ts
++++ b/src/app/pages/consultant-dashboard/consultant-dashboard.component.ts
+@@ -3476,11 +3476,7 @@ export class ConsultantDashboardComponent implements OnInit, OnDestroy {
+     this.reportSaving = false;
+     this.selectedLead = null;
+ 
+-    if (
+-      releaseReportLock &&
+-      leadAssignmentId &&
+-      !this.reportedLeadIds.has(leadAssignmentId)
+-    ) {
++    if (releaseReportLock && leadAssignmentId) {
+       this.reportingLeadIds.delete(leadAssignmentId);
+       this.timerExpiredReportPromptedLeadIds.delete(leadAssignmentId);
+     }
+@@ -3556,6 +3552,38 @@ export class ConsultantDashboardComponent implements OnInit, OnDestroy {
+       )
+       .subscribe({
+         next: (response) => {
++          const reportData = response.data;
++          const nextState =
++            reportData?.leadAssignmentState ?? LEAD_STATE.Pending;
++          const nextCallResult =
++            reportData?.callResult ?? Number(this.reportForm.callResult);
++          const reportSubmittedAt =
++            reportData?.reportSubmittedAt ?? new Date().toISOString();
++
++          this.reportingLeadIds.delete(leadAssignmentId);
++          this.reportedLeadIds.add(leadAssignmentId);
++          this.stopRealtimeTimer(leadAssignmentId);
++
++          this.markLeadReported(leadAssignmentId, nextState, true);
++          this.updateLeadInCollections(leadAssignmentId, {
++            callResult: nextCallResult,
++            CallResult: nextCallResult,
++            reportDescription: payload.reportDescription,
++            ReportDescription: payload.reportDescription,
++            patientCity: payload.patientCity,
++            PatientCity: payload.patientCity,
++            patientRegion: payload.patientRegion,
++            PatientRegion: payload.patientRegion,
++            reportSubmittedAt,
++            ReportSubmittedAt: reportSubmittedAt,
++            isReportSubmitted: true,
++            IsReportSubmitted: true,
++            leadAssignmentState: nextState,
++            LeadAssignmentState: nextState,
++          });
++
++          this.applyConsultantStatusFrom(response, reportData);
++
+           this.reservationDialogOpen = false;
+           this.selectedReservationLead = null;
+           this.suppressLeadCardActionsUntil = Date.now() + 600;
+@@ -4175,6 +4203,9 @@ export class ConsultantDashboardComponent implements OnInit, OnDestroy {
+ 
+   leadDisplayStatus(lead: ConsultantLead): string {
+     if (this.isLeadInReportProgress(lead)) return "در حال ثبت گزارش";
++    if (this.isLeadReportSubmitted(lead) && this.leadCallResult(lead) !== null) {
++      return this.callResultLabel(lead);
++    }
+     if (this.isLeadExpired(lead)) return "منقضی شده";
+     if (this.isRealtimeTimedLead(lead)) return "در انتظار تماس";
+     return this.stateLabel(this.leadState(lead));

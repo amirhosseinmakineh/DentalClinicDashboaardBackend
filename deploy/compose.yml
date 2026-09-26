@@ -1,0 +1,33 @@
+name: ${COMPOSE_PROJECT_NAME:?COMPOSE_PROJECT_NAME is required}
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
+    pull_policy: never
+    restart: unless-stopped
+    env_file:
+      - ${RUNTIME_ENV_FILE:?RUNTIME_ENV_FILE is required}
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      TZ: Asia/Tehran
+    ports:
+      - "127.0.0.1:${BACKEND_HOST_PORT:?BACKEND_HOST_PORT is required}:8080"
+    networks:
+      - dental
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:${FRONTEND_HOST_PORT:?FRONTEND_HOST_PORT is required}:3000"
+    networks:
+      - dental
+
+networks:
+  dental:
+    driver: bridge

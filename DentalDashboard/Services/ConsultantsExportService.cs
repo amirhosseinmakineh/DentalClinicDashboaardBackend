@@ -1,6 +1,7 @@
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Convertor;
+using DentalDashboard.Utilities.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Services;
@@ -18,7 +19,7 @@ public class ConsultantsExportService
             .Where(x => !x.IsDeleted &&
                         x.User != null &&
                         x.User.UserRoles.Any(ur => ur.Role != null && ur.Role.RoleName == "Consultant"))
-            .OrderByDescending(x => x.CurrentScore).ThenBy(x => x.User!.LastName)
+            .OrderBy(x => x.User!.LastName).ThenBy(x => x.User!.FirstName)
             .ToListAsync(cancellationToken);
 
         var consultantIds = consultants.Select(x => x.Id).ToList();
@@ -38,11 +39,22 @@ public class ConsultantsExportService
             .Select(g => new
             {
                 ConsultantProfileId = g.Key,
-                TotalReservations = g.Count(),
-                ActiveReservations = g.Count(x => !x.IsCanceled),
-                ConsultantConfirmed = g.Count(x => x.ConsultantAttendanceConfirmedAt != null)
+                TotalReservations = g.Sum(x => x.PatientCount),
+                ActiveReservations = g.Sum(x => x.IsCanceled ? 0 : x.PatientCount),
+                ConsultantConfirmed = g.Sum(x => x.ConsultantAttendanceConfirmedAt != null ? x.PatientCount : 0)
             })
             .ToDictionaryAsync(x => x.ConsultantProfileId, cancellationToken);
+
+        var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
+        var todayReservationCounts = await context.Reservations.AsNoTracking()
+            .Where(x => !x.IsDeleted &&
+                        !x.IsCanceled &&
+                        consultantIds.Contains(x.ConsultantProfileId) &&
+                        x.CreatedAt >= todayStartUtc &&
+                        x.CreatedAt < todayEndUtc)
+            .GroupBy(x => x.ConsultantProfileId)
+            .Select(g => new { ConsultantProfileId = g.Key, Count = g.Sum(x => x.PatientCount) })
+            .ToDictionaryAsync(x => x.ConsultantProfileId, x => x.Count, cancellationToken);
 
         var lines = new List<string>
         {
@@ -53,7 +65,6 @@ public class ConsultantsExportService
                 "نام خانوادگی",
                 "موبایل",
                 "کد ملی",
-                "امتیاز فعلی",
                 "وضعیت آنلاین",
                 "وضعیت حضور",
                 "آخرین بازدید",
@@ -62,6 +73,7 @@ public class ConsultantsExportService
                 "تعداد کل لیدها",
                 "تعداد رزرو",
                 "تعداد رزرو فعال",
+                "رزروهای امروز",
                 "تعداد تایید حضور مشاور",
                 "تعداد تماس گرفته",
                 "تعداد تماس نگرفته",
@@ -86,7 +98,6 @@ public class ConsultantsExportService
                 consultant.User?.LastName ?? string.Empty,
                 consultant.User?.PhoneNumber ?? string.Empty,
                 consultant.NationalCode,
-                consultant.CurrentScore.ToString(),
                 AdminReportPersianLabels.ToYesNo(consultant.IsOnline),
                 AdminReportPersianLabels.ToYesNo(consultant.IsAvailable),
                 consultant.User?.LastSeenAt.HasValue == true
@@ -101,6 +112,7 @@ public class ConsultantsExportService
                 leads.Count.ToString(),
                 stats?.TotalReservations.ToString() ?? "0",
                 stats?.ActiveReservations.ToString() ?? "0",
+                todayReservationCounts.GetValueOrDefault(consultant.Id).ToString(),
                 stats?.ConsultantConfirmed.ToString() ?? "0",
                 calledCount.ToString(),
                 notCalledCount.ToString(),
@@ -118,6 +130,7 @@ public class ConsultantsExportService
             "شناسه لید",
             "نام لید",
             "موبایل لید",
+            "تاریخ ایجاد لید",
             "وضعیت لید",
             "نوع تخصیص",
             "تاریخ تخصیص",
@@ -150,13 +163,24 @@ public class ConsultantsExportService
                     lead.Id.ToString(),
                     lead.UserName,
                     lead.PhoneNumber,
+                    DateConvertor.ToPersianDateTimeString(
+                        IranTimeHelper.ToIranLocalTime(lead.CreatedAt)),
                     lead.LeadAssignmentState.ToPersian(),
                     lead.AssignmentType.ToPersian(),
-                    lead.AssignedAt.HasValue ? DateConvertor.ToPersianDateTimeString(lead.AssignedAt.Value) : string.Empty,
+                    lead.AssignedAt.HasValue
+                        ? DateConvertor.ToPersianDateTimeString(
+                            IranTimeHelper.ToIranLocalTime(lead.AssignedAt.Value))
+                        : string.Empty,
                     AdminReportPersianLabels.ToCallStatus(hasCalled),
                     lead.CallResult.HasValue ? lead.CallResult.Value.ToPersian() : string.Empty,
-                    lead.ContactedAt.HasValue ? DateConvertor.ToPersianDateTimeString(lead.ContactedAt.Value) : string.Empty,
-                    lead.ReportSubmittedAt.HasValue ? DateConvertor.ToPersianDateTimeString(lead.ReportSubmittedAt.Value) : string.Empty,
+                    lead.ContactedAt.HasValue
+                        ? DateConvertor.ToPersianDateTimeString(
+                            IranTimeHelper.ToIranLocalTime(lead.ContactedAt.Value))
+                        : string.Empty,
+                    lead.ReportSubmittedAt.HasValue
+                        ? DateConvertor.ToPersianDateTimeString(
+                            IranTimeHelper.ToIranLocalTime(lead.ReportSubmittedAt.Value))
+                        : string.Empty,
                     lead.ReportDescription,
                     lead.PatientCity,
                     lead.PatientRegion,

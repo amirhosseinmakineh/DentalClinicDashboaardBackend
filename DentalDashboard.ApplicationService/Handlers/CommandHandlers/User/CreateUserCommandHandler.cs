@@ -41,6 +41,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 if (exists)
                 {
+                    await unitOfWork.RollbackAsync();
                     return Result<CreateUserResponse>.Failure(
                         "کاربری با این شماره موبایل قبلاً ثبت شده است");
                 }
@@ -54,8 +55,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                     BirthDate = command.BirthDate,
                     Gender = command.Gender,
                     AvatarImageName = command.AvatarImageName,
-                    IsActive = false,
-                    IsCompleteProfile = false
+                    IsActive = command.IsActive,
+                    IsCompleteProfile = command.IsCompleteProfile,
+                    SecretaryType = string.Equals(command.RoleName, "Secretary", StringComparison.OrdinalIgnoreCase)
+                        ? command.SecretaryType ?? DentalDashboard.Domain.Enums.SecretaryType.Main
+                        : null,
                 };
 
                 await userRepository.AddAsync(user);
@@ -65,6 +69,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 if (command.RoleName == "Consultant")
                 {
                     await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                    user.IsCompleteProfile = false;
+                    user.IsActive = false;
                 }
 
                 await unitOfWork.CommitAsync();
@@ -77,10 +83,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 return Result<CreateUserResponse>.Success(response,"ثبت کاربر جدید با موفقیت انجام شد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await unitOfWork.RollbackAsync();
-                return Result<CreateUserResponse>.Failure($"خطا در ایجاد کاربر: {ex.Message}");
+                return Result<CreateUserResponse>.Failure("خطا در ایجاد کاربر");
             }
         }
     }

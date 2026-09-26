@@ -1,6 +1,8 @@
-﻿using DentalDashboard.ApplicationService.Contract.Requests.Auth;
+﻿using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.Requests.Auth;
 using DentalDashboard.ApplicationService.Contract.Responses.AuthResponse;
 using DentalDashboard.ApplicationService.Handlers.CommandHandlers.Auth.Helpers;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -16,15 +18,18 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
     private readonly IUserRepository userRepository;
     private readonly ITokenGenerator tokenGenerator;
     private readonly IValidator<LoginCommand> validator;
+    private readonly IUserPresenceService presenceService;
 
     public LoginCommandHandler(
         IUserRepository userRepository,
         ITokenGenerator tokenGenerator,
-        IValidator<LoginCommand> validator)
+        IValidator<LoginCommand> validator,
+        IUserPresenceService presenceService)
     {
         this.userRepository = userRepository;
         this.tokenGenerator = tokenGenerator;
         this.validator = validator;
+        this.presenceService = presenceService;
     }
 
     public async Task<Result<LoginResponse>> HandleAsync(
@@ -48,11 +53,6 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
             return Result<LoginResponse>.Failure("کاربری با این مشخصات یافت نشد");
         }
 
-        if (!user.IsActive)
-        {
-            return Result<LoginResponse>.Failure("حساب کاربری غیرفعال است");
-        }
-
         var isValidPassword = PasswordHasher.VerifyPassword(
             command.PasswordHash,
             user.PasswordHash);
@@ -62,16 +62,44 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
             return Result<LoginResponse>.Failure("رمز عبور اشتباه است");
         }
 
-        user.LastSeenAt = DateTime.UtcNow;
-        user.UpdatedAt = DateTime.UtcNow;
-        userRepository.Update(user);
-        await userRepository.SaveChange();
+        if (PasswordHasher.NeedsRehash(user.PasswordHash))
+            user.PasswordHash = PasswordHasher.HashPassword(command.PasswordHash);
 
         var userRoles = user.UserRoles
             .Where(x => !x.IsDeleted && x.Role != null && !x.Role.IsDeleted)
             .Select(x => x.Role!)
             .DistinctBy(x => x.Id)
             .ToList();
+
+        var hasConsultantRole = userRoles.Any(role => role.RoleName == "Consultant");
+        var consultantProfileIsComplete =
+            user.ConsultantProfile is { IsDeleted: false, IsCompleteProfile: true };
+
+        // ConsultantProfile is the source of truth for consultant onboarding.
+        // Keeping User in sync ensures both the login response and JWT route the
+        // consultant to profile completion instead of the operational dashboard.
+        if (hasConsultantRole && user.IsCompleteProfile != consultantProfileIsComplete)
+            user.IsCompleteProfile = consultantProfileIsComplete;
+
+        var canCompleteConsultantOnboarding =
+            !user.IsActive &&
+            hasConsultantRole &&
+            !consultantProfileIsComplete;
+
+        if (!user.IsActive && !canCompleteConsultantOnboarding)
+        {
+            return Result<LoginResponse>.Failure("حساب کاربری غیرفعال است");
+        }
+
+        user.LastSeenAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+        userRepository.Update(user);
+        await userRepository.SaveChange();
+
+        await presenceService.LogAsync(
+            user.Id,
+            UserPresenceEventType.Login,
+            cancellationToken: cancellationToken);
 
         if (userRoles.Count == 0)
         {

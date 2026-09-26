@@ -103,3 +103,74 @@ GET /api/Reservation/GetConsultantReservations?consultantProfileId=3&from=2026-0
   "totalPages": 1
 }
 ```
+
+## PUT `/api/Reservation`
+
+ویرایش رزرو فعال توسط مشاور.
+
+### Request body
+
+```json
+{
+  "reservationId": 1,
+  "consultantProfileId": 3,
+  "reservationAt": "2026-06-20T11:00:00",
+  "patientCity": "تهران",
+  "patientRegion": "سعادت‌آباد",
+  "attendanceProbabilityPercent": 80,
+  "attendancePrediction": "بیمار گفت در تاریخ و ساعت رزرو شده در مطب حاضر می‌شود.",
+  "secondaryPhoneNumber": "09121111111",
+  "description": "توضیحات اختیاری"
+}
+```
+
+### قوانین ویرایش
+
+- رزرو باید متعلق به همان `consultantProfileId` باشد.
+- رزروهای کنسل‌شده یا حذف‌شده قابل ویرایش نیستند.
+- پس از بررسی منشی (`SecretaryApproved` / `SecretaryRejected`) امکان ویرایش وجود ندارد.
+- اگر زمان رزرو تغییر کند، زمان جدید باید در آینده باشد.
+- اگر زمان رزرو تغییر نکند، ویرایش سایر فیلدها حتی برای رزروهای گذشته مجاز است.
+- شهر و منطقه بیمار الزامی است.
+- `attendanceProbabilityPercent` باید بین ۰ تا ۱۰۰ باشد.
+
+### Success response
+
+```json
+{
+  "isSuccess": true,
+  "message": "رزرو با موفقیت ویرایش شد",
+  "data": {
+    "id": 1,
+    "leadAssignmentId": 12,
+    "consultantProfileId": 3,
+    "reservationAt": "2026-06-20T11:00:00",
+    "patientName": "نام بیمار",
+    "patientPhoneNumber": "09120000000",
+    "patientCity": "تهران",
+    "patientRegion": "سعادت‌آباد",
+    "attendanceProbabilityPercent": 80,
+    "attendancePrediction": "بیمار گفت در تاریخ و ساعت رزرو شده در مطب حاضر می‌شود.",
+    "description": "توضیحات اختیاری",
+    "isCanceled": false
+  }
+}
+```
+
+### Failure response examples
+
+```json
+{
+  "isSuccess": false,
+  "message": "پس از بررسی منشی امکان ویرایش رزرو وجود ندارد",
+  "data": null
+}
+```
+
+```json
+{
+  "isSuccess": false,
+  "message": "زمان رزرو باید در آینده باشد",
+  "data": null
+}
+```

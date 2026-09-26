@@ -18,5 +18,6 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.User.Commands.Upd
         public Gender Gender { get; set; }
         public bool IsActive { get; set; } = true;
         public string RoleName {  get; set; }
+        public SecretaryType? SecretaryType { get; set; }
     }
 }

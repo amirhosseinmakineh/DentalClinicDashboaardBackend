@@ -10,7 +10,6 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Consultant.Comman
         public string PhoneNumber { get; set; } = string.Empty;
         public string? PatientCity { get; set; }
         public string? PatientRegion { get; set; }
-        public string? BusinessName { get; set; }
         public string? SecondaryPhoneNumber { get; set; }
         public string? ReportDescription { get; set; }
     }

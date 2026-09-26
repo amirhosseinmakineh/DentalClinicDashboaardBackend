@@ -5,5 +5,7 @@
         Rejected = 3,
         NoAnswer = 4,
         WrongNumber = 5,
-        NeedFollowUp = 6
+        NeedFollowUp = 6,
+        Busy = 7,
+        PatientHungUp = 8
     }

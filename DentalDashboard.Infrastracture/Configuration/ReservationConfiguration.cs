@@ -11,14 +11,38 @@ namespace DentalDashboard.Infrastracture.Configuration
             builder.HasIndex(x => new { x.ConsultantProfileId, x.ReservationAt, x.IsCanceled });
             builder.HasIndex(x => new { x.LeadAssignmentId, x.IsCanceled });
             builder.HasIndex(x => x.PatientUserId);
+            builder.HasIndex(x => x.SecretaryAnnouncementStatus);
+            builder.HasIndex(x => new { x.SecretaryAnnouncementUserId, x.SecretaryAnnouncementUpdatedAt });
+            builder.HasIndex(x => new { x.ReservationType, x.ReservationAt });
+            builder.HasIndex(x => new { x.OwnerType, x.OwnerUserId, x.CreatedAt });
 
             builder.Property(x => x.Description)
                 .HasMaxLength(1000);
+
+            builder.Property(x => x.PatientCount)
+                .HasDefaultValue(1);
+
+            builder.Property(x => x.ConsultantRewardAmount)
+                .HasPrecision(18, 2);
+
+            builder.HasIndex(x => new { x.ConsultantRewardApprovedByAdmin, x.SecretaryReviewedAt });
+
+            builder.Property(x => x.DoctorName)
+                .HasMaxLength(150);
+
+            builder.Property(x => x.DentalServices)
+                .HasColumnType("nvarchar(max)");
+
+            builder.Property(x => x.AttendancePrediction)
+                .HasMaxLength(500);
 
             builder.Property(x => x.ConsultantAttendanceNote)
                 .HasMaxLength(1000);
 
             builder.Property(x => x.SecretaryReviewNote)
+                .HasMaxLength(1000);
+
+            builder.Property(x => x.SecretaryAnnouncement)
                 .HasMaxLength(1000);
 
             builder.HasOne(x => x.ConsultantProfile)

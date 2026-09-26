@@ -4,6 +4,7 @@ using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 {
@@ -13,17 +14,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
         private readonly IUnitOfWork unitOfWork;
         private readonly IRoleService roleService;
         private readonly IConsultantProfileService consultantProfileService;
+        private readonly IConsultantProfileRepository consultantProfileRepository;
 
         public UpdateUserCommandHandler(
             IUnitOfWork unitOfWork,
             IUserRepository userRepository,
             IRoleService roleService,
-            IConsultantProfileService consultantProfileService)
+            IConsultantProfileService consultantProfileService,
+            IConsultantProfileRepository consultantProfileRepository)
         {
             this.unitOfWork = unitOfWork;
             this.userRepository = userRepository;
             this.roleService = roleService;
             this.consultantProfileService = consultantProfileService;
+            this.consultantProfileRepository = consultantProfileRepository;
         }
 
         public async Task<Result<UpdateUserResponse>> HandleAsync(
@@ -49,14 +53,36 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 user.AvatarImageName = command.AvatarImageName;
                 user.Gender = command.Gender;
                 user.IsActive = command.IsActive;
+                user.SecretaryType = string.Equals(command.RoleName, "Secretary", StringComparison.OrdinalIgnoreCase)
+                    ? command.SecretaryType ?? DentalDashboard.Domain.Enums.SecretaryType.Main
+                    : null;
 
                 userRepository.Update(user);
 
-                await roleService.SetUserRole(user.Id, command.RoleName);
+                var currentRoleName = await userRepository.GetAll()
+                    .Where(x => x.Id == user.Id)
+                    .SelectMany(x => x.UserRoles)
+                    .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
+                    .OrderByDescending(ur => ur.UpdatedAt)
+                    .ThenByDescending(ur => ur.Id)
+                    .Select(ur => ur.Role!.RoleName)
+                    .FirstOrDefaultAsync(cancellationToken);
 
-                if (command.RoleName == "Consultant")
+                if (!string.Equals(currentRoleName, command.RoleName, StringComparison.Ordinal))
                 {
-                    await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                    await roleService.SetUserRole(user.Id, command.RoleName);
+
+                    if (command.RoleName == "Consultant")
+                    {
+                        var profileId = await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                        user.IsCompleteProfile = profileId.HasValue && await consultantProfileRepository
+                            .GetAll()
+                            .AnyAsync(profile => profile.Id == profileId.Value &&
+                                !profile.IsDeleted && profile.IsCompleteProfile,
+                                cancellationToken);
+                        if (!user.IsCompleteProfile)
+                            user.IsActive = false;
+                    }
                 }
 
                 await userRepository.SaveChange();
@@ -70,10 +96,10 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 };
                 return Result<UpdateUserResponse>.Success(response,"ویرایش کاربر با موفقیت انجام شد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await unitOfWork.RollbackAsync();
-                return Result<UpdateUserResponse>.Failure($"خطا در ویرایش کاربر: {ex.Message}");
+                return Result<UpdateUserResponse>.Failure("خطا در ویرایش کاربر");
             }
         }
     }

@@ -12,13 +12,16 @@ public class SendTestPushNotificationCommandHandler : ICommandHandler<SendTestPu
 {
     private readonly IConsultantProfileRepository consultantProfileRepository;
     private readonly IPushNotificationService pushNotificationService;
+    private readonly IPushSubscriptionRepository pushSubscriptionRepository;
 
     public SendTestPushNotificationCommandHandler(
         IConsultantProfileRepository consultantProfileRepository,
-        IPushNotificationService pushNotificationService)
+        IPushNotificationService pushNotificationService,
+        IPushSubscriptionRepository pushSubscriptionRepository)
     {
         this.consultantProfileRepository = consultantProfileRepository;
         this.pushNotificationService = pushNotificationService;
+        this.pushSubscriptionRepository = pushSubscriptionRepository;
     }
 
     public async Task<Result> HandleAsync(
@@ -34,6 +37,22 @@ public class SendTestPushNotificationCommandHandler : ICommandHandler<SendTestPu
 
         if (!string.IsNullOrWhiteSpace(command.DeviceToken))
         {
+            if (!PushSubscriptionJsonParser.TryParse(
+                    command.DeviceToken.Trim(),
+                    out var endpoint,
+                    out var p256dh,
+                    out var auth))
+            {
+                return Result.Failure("فرمت subscription معتبر نیست");
+            }
+
+            await pushSubscriptionRepository.UpsertAsync(
+                profile.UserId,
+                endpoint,
+                p256dh,
+                auth,
+                cancellationToken);
+
             profile.User.PushNotificationToken = PushSubscriptionStorage.UpsertSubscription(
                 profile.User.PushNotificationToken,
                 command.DeviceToken.Trim());
@@ -41,8 +60,9 @@ public class SendTestPushNotificationCommandHandler : ICommandHandler<SendTestPu
             await consultantProfileRepository.SaveChange();
         }
 
-        var subscriptions = PushSubscriptionStorage.ParseSubscriptions(
-            profile.User.PushNotificationToken);
+        var subscriptions = await pushSubscriptionRepository.GetActiveByUserIdAsync(
+            profile.UserId,
+            cancellationToken);
         if (subscriptions.Count == 0)
         {
             return Result.Failure(
@@ -56,13 +76,14 @@ public class SendTestPushNotificationCommandHandler : ICommandHandler<SendTestPu
             new Dictionary<string, string>
             {
                 ["type"] = "test_push",
-                ["profileId"] = profile.Id.ToString()
+                ["profileId"] = profile.Id.ToString(),
             },
             cancellationToken);
 
         return sent
-            ? Result.Success("نوتیفیکیشن تست ارسال شد")
+            ? Result.Success(
+                "نوتیفیکیشن تست ارسال شد. اگر پیام سیستمی ندیدید، اجازه Notification را در مرورگر بررسی کنید.")
             : Result.Failure(
-                "ارسال push انجام نشد. WEBPUSH_VAPID_PRIVATE_KEY و WEBPUSH_VAPID_PUBLIC_KEY را روی سرور و Netlify بررسی کنید.");
+                "ارسال push انجام نشد. WEBPUSH_VAPID_PRIVATE_KEY و WEBPUSH_VAPID_PUBLIC_KEY را روی سرور بررسی کنید.");
     }
 }

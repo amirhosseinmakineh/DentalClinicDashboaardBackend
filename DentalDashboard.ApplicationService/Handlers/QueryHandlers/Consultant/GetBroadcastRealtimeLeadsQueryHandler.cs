@@ -1,0 +1,109 @@
+using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
+using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
+using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
+using Microsoft.EntityFrameworkCore;
+
+namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant;
+
+public class GetBroadcastRealtimeLeadsQueryHandler
+    : IQueryHandler<GetBroadcastRealtimeLeadsQuery, BroadcastRealtimeLeadsResponse>
+{
+    private readonly IConsultantProfileRepository consultantProfileRepository;
+    private readonly ILeadAssignmentRepository leadAssignmentRepository;
+    private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
+    private readonly ILeadAssignmentCandidateProvider candidateProvider;
+
+    public GetBroadcastRealtimeLeadsQueryHandler(
+        IConsultantProfileRepository consultantProfileRepository,
+        ILeadAssignmentRepository leadAssignmentRepository,
+        ILeadAssignmentLimitService leadAssignmentLimitService,
+        ILeadAssignmentCandidateProvider candidateProvider)
+    {
+        this.consultantProfileRepository = consultantProfileRepository;
+        this.leadAssignmentRepository = leadAssignmentRepository;
+        this.leadAssignmentLimitService = leadAssignmentLimitService;
+        this.candidateProvider = candidateProvider;
+    }
+
+    public async Task<BroadcastRealtimeLeadsResponse> HandleAsync(
+        GetBroadcastRealtimeLeadsQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var profile = await consultantProfileRepository.GetAll()
+            .FirstOrDefaultAsync(x => x.Id == query.ProfileId, cancellationToken);
+
+        if (profile == null || profile.IsDeleted)
+        {
+            return new BroadcastRealtimeLeadsResponse
+            {
+                CanReceive = false,
+                BlockReason = "مشاوری یافت نشد",
+            };
+        }
+
+        if (!profile.IsOnline)
+        {
+            return new BroadcastRealtimeLeadsResponse
+            {
+                CanReceive = false,
+                BlockReason = "برای دریافت لید لحظه‌ای باید آنلاین باشید",
+            };
+        }
+
+        if (!profile.IsAvailable || !profile.IsCompleteProfile)
+        {
+            return new BroadcastRealtimeLeadsResponse
+            {
+                CanReceive = false,
+                BlockReason = "پروفایل یا وضعیت حضور شما برای دریافت لید لحظه‌ای آماده نیست",
+            };
+        }
+
+        if (await leadAssignmentRepository.HasActiveRealTimeLeadAsync(profile.Id))
+        {
+            return new BroadcastRealtimeLeadsResponse
+            {
+                CanReceive = false,
+                BlockReason = "شما یک لید لحظه‌ای فعال دارید",
+            };
+        }
+
+        if (!await leadAssignmentLimitService.CanPickupLeadAsync(profile.Id))
+        {
+            var limitStatus = await leadAssignmentLimitService
+                .GetDailyLimitStatusAsync(profile.Id);
+
+            return new BroadcastRealtimeLeadsResponse
+            {
+                CanReceive = false,
+                BlockReason = limitStatus.DailyLimitReachedMessage,
+            };
+        }
+
+        var candidate = await candidateProvider.GetActiveAsync(profile.Id, cancellationToken);
+        var lead = candidate.Lead;
+
+        var leads = lead == null
+            ? Array.Empty<BroadcastRealtimeLeadItemResponse>()
+            : new[]
+            {
+                new BroadcastRealtimeLeadItemResponse
+                {
+                    LeadAssignmentId = lead.Id,
+                    UserName = lead.UserName,
+                    PhoneNumber = lead.PhoneNumber,
+                    CreatedAt = lead.CreatedAt,
+                    LeadLimitType = candidate.SourceType == LeadAssignmentSourceType.BurnedLeads ? "Burnt" : "Realtime",
+                },
+            };
+
+        return new BroadcastRealtimeLeadsResponse
+        {
+            CanReceive = true,
+            Leads = leads,
+        };
+    }
+}

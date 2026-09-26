@@ -3,12 +3,17 @@ using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using DentalDashboard.ApplicationService.Handlers.Helpers;
+using DentalDashboard.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Utilities.Time;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
     public class CreateReservationCommandHandler : ICommandHandler<CreateReservationCommand, CreateReservationResponse>
     {
         private const int MaxReservationsPerConsultantAtSameTime = 10;
+        private const int MaxPatientsPerReservation = 10;
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly IConsultantProfileRepository consultantProfileRepository;
@@ -22,12 +27,35 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
         public async Task<Result<CreateReservationResponse>> HandleAsync(CreateReservationCommand command, CancellationToken cancellationToken = default)
         {
-            if (command.ReservationAt <= DateTime.Now)
+            if (command.PatientCount < 1 || command.PatientCount > MaxPatientsPerReservation)
+                return Result<CreateReservationResponse>.Failure("تعداد بیماران باید بین ۱ تا ۱۰ نفر باشد");
+
+            var dentalServices = command.DentalServices.Distinct().ToList();
+            if (dentalServices.Count == 0 || dentalServices.Any(x => !Enum.IsDefined(x)))
+                return Result<CreateReservationResponse>.Failure("انتخاب حداقل یک خدمت معتبر الزامی است");
+
+            if (!ReservationAppointmentTime.TryResolve(
+                    command.ReservationAt,
+                    command.AppointmentDateTime,
+                    out var appointmentDateTime,
+                    out var appointmentError))
+                return Result<CreateReservationResponse>.Failure(appointmentError!);
+
+            if (!command.AllowHistoricalReservation &&
+                appointmentDateTime <= IranTimeHelper.IranLocalNow)
                 return Result<CreateReservationResponse>.Failure("زمان رزرو باید در آینده باشد");
 
-            var consultant = await consultantProfileRepository.GetByIdAsync(command.ConsultantProfileId);
-            if (consultant == null || consultant.IsDeleted)
-                return Result<CreateReservationResponse>.Failure("مشاور یافت نشد");
+            if (command.ReservationType == ReservationType.AfterSalesService &&
+                string.IsNullOrWhiteSpace(command.Description))
+                return Result<CreateReservationResponse>.Failure("توضیح نوع خدمت پس از فروش الزامی است");
+
+            var consultantIsActive = await consultantProfileRepository.GetAll()
+                .AnyAsync(x => x.Id == command.ConsultantProfileId &&
+                               !x.IsDeleted && x.IsCompleteProfile &&
+                               !x.User.IsDeleted && x.User.IsActive,
+                    cancellationToken);
+            if (!consultantIsActive)
+                return Result<CreateReservationResponse>.Failure("مشاور فعال یافت نشد");
 
             var lead = await leadAssignmentRepository.GetByIdAndConsultantAsync(command.LeadAssignmentId, command.ConsultantProfileId);
             if (lead == null || lead.IsDeleted)
@@ -51,10 +79,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             if (command.AttendanceProbabilityPercent.HasValue &&
                 (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
-                return Result<CreateReservationResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
+                return Result<CreateReservationResponse>.Failure("احتمال حضور باید بین ۰ تا 10 باشد");
 
             lead.PatientCity = patientCity;
             lead.PatientRegion = patientRegion;
+
 
             if (!string.IsNullOrWhiteSpace(command.SecondaryPhoneNumber))
                 lead.SecondaryPhoneNumber = command.SecondaryPhoneNumber.Trim();
@@ -67,7 +96,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (await reservationRepository.HasActiveReservationForLeadAsync(command.LeadAssignmentId))
                 return Result<CreateReservationResponse>.Failure("برای این بیمار قبلا رزرو فعال ثبت شده است");
 
-            var sameTimeCount = await reservationRepository.CountActiveReservationsAtAsync(command.ConsultantProfileId, command.ReservationAt);
+            var sameTimeCount = await reservationRepository.CountActiveReservationsAtAsync(command.ConsultantProfileId, appointmentDateTime);
             if (sameTimeCount >= MaxReservationsPerConsultantAtSameTime)
                 return Result<CreateReservationResponse>.Failure("ظرفیت این بازه زمانی برای مشاور تکمیل است");
 
@@ -75,10 +104,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             {
                 LeadAssignmentId = lead.Id,
                 ConsultantProfileId = command.ConsultantProfileId,
-                ReservationAt = command.ReservationAt,
+                OwnerType = command.OwnerType ?? ReservationOwnerType.Consultant,
+                OwnerUserId = command.OwnerUserId,
+                ReservationAt = appointmentDateTime,
+                PatientCount = command.PatientCount,
+                ReservationType = command.ReservationType,
+                DentalServices = dentalServices,
                 AttendanceConfirmationStatus = ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
-                Description = command.Description,
-                CreatedAt = DateTime.UtcNow
+                Description = string.IsNullOrWhiteSpace(command.Description) ? null : command.Description.Trim(),
+                AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
+                    ? null
+                    : command.AttendancePrediction.Trim(),
+                CreatedAt = DateTime.UtcNow,
+                InitialReservationAt = appointmentDateTime,
+                LastActivityAt = DateTime.UtcNow,
             };
 
             await reservationRepository.AddAsync(reservation);
@@ -87,19 +126,28 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             return Result<CreateReservationResponse>.Success(new CreateReservationResponse
             {
                 Id = reservation.Id,
+                ReservationId = reservation.Id,
                 LeadAssignmentId = reservation.LeadAssignmentId,
                 ConsultantProfileId = reservation.ConsultantProfileId,
                 PatientUserId = reservation.PatientUserId,
                 RequiresPatientProfile = !reservation.PatientUserId.HasValue,
                 ReservationAt = reservation.ReservationAt,
+                AppointmentDateTime = reservation.ReservationAt,
+                PatientCount = reservation.PatientCount,
+                CreatedAt = reservation.CreatedAt,
+                ReservationType = reservation.ReservationType,
                 SecondaryPhoneNumber = lead.SecondaryPhoneNumber,
                 PatientCity = lead.PatientCity ?? string.Empty,
                 PatientRegion = lead.PatientRegion,
                 BusinessName = lead.BusinessName,
                 AttendanceProbabilityPercent = lead.AttendanceProbabilityPercent,
+                AttendancePrediction = reservation.AttendancePrediction,
                 AttendanceConfirmationStatus = reservation.AttendanceConfirmationStatus,
                 PatientName = lead.UserName,
-                PatientPhoneNumber = lead.PhoneNumber
+                PatientPhoneNumber = lead.PhoneNumber,
+                DentalServices = reservation.DentalServices,
+
+
             }, "رزرو با موفقیت ثبت شد");
         }
     }

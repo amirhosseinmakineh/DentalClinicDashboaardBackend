@@ -1,6 +1,5 @@
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IRepositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -11,16 +10,16 @@ namespace DentalDashboard.ApplicationService.Services;
 
 public class WebPushNotificationService : IPushNotificationService
 {
-    private readonly IUserRepository userRepository;
+    private readonly IPushSubscriptionRepository pushSubscriptionRepository;
     private readonly IConfiguration configuration;
     private readonly ILogger<WebPushNotificationService> logger;
 
     public WebPushNotificationService(
-        IUserRepository userRepository,
+        IPushSubscriptionRepository pushSubscriptionRepository,
         IConfiguration configuration,
         ILogger<WebPushNotificationService> logger)
     {
-        this.userRepository = userRepository;
+        this.pushSubscriptionRepository = pushSubscriptionRepository;
         this.configuration = configuration;
         this.logger = logger;
     }
@@ -32,9 +31,17 @@ public class WebPushNotificationService : IPushNotificationService
         IReadOnlyDictionary<string, string>? data = null,
         CancellationToken cancellationToken = default)
     {
-        var subscriptions = await GetSubscriptionsAsync(userId, cancellationToken);
+        var subscriptions = await pushSubscriptionRepository.GetActiveByUserIdAsync(
+            userId,
+            cancellationToken);
+
         if (subscriptions.Count == 0)
+        {
+            logger.LogWarning(
+                "Push notification skipped for user {UserId}: no active subscriptions",
+                userId);
             return false;
+        }
 
         var vapidDetails = TryGetVapidDetails();
         if (vapidDetails == null)
@@ -49,24 +56,23 @@ public class WebPushNotificationService : IPushNotificationService
         {
             title,
             body,
-            data = data ?? new Dictionary<string, string>()
+            data = data ?? new Dictionary<string, string>(),
         });
 
         var client = new WebPushClient();
         var delivered = false;
-        var invalidSubscriptions = new List<string>();
+        var invalidEndpoints = new List<string>();
 
-        foreach (var subscriptionJson in subscriptions)
+        foreach (var item in subscriptions)
         {
-            if (!TryParseSubscription(subscriptionJson, out var pushSubscription))
-            {
-                invalidSubscriptions.Add(subscriptionJson);
-                continue;
-            }
-
             try
             {
-                await client.SendNotificationAsync(pushSubscription, payload, vapidDetails);
+                var subscription = new PushSubscription(
+                    item.Endpoint,
+                    item.P256dh,
+                    item.Auth);
+
+                await client.SendNotificationAsync(subscription, payload, vapidDetails);
                 delivered = true;
             }
             catch (WebPushException ex) when (IsInvalidSubscription(ex))
@@ -76,38 +82,29 @@ public class WebPushNotificationService : IPushNotificationService
                     "WebPush rejected subscription for user {UserId}: {StatusCode}",
                     userId,
                     ex.StatusCode);
-                invalidSubscriptions.Add(subscriptionJson);
+                invalidEndpoints.Add(item.Endpoint);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "WebPush request failed for user {UserId}", userId);
+                logger.LogError(ex, "Push notification failed for user {UserId}", userId);
             }
         }
 
-        if (invalidSubscriptions.Count > 0)
-            await RemoveSubscriptionsAsync(userId, invalidSubscriptions, cancellationToken);
-
-        return delivered;
-    }
-
-    private async Task<IReadOnlyList<string>> GetSubscriptionsAsync(
-        Guid userId,
-        CancellationToken cancellationToken)
-    {
-        var user = await userRepository.GetAll()
-            .Where(x => x.Id == userId && !x.IsDeleted)
-            .Select(x => new { x.Id, x.PushNotificationToken })
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (user == null || string.IsNullOrWhiteSpace(user.PushNotificationToken))
+        foreach (var endpoint in invalidEndpoints.Distinct(StringComparer.Ordinal))
         {
-            logger.LogWarning(
-                "Push notification skipped for user {UserId}: push subscription is missing",
-                userId);
-            return Array.Empty<string>();
+            var stale = subscriptions.FirstOrDefault(x => x.Endpoint == endpoint);
+            if (stale == null)
+                continue;
+
+            stale.IsDeleted = true;
+            stale.UpdatedAt = DateTime.UtcNow;
+            pushSubscriptionRepository.Update(stale);
         }
 
-        return PushSubscriptionStorage.ParseSubscriptions(user.PushNotificationToken);
+        if (invalidEndpoints.Count > 0)
+            await pushSubscriptionRepository.SaveChange();
+
+        return delivered;
     }
 
     private VapidDetails? TryGetVapidDetails()
@@ -126,74 +123,9 @@ public class WebPushNotificationService : IPushNotificationService
         return new VapidDetails(subject.Trim(), publicKey.Trim(), privateKey.Trim());
     }
 
-    private static bool TryParseSubscription(
-        string subscriptionJson,
-        out PushSubscription pushSubscription)
-    {
-        pushSubscription = null!;
-
-        try
-        {
-            using var document = JsonDocument.Parse(subscriptionJson);
-            var root = document.RootElement;
-
-            if (!root.TryGetProperty("endpoint", out var endpointProperty))
-                return false;
-
-            var endpoint = endpointProperty.GetString();
-            if (string.IsNullOrWhiteSpace(endpoint))
-                return false;
-
-            if (!root.TryGetProperty("keys", out var keysProperty))
-                return false;
-
-            if (!keysProperty.TryGetProperty("p256dh", out var p256dhProperty) ||
-                !keysProperty.TryGetProperty("auth", out var authProperty))
-            {
-                return false;
-            }
-
-            var p256dh = p256dhProperty.GetString();
-            var auth = authProperty.GetString();
-            if (string.IsNullOrWhiteSpace(p256dh) || string.IsNullOrWhiteSpace(auth))
-                return false;
-
-            pushSubscription = new PushSubscription(endpoint, p256dh, auth);
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
     private static bool IsInvalidSubscription(WebPushException exception)
     {
         return exception.StatusCode is HttpStatusCode.Gone or HttpStatusCode.NotFound
                or HttpStatusCode.BadRequest;
-    }
-
-    private async Task RemoveSubscriptionsAsync(
-        Guid userId,
-        IReadOnlyCollection<string> subscriptionsToRemove,
-        CancellationToken cancellationToken)
-    {
-        var user = await userRepository.GetAll()
-            .FirstOrDefaultAsync(x => x.Id == userId && !x.IsDeleted, cancellationToken);
-
-        if (user == null || string.IsNullOrWhiteSpace(user.PushNotificationToken))
-            return;
-
-        var updated = user.PushNotificationToken;
-        foreach (var subscription in subscriptionsToRemove)
-            updated = PushSubscriptionStorage.RemoveSubscription(updated, subscription);
-
-        user.PushNotificationToken = updated;
-        user.UpdatedAt = DateTime.UtcNow;
-        userRepository.Update(user);
-        await userRepository.SaveChange();
-        logger.LogInformation(
-            "Removed invalid push subscription(s) for user {UserId}",
-            userId);
     }
 }

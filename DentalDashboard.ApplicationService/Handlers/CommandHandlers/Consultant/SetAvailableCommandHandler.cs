@@ -1,5 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
+using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -10,16 +11,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
     public class SetAvailableCommandHandler : ICommandHandler<SetAvailableCommand>
     {
         private readonly IConsultantProfileRepository consultantProfileRepository;
-        private readonly ILeadAssignmentService leadAssignmentService;
+        private readonly ILeadDomainService leadDomainService;
+        private readonly IAttendanceService attendanceService;
+
         public SetAvailableCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
-            ILeadAssignmentService leadAssignmentService)
+            ILeadDomainService leadDomainService,
+            IAttendanceService attendanceService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
-            this.leadAssignmentService = leadAssignmentService;
+            this.leadDomainService = leadDomainService;
+            this.attendanceService = attendanceService;
         }
 
-        public async Task<Result> HandleAsync(SetAvailableCommand command,CancellationToken cancellationToken = default)
+        public async Task<Result> HandleAsync(SetAvailableCommand command, CancellationToken cancellationToken = default)
         {
             var profile = await consultantProfileRepository.GetAll()
                 .FirstOrDefaultAsync(x => x.Id == command.ProfileId, cancellationToken);
@@ -35,15 +40,21 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
             if (command.IsAvailable)
             {
+                if (!leadDomainService.IsWorkingTime(DateTime.Now))
+                    return Result.Failure("امکان ثبت حضور فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد");
+
                 profile.IsAvailable = true;
+                profile.IsOnline = false;
                 profile.WorkStartTime = DateTime.Now.TimeOfDay;
+                profile.LastOfflineAt = DateTime.Now;
 
                 consultantProfileRepository.Update(profile);
                 await consultantProfileRepository.SaveChange();
 
-                // Pending night/offline leads are also assigned by the background interval;
-                // this immediate trigger starts the 5-lead offline batches as soon as attendance is registered.
-                await leadAssignmentService.AssignPendingOfflineLeadsAsync();
+                await attendanceService.RecordCheckInAsync(
+                    profile.Id,
+                    DateTime.Now,
+                    cancellationToken);
 
                 return Result.Success("حضور شما ثبت شد");
             }
@@ -56,6 +67,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
             consultantProfileRepository.Update(profile);
             await consultantProfileRepository.SaveChange();
+
+            await attendanceService.RecordCheckOutAsync(
+                profile.Id,
+                DateTime.Now,
+                cancellationToken);
 
             return Result.Success("عدم حضور شما ثبت شد");
         }

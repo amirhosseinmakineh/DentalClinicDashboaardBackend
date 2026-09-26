@@ -1,0 +1,30 @@
+using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using DentalDashboard.Domain.Enums;
+using System.Text.Json.Serialization;
+
+namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands
+{
+    public class UpdateReservationCommand : ICommand<ReservationItemResponse>
+    {
+        public long ReservationId { get; set; }
+        public long ConsultantProfileId { get; set; }
+        public DateTime ReservationAt { get; set; }
+        public DateTime? AppointmentDateTime { get; set; }
+        public int? PatientCount { get; set; }
+        public string? Description { get; set; }
+        public string? PatientCity { get; set; }
+        public string? PatientRegion { get; set; }
+        public int? AttendanceProbabilityPercent { get; set; }
+        public string? AttendancePrediction { get; set; }
+        public string? SecondaryPhoneNumber { get; set; }
+        public List<DentalServiceType>? DentalServices { get; set; }
+        public ReservationOwnerType? ReservationOwnerType { get; set; }
+
+
+        // Set only by an authorized API endpoint; clients must not be able to bypass
+        // the post-review edit restriction themselves.
+        [JsonIgnore]
+        public bool IsSecretaryEdit { get; set; }
+    }
+}

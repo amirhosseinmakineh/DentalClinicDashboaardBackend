@@ -21,6 +21,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterCommand command, CancellationToken cancellationToken)
         {
             var result = await dispatcher.DispatchAsync(command, cancellationToken);
@@ -28,6 +29,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost("Login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login(LoginCommand command, CancellationToken cancellationToken)
         {
             var result = await dispatcher.DispatchAsync(command, cancellationToken);
@@ -35,10 +37,13 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost("ForgotPassword")]
+        [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordCommand command, CancellationToken cancellationToken)
         {
-            var result = await dispatcher.DispatchAsync(command, cancellationToken);
-            return Ok(result);
+            await Task.CompletedTask;
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                Result.Failure("بازیابی رمز عبور تا فعال‌شدن تأیید شماره موبایل موقتاً در دسترس نیست"));
         }
 
         [Authorize]
@@ -92,6 +97,26 @@ namespace DentalDashboard.Controllers
                 roles);
 
             return Ok(Result<AuthenticatedUserResponse>.Success(response));
+        }
+
+        [Authorize]
+        [HttpPost("Logout")]
+        public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+        {
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                              User.FindFirstValue("userId") ??
+                              User.FindFirstValue("Id");
+
+            if (!Guid.TryParse(userIdValue, out var userId))
+            {
+                return Ok(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            }
+
+            var result = await dispatcher.DispatchAsync(
+                new LogoutCommand { UserId = userId },
+                cancellationToken);
+
+            return Ok(result);
         }
     }
 }

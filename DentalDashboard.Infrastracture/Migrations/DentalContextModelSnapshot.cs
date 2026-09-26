@@ -33,10 +33,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateOnly>("AttendanceDate")
                         .HasColumnType("date");
 
-                    b.Property<TimeOnly>("CheckInTime")
+                    b.Property<TimeOnly?>("CheckInTime")
                         .HasColumnType("time");
 
-                    b.Property<TimeOnly>("CheckOutTime")
+                    b.Property<TimeOnly?>("CheckOutTime")
                         .HasColumnType("time");
 
                     b.Property<long>("ConsultantProfileId")
@@ -64,7 +64,7 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("ConsultantProfileId");
 
-                    b.ToTable("Attendances", (string)null);
+                    b.ToTable("Attendances");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.ConsultantProfile", b =>
@@ -79,11 +79,11 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("ConsultantRole")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<int>("CurrentScore")
-                        .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
@@ -106,12 +106,18 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("LastOnlineAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("LimitNumber")
+                        .HasColumnType("int");
+
                     b.Property<string>("NationalCode")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PreferredLeadSourceType")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -127,12 +133,13 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CurrentScore");
-
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("ConsultantProfiles", (string)null);
+                    b.ToTable("ConsultantProfiles", t =>
+                        {
+                            t.HasCheckConstraint("CK_ConsultantProfiles_PreferredLeadSourceType", "[PreferredLeadSourceType] IS NULL OR [PreferredLeadSourceType] IN (1, 2)");
+                        });
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignment", b =>
@@ -149,10 +156,30 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<int>("AssignmentType")
                         .HasColumnType("int");
 
+                    b.Property<int?>("AttendanceProbabilityPercent")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BusinessName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTime?>("CallDeadlineAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("CallInitiatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("CallResult")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ClosedByConsultantAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ClosureReason")
                         .HasColumnType("int");
 
                     b.Property<long?>("ConsultantProfileId")
@@ -167,8 +194,14 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("DispatchLevel")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastDispatchAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("LeadAssignmentState")
                         .HasColumnType("int");
@@ -176,9 +209,20 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool>("NotificationSent")
                         .HasColumnType("bit");
 
+                    b.Property<string>("PatientCity")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PatientRegion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("PickUp")
+                        .HasColumnType("bit");
 
                     b.Property<string>("ReportDescription")
                         .HasColumnType("nvarchar(max)");
@@ -188,6 +232,10 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Property<bool>("RequiresThreeMinuteCall")
                         .HasColumnType("bit");
+
+                    b.Property<string>("SecondaryPhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<bool>("SmsSent")
                         .HasColumnType("bit");
@@ -207,9 +255,57 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("PhoneNumber");
 
+                    b.HasIndex("ReportSubmittedAt");
+
                     b.HasIndex("AssignmentType", "LeadAssignmentState", "ConsultantProfileId");
 
-                    b.ToTable("LeadAssignments", (string)null);
+                    b.HasIndex("IsDeleted", "LeadAssignmentState", "ConsultantProfileId", "CreatedAt");
+
+                    b.ToTable("LeadAssignments");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignmentSetting", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("AssignmentSourceType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByAdminId");
+
+                    b.ToTable("LeadAssignmentSettings", t =>
+                        {
+                            t.HasCheckConstraint("CK_LeadAssignmentSettings_Singleton", "[Id] = 1");
+
+                            t.HasCheckConstraint("CK_LeadAssignmentSettings_SourceType", "[AssignmentSourceType] IN (1, 2)");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            AssignmentSourceType = 1,
+                            CreatedAt = new DateTime(2026, 9, 3, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false
+                        });
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.PatientProfile", b =>
@@ -220,30 +316,17 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("EmergencyPhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("InsuranceName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("NationalCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -257,7 +340,52 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("PatientProfiles", (string)null);
+                    b.ToTable("PatientProfiles");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.PushSubscription", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PushSubscriptions", (string)null);
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.Reservation", b =>
@@ -272,12 +400,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("AttendancePrediction")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<int>("AttendanceProbabilityPercent")
-                        .HasColumnType("int");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("AttendanceScoreAppliedAt")
                         .HasColumnType("datetime2");
@@ -289,6 +413,22 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ConsultantAttendanceConfirmedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("ConsultantRewardApprovedByAdmin")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ConsultantRewardEligibleAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("ConsultantRewardAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("ConsultantRewardReviewedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ConsultantRewardReviewedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ConsultantAttendanceNote")
@@ -307,9 +447,20 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.PrimitiveCollection<string>("DentalServices")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("DoctorName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("InitialReservationAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("IsAttendanceScoreApplied")
                         .HasColumnType("bit");
@@ -320,13 +471,25 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("LastActivityAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<long>("LeadAssignmentId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("PatientCity")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<int?>("OwnerType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("PatientCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<bool?>("PatientReceivedService")
+                        .HasColumnType("bit");
 
                     b.Property<Guid?>("PatientUserId")
                         .HasColumnType("uniqueidentifier");
@@ -334,7 +497,26 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime>("ReservationAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("ReservationType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SecretaryAnnouncement")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("SecretaryAnnouncementStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SecretaryAnnouncementUpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("SecretaryAnnouncementUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool?>("SecretaryApprovedConsultantConfirmation")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("SecretaryFollowUpContacted")
                         .HasColumnType("bit");
 
                     b.Property<string>("SecretaryReviewNote")
@@ -354,11 +536,21 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("PatientUserId");
 
+                    b.HasIndex("SecretaryAnnouncementStatus");
+
                     b.HasIndex("LeadAssignmentId", "IsCanceled");
+
+                    b.HasIndex("ReservationType", "ReservationAt");
+
+                    b.HasIndex("SecretaryAnnouncementUserId", "SecretaryAnnouncementUpdatedAt");
 
                     b.HasIndex("ConsultantProfileId", "ReservationAt", "IsCanceled");
 
-                    b.ToTable("Reservations", (string)null);
+                    b.HasIndex("ConsultantRewardApprovedByAdmin", "SecretaryReviewedAt");
+
+                    b.HasIndex("OwnerType", "OwnerUserId", "CreatedAt");
+
+                    b.ToTable("Reservations");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.Role", b =>
@@ -387,46 +579,71 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Roles", (string)null);
+                    b.ToTable("Roles");
                 });
 
-            modelBuilder.Entity("DentalDashboard.Domain.Models.ScoreLog", b =>
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessPermission", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("ConsultantProfileId")
-                        .HasColumnType("bigint");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("CreatedByUserId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<long?>("LeadAssignmentId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("Reason")
+                    b.Property<int>("PermissionType")
                         .HasColumnType("int");
 
-                    b.Property<int>("ScoreValue")
+                    b.Property<Guid>("SecretaryUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SecretaryUserId", "DayOfWeek", "PermissionType")
+                        .IsUnique();
+
+                    b.ToTable("SecretaryAccessPermissions", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<int>("Source")
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DayOfWeek")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -436,13 +653,84 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ConsultantProfileId");
+                    b.HasIndex("UserId", "DayOfWeek")
+                        .IsUnique();
 
-                    b.HasIndex("LeadAssignmentId");
+                    b.ToTable("SecretaryAccessSchedules", (string)null);
+                });
 
-                    b.HasIndex("UserId");
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessScheduleAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
-                    b.ToTable("ScoreLogs", (string)null);
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("NewDays")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OldDays")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("SecretaryUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SecretaryUserId");
+
+                    b.ToTable("SecretaryAccessScheduleAudits", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.ServiceLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LogName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResponseLog")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ServiceLogs");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.User", b =>
@@ -485,6 +773,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -495,8 +786,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("PushNotificationToken")
-                        .HasMaxLength(16000)
-                        .HasColumnType("nvarchar(16000)");
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SecretaryType")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -507,6 +800,50 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "OccurredAt");
+
+                    b.ToTable("UserPresenceLogs", (string)null);
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.UserRole", b =>
@@ -541,7 +878,7 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("UserRoles", (string)null);
+                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.Attendance", b =>
@@ -575,12 +912,33 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("ConsultantProfile");
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignmentSetting", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "UpdatedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("UpdatedByAdmin");
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.PatientProfile", b =>
                 {
                     b.HasOne("DentalDashboard.Domain.Models.User", "User")
                         .WithOne("PatientProfile")
                         .HasForeignKey("DentalDashboard.Domain.Models.PatientProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.PushSubscription", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "User")
+                        .WithMany("PushSubscriptions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -612,27 +970,35 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("PatientUser");
                 });
 
-            modelBuilder.Entity("DentalDashboard.Domain.Models.ScoreLog", b =>
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessPermission", b =>
                 {
-                    b.HasOne("DentalDashboard.Domain.Models.ConsultantProfile", "ConsultantProfile")
-                        .WithMany("ScoreLogs")
-                        .HasForeignKey("ConsultantProfileId")
+                    b.HasOne("DentalDashboard.Domain.Models.User", "SecretaryUser")
+                        .WithMany("SecretaryAccessPermissions")
+                        .HasForeignKey("SecretaryUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("DentalDashboard.Domain.Models.LeadAssignment", "LeadAssignment")
-                        .WithMany()
-                        .HasForeignKey("LeadAssignmentId");
+                    b.Navigation("SecretaryUser");
+                });
 
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessSchedule", b =>
+                {
                     b.HasOne("DentalDashboard.Domain.Models.User", "User")
-                        .WithMany("ScoreLogs")
+                        .WithMany("SecretaryAccessSchedules")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ConsultantProfile");
+                    b.Navigation("User");
+                });
 
-                    b.Navigation("LeadAssignment");
+            modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -661,8 +1027,6 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("Attendances");
 
                     b.Navigation("CallAssignments");
-
-                    b.Navigation("ScoreLogs");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.Role", b =>
@@ -676,7 +1040,11 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Navigation("PatientProfile");
 
-                    b.Navigation("ScoreLogs");
+                    b.Navigation("PushSubscriptions");
+
+                    b.Navigation("SecretaryAccessPermissions");
+
+                    b.Navigation("SecretaryAccessSchedules");
 
                     b.Navigation("UserRoles");
                 });

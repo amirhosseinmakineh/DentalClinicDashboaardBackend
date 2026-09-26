@@ -1,14 +1,19 @@
-﻿using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
+﻿using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.Requests.Consultant;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
+using DentalDashboard.ApplicationService.Contract.Requests.FollowUp.Queries;
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using DentalDashboard.Domain.IRepositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Controllers
 {
@@ -18,55 +23,130 @@ namespace DentalDashboard.Controllers
     {
         private readonly ICommandDispatcher dispatcher;
         private readonly IQueryDispatcher queryDispatcher;
-        public ConsultantController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher)
+        private readonly ISecretaryAccessService secretaryAccessService;
+        private readonly IConsultantProfileRepository consultantProfileRepository;
+        public ConsultantController(
+            ICommandDispatcher commandDispatcher,
+            IQueryDispatcher queryDispatcher,
+            ISecretaryAccessService secretaryAccessService,
+            IConsultantProfileRepository consultantProfileRepository)
         {
             dispatcher = commandDispatcher;
             this.queryDispatcher = queryDispatcher;
+            this.secretaryAccessService = secretaryAccessService;
+            this.consultantProfileRepository = consultantProfileRepository;
         }
-        [HttpGet("GetConsultants")]
-        public async Task<IActionResult> GetConsultants([FromQuery]GetConsultantQuery query)
+        [HttpGet("follow-ups")]
+        [Authorize]
+        public async Task<IActionResult> GetFollowUps([FromQuery] GetConsultantFollowUpsQuery query, CancellationToken cancellationToken)
         {
-            var result = await queryDispatcher.DispatchAsync(query);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var profileId = await consultantProfileRepository.GetAll().AsNoTracking().Where(x => !x.IsDeleted && x.UserId == userId).Select(x => (long?)x.Id).FirstOrDefaultAsync(cancellationToken);
+            if (!profileId.HasValue) return Forbid();
+            query.ConsultantProfileId = profileId.Value;
+            return Ok(await queryDispatcher.DispatchAsync(query, cancellationToken));
+        }
+
+        [HttpGet("GetConsultants")]
+        [Authorize(Roles = "Admin,Secretary,Consultant")]
+        public async Task<IActionResult> GetConsultants(
+            [FromQuery]GetConsultantQuery query,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var access = await secretaryAccessService.GetAccessAsync(userId, cancellationToken);
+            var isConsultant = await consultantProfileRepository.GetAll()
+                .AnyAsync(x => x.UserId == userId && !x.IsDeleted, cancellationToken);
+            if (access.IsSecretary && !isConsultant &&
+                !await secretaryAccessService.HasPermissionAsync(userId,
+                    DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation,
+                    cancellationToken))
+                return Forbid();
+
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CompleteProfile(CompleteConsultantProfileCommand command)
+        private bool TryGetCurrentUserId(out Guid userId)
         {
-            var result = await dispatcher.DispatchAsync(command);
-            return Ok(result);
+            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                        User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
+            return Guid.TryParse(value, out userId);
+        }
+
+        private async Task<long?> GetOwnProfileIdAsync()
+        {
+            if (!TryGetCurrentUserId(out var userId)) return null;
+            return await consultantProfileRepository.GetAll().AsNoTracking()
+                .Where(x => x.UserId == userId && !x.IsDeleted)
+                .Select(x => (long?)x.Id).FirstOrDefaultAsync(HttpContext.RequestAborted);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> CompleteProfile(
+            CompleteConsultantProfileCommand command,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            command.UserId = userId;
+            command.IsCompleteProfile = true;
+            command.ProfileId = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
+                .Where(profile => profile.UserId == userId && !profile.IsDeleted)
+                .Select(profile => profile.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var result = await dispatcher.DispatchAsync(command, cancellationToken);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
         [HttpPost("SetAvalableConsultant")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> SetAvalableConsultant(SetAvailableCommand command)
         {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ProfileId = ownProfileId.Value;
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
         [HttpPost("SetOnlineOfflineConsultant")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> SetOnlineOfflineConsultant(SetOnlineOfflineCommand command)
         {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ProfileId = ownProfileId.Value;
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
 
-        [Authorize]
+        [Authorize(Roles = "Consultant")]
         [HttpPost("RegisterPushToken")]
         public async Task<IActionResult> RegisterPushToken(RegisterPushTokenCommand command)
         {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ProfileId = ownProfileId.Value;
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
 
-        [Authorize]
+        [Authorize(Roles = "Consultant")]
         [HttpPost("SendTestPushNotification")]
         public async Task<IActionResult> SendTestPushNotification(
             SendTestPushNotificationCommand command)
         {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ProfileId = ownProfileId.Value;
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
 
         [HttpGet("WebPushPublicKey")]
+        [AllowAnonymous]
         public IActionResult WebPushPublicKey([FromServices] IConfiguration configuration)
         {
             var publicKey = configuration["WebPush:VapidPublicKey"]
@@ -80,43 +160,228 @@ namespace DentalDashboard.Controllers
             return Ok(Result<string>.Success(publicKey.Trim()));
         }
 
+        [HttpGet("WebPushHealth")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult WebPushHealth([FromServices] IConfiguration configuration)
+        {
+            var publicKey = configuration["WebPush:VapidPublicKey"]
+                            ?? Environment.GetEnvironmentVariable("WEBPUSH_VAPID_PUBLIC_KEY");
+            var privateKey = configuration["WebPush:VapidPrivateKey"]
+                             ?? Environment.GetEnvironmentVariable("WEBPUSH_VAPID_PRIVATE_KEY");
+
+            var ready =
+                !string.IsNullOrWhiteSpace(publicKey) &&
+                !string.IsNullOrWhiteSpace(privateKey);
+
+            return Ok(Result<object>.Success(new
+            {
+                ready,
+                publicKeyConfigured = !string.IsNullOrWhiteSpace(publicKey),
+                privateKeyConfigured = !string.IsNullOrWhiteSpace(privateKey),
+            }));
+        }
+
         [HttpGet("GetDashboardStatus")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> GetDashboardStatus([FromQuery] GetConsultantDashboardStatusQuery query)
         {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            query.ProfileId = ownProfileId.Value;
             var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
         }
+
+        [Authorize]
+        [HttpGet("CanPickupLead")]
+        public async Task<IActionResult> CanPickupLead(
+            [FromQuery] long profileId,
+            [FromServices] ILeadAssignmentLimitService leadAssignmentLimitService,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var profile = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == profileId &&
+                                          x.UserId == userId &&
+                                          !x.IsDeleted,
+                    cancellationToken);
+            if (profile == null) return Forbid();
+
+            if (!profile.IsCompleteProfile || !profile.IsAvailable || !profile.IsOnline)
+            {
+                return Ok(Result<object>.Success(new
+                {
+                    canPickup = false,
+                    message = "برای دریافت لید باید حضور ثبت‌شده و وضعیت آنلاین داشته باشید"
+                }));
+            }
+
+            var limitStatus = await leadAssignmentLimitService
+                .GetDailyLimitStatusAsync(profileId);
+
+            return Ok(Result<object>.Success(new
+            {
+                canPickup = limitStatus.CanPickup,
+                dailyLimit = limitStatus.EffectiveDailyLimit,
+                todayPickupCount = limitStatus.TodayPickupCount,
+                message = limitStatus.CanPickup
+                    ? null
+                    : limitStatus.DailyLimitReachedMessage
+            }));
+        }
+
         [HttpPost("SubmitLeadCallReport")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> SubmitLeadCallReport(SubmitLeadCallReportCommand command)
         {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ConsultantProfileId = ownProfileId.Value;
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
 
         [HttpPost("ExpireLeadNoCall")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> ExpireLeadNoCall(ExpireLeadNoCallCommand command)
         {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ConsultantProfileId = ownProfileId.Value;
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
 
-        [HttpGet("GetLeads")]
-        public async Task<IActionResult> GetLeads([FromQuery]GetLeadsQuery query)
+        [HttpPost("RecordLeadCallInitiated")]
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> RecordLeadCallInitiated(RecordLeadCallInitiatedCommand command)
         {
-            var result = await queryDispatcher.DispatchAsync(query);
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ConsultantProfileId = ownProfileId.Value;
+            var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
 
+        [HttpPost("UpdateLeadCallReport")]
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> UpdateLeadCallReport(UpdateLeadCallReportCommand command)
+        {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ConsultantProfileId = ownProfileId.Value;
+            var result = await dispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
+        [Authorize(Roles = "Consultant")]
+        [HttpPost("leads/{leadAssignmentId:long}/close")]
+        public async Task<IActionResult> CloseLead(
+            long leadAssignmentId,
+            [FromBody] CloseLeadCommand command,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            var profileId = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => !x.IsDeleted && x.UserId == userId)
+                .Select(x => (long?)x.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (!profileId.HasValue) return Forbid();
+
+            command.LeadAssignmentId = leadAssignmentId;
+            command.ConsultantProfileId = profileId.Value;
+            var result = await dispatcher.DispatchAsync(command, cancellationToken);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet("GetLeads")]
+        [Authorize(Roles = "Admin,Consultant")]
+        public async Task<IActionResult> GetLeads(
+            [FromQuery] GetLeadsQuery query,
+            CancellationToken cancellationToken)
+        {
+            if (!User.IsInRole("Admin"))
+            {
+                if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+                var profileId = await consultantProfileRepository.GetAll()
+                    .AsNoTracking()
+                    .Where(x => !x.IsDeleted && x.UserId == userId)
+                    .Select(x => (long?)x.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (!profileId.HasValue) return Forbid();
+                query.ProfileId = profileId.Value;
+            }
+
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
+            return Ok(result);
+        }
+
+        [HttpGet("GetNewLeads")]
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> GetNewLeads(
+      [FromQuery] GetNewLeadsQuery query,
+      CancellationToken cancellationToken)
+        {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            query.ProfileId = ownProfileId.Value;
+            Console.WriteLine(
+                $"GetNewLeads START - Cancelled: {cancellationToken.IsCancellationRequested}");
+
+            cancellationToken.Register(() =>
+            {
+                Console.WriteLine("GetNewLeads REQUEST CANCELLED");
+            });
+
+            var result = await queryDispatcher.DispatchAsync(
+                query,
+                cancellationToken);
+
+            Console.WriteLine("GetNewLeads END");
+
+            return Ok(result);
+        }
+
+        [Authorize(Roles = "Consultant")]
+        [HttpGet("GetBroadcastRealtimeLeads")]
+        public async Task<IActionResult> GetBroadcastRealtimeLeads(
+            [FromQuery] GetBroadcastRealtimeLeadsQuery query,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var profileId = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.UserId == userId && !x.IsDeleted)
+                .Select(x => (long?)x.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (!profileId.HasValue) return Forbid();
+            query.ProfileId = profileId.Value;
+
+            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
+            return Ok(Result<object>.Success(result));
+        }
+
         [HttpPost("CreateConsultantPatientLead")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> CreateConsultantPatientLead(AddConsultantPatientLeadCommand command)
         {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ConsultantProfileId = ownProfileId.Value;
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }
 
         [HttpPost("AddPatientLead")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> AddPatientLead(AddConsultantPatientLeadCommand command)
         {
+            var ownProfileId = await GetOwnProfileIdAsync();
+            if (!ownProfileId.HasValue) return Forbid();
+            command.ConsultantProfileId = ownProfileId.Value;
             var result = await dispatcher.DispatchAsync(command);
             return Ok(result);
         }

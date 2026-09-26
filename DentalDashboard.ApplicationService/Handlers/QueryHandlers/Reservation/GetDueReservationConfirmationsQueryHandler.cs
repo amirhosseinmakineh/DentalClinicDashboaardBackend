@@ -19,20 +19,37 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
         {
             var now = query.Now ?? DateTime.Now;
 
-            return await reservationRepository.GetAll()
+            var reservations = reservationRepository.GetAll()
                 .Where(x => x.ConsultantProfileId == query.ConsultantProfileId &&
                             !x.IsCanceled &&
                             x.ReservationAt <= now &&
-                            x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation)
+                            x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation);
+
+            if (query.FromDate.HasValue)
+            {
+                var from = query.FromDate.Value.ToDateTime(TimeOnly.MinValue);
+                reservations = reservations.Where(x => x.ReservationAt >= from);
+            }
+            if (query.ToDate.HasValue && query.ToDate.Value < DateOnly.MaxValue)
+            {
+                var toExclusive = query.ToDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+                reservations = reservations.Where(x => x.ReservationAt < toExclusive);
+            }
+
+            return await reservations
                 .OrderBy(x => x.ReservationAt)
                 .Select(x => new ReservationItemResponse
                 {
                     Id = x.Id,
+                    ReservationId = x.Id,
                     LeadAssignmentId = x.LeadAssignmentId,
                     ConsultantProfileId = x.ConsultantProfileId,
                     PatientUserId = x.PatientUserId,
                     RequiresPatientProfile = !x.PatientUserId.HasValue,
                     ReservationAt = x.ReservationAt,
+                    AppointmentDateTime = x.ReservationAt,
+                    PatientCount = x.PatientCount,
+                    CreatedAt = x.CreatedAt,
                     PatientName = x.LeadAssignment != null ? x.LeadAssignment.UserName : string.Empty,
                     PatientPhoneNumber = x.LeadAssignment != null ? x.LeadAssignment.PhoneNumber : string.Empty,
                     SecondaryPhoneNumber = x.LeadAssignment != null ? x.LeadAssignment.SecondaryPhoneNumber : null,
@@ -40,9 +57,15 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     PatientRegion = x.LeadAssignment != null ? x.LeadAssignment.PatientRegion : null,
                     BusinessName = x.LeadAssignment != null ? x.LeadAssignment.BusinessName : null,
                     AttendanceProbabilityPercent = x.LeadAssignment != null ? x.LeadAssignment.AttendanceProbabilityPercent : null,
+                    AttendancePrediction = x.AttendancePrediction,
+                    SecretaryAnnouncementStatus = x.SecretaryAnnouncementStatus,
+                    SecretaryAnnouncement = x.SecretaryAnnouncement,
+                    SecretaryAnnouncementUpdatedAt = x.SecretaryAnnouncementUpdatedAt,
+                    SecretaryAnnouncementUserId = x.SecretaryAnnouncementUserId,
                     AttendanceConfirmationStatus = x.AttendanceConfirmationStatus,
                     IsDueForConsultantConfirmation = true,
                     Description = x.Description,
+                    DoctorName = x.DoctorName,
                     IsCanceled = x.IsCanceled
                 })
                 .ToListAsync(cancellationToken);

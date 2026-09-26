@@ -12,17 +12,47 @@ namespace DentalDashboard.Infrastracture.Repository
         {
         }
 
-        public Task<List<ConsultantProfile>> GetAvailableConsultantsAsync()
+        public  Task<List<ConsultantProfile>> GetAvailableAndOnnlineSellerConsultant()
         {
-            return GetAvailableConsultantsForOfflineAssignmentAsync();
+            return  GetAll()
+                .Where(x=> 
+                x.IsAvailable == true &&
+                x.IsOnline == true &&
+                x.ConsultantRole == ConsultantRole.Seller && x.IsCompleteProfile == true)
+                .ToListAsync();
+
         }
 
-        public Task<List<ConsultantProfile>> GetAvailableConsultantsForOfflineAssignmentAsync()
+        public Task<List<ConsultantProfile>> GetAvailableAndOnnlineTestConsultant()
         {
             return GetAll()
-                .Where(x => !x.IsDeleted && x.IsCompleteProfile && x.IsAvailable)
-                .OrderByDescending(x => x.CurrentScore)
-                .ThenBy(x => x.Id)
+              .Where(x =>
+              x.IsAvailable == true &&
+              x.IsOnline == true &&
+              x.ConsultantRole == ConsultantRole.Test 
+              && x.IsCompleteProfile == true)
+              .ToListAsync();
+        }
+
+        public Task<List<ConsultantProfile>> GetAvailableAndOnnlineTopSellerConsultant()
+        {
+            return GetAll()
+                .Where(x =>
+                x.IsAvailable == true &&
+                x.IsOnline == true &&
+                x.ConsultantRole == ConsultantRole.TopSeller
+                && x.IsCompleteProfile == true)
+                .ToListAsync();
+        }
+
+        public Task<List<ConsultantProfile>> GetAvailableConsultantsAsync()
+        {
+            return GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.IsCompleteProfile &&
+                            x.IsAvailable &&
+                            !x.IsOnline)
+                .OrderBy(x => x.Id)
                 .ToListAsync();
         }
 
@@ -33,17 +63,20 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.IsCompleteProfile &&
                             x.IsAvailable &&
                             x.IsOnline &&
-                            !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.OfflineQueue &&
-                                                        l.ReportSubmittedAt == null &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Converted &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Rejected &&
-                                                        l.LeadAssignmentState != LeadAssignmentState.Expired) &&
                             !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.RealTime &&
                                                         l.LeadAssignmentState == LeadAssignmentState.Assigned &&
                                                         l.ReportSubmittedAt == null))
-                .OrderByDescending(x => x.CurrentScore)
-                .ThenBy(x => x.Id)
+                .OrderBy(x => x.Id)
                 .ToListAsync();
+        }
+
+        public Task<bool> HasOnlineConsultantAsync()
+        {
+            return GetAll()
+                .AnyAsync(x => !x.IsDeleted &&
+                               x.IsCompleteProfile &&
+                               x.IsAvailable &&
+                               x.IsOnline);
         }
     }
 }

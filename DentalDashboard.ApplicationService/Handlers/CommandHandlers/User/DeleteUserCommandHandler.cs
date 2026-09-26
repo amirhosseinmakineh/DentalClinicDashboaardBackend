@@ -24,27 +24,48 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
         public async Task<Result<object>> HandleAsync(DeleteUserCommand command,CancellationToken cancellationToken = default)
         {
-            await unitOfWork.BeginTransactionAsync();
+            if (command.UserId == Guid.Empty)
+                return Result<object>.Failure("شناسه کاربر معتبر نیست");
 
-            var user = await userRepository.GetByIdAsync(command.UserId);
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
 
-            if (user == null)
+            try
             {
-                return Result<object>.Failure("کاربر یافت نشد");
+                var user = await userRepository.GetByIdAsync(command.UserId);
+
+                if (user == null || user.IsDeleted)
+                {
+                    await unitOfWork.RollbackAsync(cancellationToken);
+                    return Result<object>.Failure("کاربر یافت نشد");
+                }
+
+                var deletedAt = DateTime.UtcNow;
+                var userRoles = await userRoleRepository.FindAsync(x =>
+                    x.UserId == command.UserId && !x.IsDeleted);
+
+                foreach (var userRole in userRoles)
+                {
+                    userRole.IsDeleted = true;
+                    userRole.DeletedAt = deletedAt;
+                    userRole.UpdatedAt = deletedAt;
+                    userRoleRepository.Update(userRole);
+                }
+
+                user.IsDeleted = true;
+                user.IsActive = false;
+                user.DeletedAt = deletedAt;
+                user.UpdatedAt = deletedAt;
+                userRepository.Update(user);
+
+                await unitOfWork.CommitAsync(cancellationToken);
+
+                return Result<object>.Success(true,"حذف کاربر با موفقیت انجام شد");
             }
-
-            var userRoles = await userRoleRepository.FindAsync(x => x.UserId == command.UserId);
-
-            foreach (var userRole in userRoles)
+            catch
             {
-                userRoleRepository.Delete(userRole);
+                await unitOfWork.RollbackAsync(cancellationToken);
+                throw;
             }
-
-            userRepository.Delete(user);
-
-            await unitOfWork.CommitAsync();
-
-            return Result<object>.Success(true,"حذف کاربر با موفقیت انجام شد");
         }
     }
 }

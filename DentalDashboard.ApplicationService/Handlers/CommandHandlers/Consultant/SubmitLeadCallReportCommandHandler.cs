@@ -7,6 +7,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 {
@@ -17,28 +18,32 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly ILeadReportDomainService leadReportDomainService;
         private readonly ILeadDomainService leadDomainService;
         private readonly ILeadAssignmentService leadAssignmentService;
+        private readonly IUserPresenceService presenceService;
 
         public SubmitLeadCallReportCommandHandler(
             ILeadAssignmentRepository leadAssignmentRepository,
             IConsultantProfileRepository consultantProfileRepository,
             ILeadReportDomainService leadReportDomainService,
             ILeadDomainService leadDomainService,
-            ILeadAssignmentService leadAssignmentService)
+            ILeadAssignmentService leadAssignmentService,
+            IUserPresenceService presenceService)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadReportDomainService = leadReportDomainService;
             this.leadDomainService = leadDomainService;
             this.leadAssignmentService = leadAssignmentService;
+            this.presenceService = presenceService;
         }
 
         public async Task<Result<SubmitLeadCallReportResponse>> HandleAsync(SubmitLeadCallReportCommand command, CancellationToken cancellationToken = default)
         {
-            var lead = await leadAssignmentRepository.GetByIdAndConsultantAsync(command.LeadAssignmentId, command.ConsultantProfileId);
+            var lead = await  leadAssignmentRepository.GetByIdAndConsultantAsync(command.LeadAssignmentId, command.ConsultantProfileId);
             if (lead == null)
                 return Result<SubmitLeadCallReportResponse>.Failure("لید یافت نشد");
 
-            var profile = await consultantProfileRepository.GetByIdAsync(command.ConsultantProfileId);
+            var profile = await consultantProfileRepository.GetAll()
+                .FirstOrDefaultAsync(x => x.Id == command.ConsultantProfileId);
             if (profile == null)
                 return Result<SubmitLeadCallReportResponse>.Failure("مشاوری یافت نشد");
 
@@ -55,7 +60,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 return Result<SubmitLeadCallReportResponse>.Failure("گزارش این لید قبلا ثبت شده است");
 
             if (command.AttendanceProbabilityPercent.HasValue && (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
-                return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
+                return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا 10 باشد");
 
             var isSuccessfulCall = command.CallResult == LeadCallResult.Contacted ||
                                    command.CallResult == LeadCallResult.Converted;
@@ -78,30 +83,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             lead.ReportDescription = command.ReportDescription;
             lead.PatientCity = command.PatientCity?.Trim();
             lead.PatientRegion = command.PatientRegion?.Trim();
-            lead.BusinessName = command.BusinessName?.Trim();
             lead.AttendanceProbabilityPercent = command.AttendanceProbabilityPercent;
             lead.SecondaryPhoneNumber = command.SecondaryPhoneNumber?.Trim();
             lead.ReportSubmittedAt = now;
             lead.ContactedAt = now;
             lead.LeadAssignmentState = leadReportDomainService.MapCallResultToState(command.CallResult);
 
-            var scoreLog = CreateScoreLog(lead, profile, command.CallResult, now);
-            profile.CurrentScore += scoreLog.ScoreValue;
-            profile.ScoreLogs.Add(scoreLog);
-
             if (lead.AssignmentType == LeadAssignmentType.ConsultantPatient)
             {
-                consultantProfileRepository.Update(profile);
-                leadAssignmentRepository.Update(lead);
-                await leadAssignmentRepository.SaveChange();
-                return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
-            }
-
-            var hasPendingOfflineLeads = await leadAssignmentRepository.HasPendingOfflineLeadsAsync(profile.Id);
-            if (hasPendingOfflineLeads)
-            {
-                profile.IsOnline = false;
-                profile.LastOfflineAt = now;
                 consultantProfileRepository.Update(profile);
                 leadAssignmentRepository.Update(lead);
                 await leadAssignmentRepository.SaveChange();
@@ -118,46 +107,31 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
             }
 
-            profile.IsOnline = true;
-            profile.LastOnlineAt = now;
-            consultantProfileRepository.Update(profile);
-            leadAssignmentRepository.Update(lead);
-            await leadAssignmentRepository.SaveChange();
+            var wasOnline = profile.IsOnline;
+            if (wasOnline)
+            {
+                profile.IsOnline = true;
+                profile.LastOnlineAt = now;
+                consultantProfileRepository.Update(profile);
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
 
-            await leadAssignmentService.AssignRealTimeLeadsAsync();
+                await presenceService.LogAsync(
+                    profile.UserId,
+                    UserPresenceEventType.Online,
+                    profile.LastOnlineAt,
+                    cancellationToken: cancellationToken);
+
+                await leadAssignmentService.AssignRealTimeLeadsAsync();
+            }
+            else
+            {
+                consultantProfileRepository.Update(profile);
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
+            }
 
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
-        }
-
-        private static DentalDashboard.Domain.Models.ScoreLog CreateScoreLog(
-            LeadAssignment lead,
-            ConsultantProfile profile,
-            LeadCallResult callResult,
-            DateTime now)
-        {
-            var (reason, scoreValue, description) = callResult switch
-            {
-                LeadCallResult.Contacted => (ScoreReason.SuccessfulCall, 5, "تماس موفق با لید"),
-                LeadCallResult.Converted => (ScoreReason.SuccessfulCall, 10, "تبدیل لید پس از تماس"),
-                LeadCallResult.NeedFollowUp => (ScoreReason.SuccessfulCall, 3, "تماس نیازمند پیگیری"),
-                LeadCallResult.NoAnswer => (ScoreReason.NoAnswer, -2, "عدم پاسخگویی لید"),
-                LeadCallResult.Rejected => (ScoreReason.FailedCall, -3, "رد شدن لید پس از تماس"),
-                LeadCallResult.WrongNumber => (ScoreReason.FailedCall, -5, "شماره تماس اشتباه"),
-                _ => (ScoreReason.FailedCall, 0, "ثبت گزارش تماس لید")
-            };
-
-            return new DentalDashboard.Domain.Models.ScoreLog
-            {
-                ConsultantProfileId = profile.Id,
-                Source = ScoreSource.System,
-                Reason = reason,
-                ScoreValue = scoreValue,
-                Description = description,
-                LeadAssignmentId = lead.Id,
-                UserId = profile.UserId,
-                CreatedAt = now,
-                IsDeleted = false
-            };
         }
 
         private static SubmitLeadCallReportResponse CreateResponse(LeadAssignment lead, ConsultantProfile profile)

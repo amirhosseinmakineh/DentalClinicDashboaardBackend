@@ -15,7 +15,7 @@ public class AddLeadBackgroundService : BackgroundService
         this.logger = logger;
     }
 
-    protected override async Task ExecuteAsync( 
+    protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)

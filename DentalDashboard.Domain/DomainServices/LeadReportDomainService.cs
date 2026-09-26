@@ -10,12 +10,14 @@ namespace DentalDashboard.Domain.DomainServices
             return callResult switch
             {
                 LeadCallResult.Converted => LeadAssignmentState.Converted,
+                LeadCallResult.Contacted => LeadAssignmentState.Contacted,
                 LeadCallResult.Rejected => LeadAssignmentState.Rejected,
                 LeadCallResult.WrongNumber => LeadAssignmentState.Rejected,
-                LeadCallResult.NoAnswer => LeadAssignmentState.Contacted,
-                LeadCallResult.NeedFollowUp => LeadAssignmentState.Contacted,
-                LeadCallResult.Contacted => LeadAssignmentState.Contacted,
-                _ => LeadAssignmentState.Contacted
+                LeadCallResult.NoAnswer => LeadAssignmentState.NoAnswer,
+                LeadCallResult.NeedFollowUp => LeadAssignmentState.Pending,
+                LeadCallResult.Busy => LeadAssignmentState.Pending,
+                LeadCallResult.PatientHungUp => LeadAssignmentState.Pending,
+                _ => LeadAssignmentState.Pending
             };
         }
     }

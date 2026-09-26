@@ -7,6 +7,9 @@ namespace DentalDashboard.Domain.Models
         public User()
         {
             UserRoles = new HashSet<UserRole>();
+            PushSubscriptions = new HashSet<PushSubscription>();
+            SecretaryAccessSchedules = new HashSet<SecretaryAccessSchedule>();
+            SecretaryAccessPermissions = new HashSet<SecretaryAccessPermission>();
         }
 
         public string FirstName { get; set; } = default!;
@@ -31,6 +34,8 @@ namespace DentalDashboard.Domain.Models
 
         public DateTime? LastSeenAt { get; set; }
 
+        public SecretaryType? SecretaryType { get; set; }
+
         #region Relations
 
         public PatientProfile? PatientProfile { get; set; }
@@ -38,7 +43,9 @@ namespace DentalDashboard.Domain.Models
         public ConsultantProfile? ConsultantProfile { get; set; }
 
         public ICollection<UserRole> UserRoles { get; set; }
-        public ICollection<ScoreLog> ScoreLogs { get; set; }
+        public ICollection<PushSubscription> PushSubscriptions { get; set; }
+        public ICollection<SecretaryAccessSchedule> SecretaryAccessSchedules { get; set; }
+        public ICollection<SecretaryAccessPermission> SecretaryAccessPermissions { get; set; }
 
 
         #endregion

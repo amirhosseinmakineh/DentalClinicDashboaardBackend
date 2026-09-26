@@ -10,7 +10,6 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ConsultantRespon
         public string PhoneNumber { get; set; } = default!;
         public long ProfileId { get; set; }
         public PaginatedResult<AttendanceResponse> AttendanceResponse { get; set; }
-        public PaginatedResult<ScoreLogResponse.ScoreLogResponse> ScoreLogResponse { get; set; }
         public PaginatedResult<LeadsAssignmentItemsResponse> LeadsAssignmentItemsResponse { get; set; }
     }
 }

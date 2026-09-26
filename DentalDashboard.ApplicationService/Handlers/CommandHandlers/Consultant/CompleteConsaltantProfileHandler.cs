@@ -113,6 +113,8 @@ public class CompleteConsaltantProfileHandler : ICommandHandler<CompleteConsulta
         }
 
         user.IsCompleteProfile = command.IsCompleteProfile;
+        if (command.IsCompleteProfile)
+            user.IsActive = true;
         user.UpdatedAt = DateTime.UtcNow;
         userRepository.Update(user);
 

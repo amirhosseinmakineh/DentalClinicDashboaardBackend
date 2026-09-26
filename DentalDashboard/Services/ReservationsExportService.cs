@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Handlers.Helpers;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Convertor;
@@ -53,11 +54,10 @@ public class ReservationsExportService
         if (consultantProfileId.HasValue)
             query = query.Where(x => x.ConsultantProfileId == consultantProfileId.Value);
 
-        if (from.HasValue)
-            query = query.Where(x => x.ReservationAt >= from.Value);
-
-        if (to.HasValue)
-            query = query.Where(x => x.ReservationAt <= to.Value);
+        query = query.ApplyReservationAtFilter(
+            date: null,
+            from: from,
+            to: to);
 
         return query.OrderByDescending(x => x.ReservationAt).ThenByDescending(x => x.Id);
     }
@@ -86,6 +86,9 @@ public class ReservationsExportService
                 AttendanceProbability = x.LeadAssignment != null ? x.LeadAssignment.AttendanceProbabilityPercent : null,
                 LeadAssignmentType = x.LeadAssignment != null ? x.LeadAssignment.AssignmentType : (LeadAssignmentType?)null,
                 x.ReservationAt,
+                x.ReservationType,
+                x.DentalServices,
+                x.PatientReceivedService,
                 x.AttendanceConfirmationStatus,
                 x.ConsultantAttendanceConfirmedAt,
                 x.ConsultantSaysPatientAttended,
@@ -119,6 +122,9 @@ public class ReservationsExportService
                 "نوع لید",
                 "احتمال حضور (درصد)",
                 "تاریخ و ساعت رزرو",
+                "نوع رزرو",
+                "خدمات",
+                "خدمت انجام شد؟",
                 "وضعیت تایید حضور",
                 "زمان اعلام مشاور",
                 "مشاور: بیمار آمد؟",
@@ -151,6 +157,9 @@ public class ReservationsExportService
                 row.LeadAssignmentType.HasValue ? row.LeadAssignmentType.Value.ToPersian() : string.Empty,
                 row.AttendanceProbability?.ToString() ?? string.Empty,
                 DateConvertor.ToPersianDateTimeString(row.ReservationAt),
+                row.ReservationType == ReservationType.AfterSalesService ? "خدمات پس از فروش" : "عادی",
+                string.Join("، ", row.DentalServices.Select(ToPersian)),
+                AdminReportPersianLabels.ToYesNoNullable(row.PatientReceivedService),
                 row.AttendanceConfirmationStatus.ToPersian(),
                 row.ConsultantAttendanceConfirmedAt.HasValue
                     ? DateConvertor.ToPersianDateTimeString(row.ConsultantAttendanceConfirmedAt.Value)
@@ -175,4 +184,12 @@ public class ReservationsExportService
 
         return CsvExportHelper.BuildFile(lines.ToArray());
     }
+
+    private static string ToPersian(DentalServiceType service) => service switch
+    {
+        DentalServiceType.Composite => "کامپوزیت",
+        DentalServiceType.Implant => "ایمپلنت",
+        DentalServiceType.Laminate => "لمینت",
+        _ => service.ToString()
+    };
 }

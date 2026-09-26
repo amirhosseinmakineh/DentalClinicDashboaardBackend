@@ -24,6 +24,16 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
             var users = userRepository.GetAll()
                 .Where(x => !x.IsDeleted);
 
+            if (!string.IsNullOrWhiteSpace(query.Search))
+            {
+                var search = query.Search.Trim();
+                users = users.Where(x =>
+                    x.FirstName.Contains(search) ||
+                    x.LastName.Contains(search) ||
+                    x.PhoneNumber.Contains(search) ||
+                    (x.FirstName + " " + x.LastName).Contains(search));
+            }
+
             if (!string.IsNullOrWhiteSpace(query.FirstName))
                 users = users.Where(x => x.FirstName.Contains(query.FirstName));
 
@@ -46,14 +56,20 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
             if (query.IsActive.HasValue)
                 users = users.Where(x => x.IsActive == query.IsActive.Value);
 
+            if (query.SecretaryType.HasValue)
+            {
+                users = query.SecretaryType.Value == DentalDashboard.Domain.Enums.SecretaryType.Main
+                    ? users.Where(x => x.SecretaryType == DentalDashboard.Domain.Enums.SecretaryType.Main || x.SecretaryType == null)
+                    : users.Where(x => x.SecretaryType == query.SecretaryType.Value);
+            }
+
             if (query.IsCompleteName.HasValue)
                 users = users.Where(x => x.IsCompleteProfile == query.IsCompleteName.Value);
 
             var totalCount = await users.CountAsync(cancellationToken);
 
             var items = await users
-                .OrderByDescending(x => x.LastSeenAt ?? x.CreatedAt)
-                .ThenByDescending(x => x.CreatedAt)
+                .OrderByDescending(x => x.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(user => new UserItemResponse
@@ -65,10 +81,12 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.User
                     IsCompleteProfile = user.IsCompleteProfile,
                     Gender = user.Gender,
                     CreatedAt = user.CreatedAt,
-                    LastSeenAt = user.LastSeenAt,
+                    SecretaryType = user.SecretaryType,
                     PhoneNumber = user.PhoneNumber,
                     RoleName = user.UserRoles
                         .Where(ur => !ur.IsDeleted && ur.Role != null && !ur.Role.IsDeleted)
+                        .OrderByDescending(ur => ur.UpdatedAt)
+                        .ThenByDescending(ur => ur.Id)
                         .Select(ur => ur.Role!.RoleName)
                         .FirstOrDefault() ?? string.Empty
                 })

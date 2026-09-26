@@ -159,6 +159,10 @@ public sealed record CreatePatientFileCommand(
     string? Description,
     Guid SecretaryUserId) : ICommand<CreatePatientFileResponse>;
 
+public sealed record CreatePatientFileFromReservationCommand(
+    long PatientId,
+    Guid SecretaryUserId) : ICommand<CreatePatientFileResponse>;
+
 public sealed record EnsurePatientFileFinancialIdentityCommand(
     long PatientFileId,
     Guid? SecretaryUserId,

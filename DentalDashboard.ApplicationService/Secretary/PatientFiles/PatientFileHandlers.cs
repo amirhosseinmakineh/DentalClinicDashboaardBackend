@@ -343,8 +343,8 @@ public sealed class SearchPatientsEligibleForFileQueryHandler(IPatientFileReposi
                     !reservation.IsCanceled &&
                     reservation.LeadAssignmentId == patient.Id) &&
                 !patientFileRepository.PatientFiles.Any(patientFile =>
-                    patientFile.PatientReferenceId == patient.Id &&
-                    patientFile.SourceType == PatientFileSourceType.System));
+                    patientFile.PatientReferenceId == patient.Id ||
+                    patientFile.PhoneNumber == patient.PhoneNumber));
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
@@ -381,6 +381,74 @@ public sealed class SearchPatientsEligibleForFileQueryHandler(IPatientFileReposi
 
         return Result<EligiblePatientPageResponse>.Success(
             new(eligiblePatients, request.Page, request.PageSize, totalCount));
+    }
+}
+
+public sealed class CreatePatientFileFromReservationCommandHandler(IPatientFileRepository patientFileRepository, IUnitOfWork unitOfWork)
+    : ICommandHandler<CreatePatientFileFromReservationCommand, CreatePatientFileResponse>
+{
+    public async Task<Result<CreatePatientFileResponse>> HandleAsync(
+        CreatePatientFileFromReservationCommand request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.PatientId <= 0 || request.SecretaryUserId == Guid.Empty)
+            return Result<CreatePatientFileResponse>.Failure("شناسه بیمار یا منشی معتبر نیست");
+
+        await unitOfWork.BeginTransactionAsync(cancellationToken, System.Data.IsolationLevel.Serializable);
+        try
+        {
+            var patient = await patientFileRepository.Patients
+                .AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == request.PatientId && !x.IsDeleted, cancellationToken);
+            if (patient is null)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result<CreatePatientFileResponse>.Failure("بیمار یافت نشد");
+            }
+
+            var hasReservation = await patientFileRepository.Reservations.AnyAsync(x =>
+                x.LeadAssignmentId == patient.Id && !x.IsDeleted && !x.IsCanceled, cancellationToken);
+            if (!hasReservation)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result<CreatePatientFileResponse>.Failure("بیمار رزرو معتبر ندارد");
+            }
+
+            var duplicate = await patientFileRepository.PatientFiles.AnyAsync(x =>
+                x.PatientReferenceId == patient.Id || x.PhoneNumber == patient.PhoneNumber, cancellationToken);
+            if (duplicate)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result<CreatePatientFileResponse>.Failure("برای این بیمار قبلاً پرونده ایجاد شده است");
+            }
+
+            var fileNumber = await patientFileRepository.GetNextFileNumberWithLockAsync(
+                DateOnly.FromDateTime(DateTime.UtcNow), cancellationToken);
+            var name = PatientFileNames.Split(patient.UserName);
+            var file = new PatientFile
+            {
+                PatientReferenceId = patient.Id,
+                SecretaryUserId = request.SecretaryUserId,
+                FileNumber = fileNumber,
+                FirstName = name.FirstName,
+                LastName = name.LastName,
+                PhoneNumber = patient.PhoneNumber.Trim(),
+                SourceType = PatientFileSourceType.System
+            };
+            await patientFileRepository.AddAsync(file, cancellationToken);
+            await unitOfWork.CommitAsync(cancellationToken);
+            return Result<CreatePatientFileResponse>.Success(new(file.Id, file.FileNumber));
+        }
+        catch (DbUpdateException)
+        {
+            await unitOfWork.RollbackAsync(cancellationToken);
+            return Result<CreatePatientFileResponse>.Failure("برای این بیمار قبلاً پرونده ایجاد شده است");
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 }
 

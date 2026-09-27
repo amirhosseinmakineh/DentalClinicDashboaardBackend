@@ -21,7 +21,6 @@ public sealed class SecretaryPatientFilesController(ICommandDispatcher commandDi
     }
 
     [HttpGet("eligible-patients")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetEligiblePatients([FromQuery] SearchPatientsEligibleForFileQuery query, CancellationToken cancellationToken) =>
         ToResponse(await queryDispatcher.DispatchAsync(query, cancellationToken));
 
@@ -46,6 +45,15 @@ public sealed class SecretaryPatientFilesController(ICommandDispatcher commandDi
                 request.Description,
                 secretaryUserId),
             cancellationToken));
+    }
+
+    [HttpPost("from-reservation")]
+    [Authorize(Roles = "Secretary")]
+    public async Task<IActionResult> CreateFromReservation(CreatePatientFileFromReservationRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out var secretaryUserId)) return Unauthorized();
+        return ToResponse(await commandDispatcher.DispatchAsync(
+            new CreatePatientFileFromReservationCommand(request.PatientId, secretaryUserId), cancellationToken));
     }
 
     [HttpPost("{id:long}/financial-identity")]
@@ -147,6 +155,8 @@ public sealed record CreatePatientFileRequest(
     string LastName,
     string PhoneNumber,
     string? Description);
+
+public sealed record CreatePatientFileFromReservationRequest(long PatientId);
 
 public sealed record UpdatePatientFileRequest(
     string FirstName,

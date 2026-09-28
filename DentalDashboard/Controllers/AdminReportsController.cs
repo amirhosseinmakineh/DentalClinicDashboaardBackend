@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Commands;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Queries;
+using DentalDashboard.ApplicationService.Contract.Secretary.PatientFiles;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
@@ -65,6 +66,28 @@ public class AdminReportsController : ControllerBase
             ? NotFound(Result<object?>.Failure("پرونده مالی موردنظر یافت نشد."))
             : Ok(Result<PatientFinancialCaseDetailsDto>.Success(
                 result, "اطلاعات پرونده مالی دریافت شد."));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("patient-finances/files/{fileNumber:long}")]
+    public async Task<IActionResult> GetPatientFinanceFile(
+        long fileNumber,
+        CancellationToken cancellationToken)
+    {
+        var result = await queryDispatcher.DispatchAsync(
+            new GetPatientFilesQuery
+            {
+                FileNumber = fileNumber,
+                IsAdmin = true,
+                Page = 1,
+                PageSize = 1
+            },
+            cancellationToken);
+        var patientFile = result.Data?.Items.FirstOrDefault();
+
+        return patientFile is null
+            ? NotFound(Result<object?>.Failure("پرونده بیمار یافت نشد."))
+            : Ok(patientFile);
     }
 
     [Authorize(Roles = "Admin")]

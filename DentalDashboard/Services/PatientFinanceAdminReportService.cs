@@ -9,6 +9,8 @@ namespace DentalDashboard.Services;
 public sealed class PatientFinanceAdminReportFilter
 {
     public string? Search { get; set; }
+    public string? PatientName { get; set; }
+    public long? FileNumber { get; set; }
     public int? ServiceId { get; set; }
     public PatientFinancialAgreementType? AgreementType { get; set; }
     public PatientFinancialCaseStatus? Status { get; set; }
@@ -37,7 +39,24 @@ public sealed record PatientFinanceAdminReportItem(
     PatientFinancialAgreementType AgreementType,
     PatientFinancialCaseStatus Status,
     string CreatedBy,
-    DateTime CreatedAt);
+    DateTime CreatedAt)
+{
+    public decimal BalanceAmount { get; init; }
+    public string? PaymentMethod { get; init; }
+    public string? InstallmentStatus { get; init; }
+    public string? GuaranteeDocument { get; init; }
+    public DateTime? GuaranteeDate { get; init; }
+    public decimal? GuaranteeAmount { get; init; }
+    public string? GuaranteeChequeRegistration { get; init; }
+    public string? Notes { get; init; }
+    public string? ConsultantName { get; init; }
+    public string? ReviewItems { get; init; }
+    public DateTime? ChequeDate { get; init; }
+    public string? ChequeRegistration { get; init; }
+    public IReadOnlyList<DateTime> ChequeDates { get; init; } = [];
+    public IReadOnlyList<string> ChequeRegistrations { get; init; } = [];
+}
+
 
 public sealed record PatientFinanceAdminReportSummary(
     int CaseCount,
@@ -67,14 +86,15 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         var summary = await BuildSummaryAsync(query, cancellationToken);
         var page = Math.Max(1, filter.Page);
         var pageSize = Math.Clamp(filter.PageSize, 1, 100);
-        var items = await Project(query
+        var totalCount = await query.CountAsync(cancellationToken);
+        var projectedItems = await Project(query
             .OrderByDescending(item => item.CreatedAt)
-            .ThenByDescending(item => item.Id))
+            .ThenByDescending(item => item.Id)
             .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Take(pageSize))
             .ToListAsync(cancellationToken);
-
-        return new(items, summary.CaseCount, page, pageSize, summary);
+        var items = await WithAllChequesAsync(projectedItems, cancellationToken);
+        return new(items, totalCount, page, pageSize, summary);
     }
 
     public async Task<byte[]> ExportExcelAsync(
@@ -82,21 +102,21 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         CancellationToken cancellationToken = default)
     {
         var query = BuildQuery(filter);
-        var summary = await BuildSummaryAsync(query, cancellationToken);
-        var items = await Project(query
+        var projectedItems = await Project(query
             .OrderByDescending(item => item.CreatedAt)
             .ThenByDescending(item => item.Id))
             .ToListAsync(cancellationToken);
+        var items = await WithAllChequesAsync(projectedItems, cancellationToken);
 
         using var workbook = new XLWorkbook();
         var sheet = workbook.Worksheets.Add("گزارش حسابداری بیماران");
         sheet.RightToLeft = true;
         var headers = new[]
         {
-            "ردیف", "نام بیمار", "شماره تماس", "شماره پرونده", "خدمت",
-            "مبلغ کل", "پیش‌پرداخت", "ودیعه", "پرداخت قطعی", "مانده",
-            "بدهی باز", "مبلغ چک‌ها", "مبلغ سفته‌ها", "نوع توافق",
-            "وضعیت پرونده", "ثبت‌کننده", "تاریخ ثبت", "شناسه پرونده مالی"
+            "ردیف", "تاریخ", "نام و نام خانوادگی", "شرح خدمات", "مبلغ خدمات",
+            "نحوه پرداخت", "وضعیت اقساط", "تاریخ چک", "ثبت چک", "مبلغ پرداختی",
+            "بیعانه", "مانده بدهکاری/بستانکاری", "سند تضمین", "تاریخ ضمانت",
+            "مبلغ ضمانت", "ثبت چک ضمانت", "توضیحات", "نام مشاور", "مواردی که باید چک شود"
         };
 
         for (var column = 0; column < headers.Length; column++)
@@ -107,43 +127,34 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             var item = items[index];
             var row = index + 2;
             sheet.Cell(row, 1).Value = index + 1;
-            sheet.Cell(row, 2).Value = item.PatientName;
-            sheet.Cell(row, 3).Value = item.PhoneNumber;
-            sheet.Cell(row, 4).Value = item.FileNumber;
-            sheet.Cell(row, 5).Value = item.ServiceName;
-            sheet.Cell(row, 6).Value = item.TotalAmount;
-            sheet.Cell(row, 7).Value = item.PrePaymentAmount;
-            sheet.Cell(row, 8).Value = item.DepositAmount;
-            sheet.Cell(row, 9).Value = item.PaidAmount;
-            sheet.Cell(row, 10).Value = item.RemainingAmount;
-            sheet.Cell(row, 11).Value = item.UnpaidDebtAmount;
-            sheet.Cell(row, 12).Value = item.ChequeAmount;
-            sheet.Cell(row, 13).Value = item.PromissoryNoteAmount;
-            sheet.Cell(row, 14).Value = AgreementLabel(item.AgreementType);
-            sheet.Cell(row, 15).Value = StatusLabel(item.Status);
-            sheet.Cell(row, 16).Value = item.CreatedBy;
-            sheet.Cell(row, 17).Value = item.CreatedAt;
-            sheet.Cell(row, 18).Value = item.CaseId.ToString();
+            sheet.Cell(row, 2).Value = item.CreatedAt;
+            sheet.Cell(row, 3).Value = item.PatientName;
+            sheet.Cell(row, 4).Value = item.ServiceName;
+            sheet.Cell(row, 5).Value = item.TotalAmount;
+            sheet.Cell(row, 6).Value = item.PaymentMethod ?? "";
+            sheet.Cell(row, 7).Value = item.InstallmentStatus ?? "";
+            sheet.Cell(row, 8).Value = string.Join("، ", item.ChequeDates.Select(date => date.ToString("yyyy/MM/dd")));
+            sheet.Cell(row, 9).Value = string.Join("، ", item.ChequeRegistrations);
+            sheet.Cell(row, 10).Value = item.PaidAmount;
+            sheet.Cell(row, 11).Value = item.DepositAmount;
+            sheet.Cell(row, 12).Value = item.BalanceAmount;
+            sheet.Cell(row, 13).Value = item.GuaranteeDocument ?? "";
+            if (item.GuaranteeDate.HasValue) sheet.Cell(row, 14).Value = item.GuaranteeDate.Value;
+            if (item.GuaranteeAmount.HasValue) sheet.Cell(row, 15).Value = item.GuaranteeAmount.Value;
+            sheet.Cell(row, 16).Value = item.GuaranteeChequeRegistration ?? "";
+            sheet.Cell(row, 17).Value = item.Notes ?? "";
+            sheet.Cell(row, 18).Value = item.ConsultantName ?? "";
+            sheet.Cell(row, 19).Value = item.ReviewItems ?? "";
         }
-
-        var summaryRow = items.Count + 3;
-        sheet.Cell(summaryRow, 1).Value = "جمع گزارش";
-        sheet.Cell(summaryRow, 6).Value = summary.TotalAmount;
-        sheet.Cell(summaryRow, 7).Value = summary.PrePaymentAmount;
-        sheet.Cell(summaryRow, 8).Value = summary.DepositAmount;
-        sheet.Cell(summaryRow, 9).Value = summary.PaidAmount;
-        sheet.Cell(summaryRow, 10).Value = summary.RemainingAmount;
-        sheet.Cell(summaryRow, 11).Value = summary.UnpaidDebtAmount;
-        sheet.Cell(summaryRow, 12).Value = summary.ChequeAmount;
-        sheet.Cell(summaryRow, 13).Value = summary.PromissoryNoteAmount;
 
         var headerRange = sheet.Range(1, 1, 1, headers.Length);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#0F766E");
         headerRange.Style.Font.FontColor = XLColor.White;
-        sheet.Range(summaryRow, 1, summaryRow, headers.Length).Style.Font.Bold = true;
-        sheet.Range(2, 6, summaryRow, 13).Style.NumberFormat.Format = "#,##0.###";
-        sheet.Column(17).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
+        foreach (var column in new[] { 5, 10, 11, 12, 15 })
+            sheet.Column(column).Style.NumberFormat.Format = "#,##0.###";
+        sheet.Column(2).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
+        sheet.Column(14).Style.DateFormat.Format = "yyyy/MM/dd";
         sheet.SheetView.FreezeRows(1);
         sheet.RangeUsed()?.SetAutoFilter();
         sheet.Columns().AdjustToContents(10, 35);
@@ -167,6 +178,21 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
                 repository.PatientFiles.Any(file =>
                     file.PhoneNumber == item.Patient.PhoneNumber &&
                     file.FileNumber.ToString().Contains(search)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.PatientName))
+        {
+            var patientName = filter.PatientName.Trim();
+            query = query.Where(item =>
+                (item.Patient.FirstName + " " + item.Patient.LastName).Contains(patientName));
+        }
+
+        if (filter.FileNumber.HasValue)
+        {
+            var fileNumber = filter.FileNumber.Value;
+            query = query.Where(item => repository.PatientFiles.Any(file =>
+                file.PhoneNumber == item.Patient.PhoneNumber &&
+                file.FileNumber == fileNumber));
         }
 
         if (filter.ServiceId.HasValue)
@@ -211,8 +237,9 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             item.TotalAmount,
             item.PrePaymentAmount,
             item.DepositAmount,
-            item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
-                .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+            item.PrePaymentAmount + item.DepositAmount +
+            (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
+                .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
             Math.Max(item.TotalAmount - item.PrePaymentAmount - item.DepositAmount -
                 (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
                     .Sum(transaction => (decimal?)transaction.Amount) ?? 0), 0),
@@ -225,7 +252,32 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             item.AgreementType,
             item.Status,
             (item.CreatedByUser.FirstName + " " + item.CreatedByUser.LastName).Trim(),
-            item.CreatedAt));
+            item.CreatedAt) { BalanceAmount = item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = item.PaymentMethod, InstallmentStatus = item.InstallmentStatus, GuaranteeDocument = item.GuaranteeDocument, GuaranteeDate = item.GuaranteeDate, GuaranteeAmount = item.GuaranteeAmount, GuaranteeChequeRegistration = item.GuaranteeChequeRegistration, Notes = item.Notes, ConsultantName = item.ConsultantName, ReviewItems = item.ReviewItems, ChequeDate = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => (DateTime?)cheque.DueDate).FirstOrDefault(), ChequeRegistration = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => cheque.SayadNumber).FirstOrDefault() });
+
+    private async Task<List<PatientFinanceAdminReportItem>> WithAllChequesAsync(
+        List<PatientFinanceAdminReportItem> items,
+        CancellationToken cancellationToken)
+    {
+        if (items.Count == 0) return items;
+
+        var caseIds = items.Select(item => item.CaseId).ToArray();
+        var cheques = await repository.Cheques.AsNoTracking()
+            .Where(cheque => caseIds.Contains(cheque.PatientFinancialCaseId) &&
+                cheque.Status != PatientChequeStatus.Cancelled)
+            .OrderBy(cheque => cheque.DueDate)
+            .ThenBy(cheque => cheque.Id)
+            .Select(cheque => new { cheque.PatientFinancialCaseId, cheque.DueDate, cheque.SayadNumber })
+            .ToListAsync(cancellationToken);
+        var byCase = cheques.GroupBy(cheque => cheque.PatientFinancialCaseId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+        return items.Select(item => byCase.TryGetValue(item.CaseId, out var rows)
+            ? item with
+            {
+                ChequeDates = rows.Select(row => row.DueDate).ToArray(),
+                ChequeRegistrations = rows.Select(row => row.SayadNumber).ToArray()
+            }
+            : item).ToList();
+    }
 
     private async Task<PatientFinanceAdminReportSummary> BuildSummaryAsync(
         IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase> query,
@@ -236,9 +288,10 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             item.TotalAmount,
             item.PrePaymentAmount,
             item.DepositAmount,
-            PaidAmount = item.Transactions
+            PaidAmount = item.PrePaymentAmount + item.DepositAmount +
+                (item.Transactions
                 .Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
-                .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
+                .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
             UnpaidDebtAmount = item.Debts
                 .Where(debt => debt.Status == PatientDebtStatus.Unpaid)
                 .Sum(debt => (decimal?)debt.Amount) ?? 0,
@@ -265,25 +318,11 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             depositAmount,
             paidAmount,
             values.Sum(item => Math.Max(
-                item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - item.PaidAmount,
+                item.TotalAmount - item.PaidAmount,
                 0)),
             values.Sum(item => item.UnpaidDebtAmount),
             values.Sum(item => item.ChequeAmount),
             values.Sum(item => item.PromissoryNoteAmount));
     }
 
-    private static string AgreementLabel(PatientFinancialAgreementType value) => value switch
-    {
-        PatientFinancialAgreementType.PrePayment => "پیش‌پرداخت",
-        PatientFinancialAgreementType.Deposit => "ودیعه",
-        _ => value.ToString()
-    };
-
-    private static string StatusLabel(PatientFinancialCaseStatus value) => value switch
-    {
-        PatientFinancialCaseStatus.Active => "فعال",
-        PatientFinancialCaseStatus.Completed => "تسویه‌شده",
-        PatientFinancialCaseStatus.Cancelled => "لغوشده",
-        _ => value.ToString()
-    };
 }

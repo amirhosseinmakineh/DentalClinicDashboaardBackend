@@ -15,10 +15,11 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly HttpClient httpClient;
         private static readonly TimeSpan RealtimeLeadRedispatchInterval = TimeSpan.FromSeconds(6);
-        private const string GoogleSheetUrl =
-            "https://docs.google.com/spreadsheets/d/1VvgKqW-53obpDHR-b1bHRVvW2VXjHj0cjXcDsxve2w8/export?format=xlsx&gid=1527887863";
-        private const string FullNameHeader = "نام و نام خانوادگی";
-        private const string PhoneNumberHeader = "شماره تماس";
+        private const string LeadSourceUrl =
+            "https://landing.yektanet.com/form/export/xlsx/vSjrtffitGUytcOHgpLvEzttHcMQiELTANXzyAxTIywCuhjUaBzbMSTNFpZpxKuv/";
+        // Previous lead source, retained for rollback:
+        // https://docs.google.com/spreadsheets/d/1VvgKqW-53obpDHR-b1bHRVvW2VXjHj0cjXcDsxve2w8/export?format=xlsx&gid=1527887863
+        private const int MaximumHeaderSearchRows = 10;
         private static readonly Regex IranianMobileRegex =
             new("^09\\d{9}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
@@ -64,7 +65,7 @@ namespace DentalDashboard.ApplicationService.Services
                 }
 
                 using var response = await httpClient.GetAsync(
-                    GoogleSheetUrl,
+                    LeadSourceUrl,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
 
@@ -72,7 +73,7 @@ namespace DentalDashboard.ApplicationService.Services
                 {
                     CreatedAt = DateTime.UtcNow,
                     DeletedAt = null,
-                    LogName = "GoogleSheetsLeadCapture",
+                    LogName = "YektanetLeadCapture",
                     ResponseLog = response.ReasonPhrase
                 };
                 await serviceLogRepository.AddAsync(log);
@@ -86,21 +87,8 @@ namespace DentalDashboard.ApplicationService.Services
                 if (worksheet is null)
                     return Array.Empty<LeadAssignment>();
 
-                const int headerRowNumber = 2;
-                var headerColumns = worksheet.Row(headerRowNumber)
-                    .CellsUsed()
-                    .Where(cell => !string.IsNullOrWhiteSpace(cell.GetString()))
-                    .ToDictionary(
-                        cell => Clean(cell.GetString()),
-                        cell => cell.Address.ColumnNumber,
-                        StringComparer.Ordinal);
-
-                if (!headerColumns.TryGetValue(FullNameHeader, out var fullNameColumn) ||
-                    !headerColumns.TryGetValue(PhoneNumberHeader, out var phoneNumberColumn))
-                {
-                    throw new InvalidDataException(
-                        $"Google Sheet must contain '{FullNameHeader}' and '{PhoneNumberHeader}' headers in row {headerRowNumber}.");
-                }
+                var (headerRowNumber, fullNameColumn, phoneNumberColumn) =
+                    FindLeadColumns(worksheet);
 
                 var lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? headerRowNumber;
                 var leadsByPhoneNumber = new Dictionary<string, LeadAssignment>(StringComparer.Ordinal);
@@ -140,12 +128,55 @@ namespace DentalDashboard.ApplicationService.Services
 
         private static string Clean(string value)
         {
-            return WebUtility.HtmlDecode(value)
-                .Replace("\n", "")
-                .Replace("\r", "")
-                .Replace("\t", "")
+            return Regex.Replace(
+                    WebUtility.HtmlDecode(value)
+                        .Replace('ي', 'ی')
+                        .Replace('ك', 'ک'),
+                    @"\s+",
+                    " ")
                 .Trim();
         }
+
+        private static (int HeaderRowNumber, int FullNameColumn, int PhoneNumberColumn)
+            FindLeadColumns(IXLWorksheet worksheet)
+        {
+            var lastUsedRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
+            var lastHeaderCandidateRow = Math.Min(lastUsedRow, MaximumHeaderSearchRows);
+
+            for (var rowNumber = 1; rowNumber <= lastHeaderCandidateRow; rowNumber++)
+            {
+                int? fullNameColumn = null;
+                int? phoneNumberColumn = null;
+
+                foreach (var cell in worksheet.Row(rowNumber).CellsUsed())
+                {
+                    var normalizedHeader = NormalizeHeader(cell.GetString());
+
+                    if (IsFullNameHeader(normalizedHeader))
+                        fullNameColumn = cell.Address.ColumnNumber;
+
+                    if (IsPhoneNumberHeader(normalizedHeader))
+                        phoneNumberColumn = cell.Address.ColumnNumber;
+                }
+
+                if (fullNameColumn.HasValue && phoneNumberColumn.HasValue)
+                    return (rowNumber, fullNameColumn.Value, phoneNumberColumn.Value);
+            }
+
+            throw new InvalidDataException(
+                "Lead report must contain full-name and phone-number columns within its first 10 rows.");
+        }
+
+        private static string NormalizeHeader(string value) =>
+            string.Concat(Clean(value).Where(char.IsLetter));
+
+        private static bool IsFullNameHeader(string value) =>
+            value.Contains("نامونامخانوادگی", StringComparison.Ordinal);
+
+        private static bool IsPhoneNumberHeader(string value) =>
+            value.Contains("شمارهتماس", StringComparison.Ordinal) ||
+            value.Contains("شمارهتلفن", StringComparison.Ordinal) ||
+            value.Contains("موبایل", StringComparison.Ordinal);
 
         private static string NormalizePhoneNumber(string value)
         {
@@ -167,6 +198,8 @@ namespace DentalDashboard.ApplicationService.Services
                 normalized = $"0{normalized[4..]}";
             else if (normalized.StartsWith("98", StringComparison.Ordinal) && normalized.Length == 12)
                 normalized = $"0{normalized[2..]}";
+            else if (normalized.StartsWith('9') && normalized.Length == 10)
+                normalized = $"0{normalized}";
 
             return normalized;
         }

@@ -18,10 +18,15 @@ public sealed class PatientFileConfiguration : IEntityTypeConfiguration<PatientF
         builder.HasIndex(x => x.FileNumber).IsUnique();
         builder.HasIndex(x => x.PhoneNumber);
         builder.HasIndex(x => x.SourceType);
+        builder.HasIndex(x => x.SecretaryUserId);
+        builder.HasIndex(x => new { x.SecretaryUserId, x.PhoneNumber })
+            .IsUnique()
+            .HasFilter("[SecretaryUserId] IS NOT NULL AND [IsDeleted] = 0");
         builder.HasIndex(x => x.PatientReferenceId)
             .IsUnique()
             .HasFilter($"[PatientReferenceId] IS NOT NULL AND [SourceType] = {(int)PatientFileSourceType.System} AND [IsDeleted] = 0");
         builder.HasOne(x => x.PatientReference).WithMany().HasForeignKey(x => x.PatientReferenceId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.SecretaryUser).WithMany().HasForeignKey(x => x.SecretaryUserId).OnDelete(DeleteBehavior.Restrict);
         builder.HasQueryFilter(x => !x.IsDeleted);
     }
 }

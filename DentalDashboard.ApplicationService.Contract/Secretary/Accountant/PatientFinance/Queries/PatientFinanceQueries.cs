@@ -83,7 +83,21 @@ public sealed record PatientFinancialCaseDto(
     decimal PrePaymentAmount, decimal DepositAmount,
     decimal TotalPaidAmount, decimal RemainingAmount, decimal TotalDebtAmount,
     PatientFinancialAgreementType AgreementType,
-    PatientFinancialCaseStatus Status, DateTime CreatedAt);
+    PatientFinancialCaseStatus Status, DateTime CreatedAt)
+{
+    public decimal BalanceAmount { get; init; }
+    public string? PaymentMethod { get; init; }
+    public string? InstallmentStatus { get; init; }
+    public string? GuaranteeDocument { get; init; }
+    public DateTime? GuaranteeDate { get; init; }
+    public decimal? GuaranteeAmount { get; init; }
+    public string? GuaranteeChequeRegistration { get; init; }
+    public string? Notes { get; init; }
+    public string? ConsultantName { get; init; }
+    public string? ReviewItems { get; init; }
+    public IReadOnlyList<DateTime> ChequeDates { get; init; } = [];
+    public IReadOnlyList<string> ChequeRegistrations { get; init; } = [];
+}
 public sealed record PatientFinancialCaseDetailsDto(
     PatientFinancialCaseDto Case, int ChequeCount, decimal ChequeAmount,
     int PromissoryNoteCount, decimal PromissoryNoteAmount,

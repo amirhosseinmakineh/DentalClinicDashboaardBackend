@@ -129,6 +129,7 @@ builder.Services.AddScoped<DentalDashboard.Services.ConsultantsDailySummaryServi
 builder.Services.AddScoped<DentalDashboard.Services.ReservationsExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.DailyReservationsReportService>();
 builder.Services.AddScoped<DentalDashboard.Services.PatientFinanceAdminReportService>();
+builder.Services.AddScoped<DentalDashboard.Services.AdminAccountingReportService>();
 builder.Services.AddScoped<ILeadAssignmentLimitService, LeadAssignmentLimitService>();
 
 builder.Services.Configure<HostOptions>(options =>

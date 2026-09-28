@@ -87,7 +87,11 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
       PatientId = patient.Id, Service = (DentalServiceType)c.ServiceId,
       TotalAmount = c.TotalAmount, PrePaymentAmount = c.PrePaymentAmount,
       DepositAmount = c.DepositAmount, AgreementType = c.AgreementType,
-      CreatedByUserId = c.ActorUserId
+      Status = c.PrePaymentAmount + c.DepositAmount >= c.TotalAmount
+          ? PatientFinancialCaseStatus.Completed
+          : PatientFinancialCaseStatus.Active,
+      CreatedByUserId = c.ActorUserId,
+      PaymentMethod = c.PaymentMethod, InstallmentStatus = c.InstallmentStatus, GuaranteeDocument = c.GuaranteeDocument, GuaranteeDate = c.GuaranteeDate, GuaranteeAmount = c.GuaranteeAmount, GuaranteeChequeRegistration = c.GuaranteeChequeRegistration, Notes = c.Notes, ConsultantName = c.ConsultantName, ReviewItems = c.ReviewItems
     };
     foreach (var x in cheques)
       entity.Cheques.Add(new PatientCheque { Amount = x.Amount,
@@ -190,6 +194,15 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     x.PrePaymentAmount = c.PrePaymentAmount;
     x.DepositAmount = c.DepositAmount;
     x.AgreementType = c.AgreementType;
+    x.PaymentMethod = c.PaymentMethod;
+    x.InstallmentStatus = c.InstallmentStatus;
+    x.GuaranteeDocument = c.GuaranteeDocument;
+    x.GuaranteeDate = c.GuaranteeDate;
+    x.GuaranteeAmount = c.GuaranteeAmount;
+    x.GuaranteeChequeRegistration = c.GuaranteeChequeRegistration;
+    x.Notes = c.Notes;
+    x.ConsultantName = c.ConsultantName;
+    x.ReviewItems = c.ReviewItems;
     x.Status = c.PrePaymentAmount + c.DepositAmount + paid >= c.TotalAmount
         ? PatientFinancialCaseStatus.Completed
         : PatientFinancialCaseStatus.Active;

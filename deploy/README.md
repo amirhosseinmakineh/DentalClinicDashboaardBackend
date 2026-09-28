@@ -8,7 +8,7 @@ Core migrations when it starts.
 
 | Environment | Env file | Backend port | Frontend port | Angular configuration |
 | --- | --- | ---: | ---: | --- |
-| develop | `deploy/develop.env` | 8082 | 3002 | `development` |
+| develop | `deploy/develop.env` | 5182 | 3002 | `development` |
 | stage | `deploy/stage.env` | 8081 | 3001 | `stage` |
 | production | `deploy/production.env` | 8080 | 3000 | `production` |
 
@@ -62,8 +62,7 @@ The frontend API URL is compiled into its bundle. Development currently targets
 and production targets `https://api.drsaeedmoghadam.com/api`. Set up the corresponding
 API endpoint for each. For a remote develop frontend, set a reachable develop API URL
 in its environment configuration before building; browser localhost refers to the
-visitor's machine. For local develop with this Compose file, use port 5182 for the
-backend instead of 8082 if you keep that frontend configuration.
+visitor's machine.
 
 For direct .NET execution, set `ASPNETCORE_ENVIRONMENT` and
 `ConnectionStrings__DefaultConnection` in the process environment and run

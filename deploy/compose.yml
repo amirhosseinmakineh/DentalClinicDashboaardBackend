@@ -8,6 +8,7 @@ services:
     env_file:
       - ${RUNTIME_ENV_FILE:?RUNTIME_ENV_FILE is required}
     environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:?ASPNETCORE_ENVIRONMENT is required}
       ASPNETCORE_HTTP_PORTS: "8080"
       TZ: Asia/Tehran
     ports:

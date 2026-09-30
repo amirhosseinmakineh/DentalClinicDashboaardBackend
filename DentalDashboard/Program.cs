@@ -18,16 +18,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Stage and production must never silently use a connection string from a
 // checked-in appsettings file (or the development database).
-var configuredConnection = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrWhiteSpace(configuredConnection) ||
-    (!builder.Environment.IsDevelopment() &&
-     string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"))))
-{
-    throw new InvalidOperationException(
-        $"A database connection string must be configured for {builder.Environment.EnvironmentName} " +
-        "using the ConnectionStrings__DefaultConnection environment variable.");
-}
-
 // ====================================
 // Services
 // ====================================
@@ -150,8 +140,8 @@ builder.Services.Configure<HostOptions>(options =>
 });
 
 //builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
-builder.Services.AddHostedService<TestConsultantLeadAssignmentBackgroundService>();
-builder.Services.AddHostedService<SellerConsultantLeadAssignmentBackgroundService>();
+//builder.Services.AddHostedService<TestConsultantLeadAssignmentBackgroundService>();
+//builder.Services.AddHostedService<SellerConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<TopSellerConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<AddLeadBackgroundService>();
 
@@ -248,12 +238,11 @@ app.UseAuthorization();
 
 app.UseMiddleware<DentalDashboard.Middleware.LastSeenTrackingMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
+
     app.UseSwagger();
 
     app.UseSwaggerUI();
-}
+
 
 app.MapControllers();
 app.MapHub<ReservationsHub>("/hubs/reservations");

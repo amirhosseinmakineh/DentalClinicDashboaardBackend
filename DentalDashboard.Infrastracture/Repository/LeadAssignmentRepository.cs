@@ -162,14 +162,16 @@ namespace DentalDashboard.Infrastracture.Repository
 
         private IQueryable<LeadAssignment> ActiveRealTimeLeadsForConsultant(long consultantProfileId)
         {
+            // A lead is pending the consultant's report as soon as it is assigned
+            // to that consultant. Do not rely on PickUp/state being in sync: older
+            // rows can have those flags stale while the assignment is still active.
             return GetAll()
                 .Where(x => !x.IsDeleted &&
                             x.ConsultantProfileId == consultantProfileId &&
                             x.AssignmentType == LeadAssignmentType.RealTime &&
-                            x.PickUp &&
                             x.AssignedAt != null &&
                             x.ReportSubmittedAt == null &&
-                            x.LeadAssignmentState == LeadAssignmentState.Assigned);
+                            x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant);
         }
 
         public Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now)

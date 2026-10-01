@@ -647,9 +647,8 @@ namespace DentalDashboard.ApplicationService.Services
                     .Count(x => !x.IsDeleted &&
                                 x.ConsultantProfileId == consultant.Id &&
                                 x.AssignmentType == LeadAssignmentType.RealTime &&
-                                x.PickUp &&
                                 x.AssignedAt != null &&
-                                x.LeadAssignmentState == LeadAssignmentState.Assigned &&
+                                x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant &&
                                 x.ReportSubmittedAt == null);
 
                 if (pendingLeadsCount >= 20)

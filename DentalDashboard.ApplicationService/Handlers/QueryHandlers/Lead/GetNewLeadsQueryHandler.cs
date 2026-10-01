@@ -28,8 +28,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     !x.IsDeleted &&
                     x.ConsultantProfileId == query.ProfileId &&
                     x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant &&
-                    x.ReportSubmittedAt == null &&
-                    x.ReportDescription == null);
+                    x.ReportSubmittedAt == null);
 
             if (query.leadAssignmentState.HasValue)
                 leads = leads.Where(x => x.LeadAssignmentState == query.leadAssignmentState.Value);

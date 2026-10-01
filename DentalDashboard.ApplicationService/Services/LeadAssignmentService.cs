@@ -635,14 +635,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                var pendingLeadsCount = consultant.CallAssignments.Count(x =>
-                    !x.IsDeleted &&
-                    x.ConsultantProfileId == consultant.Id &&
-                    x.AssignmentType == LeadAssignmentType.RealTime &&
-                    x.PickUp &&
-                    x.AssignedAt != null &&
-                    x.LeadAssignmentState == LeadAssignmentState.Pending &&
-                    x.ReportSubmittedAt != null);
                 var unSubmitReportLead = consultant.CallAssignments
                     .Count(x => !x.IsDeleted &&
                                 x.ConsultantProfileId == consultant.Id &&
@@ -651,20 +643,6 @@ namespace DentalDashboard.ApplicationService.Services
                                 x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant &&
                                 x.ReportSubmittedAt == null);
 
-                if (pendingLeadsCount >= 20)
-                {
-                    excludeConsultants.Add(consultant.Id);
-
-                    await pushNotificationService.SendAsync(
-                        consultant.UserId,
-                        "خطا در گرفتن شماره جدید",
-                        "شما 20 شماره در حال پیگیری دارید. لطفاً ابتدا پیگیری شماره‌های فعلی را انجام دهید؛ تا آن زمان شماره جدیدی برای شما ارسال نمی‌شود.",
-                        new Dictionary<string, string>
-                        {
-                            ["type"] = "PendingLeadLimit",
-                            ["pendingCount"] = pendingLeadsCount.ToString()
-                        });
-                }
                 if (unSubmitReportLead >= 1)
                 {
                     excludeConsultants.Add(consultant.Id);

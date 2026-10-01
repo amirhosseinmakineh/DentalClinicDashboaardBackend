@@ -50,13 +50,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
 
             var canGoOnline = isWorkingTime &&
                 profile.IsCompleteProfile && profile.IsAvailable;
-            var pendingLeadsCount = await leadAssignmentRepository
-                .CountActiveFollowUpRealTimeLeadsAsync(profile.Id);
             var pendingReportCount = await leadAssignmentRepository
                 .CountActiveUnreportedRealTimeLeadsAsync(profile.Id);
             var uncalledWithoutReportCount = await leadAssignmentRepository
                 .CountActiveUncalledRealTimeLeadsAsync(profile.Id);
-            var isNewLeadBlocked = pendingLeadsCount >= 10 || pendingReportCount > 0;
+            var isNewLeadBlocked = pendingReportCount > 0;
             var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
             var activeReservations = reservationRepository.GetAll()
                 .AsNoTracking()
@@ -102,8 +100,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 IsNewLeadBlocked = isNewLeadBlocked,
                 ShouldShowWorkloadNotification = isNewLeadBlocked,
                 WorkloadNotificationMessage = isNewLeadBlocked
-                    ? pendingReportCount > 0 ? "ابتدا گزارش لیدهای بدون گزارش را ثبت کنید"
-                        : "تعداد لیدهای در حال پیگیری به سقف مجاز رسیده است"
+                    ? "ابتدا گزارش لیدهای بدون گزارش را ثبت کنید"
                     : null
             };
         }

@@ -79,20 +79,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                     "امکان آنلاین شدن فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد");
             }
 
-            // تعداد لیدهای در حال پیگیری
-            var pendingLeadsCount = await leadAssignmentRepository
-                .CountActiveFollowUpRealTimeLeadsAsync(profile.Id);
-
-            // بیزینس جدید:
-            // اگر 10 لید Pending یا بیشتر داشته باشد، آنلاین نشود.
-            if (pendingLeadsCount >= 10)
-            {
-                return Result.Failure(
-                    $"شما {pendingLeadsCount} شماره در حال پیگیری دارید. " +
-                    "لطفاً ابتدا پیگیری شماره‌های فعلی را انجام دهید؛ " +
-                    "تا آن زمان امکان آنلاین شدن و دریافت شماره جدید برای شما وجود ندارد.");
-            }
-
             // تعداد لیدهایی که گزارش برایشان ثبت نشده
             var unSubmittedReportCount = await leadAssignmentRepository
                 .CountActiveUnreportedRealTimeLeadsAsync(profile.Id);

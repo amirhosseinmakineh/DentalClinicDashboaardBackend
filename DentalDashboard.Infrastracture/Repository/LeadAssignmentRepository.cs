@@ -148,6 +148,18 @@ namespace DentalDashboard.Infrastracture.Repository
                 .CountAsync(x => x.CallInitiatedAt == null);
         }
 
+        public Task<int> CountActiveFollowUpRealTimeLeadsAsync(long consultantProfileId)
+        {
+            return GetAll()
+                .CountAsync(x => !x.IsDeleted &&
+                                 x.ConsultantProfileId == consultantProfileId &&
+                                 x.AssignmentType == LeadAssignmentType.RealTime &&
+                                 x.PickUp &&
+                                 x.AssignedAt != null &&
+                                 x.LeadAssignmentState == LeadAssignmentState.Pending &&
+                                 x.ReportSubmittedAt != null);
+        }
+
         private IQueryable<LeadAssignment> ActiveRealTimeLeadsForConsultant(long consultantProfileId)
         {
             return GetAll()

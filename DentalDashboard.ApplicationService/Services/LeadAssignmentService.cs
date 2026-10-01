@@ -636,7 +636,13 @@ namespace DentalDashboard.ApplicationService.Services
             foreach (var consultant in consultants)
             {
                 var pendingLeadsCount = consultant.CallAssignments.Count(x =>
-                    x.LeadAssignmentState == LeadAssignmentState.Pending);
+                    !x.IsDeleted &&
+                    x.ConsultantProfileId == consultant.Id &&
+                    x.AssignmentType == LeadAssignmentType.RealTime &&
+                    x.PickUp &&
+                    x.AssignedAt != null &&
+                    x.LeadAssignmentState == LeadAssignmentState.Pending &&
+                    x.ReportSubmittedAt != null);
                 var unSubmitReportLead = consultant.CallAssignments
                     .Count(x => !x.IsDeleted &&
                                 x.ConsultantProfileId == consultant.Id &&

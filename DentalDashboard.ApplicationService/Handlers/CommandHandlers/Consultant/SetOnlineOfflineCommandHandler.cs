@@ -80,9 +80,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             }
 
             // تعداد لیدهای در حال پیگیری
-            var pendingLeadsCount = profile.CallAssignments.Count(x =>
-                !x.IsDeleted &&
-                x.LeadAssignmentState == LeadAssignmentState.Pending);
+            var pendingLeadsCount = await leadAssignmentRepository
+                .CountActiveFollowUpRealTimeLeadsAsync(profile.Id);
 
             // بیزینس جدید:
             // اگر 10 لید Pending یا بیشتر داشته باشد، آنلاین نشود.

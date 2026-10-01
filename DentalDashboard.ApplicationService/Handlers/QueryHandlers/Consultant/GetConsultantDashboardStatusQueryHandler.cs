@@ -50,9 +50,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
 
             var canGoOnline = isWorkingTime &&
                 profile.IsCompleteProfile && profile.IsAvailable;
-            var pendingLeadsCount = await leadAssignmentRepository.GetAll()
-                .CountAsync(x => !x.IsDeleted && x.ConsultantProfileId == profile.Id &&
-                    x.LeadAssignmentState == LeadAssignmentState.Pending, cancellationToken);
+            var pendingLeadsCount = await leadAssignmentRepository
+                .CountActiveFollowUpRealTimeLeadsAsync(profile.Id);
             var pendingReportCount = await leadAssignmentRepository
                 .CountActiveUnreportedRealTimeLeadsAsync(profile.Id);
             var uncalledWithoutReportCount = await leadAssignmentRepository

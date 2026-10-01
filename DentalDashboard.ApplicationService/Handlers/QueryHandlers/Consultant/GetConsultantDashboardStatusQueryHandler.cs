@@ -53,16 +53,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
             var pendingLeadsCount = await leadAssignmentRepository.GetAll()
                 .CountAsync(x => !x.IsDeleted && x.ConsultantProfileId == profile.Id &&
                     x.LeadAssignmentState == LeadAssignmentState.Pending, cancellationToken);
-            var pendingReportCount = await leadAssignmentRepository.GetAll()
-                .CountAsync(x => !x.IsDeleted && x.ConsultantProfileId == profile.Id &&
-                    x.AssignmentType == LeadAssignmentType.RealTime &&
-                    x.LeadAssignmentState == LeadAssignmentState.Assigned &&
-                    x.ReportSubmittedAt == null, cancellationToken);
-            var uncalledWithoutReportCount = await leadAssignmentRepository.GetAll()
-                .CountAsync(x => !x.IsDeleted && x.ConsultantProfileId == profile.Id &&
-                    x.AssignmentType == LeadAssignmentType.RealTime &&
-                    x.LeadAssignmentState == LeadAssignmentState.Assigned &&
-                    x.ReportSubmittedAt == null && x.CallInitiatedAt == null, cancellationToken);
+            var pendingReportCount = await leadAssignmentRepository
+                .CountActiveUnreportedRealTimeLeadsAsync(profile.Id);
+            var uncalledWithoutReportCount = await leadAssignmentRepository
+                .CountActiveUncalledRealTimeLeadsAsync(profile.Id);
             var isNewLeadBlocked = pendingLeadsCount >= 10 || pendingReportCount > 0;
             var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
             var activeReservations = reservationRepository.GetAll()

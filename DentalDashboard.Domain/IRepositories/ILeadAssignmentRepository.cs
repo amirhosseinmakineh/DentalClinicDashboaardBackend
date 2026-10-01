@@ -6,6 +6,8 @@ namespace DentalDashboard.Domain.IRepositories
     public interface ILeadAssignmentRepository : IBaseRepository<long, LeadAssignment>
     {
         Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId);
+        Task<int> CountActiveUnreportedRealTimeLeadsAsync(long consultantProfileId);
+        Task<int> CountActiveUncalledRealTimeLeadsAsync(long consultantProfileId);
         Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take);
         Task<List<LeadAssignment>> GetRealtimeLeadsForDispatchAsync(int take, TimeSpan redispatchInterval);
         Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync();

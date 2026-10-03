@@ -13,17 +13,20 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
     public class SetOnlineOfflineCommandHandler : ICommandHandler<SetOnlineOfflineCommand>
     {
         private readonly IConsultantProfileRepository consultantProfileRepository;
+        private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadAssignmentService leadAssignmentService;
         private readonly ILeadDomainService leadDomainService;
         private readonly IUserPresenceService presenceService;
 
         public SetOnlineOfflineCommandHandler(
             IConsultantProfileRepository consultantProfileRepository,
+            ILeadAssignmentRepository leadAssignmentRepository,
             ILeadAssignmentService leadAssignmentService,
             ILeadDomainService leadDomainService,
             IUserPresenceService presenceService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
+            this.leadAssignmentRepository = leadAssignmentRepository;
             this.leadAssignmentService = leadAssignmentService;
             this.leadDomainService = leadDomainService;
             this.presenceService = presenceService;
@@ -76,28 +79,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                     "امکان آنلاین شدن فقط بین ساعت ۹ صبح تا ۹ شب وجود دارد");
             }
 
-            // تعداد لیدهای در حال پیگیری
-            var pendingLeadsCount = profile.CallAssignments.Count(x =>
-                !x.IsDeleted &&
-                x.LeadAssignmentState == LeadAssignmentState.Pending);
-
-            // بیزینس جدید:
-            // اگر 10 لید Pending یا بیشتر داشته باشد، آنلاین نشود.
-            if (pendingLeadsCount >= 10)
-            {
-                return Result.Failure(
-                    $"شما {pendingLeadsCount} شماره در حال پیگیری دارید. " +
-                    "لطفاً ابتدا پیگیری شماره‌های فعلی را انجام دهید؛ " +
-                    "تا آن زمان امکان آنلاین شدن و دریافت شماره جدید برای شما وجود ندارد.");
-            }
-
             // تعداد لیدهایی که گزارش برایشان ثبت نشده
-            var unSubmittedReportCount = profile.CallAssignments.Count(x =>
-                !x.IsDeleted &&
-                x.ConsultantProfileId == profile.Id &&
-                x.AssignmentType == LeadAssignmentType.RealTime &&
-                x.LeadAssignmentState == LeadAssignmentState.Assigned &&
-                x.ReportSubmittedAt == null);
+            var unSubmittedReportCount = await leadAssignmentRepository
+                .CountActiveUnreportedRealTimeLeadsAsync(profile.Id);
 
             // بیزینس جدید:
             // اگر حتی یک گزارش ثبت نشده وجود داشته باشد، آنلاین نشود.

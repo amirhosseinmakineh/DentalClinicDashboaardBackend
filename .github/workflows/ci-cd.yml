@@ -1,0 +1,58 @@
+name: Backend CI/CD - Liara
+
+on:
+  pull_request:
+  push:
+    branches: [codex-lflotm, stage, production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  ci:
+    name: Build and validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - run: dotnet restore DentalDashboard.slnx
+      - run: dotnet build DentalDashboard.slnx --configuration Release --no-restore
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: dental-back:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to Liara
+    needs: ci
+    if: github.event_name == 'push' && (github.ref_name == 'stage' || github.ref_name == 'production')
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --global @liara/cli@latest
+      - name: Deploy backend container
+        env:
+          LIARA_TOKEN: ${{ secrets.LIARA_API_TOKEN }}
+          LIARA_APP: ${{ vars.LIARA_BACKEND_APP }}
+        run: |
+          test -n "$LIARA_TOKEN" || (echo 'Missing LIARA_API_TOKEN' && exit 1)
+          test -n "$LIARA_APP" || (echo 'Missing LIARA_BACKEND_APP' && exit 1)
+          liara deploy --api-token="$LIARA_TOKEN" --app="$LIARA_APP" --platform=docker --port=8080 --detach

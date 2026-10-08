@@ -114,6 +114,14 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                         ? "ایمپلنت"
                         : financialCase.Service == DentalDashboard.Domain.Enums.DentalServiceType.Laminate
                             ? "لمینت"
+                            : financialCase.Service == Domain.Enums.DentalServiceType.Crown
+                            ? "روکش"
+                            : financialCase.Service == Domain.Enums.DentalServiceType.RootCanal
+                            ? "عصب کشی"
+                            : financialCase.Service == Domain.Enums.DentalServiceType.Filling
+                            ? "ترمیم"
+                            : financialCase.Service == Domain.Enums.DentalServiceType.ToothExtraction
+                            ? "کشیدن دندان"
                             : financialCase.Service.ToString(),
                 financialCase.TotalAmount,
                 financialCase.PrePaymentAmount,

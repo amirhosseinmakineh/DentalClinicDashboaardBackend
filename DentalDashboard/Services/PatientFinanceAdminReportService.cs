@@ -233,7 +233,13 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             (int)item.Service,
             item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Composite ? "کامپوزیت" :
             item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Implant ? "ایمپلنت" :
-            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Laminate ? "لمینت" : item.Service.ToString(),
+            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Laminate ? "لمینت" :
+            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Crown ? "روکش" :
+            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.RootCanal ? "عصب کشی" :
+            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Filling ? "ترمیم" :
+            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.ToothExtraction ? "کشیدن دندان" :
+            item.Service.ToString(),
+
             item.TotalAmount,
             item.PrePaymentAmount,
             item.DepositAmount,

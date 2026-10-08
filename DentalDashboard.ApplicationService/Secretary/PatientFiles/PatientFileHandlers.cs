@@ -217,6 +217,11 @@ internal static class PatientFileFinanceLoader
                     financialCase.Service == DentalServiceType.Composite ? "کامپوزیت" :
                     financialCase.Service == DentalServiceType.Implant ? "ایمپلنت" :
                     financialCase.Service == DentalServiceType.Laminate ? "لمینت" :
+                    financialCase.Service == DentalServiceType.Crown ? "روکش" :
+                    financialCase.Service == DentalServiceType.RootCanal ? "عصب کشی" :
+                    financialCase.Service == DentalServiceType.Filling ? "ترمیم" :
+                    financialCase.Service == DentalServiceType.ToothExtraction ? "کشیدن دندان" :
+
                     financialCase.Service.ToString(),
                     financialCase.TotalAmount,
                     financialCase.PrePaymentAmount + financialCase.DepositAmount +

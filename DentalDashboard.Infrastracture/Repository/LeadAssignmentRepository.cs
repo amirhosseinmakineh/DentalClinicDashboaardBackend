@@ -146,12 +146,42 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
         {
+            return ActiveRealTimeLeadsForConsultant(consultantProfileId).AnyAsync();
+        }
+
+        public Task<int> CountActiveUnreportedRealTimeLeadsAsync(long consultantProfileId)
+        {
+            return ActiveRealTimeLeadsForConsultant(consultantProfileId)
+                .CountAsync();
+        }
+
+        public Task<int> CountActiveUncalledRealTimeLeadsAsync(long consultantProfileId)
+        {
+            return ActiveRealTimeLeadsForConsultant(consultantProfileId)
+                .CountAsync(x => x.CallInitiatedAt == null);
+        }
+
+        public Task<int> CountActiveFollowUpRealTimeLeadsAsync(long consultantProfileId)
+        {
             return GetAll()
-                .AnyAsync(x => !x.IsDeleted &&
-                               x.ConsultantProfileId == consultantProfileId &&
-                               x.AssignmentType == LeadAssignmentType.RealTime &&
-                               x.ReportSubmittedAt == null &&
-                               x.LeadAssignmentState == LeadAssignmentState.Assigned);
+                .CountAsync(x => !x.IsDeleted &&
+                                 x.ConsultantProfileId == consultantProfileId &&
+                                 x.AssignmentType == LeadAssignmentType.RealTime &&
+                                 x.PickUp &&
+                                 x.AssignedAt != null &&
+                                 x.LeadAssignmentState == LeadAssignmentState.Pending &&
+                                 x.ReportSubmittedAt != null);
+        }
+
+        private IQueryable<LeadAssignment> ActiveRealTimeLeadsForConsultant(long consultantProfileId)
+        {
+            return GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.ConsultantProfileId == consultantProfileId &&
+                            x.AssignmentType == LeadAssignmentType.RealTime &&
+                            x.AssignedAt != null &&
+                            x.ReportSubmittedAt == null &&
+                            x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant);
         }
 
         public Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now)

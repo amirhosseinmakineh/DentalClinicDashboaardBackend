@@ -248,9 +248,13 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             item.PrePaymentAmount + item.DepositAmount +
             (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
                 .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
-            Math.Max(item.TotalAmount - item.PrePaymentAmount - item.DepositAmount -
+            (item.TotalAmount - item.PrePaymentAmount - item.DepositAmount -
                 (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
-                    .Sum(transaction => (decimal?)transaction.Amount) ?? 0), 0),
+                    .Sum(transaction => (decimal?)transaction.Amount) ?? 0)) < 0
+                ? 0
+                : item.TotalAmount - item.PrePaymentAmount - item.DepositAmount -
+                (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment)
+                    .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
             item.Debts.Where(debt => debt.Status == PatientDebtStatus.Unpaid)
                 .Sum(debt => (decimal?)debt.Amount) ?? 0,
             item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled)

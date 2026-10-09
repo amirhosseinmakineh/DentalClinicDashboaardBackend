@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using DentalDashboard.Hubs;
+using DentalDashboard.LeadManagement.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
@@ -153,7 +154,7 @@ builder.Services.Configure<HostOptions>(options =>
 builder.Services.AddHostedService<TestConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<SellerConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<TopSellerConsultantLeadAssignmentBackgroundService>();
-builder.Services.AddHostedService<AddLeadBackgroundService>();
+builder.Services.AddLeadManagement(builder.Configuration);
 
 builder.Services.AddInfrastructure(
     builder.Configuration);

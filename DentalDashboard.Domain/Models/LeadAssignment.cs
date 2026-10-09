@@ -4,6 +4,7 @@ namespace DentalDashboard.Domain.Models;
 
 public class LeadAssignment : BaseAuditableEntity<long>
 {
+    public LeadSourceType SourceType { get; set; } = LeadSourceType.Yektanet;
     public string UserName { get; set; } = default!;
 
     public string PhoneNumber { get; set; } = default!;

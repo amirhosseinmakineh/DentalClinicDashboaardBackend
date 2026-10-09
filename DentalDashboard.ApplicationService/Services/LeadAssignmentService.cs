@@ -216,6 +216,7 @@ namespace DentalDashboard.ApplicationService.Services
                 lead.AssignmentType = LeadAssignmentType.RealTime;
                 lead.RequiresThreeMinuteCall = true;
                 lead.LeadAssignmentState = LeadAssignmentState.New;
+                lead.SourceType = LeadSourceType.Yektanet;
             }
 
             await leadAssignmentRepository.AddNewLeadsIfPhoneDoesNotExistAsync(updatedLeads);
@@ -463,6 +464,7 @@ namespace DentalDashboard.ApplicationService.Services
         {
             lead.ConsultantProfileId = null;
             lead.LeadAssignmentState = LeadAssignmentState.New;
+                lead.SourceType = LeadSourceType.Yektanet;
             lead.AssignedAt = null;
             lead.CallDeadlineAt = null;
             lead.CallInitiatedAt = null;

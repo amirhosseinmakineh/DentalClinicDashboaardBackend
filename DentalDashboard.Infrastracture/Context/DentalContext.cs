@@ -1,4 +1,4 @@
-﻿using DentalDashboard.Domain.Models;
+using DentalDashboard.Domain.Models;
 using DentalDashboard.Domain.PatientReferrals;
 using Microsoft.EntityFrameworkCore;
 using DentalDashboard.Domain.Secretary.Accountant.Entities;
@@ -22,6 +22,8 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<PatientProfile> PatientProfiles => Set<PatientProfile>();
         public DbSet<ConsultantProfile> ConsultantProfiles => Set<ConsultantProfile>();
         public DbSet<LeadAssignment> LeadAssignments => Set<LeadAssignment>();
+        public DbSet<AdminLeadSheet> AdminLeadSheets => Set<AdminLeadSheet>();
+        public DbSet<AdminSheetLead> AdminSheetLeads => Set<AdminSheetLead>();
         public DbSet<LeadAssignmentSetting> LeadAssignmentSettings => Set<LeadAssignmentSetting>();
         public DbSet<Attendance> Attendances => Set<Attendance>();
         public DbSet<Reservation> Reservations => Set<Reservation>();

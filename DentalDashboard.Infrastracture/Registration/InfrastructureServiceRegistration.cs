@@ -1,4 +1,4 @@
-﻿using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Infrastracture.Repository;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +37,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IConsultantProfileRepository, ConsultantProfileRepository>();
         services.AddScoped<IPatientProfileRepository, PatientProfileRepository>();
         services.AddScoped<ILeadAssignmentRepository, LeadAssignmentRepository>();
+        services.AddScoped<IAdminLeadSheetService, DentalDashboard.ApplicationService.Services.AdminLeadSheetService>();
         services.AddScoped<ILeadAssignmentSettingRepository, LeadAssignmentSettingRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<IReservationRepository, ReservationRepository>();

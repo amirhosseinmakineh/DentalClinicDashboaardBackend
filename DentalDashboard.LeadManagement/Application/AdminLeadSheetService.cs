@@ -9,6 +9,11 @@ namespace DentalDashboard.LeadManagement.Application;
 
 public sealed class AdminLeadSheetService(DentalContext db) : IAdminLeadSheetService
 {
+    public async Task<IReadOnlyList<AdminLeadSheet>> GetSheetsAsync(CancellationToken cancellationToken = default)
+    {
+        return await db.AdminLeadSheets.AsNoTracking().Where(x => x.IsActive).OrderByDescending(x => x.Id).ToListAsync(cancellationToken);
+    }
+
     public async Task<AdminLeadSheet> CreateSheetAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))

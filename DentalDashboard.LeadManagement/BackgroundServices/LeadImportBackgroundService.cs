@@ -1,7 +1,12 @@
 using DentalDashboard.LeadManagement.Configuration;
 using DentalDashboard.LeadManagement.Contract;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 namespace DentalDashboard.LeadManagement.BackgroundServices;
+
 public sealed class LeadImportBackgroundService(IServiceScopeFactory scopes, IOptions<LeadManagementOptions> options, ILogger<LeadImportBackgroundService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

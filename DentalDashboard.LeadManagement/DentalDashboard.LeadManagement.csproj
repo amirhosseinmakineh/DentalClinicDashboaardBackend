@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\DentalDashboard.ApplicationService.Contract\DentalDashboard.ApplicationService.Contract.csproj" />
     <ProjectReference Include="..\DentalDashboard.Domain\DentalDashboard.Domain.csproj" />
     <ProjectReference Include="..\DentalDashboard.Infrastracture\DentalDashboard.Infrastracture.csproj" />

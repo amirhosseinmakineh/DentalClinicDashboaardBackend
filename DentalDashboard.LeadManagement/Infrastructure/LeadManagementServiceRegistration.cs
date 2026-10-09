@@ -9,7 +9,17 @@ public static class LeadManagementServiceRegistration
 {
     public static IServiceCollection AddLeadManagement(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<LeadManagementOptions>(configuration.GetSection("LeadManagement"));
+        services.AddOptions<LeadManagementOptions>()
+            .Configure(options =>
+            {
+                var section = configuration.GetSection("LeadManagement");
+
+                if (int.TryParse(section["IntervalSeconds"], out var intervalSeconds))
+                    options.IntervalSeconds = intervalSeconds;
+
+                if (int.TryParse(section["AdminSheetBatchSize"], out var batchSize))
+                    options.AdminSheetBatchSize = batchSize;
+            });
         services.AddScoped<ILeadImportCoordinator, LeadImportCoordinator>();
         services.AddScoped<IAdminLeadSheetService, AdminLeadSheetService>();
         services.AddHostedService<LeadImportBackgroundService>();

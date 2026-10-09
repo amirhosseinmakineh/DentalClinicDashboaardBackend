@@ -57,9 +57,9 @@ public sealed class GetPatientFinancialCasesQueryHandler(
             financialCasesQuery = financialCasesQuery.Where(
                 financialCase => financialCase.PatientId == request.PatientId);
 
-        if (request.ServiceId.HasValue)
+        if (request.ServiceIds is { Count: > 0 })
             financialCasesQuery = financialCasesQuery.Where(
-                financialCase => (int)financialCase.Service == request.ServiceId);
+                financialCase => financialCase.Services.Any(s => request.ServiceIds.Contains((int)s)));
 
         if (request.AgreementType.HasValue)
             financialCasesQuery = financialCasesQuery.Where(
@@ -107,22 +107,16 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                     .Select(patientFile => patientFile.FileNumber.ToString())
                     .FirstOrDefault() ?? "",
                 financialCase.Patient.PhoneNumber,
-                (int)financialCase.Service,
-                financialCase.Service == DentalDashboard.Domain.Enums.DentalServiceType.Composite
-                    ? "کامپوزیت"
-                    : financialCase.Service == DentalDashboard.Domain.Enums.DentalServiceType.Implant
-                        ? "ایمپلنت"
-                        : financialCase.Service == DentalDashboard.Domain.Enums.DentalServiceType.Laminate
-                            ? "لمینت"
-                            : financialCase.Service == Domain.Enums.DentalServiceType.Crown
-                            ? "روکش"
-                            : financialCase.Service == Domain.Enums.DentalServiceType.RootCanal
-                            ? "عصب کشی"
-                            : financialCase.Service == Domain.Enums.DentalServiceType.Filling
-                            ? "ترمیم"
-                            : financialCase.Service == Domain.Enums.DentalServiceType.ToothExtraction
-                            ? "کشیدن دندان"
-                            : financialCase.Service.ToString(),
+                financialCase.Services.Select(s => (int)s).ToList(),
+                financialCase.Services.Select(s =>
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Composite ? "کامپوزیت" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Implant ? "ایمپلنت" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Laminate ? "لمینت" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Crown ? "روکش" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.RootCanal ? "عصب کشی" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Filling ? "ترمیم" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.ToothExtraction ? "کشیدن دندان" :
+                    s.ToString()).ToList(),
                 financialCase.TotalAmount,
                 financialCase.PrePaymentAmount,
                 financialCase.DepositAmount,
@@ -145,7 +139,7 @@ public sealed class GetPatientFinancialCasesQueryHandler(
                     .Sum(debt => (decimal?)debt.Amount) ?? 0,
                 financialCase.AgreementType,
                 financialCase.Status,
-                financialCase.CreatedAt) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems })
+                financialCase.CreatedAt) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems, ToothUnitCount = financialCase.ToothUnitCount })
             .ToListAsync(cancellationToken);
         var caseIds = projectedItems.Select(item => item.Id).ToArray();
         var cheques = await patientFinanceRepository.Cheques.AsNoTracking()
@@ -199,14 +193,16 @@ public sealed class GetPatientFinancialCaseDetailsQueryHandler(
                         .Select(patientFile => patientFile.FileNumber.ToString())
                         .FirstOrDefault() ?? "",
                     financialCase.Patient.PhoneNumber,
-                    (int)financialCase.Service,
-                    financialCase.Service == DentalDashboard.Domain.Enums.DentalServiceType.Composite
-                        ? "کامپوزیت"
-                        : financialCase.Service == DentalDashboard.Domain.Enums.DentalServiceType.Implant
-                            ? "ایمپلنت"
-                            : financialCase.Service == DentalDashboard.Domain.Enums.DentalServiceType.Laminate
-                                ? "لمینت"
-                                : financialCase.Service.ToString(),
+                    financialCase.Services.Select(s => (int)s).ToList(),
+                    financialCase.Services.Select(s =>
+                        s == DentalDashboard.Domain.Enums.DentalServiceType.Composite ? "کامپوزیت" :
+                        s == DentalDashboard.Domain.Enums.DentalServiceType.Implant ? "ایمپلنت" :
+                        s == DentalDashboard.Domain.Enums.DentalServiceType.Laminate ? "لمینت" :
+                        s == DentalDashboard.Domain.Enums.DentalServiceType.Crown ? "روکش" :
+                        s == DentalDashboard.Domain.Enums.DentalServiceType.RootCanal ? "عصب کشی" :
+                        s == DentalDashboard.Domain.Enums.DentalServiceType.Filling ? "ترمیم" :
+                        s == DentalDashboard.Domain.Enums.DentalServiceType.ToothExtraction ? "کشیدن دندان" :
+                        s.ToString()).ToList(),
                     financialCase.TotalAmount,
                     financialCase.PrePaymentAmount,
                     financialCase.DepositAmount,
@@ -229,7 +225,7 @@ public sealed class GetPatientFinancialCaseDetailsQueryHandler(
                         .Sum(debt => (decimal?)debt.Amount) ?? 0,
                     financialCase.AgreementType,
                     financialCase.Status,
-                    financialCase.CreatedAt) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems },
+                    financialCase.CreatedAt) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, GuaranteeDate = financialCase.GuaranteeDate, GuaranteeAmount = financialCase.GuaranteeAmount, GuaranteeChequeRegistration = financialCase.GuaranteeChequeRegistration, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ReviewItems = financialCase.ReviewItems, ToothUnitCount = financialCase.ToothUnitCount },
                 financialCase.Cheques.Count(
                     cheque => cheque.Status != PatientChequeStatus.Cancelled),
                 financialCase.Cheques
@@ -656,7 +652,15 @@ public sealed class GetPatientDebtsQueryHandler(
                     .FirstOrDefault() ?? "",
                 debt.FinancialCase.Patient.PhoneNumber,
                 debt.PatientFinancialCaseId,
-                debt.FinancialCase.Service.ToString(),
+                debt.FinancialCase.Services.Select(s =>
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Composite ? "کامپوزیت" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Implant ? "ایمپلنت" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Laminate ? "لمینت" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Crown ? "روکش" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.RootCanal ? "عصب کشی" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.Filling ? "ترمیم" :
+                    s == DentalDashboard.Domain.Enums.DentalServiceType.ToothExtraction ? "کشیدن دندان" :
+                    s.ToString()).ToList(),
                 debt.Amount,
                 debt.SourceType,
                 debt.SourceId,

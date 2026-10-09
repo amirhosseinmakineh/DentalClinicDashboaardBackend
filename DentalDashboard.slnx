@@ -7,6 +7,7 @@
     <Project Path="DentalDashboard.Infrastracture/DentalDashboard.Infrastracture.csproj" />
     <Project Path="DentalDashboard.Security/DentalDashboard.Security.csproj" Id="0ebe0938-600a-4e56-9adb-7571610459ca" />
     <Project Path="DentalDashboard.Utilities/DentalDashboard.Utilities.csproj" Id="597f326f-d4ff-48aa-aefb-98d823a68869" />
+    <Project Path="DentalDashboard.LeadManagement/DentalDashboard.LeadManagement.csproj" />
   </Folder>
 
   <Project Path="DentalDashboard/DentalDashboard.csproj" />

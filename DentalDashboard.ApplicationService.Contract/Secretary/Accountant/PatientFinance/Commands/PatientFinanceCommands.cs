@@ -17,7 +17,8 @@ public sealed record PatientFinancialCaseIdResponse(Guid Id);
 public sealed class CreatePatientFinancialCaseCommand
     : ICommand<PatientFinancialCaseIdResponse> {
   public Guid PatientId { get; set; }
-  public int ServiceId { get; set; }
+  public List<int> ServiceIds { get; set; } = [];
+  public int? ToothUnitCount { get; set; }
   public decimal TotalAmount { get; set; }
   public decimal PrePaymentAmount { get; set; }
   public decimal DepositAmount { get; set; }
@@ -42,6 +43,7 @@ public sealed class UpdatePatientFinancialCaseCommand
     : ICommand<PatientFinancialCaseIdResponse> {
   [JsonIgnore]
   public Guid Id { get; set; }
+  public int? ToothUnitCount { get; set; }
   public decimal TotalAmount { get; set; }
   public decimal PrePaymentAmount { get; set; }
   public decimal DepositAmount { get; set; }

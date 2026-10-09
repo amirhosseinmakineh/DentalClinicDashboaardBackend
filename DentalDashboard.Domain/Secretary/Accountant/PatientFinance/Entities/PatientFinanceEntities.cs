@@ -6,7 +6,8 @@ namespace DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
 
 public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
   public Guid PatientId { get; set; }
-  public DentalServiceType Service { get; set; }
+  public List<DentalServiceType> Services { get; set; } = [];
+  public int? ToothUnitCount { get; set; }
   public decimal TotalAmount { get; set; }
   public decimal PrePaymentAmount { get; set; }
   public decimal DepositAmount { get; set; }

@@ -26,8 +26,8 @@ public sealed record PatientFinanceAdminReportItem(
     string PatientName,
     string PhoneNumber,
     string FileNumber,
-    int ServiceId,
-    string ServiceName,
+    List<int> ServiceIds,
+    List<string> ServiceNames,
     decimal TotalAmount,
     decimal PrePaymentAmount,
     decimal DepositAmount,
@@ -51,6 +51,7 @@ public sealed record PatientFinanceAdminReportItem(
     public string? Notes { get; init; }
     public string? ConsultantName { get; init; }
     public string? ReviewItems { get; init; }
+    public int? ToothUnitCount { get; init; }
     public DateTime? ChequeDate { get; init; }
     public string? ChequeRegistration { get; init; }
     public IReadOnlyList<DateTime> ChequeDates { get; init; } = [];
@@ -113,7 +114,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         sheet.RightToLeft = true;
         var headers = new[]
         {
-            "ردیف", "تاریخ", "نام و نام خانوادگی", "شرح خدمات", "مبلغ خدمات",
+            "ردیف", "تاریخ", "نام و نام خانوادگی", "شرح خدمات", "تعداد واحد", "مبلغ خدمات",
             "نحوه پرداخت", "وضعیت اقساط", "تاریخ چک", "ثبت چک", "مبلغ پرداختی",
             "بیعانه", "مانده بدهکاری/بستانکاری", "سند تضمین", "تاریخ ضمانت",
             "مبلغ ضمانت", "ثبت چک ضمانت", "توضیحات", "نام مشاور", "مواردی که باید چک شود"
@@ -129,32 +130,33 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             sheet.Cell(row, 1).Value = index + 1;
             sheet.Cell(row, 2).Value = item.CreatedAt;
             sheet.Cell(row, 3).Value = item.PatientName;
-            sheet.Cell(row, 4).Value = item.ServiceName;
-            sheet.Cell(row, 5).Value = item.TotalAmount;
-            sheet.Cell(row, 6).Value = item.PaymentMethod ?? "";
-            sheet.Cell(row, 7).Value = item.InstallmentStatus ?? "";
-            sheet.Cell(row, 8).Value = string.Join("، ", item.ChequeDates.Select(date => date.ToString("yyyy/MM/dd")));
-            sheet.Cell(row, 9).Value = string.Join("، ", item.ChequeRegistrations);
-            sheet.Cell(row, 10).Value = item.PaidAmount;
-            sheet.Cell(row, 11).Value = item.DepositAmount;
-            sheet.Cell(row, 12).Value = item.BalanceAmount;
-            sheet.Cell(row, 13).Value = item.GuaranteeDocument ?? "";
-            if (item.GuaranteeDate.HasValue) sheet.Cell(row, 14).Value = item.GuaranteeDate.Value;
-            if (item.GuaranteeAmount.HasValue) sheet.Cell(row, 15).Value = item.GuaranteeAmount.Value;
-            sheet.Cell(row, 16).Value = item.GuaranteeChequeRegistration ?? "";
-            sheet.Cell(row, 17).Value = item.Notes ?? "";
-            sheet.Cell(row, 18).Value = item.ConsultantName ?? "";
-            sheet.Cell(row, 19).Value = item.ReviewItems ?? "";
+            sheet.Cell(row, 4).Value = string.Join("، ", item.ServiceNames);
+            if (item.ToothUnitCount.HasValue) sheet.Cell(row, 5).Value = item.ToothUnitCount.Value;
+            sheet.Cell(row, 6).Value = item.TotalAmount;
+            sheet.Cell(row, 7).Value = item.PaymentMethod ?? "";
+            sheet.Cell(row, 8).Value = item.InstallmentStatus ?? "";
+            sheet.Cell(row, 9).Value = string.Join("، ", item.ChequeDates.Select(date => date.ToString("yyyy/MM/dd")));
+            sheet.Cell(row, 10).Value = string.Join("، ", item.ChequeRegistrations);
+            sheet.Cell(row, 11).Value = item.PaidAmount;
+            sheet.Cell(row, 12).Value = item.DepositAmount;
+            sheet.Cell(row, 13).Value = item.BalanceAmount;
+            sheet.Cell(row, 14).Value = item.GuaranteeDocument ?? "";
+            if (item.GuaranteeDate.HasValue) sheet.Cell(row, 15).Value = item.GuaranteeDate.Value;
+            if (item.GuaranteeAmount.HasValue) sheet.Cell(row, 16).Value = item.GuaranteeAmount.Value;
+            sheet.Cell(row, 17).Value = item.GuaranteeChequeRegistration ?? "";
+            sheet.Cell(row, 18).Value = item.Notes ?? "";
+            sheet.Cell(row, 19).Value = item.ConsultantName ?? "";
+            sheet.Cell(row, 20).Value = item.ReviewItems ?? "";
         }
 
         var headerRange = sheet.Range(1, 1, 1, headers.Length);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#0F766E");
         headerRange.Style.Font.FontColor = XLColor.White;
-        foreach (var column in new[] { 5, 10, 11, 12, 15 })
+        foreach (var column in new[] { 6, 11, 12, 13, 16 })
             sheet.Column(column).Style.NumberFormat.Format = "#,##0.###";
         sheet.Column(2).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
-        sheet.Column(14).Style.DateFormat.Format = "yyyy/MM/dd";
+        sheet.Column(15).Style.DateFormat.Format = "yyyy/MM/dd";
         sheet.SheetView.FreezeRows(1);
         sheet.RangeUsed()?.SetAutoFilter();
         sheet.Columns().AdjustToContents(10, 35);
@@ -196,7 +198,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         }
 
         if (filter.ServiceId.HasValue)
-            query = query.Where(item => (int)item.Service == filter.ServiceId.Value);
+            query = query.Where(item => item.Services.Any(s => (int)s == filter.ServiceId.Value));
         if (filter.AgreementType.HasValue)
             query = query.Where(item => item.AgreementType == filter.AgreementType.Value);
         if (filter.Status.HasValue)
@@ -230,16 +232,16 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
                 .OrderByDescending(file => file.CreatedAt)
                 .Select(file => file.FileNumber.ToString())
                 .FirstOrDefault() ?? "",
-            (int)item.Service,
-            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Composite ? "کامپوزیت" :
-            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Implant ? "ایمپلنت" :
-            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Laminate ? "لمینت" :
-            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Crown ? "روکش" :
-            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.RootCanal ? "عصب کشی" :
-            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.Filling ? "ترمیم" :
-            item.Service == DentalDashboard.Domain.Enums.DentalServiceType.ToothExtraction ? "کشیدن دندان" :
-            item.Service.ToString(),
-
+            item.Services.Select(s => (int)s).ToList(),
+            item.Services.Select(s =>
+                s == DentalDashboard.Domain.Enums.DentalServiceType.Composite ? "کامپوزیت" :
+                s == DentalDashboard.Domain.Enums.DentalServiceType.Implant ? "ایمپلنت" :
+                s == DentalDashboard.Domain.Enums.DentalServiceType.Laminate ? "لمینت" :
+                s == DentalDashboard.Domain.Enums.DentalServiceType.Crown ? "روکش" :
+                s == DentalDashboard.Domain.Enums.DentalServiceType.RootCanal ? "عصب کشی" :
+                s == DentalDashboard.Domain.Enums.DentalServiceType.Filling ? "ترمیم" :
+                s == DentalDashboard.Domain.Enums.DentalServiceType.ToothExtraction ? "کشیدن دندان" :
+                s.ToString()).ToList(),
             item.TotalAmount,
             item.PrePaymentAmount,
             item.DepositAmount,
@@ -258,7 +260,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             item.AgreementType,
             item.Status,
             (item.CreatedByUser.FirstName + " " + item.CreatedByUser.LastName).Trim(),
-            item.CreatedAt) { BalanceAmount = item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = item.PaymentMethod, InstallmentStatus = item.InstallmentStatus, GuaranteeDocument = item.GuaranteeDocument, GuaranteeDate = item.GuaranteeDate, GuaranteeAmount = item.GuaranteeAmount, GuaranteeChequeRegistration = item.GuaranteeChequeRegistration, Notes = item.Notes, ConsultantName = item.ConsultantName, ReviewItems = item.ReviewItems, ChequeDate = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => (DateTime?)cheque.DueDate).FirstOrDefault(), ChequeRegistration = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => cheque.SayadNumber).FirstOrDefault() });
+            item.CreatedAt) { BalanceAmount = item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = item.PaymentMethod, InstallmentStatus = item.InstallmentStatus, GuaranteeDocument = item.GuaranteeDocument, GuaranteeDate = item.GuaranteeDate, GuaranteeAmount = item.GuaranteeAmount, GuaranteeChequeRegistration = item.GuaranteeChequeRegistration, Notes = item.Notes, ConsultantName = item.ConsultantName, ReviewItems = item.ReviewItems, ToothUnitCount = item.ToothUnitCount, ChequeDate = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => (DateTime?)cheque.DueDate).FirstOrDefault(), ChequeRegistration = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => cheque.SayadNumber).FirstOrDefault() });
 
     private async Task<List<PatientFinanceAdminReportItem>> WithAllChequesAsync(
         List<PatientFinanceAdminReportItem> items,

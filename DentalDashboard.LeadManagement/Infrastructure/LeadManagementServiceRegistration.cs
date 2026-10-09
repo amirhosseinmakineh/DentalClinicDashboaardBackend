@@ -2,7 +2,6 @@ using DentalDashboard.LeadManagement.Application;
 using DentalDashboard.LeadManagement.BackgroundServices;
 using DentalDashboard.LeadManagement.Configuration;
 using DentalDashboard.LeadManagement.Contract;
-using DentalDashboard.LeadManagement.Application;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 namespace DentalDashboard.LeadManagement.Infrastructure;

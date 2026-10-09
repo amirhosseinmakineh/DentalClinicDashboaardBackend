@@ -91,20 +91,29 @@ namespace DentalDashboard.Infrastracture.Repository
         }
 
         public async Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(
-            TimeSpan redispatchInterval)
+            TimeSpan redispatchInterval, LeadSourceType? sourceType = null)
         {
-            var lead = await GetActiveRealtimeBroadcastLeadAsync();
+            var query = GetAll().Where(x => !x.IsDeleted && x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId == null && x.ReportSubmittedAt == null && x.LeadAssignmentState == LeadAssignmentState.New && !x.PickUp && !context.LeadAssignments.Any(previous => previous.Id != x.Id && previous.PhoneNumber == x.PhoneNumber && previous.ReportSubmittedAt != null));
+            if (sourceType.HasValue)
+                query = query.Where(x => x.SourceType == sourceType.Value);
+
+            var lead = await query.Where(x => x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync()
+                ?? await query.Where(x => !x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
             if (lead == null)
                 return null;
-
             if (!lead.NotificationSent)
                 return lead;
-
             var redispatchBefore = DateTime.UtcNow.Subtract(redispatchInterval);
-            if (lead.LastDispatchAt == null || lead.LastDispatchAt < redispatchBefore)
-                return lead;
+            return lead.LastDispatchAt == null || lead.LastDispatchAt < redispatchBefore ? lead : null;
+        }
 
-            return null;
+        public Task<LeadSourceType?> GetLastPickedRealtimeSourceAsync()
+        {
+            return GetAll()
+                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId != null && x.AssignedAt != null && (x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.AdminSheet))
+                .OrderByDescending(x => x.AssignedAt).ThenByDescending(x => x.Id)
+                .Select(x => (LeadSourceType?)x.SourceType)
+                .FirstOrDefaultAsync();
         }
 
         private IQueryable<LeadAssignment> BurnedLeads() =>

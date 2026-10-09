@@ -32,6 +32,11 @@ public sealed class AdminLeadSheetService(DentalContext db) : IAdminLeadSheetSer
         if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
             throw new ArgumentException("FirstName and LastName are required.");
 
+        var duplicateExists = await db.LeadAssignments
+            .AnyAsync(x => x.PhoneNumber == normalizedPhone && !x.IsDeleted, cancellationToken);
+        if (duplicateExists)
+            throw new InvalidOperationException("این شماره قبلاً در لیدها ثبت شده است.");
+
         var row = new AdminSheetLead
         {
             AdminLeadSheetId = sheetId,

@@ -298,9 +298,20 @@ namespace DentalDashboard.ApplicationService.Services
                              ? preferred
                              : fallbackSource))
             {
+                var preferredLeadSource = await GetNextRealtimeLeadSourceAsync();
                 var candidate = await candidateProvider.GetCurrentForDispatchAsync(
                     group.Key,
-                    RealtimeLeadRedispatchInterval);
+                    RealtimeLeadRedispatchInterval,
+                    preferredLeadSource);
+                if (candidate.Lead is null)
+                {
+                    candidate = await candidateProvider.GetCurrentForDispatchAsync(
+                        group.Key,
+                        RealtimeLeadRedispatchInterval,
+                        preferredLeadSource == LeadSourceType.Yektanet
+                            ? LeadSourceType.AdminSheet
+                            : LeadSourceType.Yektanet);
+                }
                 var lead = candidate.Lead;
                 if (lead is null)
                     continue;
@@ -464,7 +475,6 @@ namespace DentalDashboard.ApplicationService.Services
         {
             lead.ConsultantProfileId = null;
             lead.LeadAssignmentState = LeadAssignmentState.New;
-                lead.SourceType = LeadSourceType.Yektanet;
             lead.AssignedAt = null;
             lead.CallDeadlineAt = null;
             lead.CallInitiatedAt = null;
@@ -474,6 +484,14 @@ namespace DentalDashboard.ApplicationService.Services
             lead.LastDispatchAt = null;
             lead.AssignmentType = LeadAssignmentType.RealTime;
             lead.RequiresThreeMinuteCall = true;
+        }
+
+        private async Task<LeadSourceType> GetNextRealtimeLeadSourceAsync()
+        {
+            var lastPickedSource = await leadAssignmentRepository.GetLastPickedRealtimeSourceAsync();
+            return lastPickedSource == LeadSourceType.Yektanet
+                ? LeadSourceType.AdminSheet
+                : LeadSourceType.Yektanet;
         }
 
         private async Task ExpireAndRequeueRealTimeLeadInternalAsync(

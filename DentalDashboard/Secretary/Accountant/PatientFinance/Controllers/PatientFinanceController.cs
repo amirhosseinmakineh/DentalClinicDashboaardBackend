@@ -1,5 +1,6 @@
 
 using System.Security.Claims;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Commands;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
@@ -13,8 +14,42 @@ namespace DentalDashboard.Secretary.Accountant.PatientFinance.Controllers;
 [ApiController]
 [Authorize(Roles = "Admin,Secretary")]
 [Route("api/secretary")]
-public sealed class PatientFinanceController(ICommandDispatcher commands, IQueryDispatcher queries) : ControllerBase
+public sealed class PatientFinanceController(
+    ICommandDispatcher commands,
+    IQueryDispatcher queries,
+    IFileStorageService storage) : ControllerBase
 {
+    [HttpPost("patient-financial-cases/{id:guid}/guarantee-document")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<IActionResult> UploadGuaranteeDocument(Guid id, IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(Result.Failure("فایل الزامی است"));
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (extension is not (".jpg" or ".jpeg" or ".png"))
+            return BadRequest(Result.Failure("فقط فایل‌های jpg و png مجاز هستند"));
+
+        await using var stream = file.OpenReadStream();
+        var path = await storage.SaveAsync(stream, extension, cancellationToken);
+
+        var result = await commands.DispatchAsync(new UploadGuaranteeDocumentCommand(id, path), cancellationToken);
+        if (!result.IsSuccess)
+        {
+            storage.Delete(path);
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpDelete("patient-financial-cases/{id:guid}/guarantee-document")]
+    public async Task<IActionResult> DeleteGuaranteeDocument(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await commands.DispatchAsync(new UploadGuaranteeDocumentCommand(id, string.Empty), cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
     [HttpPost("patient-financial-cases")]
     public async Task<IActionResult> Create(CreatePatientFinancialCaseCommand command, CancellationToken cancellationToken)
     {

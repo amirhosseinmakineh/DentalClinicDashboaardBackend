@@ -143,6 +143,7 @@ builder.Services.AddScoped<DentalDashboard.Services.ReservationsExportService>()
 builder.Services.AddScoped<DentalDashboard.Services.DailyReservationsReportService>();
 builder.Services.AddScoped<DentalDashboard.Services.PatientFinanceAdminReportService>();
 builder.Services.AddScoped<DentalDashboard.Services.AdminAccountingReportService>();
+builder.Services.AddScoped<IFileStorageService, DentalDashboard.Services.FileStorageService>();
 builder.Services.AddScoped<ILeadAssignmentLimitService, LeadAssignmentLimitService>();
 
 builder.Services.Configure<HostOptions>(options =>
@@ -187,9 +188,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// ====================================
-// Middleware
-// ====================================
+ //====================================
+ //Middleware
+ //====================================
 
 app.UseMiddleware<DentalDashboard.Middleware.RequestCancellationMiddleware>();
 
@@ -241,6 +242,8 @@ app.Use(async (context, next) =>
 });
 
 //app.UseCors("CorsPolicy");
+app.UseStaticFiles();
+
 app.UseCors("FrontendCors");
 
 app.UseAuthentication();

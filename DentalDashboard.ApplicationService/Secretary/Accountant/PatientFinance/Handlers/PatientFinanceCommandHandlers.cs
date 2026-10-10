@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance
     .Commands;
 using DentalDashboard.Domain.Enums;
@@ -93,7 +94,7 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
           ? PatientFinancialCaseStatus.Completed
           : PatientFinancialCaseStatus.Active,
       CreatedByUserId = c.ActorUserId,
-      PaymentMethod = c.PaymentMethod, InstallmentStatus = c.InstallmentStatus, GuaranteeDocument = c.GuaranteeDocument, GuaranteeDate = c.GuaranteeDate, GuaranteeAmount = c.GuaranteeAmount, GuaranteeChequeRegistration = c.GuaranteeChequeRegistration, Notes = c.Notes, ConsultantName = c.ConsultantName, ReviewItems = c.ReviewItems, ToothUnitCount = c.ToothUnitCount
+      PaymentMethod = c.PaymentMethod, InstallmentStatus = c.InstallmentStatus, GuaranteeDocument = c.GuaranteeDocument, Notes = c.Notes, ConsultantName = c.ConsultantName, ToothUnitCount = c.ToothUnitCount
     };
     foreach (var x in cheques)
       entity.Cheques.Add(new PatientCheque { Amount = x.Amount,
@@ -199,12 +200,8 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     x.PaymentMethod = c.PaymentMethod;
     x.InstallmentStatus = c.InstallmentStatus;
     x.GuaranteeDocument = c.GuaranteeDocument;
-    x.GuaranteeDate = c.GuaranteeDate;
-    x.GuaranteeAmount = c.GuaranteeAmount;
-    x.GuaranteeChequeRegistration = c.GuaranteeChequeRegistration;
     x.Notes = c.Notes;
     x.ConsultantName = c.ConsultantName;
-    x.ReviewItems = c.ReviewItems;
     x.ToothUnitCount = c.ToothUnitCount;
     x.Status = c.PrePaymentAmount + c.DepositAmount + paid >= c.TotalAmount
         ? PatientFinancialCaseStatus.Completed
@@ -215,7 +212,7 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
   }
 }
 public sealed class CancelPatientFinancialCaseCommandHandler(
-    IPatientFinanceRepository repo, IUnitOfWork uow)
+    IPatientFinanceRepository repo, IUnitOfWork uow, IFileStorageService storage)
     : ICommandHandler<CancelPatientFinancialCaseCommand,
                       PatientFinancialCaseIdResponse> {
   public async Task<Result<PatientFinancialCaseIdResponse>>
@@ -253,7 +250,9 @@ public sealed class CancelPatientFinancialCaseCommandHandler(
       x.DeletedAt = DateTime.UtcNow;
       x.Status = PatientFinancialCaseStatus.Cancelled;
       x.UpdatedAt = DateTime.UtcNow;
+      var guaranteePath = x.GuaranteeDocument;
       await uow.CommitAsync(ct);
+      storage.Delete(guaranteePath);
       return Result<PatientFinancialCaseIdResponse>.Success(new(x.Id));
     } catch {
       await uow.RollbackAsync(ct);

@@ -45,12 +45,8 @@ public sealed record PatientFinanceAdminReportItem(
     public string? PaymentMethod { get; init; }
     public string? InstallmentStatus { get; init; }
     public string? GuaranteeDocument { get; init; }
-    public DateTime? GuaranteeDate { get; init; }
-    public decimal? GuaranteeAmount { get; init; }
-    public string? GuaranteeChequeRegistration { get; init; }
     public string? Notes { get; init; }
     public string? ConsultantName { get; init; }
-    public string? ReviewItems { get; init; }
     public int? ToothUnitCount { get; init; }
     public DateTime? ChequeDate { get; init; }
     public string? ChequeRegistration { get; init; }
@@ -116,8 +112,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
         {
             "ردیف", "تاریخ", "نام و نام خانوادگی", "شرح خدمات", "تعداد واحد", "مبلغ خدمات",
             "نحوه پرداخت", "وضعیت اقساط", "تاریخ چک", "ثبت چک", "مبلغ پرداختی",
-            "بیعانه", "مانده بدهکاری/بستانکاری", "سند تضمین", "تاریخ ضمانت",
-            "مبلغ ضمانت", "ثبت چک ضمانت", "توضیحات", "نام مشاور", "مواردی که باید چک شود"
+            "بیعانه", "مانده بدهکاری/بستانکاری", "سند تضمین", "توضیحات", "نام مشاور"
         };
 
         for (var column = 0; column < headers.Length; column++)
@@ -141,22 +136,17 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             sheet.Cell(row, 12).Value = item.DepositAmount;
             sheet.Cell(row, 13).Value = item.BalanceAmount;
             sheet.Cell(row, 14).Value = item.GuaranteeDocument ?? "";
-            if (item.GuaranteeDate.HasValue) sheet.Cell(row, 15).Value = item.GuaranteeDate.Value;
-            if (item.GuaranteeAmount.HasValue) sheet.Cell(row, 16).Value = item.GuaranteeAmount.Value;
-            sheet.Cell(row, 17).Value = item.GuaranteeChequeRegistration ?? "";
-            sheet.Cell(row, 18).Value = item.Notes ?? "";
-            sheet.Cell(row, 19).Value = item.ConsultantName ?? "";
-            sheet.Cell(row, 20).Value = item.ReviewItems ?? "";
+            sheet.Cell(row, 15).Value = item.Notes ?? "";
+            sheet.Cell(row, 16).Value = item.ConsultantName ?? "";
         }
 
         var headerRange = sheet.Range(1, 1, 1, headers.Length);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#0F766E");
         headerRange.Style.Font.FontColor = XLColor.White;
-        foreach (var column in new[] { 6, 11, 12, 13, 16 })
+        foreach (var column in new[] { 6, 11, 12, 13 })
             sheet.Column(column).Style.NumberFormat.Format = "#,##0.###";
         sheet.Column(2).Style.DateFormat.Format = "yyyy/MM/dd HH:mm";
-        sheet.Column(15).Style.DateFormat.Format = "yyyy/MM/dd";
         sheet.SheetView.FreezeRows(1);
         sheet.RangeUsed()?.SetAutoFilter();
         sheet.Columns().AdjustToContents(10, 35);
@@ -264,7 +254,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
             item.AgreementType,
             item.Status,
             (item.CreatedByUser.FirstName + " " + item.CreatedByUser.LastName).Trim(),
-            item.CreatedAt) { BalanceAmount = item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = item.PaymentMethod, InstallmentStatus = item.InstallmentStatus, GuaranteeDocument = item.GuaranteeDocument, GuaranteeDate = item.GuaranteeDate, GuaranteeAmount = item.GuaranteeAmount, GuaranteeChequeRegistration = item.GuaranteeChequeRegistration, Notes = item.Notes, ConsultantName = item.ConsultantName, ReviewItems = item.ReviewItems, ToothUnitCount = item.ToothUnitCount, ChequeDate = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => (DateTime?)cheque.DueDate).FirstOrDefault(), ChequeRegistration = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => cheque.SayadNumber).FirstOrDefault() });
+            item.CreatedAt) { BalanceAmount = item.TotalAmount - item.PrePaymentAmount - item.DepositAmount - (item.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = item.PaymentMethod, InstallmentStatus = item.InstallmentStatus, GuaranteeDocument = item.GuaranteeDocument, Notes = item.Notes, ConsultantName = item.ConsultantName, ToothUnitCount = item.ToothUnitCount, ChequeDate = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => (DateTime?)cheque.DueDate).FirstOrDefault(), ChequeRegistration = item.Cheques.Where(cheque => cheque.Status != PatientChequeStatus.Cancelled).OrderBy(cheque => cheque.DueDate).Select(cheque => cheque.SayadNumber).FirstOrDefault() });
 
     private async Task<List<PatientFinanceAdminReportItem>> WithAllChequesAsync(
         List<PatientFinanceAdminReportItem> items,

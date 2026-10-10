@@ -13,6 +13,9 @@ public sealed record CreatePatientPromissoryNoteDto(string SerialNumber,
                                                     DateTime DueDate);
 public sealed record PatientFinanceIdResponse(long Id);
 public sealed record PatientFinancialCaseIdResponse(Guid Id);
+public sealed record GuaranteeDocumentResponse(Guid Id, string? GuaranteeDocument);
+public sealed record UploadGuaranteeDocumentCommand(Guid CaseId, string FilePath)
+    : ICommand<GuaranteeDocumentResponse>;
 
 public sealed class CreatePatientFinancialCaseCommand
     : ICommand<PatientFinancialCaseIdResponse> {
@@ -25,12 +28,8 @@ public sealed class CreatePatientFinancialCaseCommand
   public string? PaymentMethod { get; set; }
   public string? InstallmentStatus { get; set; }
   public string? GuaranteeDocument { get; set; }
-  public DateTime? GuaranteeDate { get; set; }
-  public decimal? GuaranteeAmount { get; set; }
-  public string? GuaranteeChequeRegistration { get; set; }
   public string? Notes { get; set; }
   public string? ConsultantName { get; set; }
-  public string? ReviewItems { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
   public List<CreatePatientChequeDto>? Cheques { get; set; }
   public List<CreatePatientPromissoryNoteDto>? PromissoryNotes { get; set; }
@@ -50,12 +49,8 @@ public sealed class UpdatePatientFinancialCaseCommand
   public string? PaymentMethod { get; set; }
   public string? InstallmentStatus { get; set; }
   public string? GuaranteeDocument { get; set; }
-  public DateTime? GuaranteeDate { get; set; }
-  public decimal? GuaranteeAmount { get; set; }
-  public string? GuaranteeChequeRegistration { get; set; }
   public string? Notes { get; set; }
   public string? ConsultantName { get; set; }
-  public string? ReviewItems { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
 }
 public sealed record CancelPatientFinancialCaseCommand(Guid Id)

@@ -33,4 +33,8 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\uploads\guarantee-documents\" />
+  </ItemGroup>
+
 </Project>

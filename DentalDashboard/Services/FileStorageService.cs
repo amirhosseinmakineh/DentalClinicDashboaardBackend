@@ -6,9 +6,12 @@ public sealed class FileStorageService(IWebHostEnvironment env) : IFileStorageSe
 {
     private const string Folder = "uploads/guarantee-documents";
 
+    private string WebRoot =>
+        env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+
     public async Task<string> SaveAsync(Stream stream, string extension, CancellationToken cancellationToken = default)
     {
-        var directory = Path.Combine(env.WebRootPath, Folder);
+        var directory = Path.Combine(WebRoot, Folder);
         Directory.CreateDirectory(directory);
 
         var fileName = $"{Guid.NewGuid()}{extension}";
@@ -25,7 +28,7 @@ public sealed class FileStorageService(IWebHostEnvironment env) : IFileStorageSe
         if (string.IsNullOrWhiteSpace(relativePath) || !relativePath.StartsWith($"/{Folder}/"))
             return;
 
-        var fullPath = Path.Combine(env.WebRootPath, relativePath.TrimStart('/'));
+        var fullPath = Path.Combine(WebRoot, relativePath.TrimStart('/'));
 
         if (File.Exists(fullPath))
             File.Delete(fullPath);

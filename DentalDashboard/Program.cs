@@ -176,7 +176,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         migrationLogger.LogInformation("Applying EF Core database migrations...");
-        dbContext.Database.Migrate();
+        //dbContext.Database.Migrate();
         migrationLogger.LogInformation("Database migrations applied successfully.");
     }
     catch (Exception ex)
@@ -244,10 +244,17 @@ app.Use(async (context, next) =>
 //app.UseCors("CorsPolicy");
 app.UseStaticFiles();
 
+var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "uploads");
+Directory.CreateDirectory(uploadsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
+
 app.UseCors("FrontendCors");
 
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.UseMiddleware<DentalDashboard.Middleware.LastSeenTrackingMiddleware>();
@@ -258,6 +265,9 @@ if (app.Environment.IsDevelopment())
 
     app.UseSwaggerUI();
 }
+
+
+
 
 app.MapControllers();
 app.MapHub<ReservationsHub>("/hubs/reservations");

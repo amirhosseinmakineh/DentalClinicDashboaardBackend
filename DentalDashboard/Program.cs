@@ -244,7 +244,10 @@ app.Use(async (context, next) =>
 //app.UseCors("CorsPolicy");
 app.UseStaticFiles();
 
-var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "uploads");
+// روی لیارا /app read-only است — از /tmp استفاده می‌کنیم
+var uploadsPath = OperatingSystem.IsWindows()
+    ? Path.Combine(app.Environment.ContentRootPath, "uploads")
+    : "/tmp/uploads";
 Directory.CreateDirectory(uploadsPath);
 app.UseStaticFiles(new StaticFileOptions
 {

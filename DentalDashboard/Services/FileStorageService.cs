@@ -7,7 +7,9 @@ public sealed class FileStorageService(IWebHostEnvironment env) : IFileStorageSe
     private const string Folder = "uploads/guarantee-documents";
 
     private string UploadsRoot =>
-        Path.Combine(env.ContentRootPath, "uploads");
+        OperatingSystem.IsWindows()
+            ? Path.Combine(env.ContentRootPath, "uploads")
+            : "/tmp/uploads";
 
     public async Task<string> SaveAsync(Stream stream, string extension, CancellationToken cancellationToken = default)
     {

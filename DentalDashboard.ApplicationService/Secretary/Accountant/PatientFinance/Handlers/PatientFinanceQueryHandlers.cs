@@ -256,7 +256,8 @@ public sealed class GetPatientFinancialCaseDetailsQueryHandler(
                         cheque.SayadNumber,
                         cheque.OwnerName,
                         cheque.DueDate,
-                        cheque.Status))
+                        cheque.Status,
+                         cheque.IsGuarantee))
                     .ToList(),
                 financialCase.PromissoryNotes
                     .OrderBy(promissoryNote => promissoryNote.DueDate)
@@ -469,7 +470,8 @@ public sealed class GetPatientChequesQueryHandler(
                 cheque.SayadNumber,
                 cheque.OwnerName,
                 cheque.DueDate,
-                cheque.Status))
+                cheque.Status,
+                         cheque.IsGuarantee))
             .ToListAsync(cancellationToken);
 
         return new()
@@ -797,7 +799,8 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
                     .FirstOrDefault() ?? "",
                 cheque.Amount,
                 cheque.DueDate,
-                (int)cheque.Status));
+                (int)cheque.Status,
+                         cheque.IsGuarantee));
 
         IQueryable<PatientFinancialCommitmentDto> SelectNotes(
             IQueryable<PatientPromissoryNote> query) =>

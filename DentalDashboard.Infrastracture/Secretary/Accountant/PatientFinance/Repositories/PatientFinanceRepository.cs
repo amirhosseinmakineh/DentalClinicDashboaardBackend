@@ -7,6 +7,7 @@ public sealed class PatientFinanceRepository(DentalContext context)
     : IPatientFinanceRepository {
   public IQueryable<PatientFinancialCase> Cases =>
       context.PatientFinancialCases;
+  public IQueryable<PatientFinancialDocument> Documents => context.PatientFinancialDocuments;
   public IQueryable<PatientCheque> Cheques => context.PatientCheques;
   public IQueryable<PatientPromissoryNote> PromissoryNotes =>
       context.PatientPromissoryNotes;
@@ -19,6 +20,8 @@ public sealed class PatientFinanceRepository(DentalContext context)
       context.PatientFiles;
   public Task AddCaseAsync(PatientFinancialCase x, CancellationToken ct) =>
       context.PatientFinancialCases.AddAsync(x, ct).AsTask();
+  public Task AddDocumentAsync(PatientFinancialDocument entity, CancellationToken ct) =>
+      context.PatientFinancialDocuments.AddAsync(entity, ct).AsTask();
   public Task AddChequeAsync(PatientCheque x, CancellationToken ct) =>
       context.PatientCheques.AddAsync(x, ct).AsTask();
   public Task AddPromissoryNoteAsync(PatientPromissoryNote x,

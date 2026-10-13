@@ -71,7 +71,7 @@ public sealed class FileStorageService(IWebHostEnvironment env) : IFileStorageSe
             Path.GetFileName(name) != name ||
             !System.Text.RegularExpressions.Regex.IsMatch(
                 name,
-                @"^[a-f0-9]{32}\\.(jpg|jpeg|png)$",
+                @"^[a-f0-9]{32}\.(jpg|jpeg|png)$",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase))
         {
             return null;

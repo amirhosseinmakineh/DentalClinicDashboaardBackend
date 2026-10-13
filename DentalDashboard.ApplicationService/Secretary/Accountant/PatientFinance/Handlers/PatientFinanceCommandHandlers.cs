@@ -46,6 +46,37 @@ internal static class ServiceUnitCountRules
     }
 }
 
+internal static class ServiceUnitCountRules
+{
+    public static string? Validate(
+        IReadOnlyDictionary<int, int>? counts,
+        IReadOnlyCollection<int> selectedServices)
+    {
+        if (counts is null || counts.Count == 0)
+        {
+            return "تعداد واحد برای هر خدمت انتخاب‌شده الزامی است";
+        }
+
+        if (counts.Count != selectedServices.Count ||
+            counts.Keys.Any(id => !selectedServices.Contains(id)))
+        {
+            return "تعداد واحد باید فقط برای تمام خدمات انتخاب‌شده ثبت شود";
+        }
+
+        if (counts.Values.Any(count => count < 1 || count > 100))
+        {
+            return "تعداد واحد هر خدمت باید بین ۱ تا ۱۰۰ باشد";
+        }
+
+        return null;
+    }
+
+    public static string Serialize(IReadOnlyDictionary<int, int> counts)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(counts);
+    }
+}
+
 internal static class FinanceRules {
   private const string PastDueDateMessage =
       "تاریخ سررسید چک یا سفته نمی‌تواند قبل از امروز باشد.";
@@ -98,6 +129,14 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
         c.ServiceUnitCounts);
     if (serviceUnitError is not null)
       return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
+
+    var serviceUnitError = ServiceUnitCountRules.Validate(
+        c.ServiceUnitCounts,
+        c.ServiceIds);
+    if (serviceUnitError is not null)
+    {
+        return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
+    }
 
     var patient = await repo.Patients.AsNoTracking()
         .Where(x => !x.IsDeleted && x.Id == c.PatientId &&
@@ -243,6 +282,16 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     if (serviceUnitError is not null)
       return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
 
+    var selectedServiceIds = x.Services.Select(service => (int)service).ToList();
+    var serviceUnitError = ServiceUnitCountRules.Validate(
+        c.ServiceUnitCounts,
+        selectedServiceIds);
+    if (serviceUnitError is not null)
+    {
+        return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
+    }
+
+    x.ServiceUnitCountsJson = ServiceUnitCountRules.Serialize(c.ServiceUnitCounts!);
     x.TotalAmount = c.TotalAmount;
     x.PrePaymentAmount = c.PrePaymentAmount;
     x.DepositAmount = c.DepositAmount;
@@ -261,7 +310,7 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     }
     else
     {
-      x.ToothUnitCount = c.ToothUnitCount;
+      x.ToothUnitCount = c.ServiceUnitCounts!.Values.Sum();
     }
     x.Status = c.PrePaymentAmount + c.DepositAmount + paid >= c.TotalAmount
         ? PatientFinancialCaseStatus.Completed

@@ -92,6 +92,7 @@ public sealed record PatientFinancialCaseDto(
     public string? Notes { get; init; }
     public string? ConsultantName { get; init; }
     public int? ToothUnitCount { get; init; }
+    public string ServiceUnitCountsJson { get; init; } = "{}";
     public IReadOnlyList<DateTime> ChequeDates { get; init; } = [];
     public IReadOnlyList<string> ChequeRegistrations { get; init; } = [];
 }

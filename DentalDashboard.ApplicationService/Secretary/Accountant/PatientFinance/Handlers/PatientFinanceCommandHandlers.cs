@@ -17,38 +17,6 @@ namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance
 internal static class ServiceUnitCountRules
 {
     public static string? Validate(
-        IReadOnlyCollection<int> serviceIds,
-        Dictionary<int, int>? unitCounts)
-    {
-        if (unitCounts is null || unitCounts.Count == 0)
-        {
-            return null;
-        }
-
-        var selected = serviceIds.ToHashSet();
-
-        if (unitCounts.Count != selected.Count ||
-            unitCounts.Any(pair =>
-                !selected.Contains(pair.Key) ||
-                pair.Value < 1 ||
-                pair.Value > 100))
-        {
-            return "برای هر خدمت انتخاب‌شده تعداد واحد معتبر بین ۱ تا ۱۰۰ وارد کنید";
-        }
-
-        return null;
-    }
-
-    public static string Serialize(Dictionary<int, int>? unitCounts)
-    {
-        return System.Text.Json.JsonSerializer.Serialize(
-            unitCounts ?? new Dictionary<int, int>());
-    }
-}
-
-internal static class ServiceUnitCountRules
-{
-    public static string? Validate(
         IReadOnlyDictionary<int, int>? counts,
         IReadOnlyCollection<int> selectedServices)
     {
@@ -124,12 +92,6 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
       return Result<PatientFinancialCaseIdResponse>.Failure("خدمت معتبر نیست");
     if (c.PatientId == Guid.Empty)
       return Result<PatientFinancialCaseIdResponse>.Failure("بیمار معتبر نیست");
-    var serviceUnitError = ServiceUnitCountRules.Validate(
-        c.ServiceIds,
-        c.ServiceUnitCounts);
-    if (serviceUnitError is not null)
-      return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
-
     var serviceUnitError = ServiceUnitCountRules.Validate(
         c.ServiceUnitCounts,
         c.ServiceIds);
@@ -274,14 +236,6 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     if (commitments > c.TotalAmount)
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ کل نمی‌تواند کمتر از مجموع چک‌ها و سفته‌ها باشد");
-    var selectedServices = x.Services.Select(service => (int)service).ToList();
-    var serviceUnitError = ServiceUnitCountRules.Validate(
-        selectedServices,
-        c.ServiceUnitCounts);
-
-    if (serviceUnitError is not null)
-      return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
-
     var selectedServiceIds = x.Services.Select(service => (int)service).ToList();
     var serviceUnitError = ServiceUnitCountRules.Validate(
         c.ServiceUnitCounts,
@@ -301,17 +255,7 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     x.GuaranteeDocument = c.GuaranteeDocument;
     x.Notes = c.Notes;
     x.ConsultantName = c.ConsultantName;
-    if (c.ServiceUnitCounts is not null)
-    {
-      x.ServiceUnitCountsJson = ServiceUnitCountRules.Serialize(c.ServiceUnitCounts);
-      x.ToothUnitCount = c.ServiceUnitCounts.Count > 0
-          ? c.ServiceUnitCounts.Values.Sum()
-          : c.ToothUnitCount;
-    }
-    else
-    {
-      x.ToothUnitCount = c.ServiceUnitCounts!.Values.Sum();
-    }
+    x.ToothUnitCount = c.ServiceUnitCounts!.Values.Sum();
     x.Status = c.PrePaymentAmount + c.DepositAmount + paid >= c.TotalAmount
         ? PatientFinancialCaseStatus.Completed
         : PatientFinancialCaseStatus.Active;

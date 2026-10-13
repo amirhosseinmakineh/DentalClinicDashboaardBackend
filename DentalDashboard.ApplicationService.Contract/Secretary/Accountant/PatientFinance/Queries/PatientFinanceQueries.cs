@@ -105,7 +105,7 @@ public sealed record PatientChequeDto(long Id, Guid PatientFinancialCaseId,
                                       string PatientFileNumber,
                                       decimal Amount, string SayadNumber,
                                       string OwnerName, DateTime DueDate,
-                                      PatientChequeStatus Status);
+                                      PatientChequeStatus Status, bool IsGuarantee);
 public sealed record PatientPromissoryNoteDto(
     long Id, Guid PatientFinancialCaseId, Guid PatientId, string PatientName,
     string PatientFileNumber,

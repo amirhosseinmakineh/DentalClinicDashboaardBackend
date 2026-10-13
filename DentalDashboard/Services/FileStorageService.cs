@@ -25,6 +25,61 @@ public sealed class FileStorageService(IWebHostEnvironment env) : IFileStorageSe
         return $"/{Folder}/{fileName}";
     }
 
+    private string PatientDocumentRoot =>
+        Environment.GetEnvironmentVariable("PATIENT_DOCUMENTS_STORAGE_ROOT")
+        ?? Path.Combine(env.ContentRootPath, "uploads", "patient-documents");
+
+    public async Task<string> SavePatientDocumentAsync(
+        Stream stream,
+        string extension,
+        CancellationToken cancellationToken = default)
+    {
+        var root = PatientDocumentRoot;
+        Directory.CreateDirectory(root);
+        var fileName = $"{Guid.NewGuid():N}{extension}";
+        var path = Path.Combine(root, fileName);
+
+        await using var output = new FileStream(
+            path,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None);
+        await stream.CopyToAsync(output, cancellationToken);
+        return fileName;
+    }
+
+    public Stream? OpenPatientDocument(string path)
+    {
+        var fullPath = ResolvePatientDocumentPath(path);
+        return fullPath is not null && File.Exists(fullPath)
+            ? new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read)
+            : null;
+    }
+
+    public void DeletePatientDocument(string? path)
+    {
+        var fullPath = ResolvePatientDocumentPath(path);
+        if (fullPath is not null && File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
+    }
+
+    private string? ResolvePatientDocumentPath(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name) ||
+            Path.GetFileName(name) != name ||
+            !System.Text.RegularExpressions.Regex.IsMatch(
+                name,
+                @"^[a-f0-9]{32}\\.(jpg|jpeg|png)$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        {
+            return null;
+        }
+
+        return Path.Combine(PatientDocumentRoot, name);
+    }
+
     public void Delete(string? relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath) || !relativePath.StartsWith($"/{Folder}/"))

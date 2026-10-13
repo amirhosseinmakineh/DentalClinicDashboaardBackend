@@ -799,8 +799,7 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
                     .FirstOrDefault() ?? "",
                 cheque.Amount,
                 cheque.DueDate,
-                (int)cheque.Status,
-                         cheque.IsGuarantee));
+                (int)cheque.Status));
 
         IQueryable<PatientFinancialCommitmentDto> SelectNotes(
             IQueryable<PatientPromissoryNote> query) =>

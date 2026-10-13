@@ -35,6 +35,15 @@ public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
   } = [];
 }
 
+public sealed class PatientFinancialDocument : BaseAuditableEntity<Guid>
+{
+    public Guid PatientFinancialCaseId { get; set; }
+    public string StoragePath { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public PatientFinancialCase FinancialCase { get; set; } = default!;
+}
+
 public sealed class PatientCheque : BaseAuditableEntity<long> {
   public Guid PatientFinancialCaseId { get; set; }
   public decimal Amount { get; set; }

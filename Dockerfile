@@ -19,7 +19,7 @@ COPY . .
 RUN dotnet publish DentalDashboard/DentalDashboard.csproj \
     --configuration Release \
     --output /app/publish \
-    --no-restore \
+    --no-self-contained \
     /p:UseAppHost=false \
     && rm -f /app/publish/appsettings*.json \
     && cp DentalDashboard/appsettings.Container.json /app/publish/appsettings.json

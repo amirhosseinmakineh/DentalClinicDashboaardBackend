@@ -133,10 +133,14 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
           ? PatientFinancialCaseStatus.Completed
           : PatientFinancialCaseStatus.Active,
       CreatedByUserId = c.ActorUserId,
-      PaymentMethod = c.PaymentMethod, InstallmentStatus = c.InstallmentStatus, GuaranteeDocument = c.GuaranteeDocument, Notes = c.Notes, ConsultantName = c.ConsultantName, ToothUnitCount = c.ServiceUnitCounts is { Count: > 0 }
-          ? c.ServiceUnitCounts.Values.Sum()
-          : c.ToothUnitCount,
-      ServiceUnitCountsJson = ServiceUnitCountRules.Serialize(c.ServiceUnitCounts)
+      PaymentMethod = c.PaymentMethod,
+      InstallmentStatus = c.InstallmentStatus,
+      GuaranteeDocument = c.GuaranteeDocument,
+      Notes = c.Notes,
+      ConsultantName = c.ConsultantName,
+      ToothUnitCount = c.ServiceUnitCounts!.Values.Sum(),
+      ServiceUnitCountsJson = ServiceUnitCountRules.Serialize(
+          c.ServiceUnitCounts)
     };
     foreach (var x in cheques)
       entity.Cheques.Add(new PatientCheque { Amount = x.Amount,

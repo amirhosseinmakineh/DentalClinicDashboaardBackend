@@ -193,7 +193,8 @@ public sealed class PatientFinanceController(
             dto.Amount,
             dto.SayadNumber,
             dto.OwnerName,
-            dto.DueDate);
+            dto.DueDate,
+            dto.IsGuarantee);
 
         return Write(await commands.DispatchAsync(command, cancellationToken));
     }

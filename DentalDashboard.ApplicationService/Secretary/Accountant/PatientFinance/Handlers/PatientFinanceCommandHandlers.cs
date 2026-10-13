@@ -100,7 +100,7 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
       entity.Cheques.Add(new PatientCheque { Amount = x.Amount,
                                              SayadNumber = x.SayadNumber.Trim(),
                                              OwnerName = x.OwnerName.Trim(),
-                                             DueDate = x.DueDate });
+                                             DueDate = x.DueDate, IsGuarantee = x.IsGuarantee });
     foreach (var x in notes)
       entity.PromissoryNotes.Add(
           new PatientPromissoryNote { Amount = x.Amount,
@@ -128,7 +128,8 @@ public sealed class AddPatientChequeCommandHandler(
     var x = new PatientCheque {
       PatientFinancialCaseId = c.PatientFinancialCaseId, Amount = c.Amount,
       SayadNumber = c.SayadNumber.Trim(), OwnerName = c.OwnerName.Trim(),
-      DueDate = c.DueDate
+      DueDate = c.DueDate,
+      IsGuarantee = c.IsGuarantee
     };
     await repo.AddChequeAsync(x, ct);
     await uow.SaveChangesAsync();
@@ -319,6 +320,7 @@ public sealed class UpdatePatientChequeCommandHandler(
       cheque.SayadNumber = c.SayadNumber.Trim();
       cheque.OwnerName = c.OwnerName.Trim();
       cheque.DueDate = c.DueDate;
+      cheque.IsGuarantee = c.IsGuarantee;
       cheque.UpdatedAt = DateTime.UtcNow;
       var paidAfterUpdate = paidWithoutCurrentCheque + (payment is null ? 0 : c.Amount);
       cheque.FinancialCase.Status = cheque.FinancialCase.PrePaymentAmount +

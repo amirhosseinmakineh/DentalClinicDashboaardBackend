@@ -8,6 +8,10 @@ public sealed class PatientFinancialCaseConfiguration
     : IEntityTypeConfiguration<PatientFinancialCase> {
   public void Configure(EntityTypeBuilder<PatientFinancialCase> b) {
     b.Property(x => x.Services).HasColumnType("nvarchar(max)");
+    b.Property(x => x.ServiceUnitCountsJson)
+        .HasColumnType("nvarchar(max)")
+        .HasDefaultValue("{}")
+        .IsRequired();
     b.Property(x => x.TotalAmount).HasPrecision(18, 2);
     b.Property(x => x.PrePaymentAmount).HasPrecision(18, 2);
     b.Property(x => x.DepositAmount).HasPrecision(18, 2);

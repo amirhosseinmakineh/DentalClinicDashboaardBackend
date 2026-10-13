@@ -14,6 +14,38 @@ using System.Data;
 
 namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance.Handlers;
 
+internal static class ServiceUnitCountRules
+{
+    public static string? Validate(
+        IReadOnlyCollection<int> serviceIds,
+        Dictionary<int, int>? unitCounts)
+    {
+        if (unitCounts is null || unitCounts.Count == 0)
+        {
+            return null;
+        }
+
+        var selected = serviceIds.ToHashSet();
+
+        if (unitCounts.Count != selected.Count ||
+            unitCounts.Any(pair =>
+                !selected.Contains(pair.Key) ||
+                pair.Value < 1 ||
+                pair.Value > 100))
+        {
+            return "برای هر خدمت انتخاب‌شده تعداد واحد معتبر بین ۱ تا ۱۰۰ وارد کنید";
+        }
+
+        return null;
+    }
+
+    public static string Serialize(Dictionary<int, int>? unitCounts)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(
+            unitCounts ?? new Dictionary<int, int>());
+    }
+}
+
 internal static class FinanceRules {
   private const string PastDueDateMessage =
       "تاریخ سررسید چک یا سفته نمی‌تواند قبل از امروز باشد.";
@@ -61,6 +93,12 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
       return Result<PatientFinancialCaseIdResponse>.Failure("خدمت معتبر نیست");
     if (c.PatientId == Guid.Empty)
       return Result<PatientFinancialCaseIdResponse>.Failure("بیمار معتبر نیست");
+    var serviceUnitError = ServiceUnitCountRules.Validate(
+        c.ServiceIds,
+        c.ServiceUnitCounts);
+    if (serviceUnitError is not null)
+      return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
+
     var patient = await repo.Patients.AsNoTracking()
         .Where(x => !x.IsDeleted && x.Id == c.PatientId &&
                     x.PatientProfile != null && !x.PatientProfile.IsDeleted)
@@ -94,7 +132,10 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
           ? PatientFinancialCaseStatus.Completed
           : PatientFinancialCaseStatus.Active,
       CreatedByUserId = c.ActorUserId,
-      PaymentMethod = c.PaymentMethod, InstallmentStatus = c.InstallmentStatus, GuaranteeDocument = c.GuaranteeDocument, Notes = c.Notes, ConsultantName = c.ConsultantName, ToothUnitCount = c.ToothUnitCount
+      PaymentMethod = c.PaymentMethod, InstallmentStatus = c.InstallmentStatus, GuaranteeDocument = c.GuaranteeDocument, Notes = c.Notes, ConsultantName = c.ConsultantName, ToothUnitCount = c.ServiceUnitCounts is { Count: > 0 }
+          ? c.ServiceUnitCounts.Values.Sum()
+          : c.ToothUnitCount,
+      ServiceUnitCountsJson = ServiceUnitCountRules.Serialize(c.ServiceUnitCounts)
     };
     foreach (var x in cheques)
       entity.Cheques.Add(new PatientCheque { Amount = x.Amount,
@@ -194,6 +235,14 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     if (commitments > c.TotalAmount)
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ کل نمی‌تواند کمتر از مجموع چک‌ها و سفته‌ها باشد");
+    var selectedServices = x.Services.Select(service => (int)service).ToList();
+    var serviceUnitError = ServiceUnitCountRules.Validate(
+        selectedServices,
+        c.ServiceUnitCounts);
+
+    if (serviceUnitError is not null)
+      return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
+
     x.TotalAmount = c.TotalAmount;
     x.PrePaymentAmount = c.PrePaymentAmount;
     x.DepositAmount = c.DepositAmount;
@@ -203,7 +252,17 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     x.GuaranteeDocument = c.GuaranteeDocument;
     x.Notes = c.Notes;
     x.ConsultantName = c.ConsultantName;
-    x.ToothUnitCount = c.ToothUnitCount;
+    if (c.ServiceUnitCounts is not null)
+    {
+      x.ServiceUnitCountsJson = ServiceUnitCountRules.Serialize(c.ServiceUnitCounts);
+      x.ToothUnitCount = c.ServiceUnitCounts.Count > 0
+          ? c.ServiceUnitCounts.Values.Sum()
+          : c.ToothUnitCount;
+    }
+    else
+    {
+      x.ToothUnitCount = c.ToothUnitCount;
+    }
     x.Status = c.PrePaymentAmount + c.DepositAmount + paid >= c.TotalAmount
         ? PatientFinancialCaseStatus.Completed
         : PatientFinancialCaseStatus.Active;

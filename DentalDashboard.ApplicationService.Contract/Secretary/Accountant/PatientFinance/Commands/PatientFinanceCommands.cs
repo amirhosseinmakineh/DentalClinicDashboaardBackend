@@ -7,7 +7,7 @@ namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Patie
     .Commands;
 
 public sealed record CreatePatientChequeDto(decimal Amount, string SayadNumber,
-                                            string OwnerName, DateTime DueDate);
+                                            string OwnerName, DateTime DueDate, bool IsGuarantee = false);
 public sealed record CreatePatientPromissoryNoteDto(string SerialNumber,
                                                     decimal Amount,
                                                     DateTime DueDate);
@@ -57,7 +57,7 @@ public sealed record CancelPatientFinancialCaseCommand(Guid Id)
     : ICommand<PatientFinancialCaseIdResponse>;
 public sealed record AddPatientChequeCommand(Guid PatientFinancialCaseId,
                                              decimal Amount, string SayadNumber,
-                                             string OwnerName, DateTime DueDate)
+                                             string OwnerName, DateTime DueDate, bool IsGuarantee = false)
     : ICommand<PatientFinanceIdResponse>;
 public sealed
     record AddPatientPromissoryNoteCommand(Guid PatientFinancialCaseId,
@@ -82,6 +82,7 @@ public sealed class UpdatePatientChequeCommand
   public string SayadNumber { get; set; } = string.Empty;
   public string OwnerName { get; set; } = string.Empty;
   public DateTime DueDate { get; set; }
+  public bool IsGuarantee { get; set; }
   [JsonExtensionData]
   public Dictionary<string, JsonElement>? AdditionalFields { get; set; }
 }

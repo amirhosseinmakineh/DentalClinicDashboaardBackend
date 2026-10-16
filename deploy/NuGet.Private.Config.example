@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Template only. Do not put credentials in this file or commit a populated copy. -->
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    <add key="github-private" value="https://nuget.pkg.github.com/amirhosseinmakineh/index.json" />
+  </packageSources>
+</configuration>

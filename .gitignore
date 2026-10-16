@@ -7,3 +7,10 @@ obj/
 .env.*
 deploy/*.env
 !deploy/*.env.example
+
+# Generated NuGet packages and temporary restore credentials
+artifacts/
+*.nupkg
+*.snupkg
+NuGet.Private.Config
+nuget.private.config

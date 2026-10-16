@@ -62,6 +62,19 @@ jobs:
             --configuration Release \
             --no-restore \
             --property:UsePrivateFrameworkPackage=true
+      - name: Test package-only Docker image
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/dental-package-docker
+          tar --exclude=.git --exclude=artifacts -cf - . | tar -xf - -C /tmp/dental-package-docker
+          mkdir -p /tmp/dental-package-docker/artifacts/framework
+          cp artifacts/framework/*.nupkg /tmp/dental-package-docker/artifacts/framework/
+          rm -rf /tmp/dental-package-docker/DentalDashboard.Framwork
+          docker build \
+            --file /tmp/dental-package-docker/Dockerfile.package \
+            --tag dental-back:package-test \
+            /tmp/dental-package-docker
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:

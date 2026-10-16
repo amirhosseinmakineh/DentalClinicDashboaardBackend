@@ -45,6 +45,33 @@ jobs:
                   raise SystemExit(f'Unexpected source or symbols: {forbidden}')
               print('Package verified:', packages[0])
           PY
+      - name: Test backend build without Framework source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/dental-package-consumer
+          tar --exclude=.git --exclude=artifacts -cf - . | tar -xf - -C /tmp/dental-package-consumer
+          cd /tmp/dental-package-consumer
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          project = Path('DentalDashboard.Domain/DentalDashboard.Domain.csproj')
+          content = project.read_text(encoding='utf-8-sig')
+          original = '<ProjectReference Include="..\\DentalDashboard.Framwork\\DentalDashboard.Framwork.csproj" />'
+          replacement = '<PackageReference Include="DentalDashboard.Framework" Version="1.0.0" />'
+          if content.count(original) != 1:
+              raise SystemExit('Expected exactly one Domain -> Framework project reference')
+          project.write_text(content.replace(original, replacement), encoding='utf-8')
+          PY
+
+          rm -rf DentalDashboard.Framwork
+          dotnet restore DentalDashboard/DentalDashboard.csproj \
+            --source "$GITHUB_WORKSPACE/artifacts/framework" \
+            --source https://api.nuget.org/v3/index.json
+          dotnet build DentalDashboard/DentalDashboard.csproj \
+            --configuration Release \
+            --no-restore
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:

@@ -1,0 +1,54 @@
+name: Framework package validation
+
+on:
+  push:
+    branches:
+      - feature/framework-private-from-code-lftom
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-framework-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore solution
+        run: dotnet restore DentalDashboard.slnx
+      - name: Build solution
+        run: dotnet build DentalDashboard.slnx --configuration Release --no-restore
+      - name: Pack Framework
+        run: dotnet pack DentalDashboard.Framwork/DentalDashboard.Framwork.csproj --configuration Release --no-build --output ./artifacts/framework
+      - name: Verify NuGet package content
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob
+          import zipfile
+
+          packages = glob.glob('artifacts/framework/*.nupkg')
+          if len(packages) != 1:
+              raise SystemExit(f'Expected one NuGet package, found {len(packages)}')
+
+          with zipfile.ZipFile(packages[0]) as archive:
+              names = archive.namelist()
+              assemblies = [name for name in names if name.endswith('/DentalDashboard.Framwork.dll')]
+              if not assemblies:
+                  raise SystemExit('Framework DLL missing from NuGet package')
+              forbidden = [name for name in names if name.lower().endswith(('.cs', '.pdb', '.snupkg'))]
+              if forbidden:
+                  raise SystemExit(f'Unexpected source or symbols: {forbidden}')
+              print('Package verified:', packages[0])
+          PY
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: framework-nupkg
+          path: artifacts/framework/*.nupkg
+          if-no-files-found: error
+          retention-days: 7

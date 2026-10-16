@@ -11,3 +11,11 @@ Dockerfile*
 docker-compose*
 DentalDashboard/appsettings*.json
 !DentalDashboard/appsettings.Container.json
+
+# Package-only Docker builds use a local NuGet feed.
+!artifacts/
+!artifacts/framework/
+!artifacts/framework/*.nupkg
+# Never send private NuGet credentials in Docker build context.
+NuGet.Private.Config
+nuget.private.config

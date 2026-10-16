@@ -79,24 +79,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/dental-private-docker
+          mkdir -p /tmp/dental-private-docker/artifacts/framework
           tar --exclude=.git --exclude=artifacts -cf - . | tar -xf - -C /tmp/dental-private-docker
+          cp artifacts/framework/*.nupkg /tmp/dental-private-docker/artifacts/framework/
           rm -rf /tmp/dental-private-docker/DentalDashboard.Framwork
-          python3 - <<'PY'
-          from pathlib import Path
-          from xml.sax.saxutils import escape
-
-          feed = Path('artifacts/framework').resolve().as_uri()
-          config = Path('/tmp/dental-private-nuget.config')
-          config.write_text(
-              '<?xml version="1.0" encoding="utf-8"?>\\n'
-              '<configuration><packageSources><clear/>'
-              f'<add key="local" value="{escape(feed)}"/>'
-              '<add key="nuget.org" value="https://api.nuget.org/v3/index.json"/>'
-              '</packageSources></configuration>',
-              encoding='utf-8'
-          )
-          PY
+          sed -i '/^FROM mcr.microsoft.com\/dotnet\/sdk:10.0 AS build$/a COPY artifacts/framework/ /local-feed/' /tmp/dental-private-docker/Dockerfile.private
+          cat > /tmp/dental-private-nuget.config <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="local" value="/local-feed" />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+            </packageSources>
+          </configuration>
+          EOF
           DOCKER_BUILDKIT=1 docker build \
             --secret id=nuget_config,src=/tmp/dental-private-nuget.config \
             --file /tmp/dental-private-docker/Dockerfile.private \

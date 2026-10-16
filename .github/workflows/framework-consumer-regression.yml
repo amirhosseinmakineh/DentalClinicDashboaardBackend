@@ -52,5 +52,5 @@ jobs:
         run: |
           set -euo pipefail
           test -d DentalDashboard.Framwork
-          grep -q 'Condition="\x27$(UsePrivateFrameworkPackage)\x27 == \x27true\x27"' DentalDashboard.Domain/DentalDashboard.Domain.csproj || grep -q 'UsePrivateFrameworkPackage' DentalDashboard.Domain/DentalDashboard.Domain.csproj
+          grep -q 'UsePrivateFrameworkPackage' DentalDashboard.Domain/DentalDashboard.Domain.csproj
           echo 'Source remains intact in original checkout; consumer compiled without it.'

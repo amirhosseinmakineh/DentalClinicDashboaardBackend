@@ -1,0 +1,59 @@
+name: Publish DentalDashboard Framework
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: NuGet package version (for example 1.0.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Validate version
+        env:
+          PACKAGE_VERSION: ${{ inputs.package_version }}
+        run: |
+          [[ "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+      - name: Restore
+        run: dotnet restore DentalDashboard.Framwork.csproj
+      - name: Build
+        run: dotnet build DentalDashboard.Framwork.csproj --configuration Release --no-restore
+      - name: Pack and verify
+        env:
+          PACKAGE_VERSION: ${{ inputs.package_version }}
+        run: |
+          dotnet pack DentalDashboard.Framwork.csproj --configuration Release --no-build \
+            -p:PackageVersion="$PACKAGE_VERSION" --output ./artifacts
+          python3 - <<'PY'
+          import glob
+          import zipfile
+
+          packages = glob.glob("artifacts/*.nupkg")
+          if len(packages) != 1:
+              raise SystemExit(f"Expected one package, found {len(packages)}")
+          with zipfile.ZipFile(packages[0]) as package:
+              names = package.namelist()
+              if not any(name.endswith("/DentalDashboard.Framwork.dll") for name in names):
+                  raise SystemExit("Framework assembly is missing")
+              forbidden = [name for name in names if name.lower().endswith((".cs", ".pdb", ".snupkg"))]
+              if forbidden:
+                  raise SystemExit(f"Forbidden package entries: {forbidden}")
+          PY
+      - name: Publish to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dotnet nuget push ./artifacts/*.nupkg \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key "$GITHUB_TOKEN" --skip-duplicate

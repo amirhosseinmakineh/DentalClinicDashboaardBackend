@@ -22,7 +22,8 @@ jobs:
         run: |
           set -euo pipefail
           diff -rq DentalDashboard.Framwork framework-standalone \
-            --exclude=README.md
+            --exclude=README.md \
+            --exclude=.github
           dotnet restore framework-standalone/DentalDashboard.Framwork.csproj
           dotnet build framework-standalone/DentalDashboard.Framwork.csproj \
             --configuration Release --no-restore

@@ -1,0 +1,37 @@
+name: Framework private migration preflight
+
+on:
+  push:
+    branches:
+      - feature/framework-private-from-code-lftom
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check private migration prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f Dockerfile.private
+          test -f deploy/NuGet.Private.Config.example
+          test -f docs/private-nuget-deployment.md
+          test -f .github/workflows/framework-publish.yml
+
+          if [ "${{ github.event.repository.private }}" != "true" ]; then
+            echo "::notice::This repository is public. Framework source migration to a separate private repository remains required."
+          fi
+
+          if grep -nE '(^|[[:space:]])(ARG|ENV)[[:space:]].*(TOKEN|PASSWORD|SECRET|API_KEY)' Dockerfile.private; then
+            echo "::error::Potential credential in Dockerfile build arguments or environment."
+            exit 1
+          fi
+
+          grep -q -- '--mount=type=secret,id=nuget_config,required=true' Dockerfile.private
+          grep -q -- 'UsePrivateFrameworkPackage=true' Dockerfile.private
+          echo 'Private NuGet build prerequisites validated.'

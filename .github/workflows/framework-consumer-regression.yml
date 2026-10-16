@@ -1,0 +1,56 @@
+name: Framework consumer regression
+
+on:
+  push:
+    branches:
+      - feature/framework-private-from-code-lftom
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-consumer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build local Framework package
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore DentalDashboard.Framwork/DentalDashboard.Framwork.csproj
+          dotnet pack DentalDashboard.Framwork/DentalDashboard.Framwork.csproj \
+            --configuration Release \
+            --output artifacts/framework
+      - name: Build package consumer without Framework source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/dental-consumer
+          tar --exclude=.git --exclude=artifacts -cf - . | tar -xf - -C /tmp/dental-consumer
+          rm -rf /tmp/dental-consumer/DentalDashboard.Framwork
+          test ! -e /tmp/dental-consumer/DentalDashboard.Framwork
+          dotnet restore /tmp/dental-consumer/DentalDashboard/DentalDashboard.csproj \
+            -p:UsePrivateFrameworkPackage=true \
+            --source "$GITHUB_WORKSPACE/artifacts/framework" \
+            --source https://api.nuget.org/v3/index.json
+          dotnet publish /tmp/dental-consumer/DentalDashboard/DentalDashboard.csproj \
+            --configuration Release \
+            --output /tmp/dental-publish \
+            --no-restore \
+            -p:UsePrivateFrameworkPackage=true
+          test -f /tmp/dental-publish/DentalDashboard.Framwork.dll
+          if find /tmp/dental-publish -type f -name '*.cs' | grep -q .; then
+            echo 'Unexpected C# source in publish output'
+            exit 1
+          fi
+      - name: Verify source isolation and package reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d DentalDashboard.Framwork
+          grep -q 'Condition="\x27$(UsePrivateFrameworkPackage)\x27 == \x27true\x27"' DentalDashboard.Domain/DentalDashboard.Domain.csproj || grep -q 'UsePrivateFrameworkPackage' DentalDashboard.Domain/DentalDashboard.Domain.csproj
+          echo 'Source remains intact in original checkout; consumer compiled without it.'

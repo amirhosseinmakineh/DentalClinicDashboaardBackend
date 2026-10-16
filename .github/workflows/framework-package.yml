@@ -75,6 +75,33 @@ jobs:
             --file /tmp/dental-package-docker/Dockerfile.package \
             --tag dental-back:package-test \
             /tmp/dental-package-docker
+      - name: Test private-feed Dockerfile with BuildKit secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/dental-private-docker
+          tar --exclude=.git --exclude=artifacts -cf - . | tar -xf - -C /tmp/dental-private-docker
+          rm -rf /tmp/dental-private-docker/DentalDashboard.Framwork
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.sax.saxutils import escape
+
+          feed = Path('artifacts/framework').resolve().as_uri()
+          config = Path('/tmp/dental-private-nuget.config')
+          config.write_text(
+              '<?xml version="1.0" encoding="utf-8"?>\\n'
+              '<configuration><packageSources><clear/>'
+              f'<add key="local" value="{escape(feed)}"/>'
+              '<add key="nuget.org" value="https://api.nuget.org/v3/index.json"/>'
+              '</packageSources></configuration>',
+              encoding='utf-8'
+          )
+          PY
+          DOCKER_BUILDKIT=1 docker build \
+            --secret id=nuget_config,src=/tmp/dental-private-nuget.config \
+            --file /tmp/dental-private-docker/Dockerfile.private \
+            --tag dental-back:private-test \
+            /tmp/dental-private-docker
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:

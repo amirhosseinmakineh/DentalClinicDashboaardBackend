@@ -107,7 +107,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
                     ConsultantProfileId = x.ConsultantProfileId,
                     PatientUserId = x.PatientUserId,
                     RequiresPatientProfile = !x.PatientUserId.HasValue,
-                    ReservationAt = IranTimeHelper.ToIranLocalTime(x.ReservationAt),
+                    ReservationAt = x.ReservationAt,
                     AppointmentDateTime = x.ReservationAt,
                     PatientCount = x.PatientCount,
                     CreatedAt = x.CreatedAt,

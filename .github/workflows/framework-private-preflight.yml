@@ -86,3 +86,14 @@ jobs:
             echo 'Unexpected C# source in publish output'
             exit 1
           fi
+      - name: Build Dockerfile.private with authenticated package feed
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/private-docker"
+          tar --exclude=.git --exclude=artifacts -cf - . | tar -xf - -C "$RUNNER_TEMP/private-docker"
+          rm -rf "$RUNNER_TEMP/private-docker/DentalDashboard.Framwork"
+          DOCKER_BUILDKIT=1 docker build \
+            --secret id=nuget_config,src="$RUNNER_TEMP/NuGet.Private.Config" \
+            --file "$RUNNER_TEMP/private-docker/Dockerfile.private" \
+            --tag dental-back:private-package-test \
+            "$RUNNER_TEMP/private-docker"

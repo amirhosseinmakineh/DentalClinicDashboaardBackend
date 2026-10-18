@@ -13,10 +13,11 @@ public sealed class LeadAssignmentCandidateProvider(
     public async Task<LeadAssignmentCandidateBatch> GetCurrentForDispatchAsync(
         LeadAssignmentSourceType sourceType,
         TimeSpan redispatchInterval,
+        LeadSourceType? leadSourceType = null,
         CancellationToken cancellationToken = default)
     {
         var burned = sourceType == LeadAssignmentSourceType.BurnedLeads;
-        var lead = burned ? await leads.GetCurrentBurnedLeadForDispatchAsync(redispatchInterval) : await leads.GetCurrentRealtimeLeadForDispatchAsync(redispatchInterval);
+        var lead = burned ? await leads.GetCurrentBurnedLeadForDispatchAsync(redispatchInterval) : await leads.GetCurrentRealtimeLeadForDispatchAsync(redispatchInterval, leadSourceType);
         return new LeadAssignmentCandidateBatch(sourceType, lead);
     }
 

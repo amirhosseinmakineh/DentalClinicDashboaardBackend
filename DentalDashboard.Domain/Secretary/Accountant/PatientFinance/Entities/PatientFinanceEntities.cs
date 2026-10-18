@@ -6,7 +6,9 @@ namespace DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
 
 public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
   public Guid PatientId { get; set; }
-  public DentalServiceType Service { get; set; }
+  public List<DentalServiceType> Services { get; set; } = [];
+  public int? ToothUnitCount { get; set; }
+  public string ServiceUnitCountsJson { get; set; } = "{}";
   public decimal TotalAmount { get; set; }
   public decimal PrePaymentAmount { get; set; }
   public decimal DepositAmount { get; set; }
@@ -34,7 +36,17 @@ public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
   } = [];
 }
 
+public sealed class PatientFinancialDocument : BaseAuditableEntity<Guid>
+{
+    public Guid PatientFinancialCaseId { get; set; }
+    public string StoragePath { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public PatientFinancialCase FinancialCase { get; set; } = default!;
+}
+
 public sealed class PatientCheque : BaseAuditableEntity<long> {
+  public bool IsGuarantee { get; set; }
   public Guid PatientFinancialCaseId { get; set; }
   public decimal Amount { get; set; }
   public string SayadNumber { get; set; } = default!;

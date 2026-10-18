@@ -7,6 +7,11 @@ namespace DentalDashboard.Infrastracture.Secretary.Accountant.PatientFinance
 public sealed class PatientFinancialCaseConfiguration
     : IEntityTypeConfiguration<PatientFinancialCase> {
   public void Configure(EntityTypeBuilder<PatientFinancialCase> b) {
+    b.Property(x => x.Services).HasColumnType("nvarchar(max)");
+    b.Property(x => x.ServiceUnitCountsJson)
+        .HasColumnType("nvarchar(max)")
+        .HasDefaultValue("{}")
+        .IsRequired();
     b.Property(x => x.TotalAmount).HasPrecision(18, 2);
     b.Property(x => x.PrePaymentAmount).HasPrecision(18, 2);
     b.Property(x => x.DepositAmount).HasPrecision(18, 2);
@@ -78,4 +83,26 @@ public sealed class PatientFinancialTransactionConfiguration
         .OnDelete(DeleteBehavior.Restrict);
     b.HasQueryFilter(x => !x.IsDeleted);
   }
+}
+
+public sealed class PatientFinancialDocumentConfiguration
+    : IEntityTypeConfiguration<PatientFinancialDocument>
+{
+    public void Configure(EntityTypeBuilder<PatientFinancialDocument> builder)
+    {
+        builder.Property(document => document.StoragePath)
+            .HasMaxLength(500)
+            .IsRequired();
+        builder.Property(document => document.ContentType)
+            .HasMaxLength(40)
+            .IsRequired();
+        builder.Property(document => document.Description)
+            .HasMaxLength(500);
+        builder.HasIndex(document => document.PatientFinancialCaseId);
+        builder.HasOne(document => document.FinancialCase)
+            .WithMany()
+            .HasForeignKey(document => document.PatientFinancialCaseId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasQueryFilter(document => !document.IsDeleted);
+    }
 }

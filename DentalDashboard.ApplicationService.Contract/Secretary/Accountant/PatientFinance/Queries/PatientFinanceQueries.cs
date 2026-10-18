@@ -14,7 +14,7 @@ public sealed class GetPatientFinancialCasesQuery
       IQuery<PaginatedResult<PatientFinancialCaseDto>> {
   public string? Search { get; set; }
   public Guid? PatientId { get; set; }
-  public int? ServiceId { get; set; }
+  public List<int>? ServiceIds { get; set; }
   public PatientFinancialAgreementType? AgreementType { get; set; }
   public PatientFinancialCaseStatus? Status { get; set; }
   public DateTime? FromDate { get; set; }
@@ -79,7 +79,7 @@ public sealed class GetDuePatientFinancialCommitmentsQuery
 
 public sealed record PatientFinancialCaseDto(
     Guid Id, Guid PatientId, Guid UserId, string PatientName,
-    string PatientFileNumber, string? PatientPhoneNumber, int ServiceId, string ServiceName, decimal TotalAmount,
+    string PatientFileNumber, string? PatientPhoneNumber, List<int> ServiceIds, List<string> ServiceNames, decimal TotalAmount,
     decimal PrePaymentAmount, decimal DepositAmount,
     decimal TotalPaidAmount, decimal RemainingAmount, decimal TotalDebtAmount,
     PatientFinancialAgreementType AgreementType,
@@ -89,12 +89,10 @@ public sealed record PatientFinancialCaseDto(
     public string? PaymentMethod { get; init; }
     public string? InstallmentStatus { get; init; }
     public string? GuaranteeDocument { get; init; }
-    public DateTime? GuaranteeDate { get; init; }
-    public decimal? GuaranteeAmount { get; init; }
-    public string? GuaranteeChequeRegistration { get; init; }
     public string? Notes { get; init; }
     public string? ConsultantName { get; init; }
-    public string? ReviewItems { get; init; }
+    public int? ToothUnitCount { get; init; }
+    public string ServiceUnitCountsJson { get; init; } = "{}";
     public IReadOnlyList<DateTime> ChequeDates { get; init; } = [];
     public IReadOnlyList<string> ChequeRegistrations { get; init; } = [];
 }
@@ -108,7 +106,7 @@ public sealed record PatientChequeDto(long Id, Guid PatientFinancialCaseId,
                                       string PatientFileNumber,
                                       decimal Amount, string SayadNumber,
                                       string OwnerName, DateTime DueDate,
-                                      PatientChequeStatus Status);
+                                      PatientChequeStatus Status, bool IsGuarantee);
 public sealed record PatientPromissoryNoteDto(
     long Id, Guid PatientFinancialCaseId, Guid PatientId, string PatientName,
     string PatientFileNumber,
@@ -118,7 +116,7 @@ public sealed record PatientDebtDto(long Id, Guid PatientId, string PatientName,
                                     string PatientFileNumber,
                                     string? PatientPhoneNumber,
                                     Guid PatientFinancialCaseId,
-                                    string ServiceName, decimal Amount,
+                                    List<string> ServiceNames, decimal Amount,
                                     PatientDebtSourceType SourceType,
                                     long SourceId, DateTime DueDate,
                                     PatientDebtStatus Status);

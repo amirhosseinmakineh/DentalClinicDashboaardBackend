@@ -14,3 +14,4 @@ artifacts/
 *.snupkg
 NuGet.Private.Config
 nuget.private.config
+/DentalDashboard/appsettings.Development.json

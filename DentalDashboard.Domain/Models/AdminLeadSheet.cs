@@ -1,0 +1,3 @@
+namespace DentalDashboard.Domain.Models;
+public class AdminLeadSheet : BaseAuditableEntity<long>{ public string Name {get;set;}=default!; public bool IsActive {get;set;}=true; public ICollection<AdminSheetLead> Leads {get;set;}=new List<AdminSheetLead>(); }
+public class AdminSheetLead : BaseAuditableEntity<long>{ public long AdminLeadSheetId {get;set;} public AdminLeadSheet AdminLeadSheet {get;set;}=default!; public string PhoneNumber {get;set;}=default!; public string FirstName {get;set;}=default!; public string LastName {get;set;}=default!; public int ProcessingStatus {get;set;} public long? LeadAssignmentId {get;set;} public LeadAssignment? LeadAssignment {get;set;} public string? ErrorMessage {get;set;} public DateTime? ProcessedAt {get;set;} }

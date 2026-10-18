@@ -12,6 +12,7 @@ COPY DentalDashboard.Framwork/DentalDashboard.Framwork.csproj DentalDashboard.Fr
 COPY DentalDashboard.Infrastracture/DentalDashboard.Infrastracture.csproj DentalDashboard.Infrastracture/
 COPY DentalDashboard.Security/DentalDashboard.Security.csproj DentalDashboard.Security/
 COPY DentalDashboard.Utilities/DentalDashboard.Utilities.csproj DentalDashboard.Utilities/
+COPY DentalDashboard.LeadManagement/DentalDashboard.LeadManagement.csproj DentalDashboard.LeadManagement/
 
 RUN dotnet restore DentalDashboard/DentalDashboard.csproj
 
@@ -19,7 +20,6 @@ COPY . .
 RUN dotnet publish DentalDashboard/DentalDashboard.csproj \
     --configuration Release \
     --output /app/publish \
-    --no-restore \
     /p:UseAppHost=false \
     && rm -f /app/publish/appsettings*.json \
     && cp DentalDashboard/appsettings.Container.json /app/publish/appsettings.json

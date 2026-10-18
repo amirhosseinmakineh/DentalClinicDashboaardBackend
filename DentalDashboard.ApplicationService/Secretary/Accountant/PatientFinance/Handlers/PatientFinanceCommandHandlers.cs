@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance
     .Commands;
 using DentalDashboard.Domain.Enums;
@@ -12,6 +13,37 @@ using DentalDashboard.Utilities.Time;
 using System.Data;
 
 namespace DentalDashboard.ApplicationService.Secretary.Accountant.PatientFinance.Handlers;
+
+internal static class ServiceUnitCountRules
+{
+    public static string? Validate(
+        IReadOnlyDictionary<int, int>? counts,
+        IReadOnlyCollection<int> selectedServices)
+    {
+        if (counts is null || counts.Count == 0)
+        {
+            return "تعداد واحد برای هر خدمت انتخاب‌شده الزامی است";
+        }
+
+        if (counts.Count != selectedServices.Count ||
+            counts.Keys.Any(id => !selectedServices.Contains(id)))
+        {
+            return "تعداد واحد باید فقط برای تمام خدمات انتخاب‌شده ثبت شود";
+        }
+
+        if (counts.Values.Any(count => count < 1 || count > 100))
+        {
+            return "تعداد واحد هر خدمت باید بین ۱ تا ۱۰۰ باشد";
+        }
+
+        return null;
+    }
+
+    public static string Serialize(IReadOnlyDictionary<int, int> counts)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(counts);
+    }
+}
 
 internal static class FinanceRules {
   private const string PastDueDateMessage =
@@ -54,10 +86,20 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
           "مبلغ پیش‌پرداخت یا ودیعه معتبر نیست");
     if (!Enum.IsDefined(c.AgreementType))
       return Result<PatientFinancialCaseIdResponse>.Failure("نوع توافق معتبر نیست");
-    if (!Enum.IsDefined(typeof(DentalServiceType), c.ServiceId))
+    if (c.ServiceIds is not { Count: > 0 })
+      return Result<PatientFinancialCaseIdResponse>.Failure("حداقل یک خدمت الزامی است");
+    if (c.ServiceIds.Any(id => !Enum.IsDefined(typeof(DentalServiceType), id)))
       return Result<PatientFinancialCaseIdResponse>.Failure("خدمت معتبر نیست");
     if (c.PatientId == Guid.Empty)
       return Result<PatientFinancialCaseIdResponse>.Failure("بیمار معتبر نیست");
+    var serviceUnitError = ServiceUnitCountRules.Validate(
+        c.ServiceUnitCounts,
+        c.ServiceIds);
+    if (serviceUnitError is not null)
+    {
+        return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
+    }
+
     var patient = await repo.Patients.AsNoTracking()
         .Where(x => !x.IsDeleted && x.Id == c.PatientId &&
                     x.PatientProfile != null && !x.PatientProfile.IsDeleted)
@@ -84,20 +126,27 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
         return Result<PatientFinancialCaseIdResponse>.Failure(e);
     }
     var entity = new PatientFinancialCase {
-      PatientId = patient.Id, Service = (DentalServiceType)c.ServiceId,
+      PatientId = patient.Id, Services = c.ServiceIds.Select(id => (DentalServiceType)id).ToList(),
       TotalAmount = c.TotalAmount, PrePaymentAmount = c.PrePaymentAmount,
       DepositAmount = c.DepositAmount, AgreementType = c.AgreementType,
       Status = c.PrePaymentAmount + c.DepositAmount >= c.TotalAmount
           ? PatientFinancialCaseStatus.Completed
           : PatientFinancialCaseStatus.Active,
       CreatedByUserId = c.ActorUserId,
-      PaymentMethod = c.PaymentMethod, InstallmentStatus = c.InstallmentStatus, GuaranteeDocument = c.GuaranteeDocument, GuaranteeDate = c.GuaranteeDate, GuaranteeAmount = c.GuaranteeAmount, GuaranteeChequeRegistration = c.GuaranteeChequeRegistration, Notes = c.Notes, ConsultantName = c.ConsultantName, ReviewItems = c.ReviewItems
+      PaymentMethod = c.PaymentMethod,
+      InstallmentStatus = c.InstallmentStatus,
+      GuaranteeDocument = c.GuaranteeDocument,
+      Notes = c.Notes,
+      ConsultantName = c.ConsultantName,
+      ToothUnitCount = c.ServiceUnitCounts!.Values.Sum(),
+      ServiceUnitCountsJson = ServiceUnitCountRules.Serialize(
+          c.ServiceUnitCounts)
     };
     foreach (var x in cheques)
       entity.Cheques.Add(new PatientCheque { Amount = x.Amount,
                                              SayadNumber = x.SayadNumber.Trim(),
                                              OwnerName = x.OwnerName.Trim(),
-                                             DueDate = x.DueDate });
+                                             DueDate = x.DueDate, IsGuarantee = x.IsGuarantee });
     foreach (var x in notes)
       entity.PromissoryNotes.Add(
           new PatientPromissoryNote { Amount = x.Amount,
@@ -125,7 +174,8 @@ public sealed class AddPatientChequeCommandHandler(
     var x = new PatientCheque {
       PatientFinancialCaseId = c.PatientFinancialCaseId, Amount = c.Amount,
       SayadNumber = c.SayadNumber.Trim(), OwnerName = c.OwnerName.Trim(),
-      DueDate = c.DueDate
+      DueDate = c.DueDate,
+      IsGuarantee = c.IsGuarantee
     };
     await repo.AddChequeAsync(x, ct);
     await uow.SaveChangesAsync();
@@ -190,6 +240,16 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     if (commitments > c.TotalAmount)
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ کل نمی‌تواند کمتر از مجموع چک‌ها و سفته‌ها باشد");
+    var selectedServiceIds = x.Services.Select(service => (int)service).ToList();
+    var serviceUnitError = ServiceUnitCountRules.Validate(
+        c.ServiceUnitCounts,
+        selectedServiceIds);
+    if (serviceUnitError is not null)
+    {
+        return Result<PatientFinancialCaseIdResponse>.Failure(serviceUnitError);
+    }
+
+    x.ServiceUnitCountsJson = ServiceUnitCountRules.Serialize(c.ServiceUnitCounts!);
     x.TotalAmount = c.TotalAmount;
     x.PrePaymentAmount = c.PrePaymentAmount;
     x.DepositAmount = c.DepositAmount;
@@ -197,12 +257,9 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     x.PaymentMethod = c.PaymentMethod;
     x.InstallmentStatus = c.InstallmentStatus;
     x.GuaranteeDocument = c.GuaranteeDocument;
-    x.GuaranteeDate = c.GuaranteeDate;
-    x.GuaranteeAmount = c.GuaranteeAmount;
-    x.GuaranteeChequeRegistration = c.GuaranteeChequeRegistration;
     x.Notes = c.Notes;
     x.ConsultantName = c.ConsultantName;
-    x.ReviewItems = c.ReviewItems;
+    x.ToothUnitCount = c.ServiceUnitCounts!.Values.Sum();
     x.Status = c.PrePaymentAmount + c.DepositAmount + paid >= c.TotalAmount
         ? PatientFinancialCaseStatus.Completed
         : PatientFinancialCaseStatus.Active;
@@ -212,7 +269,7 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
   }
 }
 public sealed class CancelPatientFinancialCaseCommandHandler(
-    IPatientFinanceRepository repo, IUnitOfWork uow)
+    IPatientFinanceRepository repo, IUnitOfWork uow, IFileStorageService storage)
     : ICommandHandler<CancelPatientFinancialCaseCommand,
                       PatientFinancialCaseIdResponse> {
   public async Task<Result<PatientFinancialCaseIdResponse>>
@@ -250,7 +307,9 @@ public sealed class CancelPatientFinancialCaseCommandHandler(
       x.DeletedAt = DateTime.UtcNow;
       x.Status = PatientFinancialCaseStatus.Cancelled;
       x.UpdatedAt = DateTime.UtcNow;
+      var guaranteePath = x.GuaranteeDocument;
       await uow.CommitAsync(ct);
+      storage.Delete(guaranteePath);
       return Result<PatientFinancialCaseIdResponse>.Success(new(x.Id));
     } catch {
       await uow.RollbackAsync(ct);
@@ -317,6 +376,7 @@ public sealed class UpdatePatientChequeCommandHandler(
       cheque.SayadNumber = c.SayadNumber.Trim();
       cheque.OwnerName = c.OwnerName.Trim();
       cheque.DueDate = c.DueDate;
+      cheque.IsGuarantee = c.IsGuarantee;
       cheque.UpdatedAt = DateTime.UtcNow;
       var paidAfterUpdate = paidWithoutCurrentCheque + (payment is null ? 0 : c.Amount);
       cheque.FinancialCase.Status = cheque.FinancialCase.PrePaymentAmount +

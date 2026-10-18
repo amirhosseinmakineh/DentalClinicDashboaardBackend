@@ -12,6 +12,7 @@ public interface ILeadAssignmentCandidateProvider
     Task<LeadAssignmentCandidateBatch> GetCurrentForDispatchAsync(
         LeadAssignmentSourceType sourceType,
         TimeSpan redispatchInterval,
+        LeadSourceType? leadSourceType = null,
         CancellationToken cancellationToken = default);
 
     Task<LeadAssignmentCandidateBatch> GetActiveAsync(

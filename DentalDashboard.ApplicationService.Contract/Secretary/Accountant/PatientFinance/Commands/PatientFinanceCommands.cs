@@ -7,29 +7,30 @@ namespace DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Patie
     .Commands;
 
 public sealed record CreatePatientChequeDto(decimal Amount, string SayadNumber,
-                                            string OwnerName, DateTime DueDate);
+                                            string OwnerName, DateTime DueDate, bool IsGuarantee = false);
 public sealed record CreatePatientPromissoryNoteDto(string SerialNumber,
                                                     decimal Amount,
                                                     DateTime DueDate);
 public sealed record PatientFinanceIdResponse(long Id);
 public sealed record PatientFinancialCaseIdResponse(Guid Id);
+public sealed record GuaranteeDocumentResponse(Guid Id, string? GuaranteeDocument);
+public sealed record UploadGuaranteeDocumentCommand(Guid CaseId, string FilePath)
+    : ICommand<GuaranteeDocumentResponse>;
 
 public sealed class CreatePatientFinancialCaseCommand
     : ICommand<PatientFinancialCaseIdResponse> {
   public Guid PatientId { get; set; }
-  public int ServiceId { get; set; }
+  public List<int> ServiceIds { get; set; } = [];
+  public int? ToothUnitCount { get; set; }
+  public Dictionary<int, int>? ServiceUnitCounts { get; set; }
   public decimal TotalAmount { get; set; }
   public decimal PrePaymentAmount { get; set; }
   public decimal DepositAmount { get; set; }
   public string? PaymentMethod { get; set; }
   public string? InstallmentStatus { get; set; }
   public string? GuaranteeDocument { get; set; }
-  public DateTime? GuaranteeDate { get; set; }
-  public decimal? GuaranteeAmount { get; set; }
-  public string? GuaranteeChequeRegistration { get; set; }
   public string? Notes { get; set; }
   public string? ConsultantName { get; set; }
-  public string? ReviewItems { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
   public List<CreatePatientChequeDto>? Cheques { get; set; }
   public List<CreatePatientPromissoryNoteDto>? PromissoryNotes { get; set; }
@@ -42,25 +43,23 @@ public sealed class UpdatePatientFinancialCaseCommand
     : ICommand<PatientFinancialCaseIdResponse> {
   [JsonIgnore]
   public Guid Id { get; set; }
+  public int? ToothUnitCount { get; set; }
+  public Dictionary<int, int>? ServiceUnitCounts { get; set; }
   public decimal TotalAmount { get; set; }
   public decimal PrePaymentAmount { get; set; }
   public decimal DepositAmount { get; set; }
   public string? PaymentMethod { get; set; }
   public string? InstallmentStatus { get; set; }
   public string? GuaranteeDocument { get; set; }
-  public DateTime? GuaranteeDate { get; set; }
-  public decimal? GuaranteeAmount { get; set; }
-  public string? GuaranteeChequeRegistration { get; set; }
   public string? Notes { get; set; }
   public string? ConsultantName { get; set; }
-  public string? ReviewItems { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
 }
 public sealed record CancelPatientFinancialCaseCommand(Guid Id)
     : ICommand<PatientFinancialCaseIdResponse>;
 public sealed record AddPatientChequeCommand(Guid PatientFinancialCaseId,
                                              decimal Amount, string SayadNumber,
-                                             string OwnerName, DateTime DueDate)
+                                             string OwnerName, DateTime DueDate, bool IsGuarantee = false)
     : ICommand<PatientFinanceIdResponse>;
 public sealed
     record AddPatientPromissoryNoteCommand(Guid PatientFinancialCaseId,
@@ -85,6 +84,7 @@ public sealed class UpdatePatientChequeCommand
   public string SayadNumber { get; set; } = string.Empty;
   public string OwnerName { get; set; } = string.Empty;
   public DateTime DueDate { get; set; }
+  public bool IsGuarantee { get; set; }
   [JsonExtensionData]
   public Dictionary<string, JsonElement>? AdditionalFields { get; set; }
 }

@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using DentalDashboard.Hubs;
+using DentalDashboard.LeadManagement.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
@@ -142,6 +143,7 @@ builder.Services.AddScoped<DentalDashboard.Services.ReservationsExportService>()
 builder.Services.AddScoped<DentalDashboard.Services.DailyReservationsReportService>();
 builder.Services.AddScoped<DentalDashboard.Services.PatientFinanceAdminReportService>();
 builder.Services.AddScoped<DentalDashboard.Services.AdminAccountingReportService>();
+builder.Services.AddScoped<IFileStorageService, DentalDashboard.Services.FileStorageService>();
 builder.Services.AddScoped<ILeadAssignmentLimitService, LeadAssignmentLimitService>();
 
 builder.Services.Configure<HostOptions>(options =>
@@ -153,7 +155,7 @@ builder.Services.Configure<HostOptions>(options =>
 builder.Services.AddHostedService<TestConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<SellerConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<TopSellerConsultantLeadAssignmentBackgroundService>();
-builder.Services.AddHostedService<AddLeadBackgroundService>();
+builder.Services.AddLeadManagement(builder.Configuration);
 
 builder.Services.AddInfrastructure(
     builder.Configuration);
@@ -174,7 +176,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         migrationLogger.LogInformation("Applying EF Core database migrations...");
-        dbContext.Database.Migrate();
+        //dbContext.Database.Migrate();
         migrationLogger.LogInformation("Database migrations applied successfully.");
     }
     catch (Exception ex)
@@ -186,9 +188,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// ====================================
-// Middleware
-// ====================================
+ //====================================
+ //Middleware
+ //====================================
 
 app.UseMiddleware<DentalDashboard.Middleware.RequestCancellationMiddleware>();
 
@@ -240,10 +242,22 @@ app.Use(async (context, next) =>
 });
 
 //app.UseCors("CorsPolicy");
+app.UseStaticFiles();
+
+// روی لیارا /app read-only است — از /tmp استفاده می‌کنیم
+var uploadsPath = OperatingSystem.IsWindows()
+    ? Path.Combine(app.Environment.ContentRootPath, "uploads")
+    : "/tmp/uploads";
+Directory.CreateDirectory(uploadsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
+
 app.UseCors("FrontendCors");
 
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.UseMiddleware<DentalDashboard.Middleware.LastSeenTrackingMiddleware>();
@@ -254,6 +268,9 @@ if (app.Environment.IsDevelopment())
 
     app.UseSwaggerUI();
 }
+
+
+
 
 app.MapControllers();
 app.MapHub<ReservationsHub>("/hubs/reservations");

@@ -13,6 +13,7 @@ COPY DentalDashboard.Domain/DentalDashboard.Domain.csproj DentalDashboard.Domain
 COPY DentalDashboard.Infrastracture/DentalDashboard.Infrastracture.csproj DentalDashboard.Infrastracture/
 COPY DentalDashboard.Security/DentalDashboard.Security.csproj DentalDashboard.Security/
 COPY DentalDashboard.Utilities/DentalDashboard.Utilities.csproj DentalDashboard.Utilities/
+COPY DentalDashboard.LeadManagement/DentalDashboard.LeadManagement.csproj DentalDashboard.LeadManagement/
 
 RUN dotnet restore DentalDashboard/DentalDashboard.csproj \
     -p:UsePrivateFrameworkPackage=true \

@@ -1,5 +1,6 @@
 
 using System.Security.Claims;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Commands;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.PatientFinance.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
@@ -13,8 +14,152 @@ namespace DentalDashboard.Secretary.Accountant.PatientFinance.Controllers;
 [ApiController]
 [Authorize(Roles = "Admin,Secretary")]
 [Route("api/secretary")]
-public sealed class PatientFinanceController(ICommandDispatcher commands, IQueryDispatcher queries) : ControllerBase
+public sealed class PatientFinanceController(
+    ICommandDispatcher commands,
+    IQueryDispatcher queries,
+    IFileStorageService storage) : ControllerBase
 {
+    private const long MaximumPatientDocumentBytes = 5 * 1024 * 1024;
+
+    [HttpGet("patient-financial-cases/{id:guid}/additional-documents")]
+    public async Task<IActionResult> GetAdditionalDocuments(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var documents = await queries.DispatchAsync(
+            new GetPatientFinancialDocumentsQuery(id),
+            cancellationToken);
+        return Ok(Result<IReadOnlyList<PatientFinancialDocumentDto>>.Success(documents));
+    }
+
+    [HttpGet("patient-financial-cases/{id:guid}/additional-documents/{documentId:guid}/image")]
+    public async Task<IActionResult> GetAdditionalDocumentImage(
+        Guid id,
+        Guid documentId,
+        CancellationToken cancellationToken)
+    {
+        var document = await queries.DispatchAsync(
+            new GetPatientFinancialDocumentFileQuery(id, documentId),
+            cancellationToken);
+
+        if (document is null)
+        {
+            return NotFound();
+        }
+
+        var image = storage.OpenPatientDocument(document.StoragePath);
+        return image is null
+            ? NotFound()
+            : File(image, document.ContentType);
+    }
+
+    [HttpPost("patient-financial-cases/{id:guid}/additional-documents")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(MaximumPatientDocumentBytes + 4096)]
+    public async Task<IActionResult> UploadAdditionalDocument(
+        Guid id,
+        IFormFile file,
+        [FromForm] string? description,
+        CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0 || file.Length > MaximumPatientDocumentBytes)
+        {
+            return BadRequest(Result.Failure("حجم تصویر باید بین ۱ بایت تا ۵ مگابایت باشد"));
+        }
+
+        if (description?.Length > 500)
+        {
+            return BadRequest(Result.Failure("توضیح مدرک حداکثر ۵۰۰ نویسه است"));
+        }
+
+        await using var data = new MemoryStream();
+        await file.CopyToAsync(data, cancellationToken);
+        var bytes = data.ToArray();
+        var isPng = bytes.Length >= 8 &&
+                    bytes[0] == 0x89 && bytes[1] == 0x50 &&
+                    bytes[2] == 0x4E && bytes[3] == 0x47 &&
+                    bytes[4] == 0x0D && bytes[5] == 0x0A &&
+                    bytes[6] == 0x1A && bytes[7] == 0x0A;
+        var isJpeg = bytes.Length >= 3 &&
+                     bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF;
+
+        if (!isPng && !isJpeg)
+        {
+            return BadRequest(Result.Failure("فقط تصاویر واقعی JPG و PNG مجاز هستند"));
+        }
+
+        data.Position = 0;
+        var extension = isPng ? ".png" : ".jpg";
+        var contentType = isPng ? "image/png" : "image/jpeg";
+        var path = await storage.SavePatientDocumentAsync(
+            data,
+            extension,
+            cancellationToken);
+
+        try
+        {
+            var result = await commands.DispatchAsync(
+                new AddPatientFinancialDocumentCommand(id, path, contentType, description),
+                cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                storage.DeletePatientDocument(path);
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch
+        {
+            storage.DeletePatientDocument(path);
+            throw;
+        }
+    }
+
+    [HttpDelete("patient-financial-cases/{id:guid}/additional-documents/{documentId:guid}")]
+    public async Task<IActionResult> DeleteAdditionalDocument(
+        Guid id,
+        Guid documentId,
+        CancellationToken cancellationToken)
+    {
+        var result = await commands.DispatchAsync(
+            new DeletePatientFinancialDocumentCommand(id, documentId),
+            cancellationToken);
+        return Write(result);
+    }
+
+    [HttpPost("patient-financial-cases/{id:guid}/guarantee-document")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<IActionResult> UploadGuaranteeDocument(Guid id, IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(Result.Failure("فایل الزامی است"));
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (extension is not (".jpg" or ".jpeg" or ".png"))
+            return BadRequest(Result.Failure("فقط فایل‌های jpg و png مجاز هستند"));
+
+        await using var stream = file.OpenReadStream();
+        var path = await storage.SaveAsync(stream, extension, cancellationToken);
+
+        var result = await commands.DispatchAsync(new UploadGuaranteeDocumentCommand(id, path), cancellationToken);
+        if (!result.IsSuccess)
+        {
+            storage.Delete(path);
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpDelete("patient-financial-cases/{id:guid}/guarantee-document")]
+    public async Task<IActionResult> DeleteGuaranteeDocument(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await commands.DispatchAsync(new UploadGuaranteeDocumentCommand(id, string.Empty), cancellationToken);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
     [HttpPost("patient-financial-cases")]
     public async Task<IActionResult> Create(CreatePatientFinancialCaseCommand command, CancellationToken cancellationToken)
     {
@@ -48,7 +193,8 @@ public sealed class PatientFinanceController(ICommandDispatcher commands, IQuery
             dto.Amount,
             dto.SayadNumber,
             dto.OwnerName,
-            dto.DueDate);
+            dto.DueDate,
+            dto.IsGuarantee);
 
         return Write(await commands.DispatchAsync(command, cancellationToken));
     }

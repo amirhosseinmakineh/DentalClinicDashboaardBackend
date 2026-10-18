@@ -59,6 +59,19 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (lead.ReportSubmittedAt.HasValue)
                 return Result<SubmitLeadCallReportResponse>.Failure("گزارش این لید قبلا ثبت شده است");
 
+            // A phone number with a previously submitted report must never be
+            // reported again through a second lead row.
+            var hasPreviousReportForPhone = await leadAssignmentRepository.GetAll()
+                .AsNoTracking()
+                .AnyAsync(x => x.Id != lead.Id &&
+                               x.PhoneNumber == lead.PhoneNumber &&
+                               x.ReportSubmittedAt.HasValue,
+                    cancellationToken);
+
+            if (hasPreviousReportForPhone)
+                return Result<SubmitLeadCallReportResponse>.Failure(
+                    "برای این شماره تماس قبلاً گزارش ثبت شده است");
+
             if (command.AttendanceProbabilityPercent.HasValue && (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
                 return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا 10 باشد");
 

@@ -5,6 +5,7 @@ using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Time;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace DentalDashboard.Infrastracture.Repository
 {
@@ -22,7 +23,11 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.ConsultantProfileId == null &&
                             x.ReportSubmittedAt == null &&
                             x.LeadAssignmentState == LeadAssignmentState.New &&
-                            x.PickUp == false)
+                            x.PickUp == false &&
+                            !context.LeadAssignments.Any(previous =>
+                                previous.Id != x.Id &&
+                                previous.PhoneNumber == x.PhoneNumber &&
+                                previous.ReportSubmittedAt != null))
                 .OrderBy(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)
@@ -42,6 +47,10 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.ReportSubmittedAt == null &&
                             x.LeadAssignmentState == LeadAssignmentState.New &&
                             !x.PickUp &&
+                            !context.LeadAssignments.Any(previous =>
+                                previous.Id != x.Id &&
+                                previous.PhoneNumber == x.PhoneNumber &&
+                                previous.ReportSubmittedAt != null) &&
                             (!x.NotificationSent ||
                              x.LastDispatchAt == null ||
                              x.LastDispatchAt < redispatchBefore))
@@ -59,7 +68,11 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.ConsultantProfileId == null &&
                             x.ReportSubmittedAt == null &&
                             x.LeadAssignmentState == LeadAssignmentState.New &&
-                            !x.PickUp);
+                            !x.PickUp &&
+                            !context.LeadAssignments.Any(previous =>
+                                previous.Id != x.Id &&
+                                previous.PhoneNumber == x.PhoneNumber &&
+                                previous.ReportSubmittedAt != null));
 
             var inFlightLead = await baseQuery
                 .Where(x => x.NotificationSent)
@@ -78,20 +91,29 @@ namespace DentalDashboard.Infrastracture.Repository
         }
 
         public async Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(
-            TimeSpan redispatchInterval)
+            TimeSpan redispatchInterval, LeadSourceType? sourceType = null)
         {
-            var lead = await GetActiveRealtimeBroadcastLeadAsync();
+            var query = GetAll().Where(x => !x.IsDeleted && x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId == null && x.ReportSubmittedAt == null && x.LeadAssignmentState == LeadAssignmentState.New && !x.PickUp && !context.LeadAssignments.Any(previous => previous.Id != x.Id && previous.PhoneNumber == x.PhoneNumber && previous.ReportSubmittedAt != null));
+            if (sourceType.HasValue)
+                query = query.Where(x => x.SourceType == sourceType.Value);
+
+            var lead = await query.Where(x => x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync()
+                ?? await query.Where(x => !x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
             if (lead == null)
                 return null;
-
             if (!lead.NotificationSent)
                 return lead;
-
             var redispatchBefore = DateTime.UtcNow.Subtract(redispatchInterval);
-            if (lead.LastDispatchAt == null || lead.LastDispatchAt < redispatchBefore)
-                return lead;
+            return lead.LastDispatchAt == null || lead.LastDispatchAt < redispatchBefore ? lead : null;
+        }
 
-            return null;
+        public Task<LeadSourceType?> GetLastPickedRealtimeSourceAsync()
+        {
+            return GetAll()
+                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId != null && x.AssignedAt != null && (x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.AdminSheet))
+                .OrderByDescending(x => x.AssignedAt).ThenByDescending(x => x.Id)
+                .Select(x => (LeadSourceType?)x.SourceType)
+                .FirstOrDefaultAsync();
         }
 
         private IQueryable<LeadAssignment> BurnedLeads() =>
@@ -162,9 +184,6 @@ namespace DentalDashboard.Infrastracture.Repository
 
         private IQueryable<LeadAssignment> ActiveRealTimeLeadsForConsultant(long consultantProfileId)
         {
-            // A lead is pending the consultant's report as soon as it is assigned
-            // to that consultant. Do not rely on PickUp/state being in sync: older
-            // rows can have those flags stale while the assignment is still active.
             return GetAll()
                 .Where(x => !x.IsDeleted &&
                             x.ConsultantProfileId == consultantProfileId &&
@@ -222,6 +241,44 @@ namespace DentalDashboard.Infrastracture.Repository
             }
 
             return existingPhones;
+        }
+
+        public async Task<int> AddNewLeadsIfPhoneDoesNotExistAsync(
+            IEnumerable<LeadAssignment> leads,
+            CancellationToken cancellationToken = default)
+        {
+            var candidates = leads
+                .Where(x => !string.IsNullOrWhiteSpace(x.PhoneNumber))
+                .GroupBy(x => x.PhoneNumber, StringComparer.Ordinal)
+                .Select(x => x.First())
+                .ToList();
+
+            if (candidates.Count == 0)
+                return 0;
+
+            await using var transaction = await context.Database
+                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+            var phoneNumbers = candidates.Select(x => x.PhoneNumber).ToArray();
+            var existingPhoneNumbers = await context.LeadAssignments
+                .Where(x => phoneNumbers.Contains(x.PhoneNumber))
+                .Select(x => x.PhoneNumber)
+                .ToHashSetAsync(cancellationToken);
+
+            var newLeads = candidates
+                .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
+                .ToList();
+
+            if (newLeads.Count == 0)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return 0;
+            }
+
+            await context.LeadAssignments.AddRangeAsync(newLeads, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return newLeads.Count;
         }
 
         public Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId)
@@ -309,7 +366,13 @@ namespace DentalDashboard.Infrastracture.Repository
             CallResult = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE CallResult END
         WHERE Id = @leadAssignmentId
           AND ((@sourceType = @newSource AND IsDeleted = 0 AND ConsultantProfileId IS NULL
-                AND PickUp = 0 AND ReportSubmittedAt IS NULL AND LeadAssignmentState = @newState)
+                AND PickUp = 0 AND ReportSubmittedAt IS NULL AND LeadAssignmentState = @newState
+                AND NOT EXISTS (
+                    SELECT 1 FROM LeadAssignments previous
+                    WHERE previous.Id <> LeadAssignments.Id
+                      AND previous.PhoneNumber = LeadAssignments.PhoneNumber
+                      AND previous.ReportSubmittedAt IS NOT NULL
+                ))
             OR (@sourceType = @burnedSource
                 AND ((IsDeleted = 1 AND ConsultantProfileId IS NULL AND PickUp = 0)
                   OR (IsDeleted = 0 AND ConsultantProfileId IS NOT NULL

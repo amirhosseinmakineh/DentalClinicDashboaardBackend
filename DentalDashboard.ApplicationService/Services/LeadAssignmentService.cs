@@ -209,29 +209,17 @@ namespace DentalDashboard.ApplicationService.Services
             var now = DateTime.Now;
             var updatedLeads = await LeadsListAsync();
 
-            var existingPhoneNumbers = await leadAssignmentRepository.GetExistingPhoneNumbersAsync(
-                updatedLeads.Select(x => x.PhoneNumber));
-
-            var newLeads = updatedLeads
-                .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
-                .ToList();
-
-            if (!newLeads.Any())
-            {
-                return;
-            }
-
-            foreach (var lead in newLeads)
+            foreach (var lead in updatedLeads)
             {
                 lead.CreatedAt = now;
                 lead.CallDeadlineAt = null;
                 lead.AssignmentType = LeadAssignmentType.RealTime;
                 lead.RequiresThreeMinuteCall = true;
                 lead.LeadAssignmentState = LeadAssignmentState.New;
+                lead.SourceType = LeadSourceType.Yektanet;
             }
 
-            await leadAssignmentRepository.AddRangeAsync(newLeads);
-            await leadAssignmentRepository.SaveChange();
+            await leadAssignmentRepository.AddNewLeadsIfPhoneDoesNotExistAsync(updatedLeads);
         }
 
         public async Task ReconcileMisclassifiedLeadStatesAsync()
@@ -310,12 +298,36 @@ namespace DentalDashboard.ApplicationService.Services
                              ? preferred
                              : fallbackSource))
             {
+                var preferredLeadSource = await GetNextRealtimeLeadSourceAsync();
                 var candidate = await candidateProvider.GetCurrentForDispatchAsync(
                     group.Key,
-                    RealtimeLeadRedispatchInterval);
+                    RealtimeLeadRedispatchInterval,
+                    preferredLeadSource);
+                if (candidate.Lead is null)
+                {
+                    candidate = await candidateProvider.GetCurrentForDispatchAsync(
+                        group.Key,
+                        RealtimeLeadRedispatchInterval,
+                        preferredLeadSource == LeadSourceType.Yektanet
+                            ? LeadSourceType.AdminSheet
+                            : LeadSourceType.Yektanet);
+                }
                 var lead = candidate.Lead;
                 if (lead is null)
                     continue;
+
+                // Never broadcast a new lead when this phone number already has
+                // a submitted report. The candidate query also applies this
+                // rule, but this final check closes the read-to-notification
+                // race window.
+                if (candidate.SourceType == LeadAssignmentSourceType.NewLeads &&
+                    await leadAssignmentRepository.GetAll().AnyAsync(x =>
+                        x.Id != lead.Id &&
+                        x.PhoneNumber == lead.PhoneNumber &&
+                        x.ReportSubmittedAt != null))
+                {
+                    continue;
+                }
 
                 var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
                 await NotifyConsultantsForRealtimeLeadAsync(
@@ -472,6 +484,14 @@ namespace DentalDashboard.ApplicationService.Services
             lead.LastDispatchAt = null;
             lead.AssignmentType = LeadAssignmentType.RealTime;
             lead.RequiresThreeMinuteCall = true;
+        }
+
+        private async Task<LeadSourceType> GetNextRealtimeLeadSourceAsync()
+        {
+            var lastPickedSource = await leadAssignmentRepository.GetLastPickedRealtimeSourceAsync();
+            return lastPickedSource == LeadSourceType.Yektanet
+                ? LeadSourceType.AdminSheet
+                : LeadSourceType.Yektanet;
         }
 
         private async Task ExpireAndRequeueRealTimeLeadInternalAsync(
@@ -635,14 +655,29 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
+                var pendingLeadsCount = consultant.CallAssignments.Count(x =>
+                    x.LeadAssignmentState == LeadAssignmentState.Pending);
                 var unSubmitReportLead = consultant.CallAssignments
                     .Count(x => !x.IsDeleted &&
                                 x.ConsultantProfileId == consultant.Id &&
                                 x.AssignmentType == LeadAssignmentType.RealTime &&
-                                x.AssignedAt != null &&
-                                x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant &&
+                                x.LeadAssignmentState == LeadAssignmentState.Assigned &&
                                 x.ReportSubmittedAt == null);
 
+                if (pendingLeadsCount >= 20)
+                {
+                    excludeConsultants.Add(consultant.Id);
+
+                    await pushNotificationService.SendAsync(
+                        consultant.UserId,
+                        "خطا در گرفتن شماره جدید",
+                        "شما 20 شماره در حال پیگیری دارید. لطفاً ابتدا پیگیری شماره‌های فعلی را انجام دهید؛ تا آن زمان شماره جدیدی برای شما ارسال نمی‌شود.",
+                        new Dictionary<string, string>
+                        {
+                            ["type"] = "PendingLeadLimit",
+                            ["pendingCount"] = pendingLeadsCount.ToString()
+                        });
+                }
                 if (unSubmitReportLead >= 1)
                 {
                     excludeConsultants.Add(consultant.Id);

@@ -5,6 +5,7 @@ namespace DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositori
 
 public interface IPatientFinanceRepository {
   IQueryable<PatientFinancialCase> Cases { get; }
+  IQueryable<PatientFinancialDocument> Documents { get; }
   IQueryable<PatientCheque> Cheques { get; }
   IQueryable<PatientPromissoryNote> PromissoryNotes { get; }
   IQueryable<PatientDebt> Debts { get; }
@@ -12,6 +13,7 @@ public interface IPatientFinanceRepository {
   IQueryable<User> Patients { get; }
   IQueryable<PatientFile> PatientFiles { get; }
   Task AddCaseAsync(PatientFinancialCase entity, CancellationToken ct);
+  Task AddDocumentAsync(PatientFinancialDocument entity, CancellationToken ct);
   Task AddChequeAsync(PatientCheque entity, CancellationToken ct);
   Task AddPromissoryNoteAsync(PatientPromissoryNote entity,
                               CancellationToken ct);

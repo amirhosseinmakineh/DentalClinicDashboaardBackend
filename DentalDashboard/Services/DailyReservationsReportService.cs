@@ -331,6 +331,10 @@ public class DailyReservationsReportService(DentalContext context)
         DentalServiceType.Composite => "کامپوزیت",
         DentalServiceType.Implant => "ایمپلنت",
         DentalServiceType.Laminate => "لمینت",
+        DentalServiceType.Crown => "روکش",
+        DentalServiceType.RootCanal => "عصب کشی",
+        DentalServiceType.Filling => "ترمیم",
+        DentalServiceType.ToothExtraction => "کشیدن دندان",
         _ => service.ToString()
     };
 

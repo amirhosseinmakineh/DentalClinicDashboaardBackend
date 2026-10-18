@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: backend-${{ github.ref_name }}
@@ -22,16 +23,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: ./.github/actions/setup-private-framework
+        id: framework
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-      - run: dotnet restore DentalDashboard.slnx
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: dotnet restore DentalDashboard.slnx --configfile "${{ steps.framework.outputs.config-file }}"
       - run: dotnet build DentalDashboard.slnx --configuration Release --no-restore
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: false
+          secret-files: |
+            nuget_config=${{ steps.framework.outputs.config-file }}
           tags: dental-back:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

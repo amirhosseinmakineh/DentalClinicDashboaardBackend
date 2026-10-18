@@ -8,3 +8,7 @@ obj/
 deploy/*.env
 !deploy/*.env.example
 /DentalDashboard/appsettings.Development.json
+
+# Local private-feed credentials
+NuGet.Private.Config
+nuget.private.config

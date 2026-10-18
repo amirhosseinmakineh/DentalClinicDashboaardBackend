@@ -1,0 +1,33 @@
+name: Set up private Framework restore
+description: Configure a temporary authenticated NuGet feed for backend builds.
+inputs:
+  token:
+    description: Token with read access to the private Framework package.
+    required: true
+outputs:
+  config-file:
+    description: Temporary NuGet configuration for restore and Docker BuildKit secrets.
+    value: ${{ steps.configure.outputs.config-file }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+    - name: Configure private package feed
+      id: configure
+      shell: bash
+      env:
+        NUGET_AUTH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        test -n "$NUGET_AUTH_TOKEN"
+        config="$RUNNER_TEMP/NuGet.Private.Config"
+        cp NuGet.Config "$config"
+        chmod 600 "$config"
+        dotnet nuget update source github-private \
+          --username "$GITHUB_ACTOR" \
+          --password "$NUGET_AUTH_TOKEN" \
+          --store-password-in-clear-text \
+          --configfile "$config"
+        echo "config-file=$config" >> "$GITHUB_OUTPUT"

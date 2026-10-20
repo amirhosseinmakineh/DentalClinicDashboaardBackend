@@ -1,4 +1,5 @@
-﻿
+using DentalDashboard.Framwork.Licensing;
+
 using DentalDashboard.ApplicationService.Contract.IServices;
 using Microsoft.Extensions.Logging;
 
@@ -22,6 +23,12 @@ namespace DentalDashboard.BackgroundServices
             while (!stoppingToken.IsCancellationRequested)
             {
                 using var scope = scopeFactory.CreateScope();
+                if (!scope.ServiceProvider.GetRequiredService<ILicenseAccess>().Status.IsValid)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                    continue;
+                }
+
                 var leadAssignmentService =
                     scope.ServiceProvider.GetRequiredService<ILeadAssignmentService>();
                 await RunStepAsync("AssignRealTimeLeads", () => leadAssignmentService.AssignLeadToTestConsultant(), stoppingToken);

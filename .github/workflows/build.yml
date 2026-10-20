@@ -20,3 +20,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - run: dotnet restore DentalDashboard.slnx --configfile "${{ steps.framework.outputs.config-file }}"
       - run: dotnet build DentalDashboard.slnx --configuration Release --no-restore
+      - run: dotnet test tests/ClinicLicensing.Tests/ClinicLicensing.Tests.csproj --configuration Release --no-build --no-restore

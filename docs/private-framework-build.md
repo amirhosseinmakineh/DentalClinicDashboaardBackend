@@ -1,6 +1,6 @@
 # Backend builds with the private Framework package
 
-The backend consumes the exact `DentalDashboard.Framework` version `1.0.0` from the private `amirhosseinmakineh/DentalDashboard-Framework` repository via GitHub Packages. The assembly and namespaces keep their existing `DentalDashboard.Framwork` spelling. Framework source is no longer in this branch or solution.
+The backend consumes the exact `DentalDashboard.Framework` version `1.1.0-rc.1` from the private `amirhosseinmakineh/DentalDashboard-Framework` repository via GitHub Packages. The assembly and namespaces keep their existing `DentalDashboard.Framwork` spelling. Framework source is no longer in this branch or solution.
 
 ## Local build
 
@@ -27,4 +27,4 @@ BuildKit mounts the configuration only during restore. The publish step uses `--
 
 All backend build workflows use the shared `setup-private-framework` action and their read-only `GITHUB_TOKEN`. The private package must grant this backend repository Actions read access; the existing private-consumer preflight has verified that access. CI builds the complete solution and container without Framework source.
 
-This branch does not implement license enforcement and does not change Production. Historical commits and older branches may still contain previously published Framework source.
+This licensing feature branch enforces signed installation licenses; see `clinic-licensing.md` before deploying it. Production is unchanged. Historical commits and older branches may still contain previously published Framework source.

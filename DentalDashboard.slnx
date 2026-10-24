@@ -9,6 +9,7 @@
     <Project Path="DentalDashboard.Utilities/DentalDashboard.Utilities.csproj" Id="597f326f-d4ff-48aa-aefb-98d823a68869" />
     <Project Path="DentalDashboard.LeadManagement/DentalDashboard.LeadManagement.csproj" />
   </Folder>
+  <Project Path="DentalDashboard.IntegrationTests/DentalDashboard.IntegrationTests.csproj" />
 
   <Project Path="DentalDashboard/DentalDashboard.csproj" />
 </Solution>

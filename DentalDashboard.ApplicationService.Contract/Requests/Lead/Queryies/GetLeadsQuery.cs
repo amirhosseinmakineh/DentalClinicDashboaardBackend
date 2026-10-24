@@ -9,6 +9,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
     public class GetLeadsQuery : IQuery<PaginatedResult<LeadsAssignmentItemsResponse>>
     {
         public long ProfileId { get; set; }
+        public LeadSourceType? SourceType { get; set; }
         public LeadAssignmentState? leadAssignmentState { get; set; }
         public LeadAssignmentType? LeadAssignmentType { get; set; }
         public bool? HasSubmittedReport { get; set; }
@@ -38,6 +39,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
 
     public class GetAllLeadsQuery : IQuery<PaginatedResult<LeadsAssignmentItemsResponse>>
     {
+        public LeadSourceType? SourceType { get; set; }
         public LeadAssignmentState? leadAssignmentState { get; set; }
         public LeadAssignmentType? LeadAssignmentType { get; set; }
         public string? SearchText { get; set; }

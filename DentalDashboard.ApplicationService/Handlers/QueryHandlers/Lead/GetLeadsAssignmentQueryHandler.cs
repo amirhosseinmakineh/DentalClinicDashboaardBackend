@@ -78,9 +78,16 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
 
             leadsQuery = leadsQuery.ApplyAssignedAtFilter(query);
 
+            if (query.SourceType.HasValue)
+                leadsQuery = leadsQuery.Where(x => x.SourceType == query.SourceType.Value);
+
             var allLeads = leadsQuery.Select(x => new LeadsAssignmentItemsResponse()
             {
                 Id = x.Id,
+                SourceType = x.SourceType,
+                ConsultationDescription = x.ConsultationDescription,
+                RequestedServices = x.RequestedServices.Select(service =>
+                    new RequestedServiceResponse(service.ServiceId, service.Service.Title)).ToList(),
                 LeadAssignmentState = x.LeadAssignmentState,
                 leadAssignmentType = x.AssignmentType,
                 PhoneNumber = x.PhoneNumber,
@@ -185,10 +192,17 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                         !r.IsDeleted && !r.IsCanceled && r.LeadAssignmentId == x.Id));
             }
 
+            if (query.SourceType.HasValue)
+                leadsQuery = leadsQuery.Where(x => x.SourceType == query.SourceType.Value);
+
             var allLeads = leadsQuery
                 .Select(x => new LeadsAssignmentItemsResponse()
                 {
                     Id = x.Id,
+                SourceType = x.SourceType,
+                ConsultationDescription = x.ConsultationDescription,
+                RequestedServices = x.RequestedServices.Select(service =>
+                    new RequestedServiceResponse(service.ServiceId, service.Service.Title)).ToList(),
                     LeadAssignmentState = x.LeadAssignmentState,
                     leadAssignmentType = x.AssignmentType,
                     PhoneNumber = x.PhoneNumber,

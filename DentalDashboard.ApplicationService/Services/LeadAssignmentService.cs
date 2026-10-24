@@ -489,7 +489,7 @@ namespace DentalDashboard.ApplicationService.Services
         private async Task<LeadSourceType> GetNextRealtimeLeadSourceAsync()
         {
             var lastPickedSource = await leadAssignmentRepository.GetLastPickedRealtimeSourceAsync();
-            return lastPickedSource == LeadSourceType.Yektanet
+            return lastPickedSource is LeadSourceType.Yektanet or LeadSourceType.Website
                 ? LeadSourceType.AdminSheet
                 : LeadSourceType.Yektanet;
         }

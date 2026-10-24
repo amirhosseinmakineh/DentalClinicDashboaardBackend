@@ -30,6 +30,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant &&
                     x.ReportSubmittedAt == null);
 
+            if (query.SourceType.HasValue)
+                leads = leads.Where(x => x.SourceType == query.SourceType.Value);
             if (query.leadAssignmentState.HasValue)
                 leads = leads.Where(x => x.LeadAssignmentState == query.leadAssignmentState.Value);
             if (query.LeadAssignmentType.HasValue)
@@ -67,6 +69,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 .Select(x => new LeadsAssignmentItemsResponse
                 {
                     Id = x.Id,
+                    SourceType = x.SourceType,
+                    ConsultationServiceId = x.ConsultationServiceId,
+                    ConsultationServiceTitle = x.ConsultationService != null ? x.ConsultationService.Title : null,
+                    ConsultationNotes = x.ConsultationNotes,
                     LeadAssignmentState = x.LeadAssignmentState,
                     leadAssignmentType = x.AssignmentType,
                     ConsultantProfileId = x.ConsultantProfileId,

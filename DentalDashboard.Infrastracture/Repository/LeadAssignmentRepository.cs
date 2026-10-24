@@ -1,4 +1,4 @@
-﻿using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
@@ -95,7 +95,9 @@ namespace DentalDashboard.Infrastracture.Repository
         {
             var query = GetAll().Where(x => !x.IsDeleted && x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId == null && x.ReportSubmittedAt == null && x.LeadAssignmentState == LeadAssignmentState.New && !x.PickUp && !context.LeadAssignments.Any(previous => previous.Id != x.Id && previous.PhoneNumber == x.PhoneNumber && previous.ReportSubmittedAt != null));
             if (sourceType.HasValue)
-                query = query.Where(x => x.SourceType == sourceType.Value);
+                query = sourceType.Value == LeadSourceType.Yektanet
+                    ? query.Where(x => x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.Website)
+                    : query.Where(x => x.SourceType == sourceType.Value);
 
             var lead = await query.Where(x => x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync()
                 ?? await query.Where(x => !x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
@@ -110,7 +112,7 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<LeadSourceType?> GetLastPickedRealtimeSourceAsync()
         {
             return GetAll()
-                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId != null && x.AssignedAt != null && (x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.AdminSheet))
+                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId != null && x.AssignedAt != null && (x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.Website || x.SourceType == LeadSourceType.AdminSheet))
                 .OrderByDescending(x => x.AssignedAt).ThenByDescending(x => x.Id)
                 .Select(x => (LeadSourceType?)x.SourceType)
                 .FirstOrDefaultAsync();

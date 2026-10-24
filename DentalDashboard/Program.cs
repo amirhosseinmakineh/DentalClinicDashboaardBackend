@@ -14,6 +14,8 @@ using DentalDashboard.Hubs;
 using DentalDashboard.LeadManagement.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +36,17 @@ if (string.IsNullOrWhiteSpace(configuredConnection) ||
 // ====================================
 
 builder.Services.AddControllers();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("consultation-requests", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = Math.Clamp(builder.Configuration.GetValue("ConsultationRequests:PermitLimit", 5), 1, 1000), Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
 builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -257,6 +270,8 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseCors("FrontendCors");
 
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -282,3 +297,6 @@ app.MapGet("/readyz", async (DentalContext dbContext, CancellationToken cancella
     .AllowAnonymous();
 
 app.Run();
+
+// Allows the integration test host to run the real API with isolated infrastructure.
+public partial class Program { }

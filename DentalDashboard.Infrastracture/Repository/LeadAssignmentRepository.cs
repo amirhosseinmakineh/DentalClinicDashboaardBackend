@@ -95,7 +95,10 @@ namespace DentalDashboard.Infrastracture.Repository
         {
             var query = GetAll().Where(x => !x.IsDeleted && x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId == null && x.ReportSubmittedAt == null && x.LeadAssignmentState == LeadAssignmentState.New && !x.PickUp && !context.LeadAssignments.Any(previous => previous.Id != x.Id && previous.PhoneNumber == x.PhoneNumber && previous.ReportSubmittedAt != null));
             if (sourceType.HasValue)
-                query = query.Where(x => x.SourceType == sourceType.Value);
+                // Preserve the existing Yektanet/non-Yektanet alternation. Website
+                // joins the AdminSheet queue, with the same ordering and eligibility.
+                query = query.Where(x => x.SourceType == sourceType.Value ||
+                    (sourceType == LeadSourceType.AdminSheet && x.SourceType == LeadSourceType.Website));
 
             var lead = await query.Where(x => x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync()
                 ?? await query.Where(x => !x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
@@ -110,9 +113,9 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<LeadSourceType?> GetLastPickedRealtimeSourceAsync()
         {
             return GetAll()
-                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId != null && x.AssignedAt != null && (x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.AdminSheet))
+                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId != null && x.AssignedAt != null && (x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.AdminSheet || x.SourceType == LeadSourceType.Website))
                 .OrderByDescending(x => x.AssignedAt).ThenByDescending(x => x.Id)
-                .Select(x => (LeadSourceType?)x.SourceType)
+                .Select(x => (LeadSourceType?)(x.SourceType == LeadSourceType.Website ? LeadSourceType.AdminSheet : x.SourceType))
                 .FirstOrDefaultAsync();
         }
 

@@ -9,6 +9,10 @@ namespace DentalDashboard.Infrastracture.Configuration
         public void Configure(EntityTypeBuilder<LeadAssignment> builder)
         {
             builder.HasIndex(x => x.PhoneNumber);
+            builder.Property(x => x.ConsultationDescription).HasMaxLength(1000);
+            builder.Property(x => x.ConsultationRequestHash).HasMaxLength(64);
+            builder.HasIndex(x => x.ConsultationRequestId).IsUnique()
+                .HasFilter("[ConsultationRequestId] IS NOT NULL");
 
             builder.HasIndex(x => new
             {

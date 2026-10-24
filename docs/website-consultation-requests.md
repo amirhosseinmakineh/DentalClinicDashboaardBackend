@@ -100,3 +100,5 @@ CI adds an isolated SQL Server integration job for pull requests. Tests do not d
 * `DentalDashboard/Program.cs`
 * `docs/sql/2026-10-24-website-consultation.sql`
 * `docs/website-consultation-requests.md`
+
+Browser validation also exercises the authenticated admin table, Website source filter, requested service titles and visitor notes against the real paired API.

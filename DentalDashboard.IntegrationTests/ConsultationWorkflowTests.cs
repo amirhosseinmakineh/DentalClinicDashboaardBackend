@@ -186,6 +186,12 @@ public class ConsultationWorkflowTests(ITestOutputHelper output)
                     user = new { firstName = "مشاور", lastName = "آزمایش", role = "consultant", roles = new[] { "consultant" }, roleName = "Consultant",
                         userId = owner.User.Id, profileId = owner.Id, consultantProfileId = owner.Id, isCompleteProfile = true }
                 });
+                start.Environment["CLINIC_TEST_ADMIN_SESSION"] = JsonSerializer.Serialize(new
+                {
+                    token = factory.Token(owner.User.Id, "Admin"),
+                    user = new { firstName = "مدیر", lastName = "آزمایش", role = "admin", roles = new[] { "admin" }, roleName = "Admin",
+                        userId = owner.User.Id, isCompleteProfile = true }
+                });
                 using var browser = Process.Start(start)!;
                 var stdout = browser.StandardOutput.ReadToEndAsync(); var stderr = browser.StandardError.ReadToEndAsync();
                 await browser.WaitForExitAsync(); output.WriteLine(await stdout); output.WriteLine(await stderr);

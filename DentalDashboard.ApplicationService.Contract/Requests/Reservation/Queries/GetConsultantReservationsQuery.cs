@@ -1,5 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries
@@ -9,8 +10,16 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queri
         public long ConsultantProfileId { get; set; }
         public DateTime? From { get; set; }
         public DateTime? To { get; set; }
+        // Appointment dates in Iran local calendar time. Unlike From/To, ToDate includes the full day.
+        public DateOnly? FromDate { get; set; }
+        public DateOnly? ToDate { get; set; }
         public bool IncludeCanceled { get; set; } = false;
         public bool? OnlySecretaryReviewed { get; set; }
+        public string? SearchText { get; set; }
+        public string? PatientName { get; set; }
+        public string? PatientPhoneNumber { get; set; }
+        public string? PatientCity { get; set; }
+        public ReservationAttendanceConfirmationStatus? AttendanceConfirmationStatus { get; set; }
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

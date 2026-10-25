@@ -2,12 +2,14 @@ using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DentalDashboard.Controllers;
 
 [Route("api/admin/consultants")]
 [ApiController]
+[Authorize(Roles = "Admin")]
 public class AdminConsultantsController : ControllerBase
 {
     private readonly IQueryDispatcher queryDispatcher;
@@ -32,9 +34,9 @@ public class AdminConsultantsController : ControllerBase
             var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = "پروفایل مشاور یافت نشد" });
         }
     }
 

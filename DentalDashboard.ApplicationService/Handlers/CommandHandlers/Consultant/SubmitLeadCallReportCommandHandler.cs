@@ -19,7 +19,6 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
         private readonly ILeadDomainService leadDomainService;
         private readonly ILeadAssignmentService leadAssignmentService;
         private readonly IUserPresenceService presenceService;
-        private readonly IUnitOfWork unitOfWork;
 
         public SubmitLeadCallReportCommandHandler(
             ILeadAssignmentRepository leadAssignmentRepository,
@@ -27,8 +26,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             ILeadReportDomainService leadReportDomainService,
             ILeadDomainService leadDomainService,
             ILeadAssignmentService leadAssignmentService,
-            IUserPresenceService presenceService,
-            IUnitOfWork unitOfWork)
+            IUserPresenceService presenceService)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
@@ -36,21 +34,16 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             this.leadDomainService = leadDomainService;
             this.leadAssignmentService = leadAssignmentService;
             this.presenceService = presenceService;
-            this.unitOfWork = unitOfWork;
         }
 
         public async Task<Result<SubmitLeadCallReportResponse>> HandleAsync(SubmitLeadCallReportCommand command, CancellationToken cancellationToken = default)
         {
-            var lead = await leadAssignmentRepository.GetAll()
-                .FirstOrDefaultAsync(
-                    x => x.Id == command.LeadAssignmentId &&
-                         x.ConsultantProfileId == command.ConsultantProfileId,
-                    cancellationToken);
+            var lead = await  leadAssignmentRepository.GetByIdAndConsultantAsync(command.LeadAssignmentId, command.ConsultantProfileId);
             if (lead == null)
                 return Result<SubmitLeadCallReportResponse>.Failure("لید یافت نشد");
 
             var profile = await consultantProfileRepository.GetAll()
-                .FirstOrDefaultAsync(x => x.Id == command.ConsultantProfileId, cancellationToken);
+                .FirstOrDefaultAsync(x => x.Id == command.ConsultantProfileId);
             if (profile == null)
                 return Result<SubmitLeadCallReportResponse>.Failure("مشاوری یافت نشد");
 
@@ -66,8 +59,21 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             if (lead.ReportSubmittedAt.HasValue)
                 return Result<SubmitLeadCallReportResponse>.Failure("گزارش این لید قبلا ثبت شده است");
 
+            // A phone number with a previously submitted report must never be
+            // reported again through a second lead row.
+            var hasPreviousReportForPhone = await leadAssignmentRepository.GetAll()
+                .AsNoTracking()
+                .AnyAsync(x => x.Id != lead.Id &&
+                               x.PhoneNumber == lead.PhoneNumber &&
+                               x.ReportSubmittedAt.HasValue,
+                    cancellationToken);
+
+            if (hasPreviousReportForPhone)
+                return Result<SubmitLeadCallReportResponse>.Failure(
+                    "برای این شماره تماس قبلاً گزارش ثبت شده است");
+
             if (command.AttendanceProbabilityPercent.HasValue && (command.AttendanceProbabilityPercent < 0 || command.AttendanceProbabilityPercent > 100))
-                return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
+                return Result<SubmitLeadCallReportResponse>.Failure("احتمال حضور باید بین ۰ تا 10 باشد");
 
             var isSuccessfulCall = command.CallResult == LeadCallResult.Contacted ||
                                    command.CallResult == LeadCallResult.Converted;
@@ -96,15 +102,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             lead.ContactedAt = now;
             lead.LeadAssignmentState = leadReportDomainService.MapCallResultToState(command.CallResult);
 
-            // Persist the lead before touching ConsultantProfiles. Pickup uses
-            // the same LeadAssignments -> ConsultantProfiles lock order. This
-            // prevents a pickup transaction holding the consultant row while
-            // waiting for a lead row, which was the blocker observed in SQL
-            // Server (LCK_M_X behind the pickup session).
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-
             if (lead.AssignmentType == LeadAssignmentType.ConsultantPatient)
             {
+                consultantProfileRepository.Update(profile);
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
                 return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
             }
 
@@ -112,7 +114,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             {
                 profile.IsOnline = false;
                 profile.LastOfflineAt = now;
-                await unitOfWork.SaveChangesAsync(cancellationToken);
+                consultantProfileRepository.Update(profile);
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
                 return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");
             }
 
@@ -121,7 +125,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             {
                 profile.IsOnline = true;
                 profile.LastOnlineAt = now;
-                await unitOfWork.SaveChangesAsync(cancellationToken);
+                consultantProfileRepository.Update(profile);
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
 
                 await presenceService.LogAsync(
                     profile.UserId,
@@ -130,6 +136,12 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                     cancellationToken: cancellationToken);
 
                 await leadAssignmentService.AssignRealTimeLeadsAsync();
+            }
+            else
+            {
+                consultantProfileRepository.Update(profile);
+                leadAssignmentRepository.Update(lead);
+                await leadAssignmentRepository.SaveChange();
             }
 
             return Result<SubmitLeadCallReportResponse>.Success(CreateResponse(lead, profile), "گزارش ثبت شد");

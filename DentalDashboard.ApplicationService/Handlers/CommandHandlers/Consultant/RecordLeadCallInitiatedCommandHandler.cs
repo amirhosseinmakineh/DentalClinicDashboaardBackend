@@ -11,16 +11,13 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
     {
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly IConsultantProfileRepository consultantProfileRepository;
-        private readonly IUnitOfWork unitOfWork;
 
         public RecordLeadCallInitiatedCommandHandler(
             ILeadAssignmentRepository leadAssignmentRepository,
-            IConsultantProfileRepository consultantProfileRepository,
-            IUnitOfWork unitOfWork)
+            IConsultantProfileRepository consultantProfileRepository)
         {
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
-            this.unitOfWork = unitOfWork;
         }
 
         public async Task<Result<RecordLeadCallInitiatedResponse>> HandleAsync(
@@ -54,28 +51,17 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             var isFirstCallInitiation = !lead.CallInitiatedAt.HasValue;
             if (isFirstCallInitiation)
             {
-                await unitOfWork.BeginTransactionAsync(cancellationToken);
-                try
-                {
-                    lead.CallInitiatedAt = now;
-                    leadAssignmentRepository.Update(lead);
-                    await unitOfWork.SaveChangesAsync(cancellationToken);
+                lead.CallInitiatedAt = now;
+                leadAssignmentRepository.Update(lead);
 
-                    if (lead.AssignmentType == LeadAssignmentType.RealTime)
-                    {
-                        profile.IsOnline = false;
-                        profile.LastOfflineAt = now;
-                        consultantProfileRepository.Update(profile);
-                        await unitOfWork.SaveChangesAsync(cancellationToken);
-                    }
-
-                    await unitOfWork.CommitAsync(cancellationToken);
-                }
-                catch
+                if (lead.AssignmentType == LeadAssignmentType.RealTime)
                 {
-                    await unitOfWork.RollbackAsync(CancellationToken.None);
-                    throw;
+                    profile.IsOnline = false;
+                    profile.LastOfflineAt = now;
+                    consultantProfileRepository.Update(profile);
                 }
+
+                await leadAssignmentRepository.SaveChange();
             }
 
             return Result<RecordLeadCallInitiatedResponse>.Success(new RecordLeadCallInitiatedResponse

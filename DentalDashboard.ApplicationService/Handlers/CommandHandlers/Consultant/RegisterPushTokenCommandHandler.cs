@@ -59,15 +59,15 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                     profile.User.PushNotificationToken,
                     command.DeviceToken.Trim());
                 profile.User.UpdatedAt = DateTime.UtcNow;
-                await consultantProfileRepository.SaveChange(cancellationToken);
+                await consultantProfileRepository.SaveChange();
 
                 return Result.Success("توکن نوتیفیکیشن ثبت شد");
             }
             catch (DbUpdateException ex)
             {
                 var inner = ex.InnerException?.Message ?? ex.Message;
-                if (inner.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase) &&
-                    inner.Contains("PushSubscriptions", StringComparison.OrdinalIgnoreCase))
+                if (inner.Contains("PushSubscriptions", StringComparison.OrdinalIgnoreCase) ||
+                    inner.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase))
                 {
                     return Result.Failure(
                         "جدول PushSubscriptions روی سرور وجود ندارد یا migration اجرا نشده است. بک‌اند را redeploy کنید.");
@@ -79,11 +79,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                         "طول subscription از حد مجاز دیتابیس بیشتر است. بک‌اند را به آخرین نسخه به‌روز کنید.");
                 }
 
-                return Result.Failure($"ثبت subscription در دیتابیس انجام نشد: {inner}");
+                return Result.Failure("ثبت subscription در دیتابیس انجام نشد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Result.Failure($"ثبت subscription انجام نشد: {ex.Message}");
+                return Result.Failure("ثبت subscription انجام نشد");
             }
         }
     }

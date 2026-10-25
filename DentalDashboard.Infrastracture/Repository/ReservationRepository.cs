@@ -2,6 +2,7 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Domain.Enums;
 
 namespace DentalDashboard.Infrastracture.Repository
 {
@@ -16,7 +17,7 @@ namespace DentalDashboard.Infrastracture.Repository
             return GetAll()
                 .CountAsync(x => x.ConsultantProfileId == consultantProfileId &&
                                  x.ReservationAt == reservationAt &&
-                                 !x.IsCanceled && !x.IsDeleted);
+                                 !x.IsCanceled);
         }
 
         public Task<int> CountActiveReservationsAtExcludingAsync(
@@ -28,14 +29,16 @@ namespace DentalDashboard.Infrastracture.Repository
                 .CountAsync(x => x.ConsultantProfileId == consultantProfileId &&
                                  x.ReservationAt == reservationAt &&
                                  !x.IsCanceled &&
-                                 !x.IsDeleted &&
                                  x.Id != excludeReservationId);
         }
 
         public Task<bool> HasActiveReservationForLeadAsync(long leadAssignmentId)
         {
             return GetAll()
-                .AnyAsync(x => x.LeadAssignmentId == leadAssignmentId && !x.IsCanceled && !x.IsDeleted);
+                .AnyAsync(x => x.LeadAssignmentId == leadAssignmentId &&
+                               !x.IsCanceled &&
+                               x.AttendanceConfirmationStatus != ReservationAttendanceConfirmationStatus.SecretaryApproved &&
+                               x.AttendanceConfirmationStatus != ReservationAttendanceConfirmationStatus.SecretaryRejected);
         }
     }
 }

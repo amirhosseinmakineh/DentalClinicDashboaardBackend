@@ -4,8 +4,7 @@ public enum PickupLeadStatus
 {
     Success = 1,
     AlreadyTaken = 2,
-    DailyLimitReached = 3,
-    WorkloadBlocked = 4
+    DailyLimitReached = 3
 }
 
 public sealed class PickupLeadResult
@@ -14,5 +13,4 @@ public sealed class PickupLeadResult
     public long? LeadAssignmentId { get; init; }
     public long? ConsultantProfileId { get; init; }
     public DateTime? CallDeadlineAt { get; init; }
-    public string? Message { get; init; }
 }

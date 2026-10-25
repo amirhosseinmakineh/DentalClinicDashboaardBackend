@@ -1,4 +1,5 @@
 ﻿using DentalDashboard.Domain.Models;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.IRepositories;
 
 namespace DentalDashboard.Domain.IRepositories
@@ -6,27 +7,28 @@ namespace DentalDashboard.Domain.IRepositories
     public interface ILeadAssignmentRepository : IBaseRepository<long, LeadAssignment>
     {
         Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId);
-        Task<bool> HasUnreportedLeadAsync(
-            long consultantProfileId,
-            CancellationToken cancellationToken = default);
+        Task<int> CountActiveUnreportedRealTimeLeadsAsync(long consultantProfileId);
+        Task<int> CountActiveUncalledRealTimeLeadsAsync(long consultantProfileId);
+        Task<int> CountActiveFollowUpRealTimeLeadsAsync(long consultantProfileId);
         Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take);
         Task<List<LeadAssignment>> GetRealtimeLeadsForDispatchAsync(int take, TimeSpan redispatchInterval);
         Task<LeadAssignment?> GetActiveRealtimeBroadcastLeadAsync();
-        Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(TimeSpan redispatchInterval);
+        Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(TimeSpan redispatchInterval, LeadSourceType? sourceType = null);
+        Task<LeadSourceType?> GetLastPickedRealtimeSourceAsync();
+        Task<LeadAssignment?> GetActiveBurnedLeadAsync();
+        Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval);
         Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now);
         Task<int> CountUnassignedRealTimeLeadsAsync();
-        Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers);
+        Task<HashSet<string>> GetExistingPhoneNumbersAsync(
+            IEnumerable<string> phoneNumbers,
+            CancellationToken cancellationToken = default);
+        Task<int> AddNewLeadsIfPhoneDoesNotExistAsync(
+            IEnumerable<LeadAssignment> leads,
+            CancellationToken cancellationToken = default);
         Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId);
         Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync();
         Task<int> GetTodayPickupCountAsync(long consultantProfileId);
+        Task<int> GetTodayCallCountAsync(long consultantProfileId);
         Task<bool> TryPickupLeadAsync(long leadAssignmentId, long consultantProfileId, CancellationToken cancellationToken);
-        Task<bool> IsAvailableForPickupAsync(
-            long leadAssignmentId,
-            CancellationToken cancellationToken = default);
-        Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval);
-        Task<(int NewLeadCount, int BurnedLeadCount)> GetSellerDailyAllocationCountAsync(
-            long consultantProfileId, CancellationToken cancellationToken = default);
-        Task<int> GetTodayAssignmentCountAsync(
-            long consultantProfileId, bool burned, CancellationToken cancellationToken = default);
     }
 }

@@ -2,6 +2,7 @@ using DentalDashboard.ApplicationService.Contract.Requests.Consultant.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses.ConsultantResponse;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IDomainService;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Utilities.Time;
@@ -14,21 +15,21 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadDomainService leadDomainService;
-        private readonly IConsultantLeadWorkloadService workloadService;
-        private readonly IPushNotificationService pushNotificationService;
+        private readonly ILeadAssignmentRepository leadAssignmentRepository;
+        private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
 
         public GetConsultantDashboardStatusQueryHandler(
             IConsultantProfileRepository consultantProfileRepository,
             IReservationRepository reservationRepository,
             ILeadDomainService leadDomainService,
-            IConsultantLeadWorkloadService workloadService,
-            IPushNotificationService pushNotificationService)
+            ILeadAssignmentRepository leadAssignmentRepository,
+            ILeadAssignmentLimitService leadAssignmentLimitService)
         {
             this.consultantProfileRepository = consultantProfileRepository;
             this.reservationRepository = reservationRepository;
             this.leadDomainService = leadDomainService;
-            this.workloadService = workloadService;
-            this.pushNotificationService = pushNotificationService;
+            this.leadAssignmentRepository = leadAssignmentRepository;
+            this.leadAssignmentLimitService = leadAssignmentLimitService;
         }
 
         public async Task<ConsultantDashboardStatusResponse> HandleAsync(
@@ -45,33 +46,32 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 throw new InvalidOperationException("پروفایل مشاور حذف شده است");
 
             var isAfterWorkEnd = leadDomainService.IsAfterWorkEnd(DateTime.Now);
-            var workload = await workloadService.GetStatusAsync(profile.Id, cancellationToken);
+            var isWorkingTime = leadDomainService.IsWorkingTime(DateTime.Now);
 
-            var canGoOnline = !isAfterWorkEnd && !workload.BlocksNewLeads;
+            var canGoOnline = isWorkingTime &&
+                profile.IsCompleteProfile && profile.IsAvailable;
+            var pendingReportCount = await leadAssignmentRepository
+                .CountActiveUnreportedRealTimeLeadsAsync(profile.Id);
+            var uncalledWithoutReportCount = await leadAssignmentRepository
+                .CountActiveUncalledRealTimeLeadsAsync(profile.Id);
+            var isNewLeadBlocked = pendingReportCount > 0;
             var (todayStartUtc, todayEndUtc) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
-            var todayReservationsCount = await reservationRepository.GetAll()
+            var activeReservations = reservationRepository.GetAll()
                 .AsNoTracking()
-                .CountAsync(
-                    x => !x.IsDeleted &&
-                         !x.IsCanceled &&
-                         x.ConsultantProfileId == profile.Id &&
-                         x.CreatedAt >= todayStartUtc &&
-                         x.CreatedAt < todayEndUtc,
-                    cancellationToken);
-
-            if (workload.BlocksNewLeads)
-            {
-                await pushNotificationService.SendAsync(
-                    profile.UserId,
-                    "تعیین تکلیف شماره‌های قبلی",
-                    workload.BlockMessage!,
-                    new Dictionary<string, string>
-                    {
-                        ["type"] = "ConsultantLeadWorkloadBlocked",
-                        ["route"] = "/consultant/leads"
-                    },
-                    cancellationToken);
-            }
+                .Where(x => !x.IsDeleted &&
+                            !x.IsCanceled &&
+                            x.ConsultantProfileId == profile.Id);
+            var totalReservationsCount = await activeReservations
+                .CountAsync(cancellationToken);
+            var totalReservedPatientsCount = await activeReservations
+                .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
+            var todayReservationsCount = await activeReservations
+                .Where(x =>
+                            x.CreatedAt >= todayStartUtc &&
+                            x.CreatedAt < todayEndUtc)
+                .SumAsync(x => (int?)x.PatientCount, cancellationToken) ?? 0;
+            var todayCallsCount = await leadAssignmentRepository.GetTodayCallCountAsync(profile.Id);
+            var dailyLimitStatus = await leadAssignmentLimitService.GetDailyLimitStatusAsync(profile.Id);
 
             return new ConsultantDashboardStatusResponse
             {
@@ -81,26 +81,34 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Consultant
                 LastOnlineAt = profile.LastOnlineAt,
                 LastOfflineAt = profile.LastOfflineAt,
                 CanGoOnline = canGoOnline,
-                OnlineStatusBlockReason = ResolveOnlineStatusBlockReason(isAfterWorkEnd, workload),
+                OnlineStatusBlockReason = !profile.IsCompleteProfile ? "پروفایل مشاور کامل نیست"
+                    : !profile.IsAvailable ? "ابتدا حضور خود را ثبت کنید"
+                    : !isWorkingTime ? ResolveOnlineStatusBlockReason(isAfterWorkEnd)
+                        ?? "امکان آنلاین شدن قبل از ساعت ۹ صبح وجود ندارد"
+                    : null,
                 TodayReservationsCount = todayReservationsCount,
-                UncalledWithoutReportCount = workload.UncalledWithoutReportCount,
-                FollowUpCount = workload.FollowUpCount,
-                MaximumAllowedFollowUps = ConsultantLeadWorkloadStatus.MaximumAllowedFollowUps,
-                IsNewLeadBlocked = workload.BlocksNewLeads,
-                ShouldShowWorkloadNotification = workload.BlocksNewLeads,
-                WorkloadNotificationMessage = workload.BlockMessage
+                TotalReservationsCount = totalReservationsCount,
+                TotalReservedPatientsCount = totalReservedPatientsCount,
+                TodayCallsCount = todayCallsCount,
+                DailyLimit = dailyLimitStatus.EffectiveDailyLimit,
+                TodayPickupCount = dailyLimitStatus.TodayPickupCount,
+                RemainingDailyCapacity = Math.Max(
+                    0,
+                    dailyLimitStatus.EffectiveDailyLimit - dailyLimitStatus.TodayPickupCount),
+                PendingReportCount = pendingReportCount,
+                UncalledWithoutReportCount = uncalledWithoutReportCount,
+                IsNewLeadBlocked = isNewLeadBlocked,
+                ShouldShowWorkloadNotification = isNewLeadBlocked,
+                WorkloadNotificationMessage = isNewLeadBlocked
+                    ? "ابتدا گزارش لیدهای بدون گزارش را ثبت کنید"
+                    : null
             };
         }
 
-        private static string? ResolveOnlineStatusBlockReason(
-            bool isAfterWorkEnd,
-            ConsultantLeadWorkloadStatus workload)
+        private static string? ResolveOnlineStatusBlockReason(bool isAfterWorkEnd)
         {
             if (isAfterWorkEnd)
                 return "امکان آنلاین شدن بعد از ساعت ۹ شب وجود ندارد";
-
-            if (workload.BlocksNewLeads)
-                return workload.BlockMessage;
 
             return null;
         }

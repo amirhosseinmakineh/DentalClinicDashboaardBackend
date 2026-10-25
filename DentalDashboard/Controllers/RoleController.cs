@@ -3,9 +3,11 @@ using DentalDashboard.ApplicationService.Contract.Requests.Role.Queries;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = "Admin")]
 public class RoleController : ControllerBase
 {
     private readonly ICommandDispatcher dispatcher;

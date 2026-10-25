@@ -1,16 +1,22 @@
-﻿using DentalDashboard.ApplicationService.Contract.Responses;
+using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
+using System.Text.Json.Serialization;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
 {
     public class GetLeadsQuery : IQuery<PaginatedResult<LeadsAssignmentItemsResponse>>
     {
         public long ProfileId { get; set; }
+        public LeadSourceType? SourceType { get; set; }
         public LeadAssignmentState? leadAssignmentState { get; set; }
         public LeadAssignmentType? LeadAssignmentType { get; set; }
         public bool? HasSubmittedReport { get; set; }
+        public string? SearchText { get; set; }
+        public string? UserName { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? PatientCity { get; set; }
         public DateOnly? Date { get; set; }
         public DateTime? From { get; set; }
         public DateTime? To { get; set; }
@@ -22,10 +28,23 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }
+
+    /// <summary>
+    /// Returns the consultant's picked-up leads that do not have a submitted report yet.
+    /// It intentionally has the same filters and pagination contract as <see cref="GetLeadsQuery"/>.
+    /// </summary>
+    public class GetNewLeadsQuery : GetLeadsQuery
+    {
+    }
+
     public class GetAllLeadsQuery : IQuery<PaginatedResult<LeadsAssignmentItemsResponse>>
     {
+        public LeadSourceType? SourceType { get; set; }
         public LeadAssignmentState? leadAssignmentState { get; set; }
         public LeadAssignmentType? LeadAssignmentType { get; set; }
+        public string? SearchText { get; set; }
+        [JsonIgnore]
+        public bool ReservationOptionsOnly { get; set; }
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

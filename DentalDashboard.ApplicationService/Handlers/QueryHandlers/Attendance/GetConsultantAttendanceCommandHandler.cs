@@ -30,7 +30,7 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Attendance
                 throw new Exception("مشاوری یافت نشد");
 
             var pageNumber = query.PageNumber <= 0 ? 1 : query.PageNumber;
-            var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
+            var pageSize = Math.Clamp(query.PageSize <= 0 ? 10 : query.PageSize, 1, 100);
 
             var attendancesQuery = repository.GetAll()
                 .Where(x => !x.IsDeleted && x.ConsultantProfileId == query.ConsultantProfileId)

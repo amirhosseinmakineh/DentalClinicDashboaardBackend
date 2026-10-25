@@ -1,5 +1,6 @@
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using DentalDashboard.Domain.Enums;
 
 namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands
 {
@@ -8,11 +9,24 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public long LeadAssignmentId { get; set; }
         public long ConsultantProfileId { get; set; }
         public DateTime ReservationAt { get; set; }
+        public DateTime? AppointmentDateTime { get; set; }
+        public int PatientCount { get; set; } = 1;
         public string? Description { get; set; }
         public string? PatientCity { get; set; }
         public string? PatientRegion { get; set; }
         public int? AttendanceProbabilityPercent { get; set; }
         public string? AttendancePrediction { get; set; }
         public string? SecondaryPhoneNumber { get; set; }
+        public ReservationType ReservationType { get; set; } = ReservationType.Regular;
+        public List<DentalServiceType> DentalServices { get; set; } = [];
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public ReservationOwnerType? OwnerType { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public Guid? OwnerUserId { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool AllowHistoricalReservation { get; set; }
     }
 }

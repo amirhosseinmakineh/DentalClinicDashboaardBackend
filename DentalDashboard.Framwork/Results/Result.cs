@@ -5,7 +5,6 @@
         public bool IsSuccess { get; protected set; }
 
         public string Message { get; protected set; } = string.Empty;
-        public string? ErrorCode { get; protected set; }
 
         protected Result(bool isSuccess, string message)
         {
@@ -18,9 +17,9 @@
             return new Result(true, message);
         }
 
-        public static Result Failure(string message, string? errorCode = null)
+        public static Result Failure(string message)
         {
-            return new Result(false, message) { ErrorCode = errorCode };
+            return new Result(false, message);
         }
     }
 
@@ -38,9 +37,9 @@
             return new Result<T>(data, true, message);
         }
 
-        public new static Result<T> Failure(string message, string? errorCode = null)
+        public new static Result<T> Failure(string message)
         {
-            return new Result<T>(default, false, message) { ErrorCode = errorCode };
+            return new Result<T>(default, false, message);
         }
     }
 }

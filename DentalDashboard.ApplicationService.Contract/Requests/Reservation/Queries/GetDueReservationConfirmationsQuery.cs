@@ -7,5 +7,7 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queri
     {
         public long ConsultantProfileId { get; set; }
         public DateTime? Now { get; set; }
+        public DateOnly? FromDate { get; set; }
+        public DateOnly? ToDate { get; set; }
     }
 }

@@ -4,6 +4,11 @@ namespace DentalDashboard.Domain.Models;
 
 public class LeadAssignment : BaseAuditableEntity<long>
 {
+    public LeadSourceType SourceType { get; set; } = LeadSourceType.Yektanet;
+    public long? ConsultationServiceId { get; set; }
+    public DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySaleService? ConsultationService { get; set; }
+    public string? ConsultationNotes { get; set; }
+    public Guid? ConsultationRequestId { get; set; }
     public string UserName { get; set; } = default!;
 
     public string PhoneNumber { get; set; } = default!;
@@ -17,8 +22,6 @@ public class LeadAssignment : BaseAuditableEntity<long>
     public DateTime? AssignedAt { get; set; }
 
     public LeadAssignmentType AssignmentType { get; set; }
-
-    public DateTime CreatedAt { get; set; }
 
     public DateTime? CallDeadlineAt { get; set; }
 
@@ -53,4 +56,10 @@ public class LeadAssignment : BaseAuditableEntity<long>
     public int DispatchLevel { get; set; }
 
     public DateTime? LastDispatchAt { get; set; }
+
+    public DateTime? ClosedByConsultantAt { get; set; }
+
+    public LeadClosureReason? ClosureReason { get; set; }
+
+    public string? ClosureDescription { get; set; }
 }

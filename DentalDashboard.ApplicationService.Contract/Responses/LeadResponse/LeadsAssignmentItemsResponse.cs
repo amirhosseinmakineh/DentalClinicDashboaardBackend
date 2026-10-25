@@ -1,11 +1,20 @@
-﻿using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.Enums;
 
 namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
 {
     public record LeadsAssignmentItemsResponse : BaseResponse<long>
     {
+        public long LeadAssignmentId => Id;
+        public LeadSourceType SourceType { get; set; }
+        public long? ConsultationServiceId { get; set; }
+        public string? ConsultationServiceTitle { get; set; }
+        public string? ConsultationNotes { get; set; }
         public string UserName { get; set; } = default!;
+        public string FullName => UserName;
         public string PhoneNumber { get; set; } = default!;
+        public long? ConsultantProfileId { get; set; }
+        public string? ConsultantFullName { get; set; }
+        public string? ConsultantPhoneNumber { get; set; }
         public DateTime CreatedAt { get; set; }
         public LeadAssignmentState LeadAssignmentState { get; set; }
         public LeadAssignmentType leadAssignmentType { get; set; }
@@ -24,5 +33,8 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
         public string? BusinessName { get; set; }
         public int? AttendanceProbabilityPercent { get; set; }
         public string? SecondaryPhoneNumber { get; set; }
+        public DateTime? ClosedByConsultantAt { get; set; }
+        public LeadClosureReason? ClosureReason { get; set; }
+        public string? ClosureDescription { get; set; }
     }
 }

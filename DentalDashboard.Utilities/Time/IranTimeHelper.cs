@@ -41,6 +41,15 @@ public static class IranTimeHelper
 
     public static DateOnly TodayInIran() => DateOnly.FromDateTime(IranLocalNow);
 
+    public static DateOnly GetDateInIran(DateTime value)
+    {
+        var iranDateTime = value.Kind == DateTimeKind.Unspecified
+            ? value
+            : ToIranLocalTime(value);
+
+        return DateOnly.FromDateTime(iranDateTime);
+    }
+
     public static (DateTime Start, DateTime End) GetIranLocalDayRange(DateOnly date)
     {
         var start = date.ToDateTime(TimeOnly.MinValue);

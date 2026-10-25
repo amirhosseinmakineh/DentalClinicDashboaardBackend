@@ -1,11 +1,11 @@
-﻿using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Time;
-using DentalDashboard.Domain.Strategies;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace DentalDashboard.Infrastracture.Repository
 {
@@ -23,7 +23,11 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.ConsultantProfileId == null &&
                             x.ReportSubmittedAt == null &&
                             x.LeadAssignmentState == LeadAssignmentState.New &&
-                            x.PickUp == false)
+                            x.PickUp == false &&
+                            !context.LeadAssignments.Any(previous =>
+                                previous.Id != x.Id &&
+                                previous.PhoneNumber == x.PhoneNumber &&
+                                previous.ReportSubmittedAt != null))
                 .OrderBy(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)
@@ -43,10 +47,14 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.ReportSubmittedAt == null &&
                             x.LeadAssignmentState == LeadAssignmentState.New &&
                             !x.PickUp &&
+                            !context.LeadAssignments.Any(previous =>
+                                previous.Id != x.Id &&
+                                previous.PhoneNumber == x.PhoneNumber &&
+                                previous.ReportSubmittedAt != null) &&
                             (!x.NotificationSent ||
                              x.LastDispatchAt == null ||
                              x.LastDispatchAt < redispatchBefore))
-                .OrderBy(x => x.CreatedAt)
+                .OrderByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Take(take)
                 .ToListAsync();
@@ -60,63 +68,131 @@ namespace DentalDashboard.Infrastracture.Repository
                             x.ConsultantProfileId == null &&
                             x.ReportSubmittedAt == null &&
                             x.LeadAssignmentState == LeadAssignmentState.New &&
-                            !x.PickUp);
+                            !x.PickUp &&
+                            !context.LeadAssignments.Any(previous =>
+                                previous.Id != x.Id &&
+                                previous.PhoneNumber == x.PhoneNumber &&
+                                previous.ReportSubmittedAt != null));
 
-            // Always dispatch every newly queued phone number once before sending
-            // reminders for numbers which have already been announced. Previously
-            // an in-flight lead was selected first forever, so it was reminded on
-            // every cycle while later phone numbers never reached the frontend.
-            var undispatchedLead = await baseQuery
-                .Where(x => !x.NotificationSent)
-                .OrderBy(x => x.CreatedAt)
+            var inFlightLead = await baseQuery
+                .Where(x => x.NotificationSent)
+                .OrderByDescending(x =>  x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .FirstOrDefaultAsync();
 
-            if (undispatchedLead != null)
-                return undispatchedLead;
+            if (inFlightLead != null)
+                return inFlightLead;
 
             return await baseQuery
-                .Where(x => x.NotificationSent)
-                .OrderBy(x => x.LastDispatchAt ?? x.CreatedAt)
+                .Where(x => !x.NotificationSent)
+                .OrderByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .FirstOrDefaultAsync();
         }
 
         public async Task<LeadAssignment?> GetCurrentRealtimeLeadForDispatchAsync(
-            TimeSpan redispatchInterval)
+            TimeSpan redispatchInterval, LeadSourceType? sourceType = null)
         {
-            var lead = await GetActiveRealtimeBroadcastLeadAsync();
+            var query = GetAll().Where(x => !x.IsDeleted && x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId == null && x.ReportSubmittedAt == null && x.LeadAssignmentState == LeadAssignmentState.New && !x.PickUp && !context.LeadAssignments.Any(previous => previous.Id != x.Id && previous.PhoneNumber == x.PhoneNumber && previous.ReportSubmittedAt != null));
+            if (sourceType.HasValue)
+                query = sourceType.Value == LeadSourceType.Yektanet
+                    ? query.Where(x => x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.Website)
+                    : query.Where(x => x.SourceType == sourceType.Value);
+
+            var lead = await query.Where(x => x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync()
+                ?? await query.Where(x => !x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
             if (lead == null)
                 return null;
-
             if (!lead.NotificationSent)
                 return lead;
-
             var redispatchBefore = DateTime.UtcNow.Subtract(redispatchInterval);
-            if (lead.LastDispatchAt == null || lead.LastDispatchAt < redispatchBefore)
+            return lead.LastDispatchAt == null || lead.LastDispatchAt < redispatchBefore ? lead : null;
+        }
+
+        public Task<LeadSourceType?> GetLastPickedRealtimeSourceAsync()
+        {
+            return GetAll()
+                .Where(x => x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId != null && x.AssignedAt != null && (x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.Website || x.SourceType == LeadSourceType.AdminSheet))
+                .OrderByDescending(x => x.AssignedAt).ThenByDescending(x => x.Id)
+                .Select(x => (LeadSourceType?)x.SourceType)
+                .FirstOrDefaultAsync();
+        }
+
+        private IQueryable<LeadAssignment> BurnedLeads() =>
+            context.LeadAssignments.IgnoreQueryFilters().Where(x =>
+                (x.IsDeleted &&
+                 x.ConsultantProfileId == null &&
+                 !x.PickUp) ||
+                (!x.IsDeleted &&
+                 x.ConsultantProfileId != null &&
+                 x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant &&
+                 x.CallResult == LeadCallResult.NoAnswer &&
+                 x.ReportSubmittedAt != null));
+
+        public async Task<LeadAssignment?> GetActiveBurnedLeadAsync()
+        {
+            var candidates = BurnedLeads();
+            return await candidates
+                .Where(x => x.NotificationSent)
+                .OrderByDescending(x => x.CreatedAt)
+                .ThenByDescending(x => x.Id)
+                .FirstOrDefaultAsync()
+                ?? await candidates
+                    .Where(x => !x.NotificationSent)
+                    .OrderByDescending(x => x.CreatedAt)
+                    .ThenByDescending(x => x.Id)
+                    .FirstOrDefaultAsync();
+        }
+
+        public async Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval)
+        {
+            var lead = await GetActiveBurnedLeadAsync();
+            if (lead == null || !lead.NotificationSent)
                 return lead;
 
-            return null;
+            return lead.LastDispatchAt == null || lead.LastDispatchAt < DateTime.UtcNow.Subtract(redispatchInterval)
+                ? lead
+                : null;
         }
 
         public Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId)
         {
-            return GetAll()
-                .AnyAsync(x => !x.IsDeleted &&
-                               x.ConsultantProfileId == consultantProfileId &&
-                               x.AssignmentType == LeadAssignmentType.RealTime &&
-                               x.ReportSubmittedAt == null &&
-                               x.LeadAssignmentState == LeadAssignmentState.Assigned);
+            return ActiveRealTimeLeadsForConsultant(consultantProfileId).AnyAsync();
         }
 
-        public Task<bool> HasUnreportedLeadAsync(
-            long consultantProfileId,
-            CancellationToken cancellationToken = default)
+        public Task<int> CountActiveUnreportedRealTimeLeadsAsync(long consultantProfileId)
         {
-            return GetAll().AnyAsync(x =>
-                x.ConsultantProfileId == consultantProfileId &&
-                x.ReportSubmittedAt == null,
-                cancellationToken);
+            return ActiveRealTimeLeadsForConsultant(consultantProfileId)
+                .CountAsync();
+        }
+
+        public Task<int> CountActiveUncalledRealTimeLeadsAsync(long consultantProfileId)
+        {
+            return ActiveRealTimeLeadsForConsultant(consultantProfileId)
+                .CountAsync(x => x.CallInitiatedAt == null);
+        }
+
+        public Task<int> CountActiveFollowUpRealTimeLeadsAsync(long consultantProfileId)
+        {
+            return GetAll()
+                .CountAsync(x => !x.IsDeleted &&
+                                 x.ConsultantProfileId == consultantProfileId &&
+                                 x.AssignmentType == LeadAssignmentType.RealTime &&
+                                 x.PickUp &&
+                                 x.AssignedAt != null &&
+                                 x.LeadAssignmentState == LeadAssignmentState.Pending &&
+                                 x.ReportSubmittedAt != null);
+        }
+
+        private IQueryable<LeadAssignment> ActiveRealTimeLeadsForConsultant(long consultantProfileId)
+        {
+            return GetAll()
+                .Where(x => !x.IsDeleted &&
+                            x.ConsultantProfileId == consultantProfileId &&
+                            x.AssignmentType == LeadAssignmentType.RealTime &&
+                            x.AssignedAt != null &&
+                            x.ReportSubmittedAt == null &&
+                            x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant);
         }
 
         public Task<List<LeadAssignment>> GetExpiredRealTimeLeadsAsync(DateTime now)
@@ -144,28 +220,73 @@ namespace DentalDashboard.Infrastracture.Repository
                                  x.LeadAssignmentState == LeadAssignmentState.New);
         }
 
-        public async Task<HashSet<string>> GetExistingPhoneNumbersAsync(IEnumerable<string> phoneNumbers)
+        public async Task<HashSet<string>> GetExistingPhoneNumbersAsync(
+            IEnumerable<string> phoneNumbers,
+            CancellationToken cancellationToken = default)
         {
-            var phones = phoneNumbers.Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet();
-            if (!phones.Any())
-                return new HashSet<string>();
+            const int batchSize = 500;
+            var phones = phoneNumbers
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .ToArray();
+            var existingPhones = new HashSet<string>();
 
-            return (await GetAll()
-                    .Where(x => phones.Contains(x.PhoneNumber))
+            foreach (var batch in phones.Chunk(batchSize))
+            {
+                var matches = await GetAll()
+                    .AsNoTracking()
+                    .Where(x => batch.Contains(x.PhoneNumber))
                     .Select(x => x.PhoneNumber)
-                    .ToListAsync())
-                .ToHashSet();
+                    .ToListAsync(cancellationToken);
+
+                existingPhones.UnionWith(matches);
+            }
+
+            return existingPhones;
+        }
+
+        public async Task<int> AddNewLeadsIfPhoneDoesNotExistAsync(
+            IEnumerable<LeadAssignment> leads,
+            CancellationToken cancellationToken = default)
+        {
+            var candidates = leads
+                .Where(x => !string.IsNullOrWhiteSpace(x.PhoneNumber))
+                .GroupBy(x => x.PhoneNumber, StringComparer.Ordinal)
+                .Select(x => x.First())
+                .ToList();
+
+            if (candidates.Count == 0)
+                return 0;
+
+            await using var transaction = await context.Database
+                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+            var phoneNumbers = candidates.Select(x => x.PhoneNumber).ToArray();
+            var existingPhoneNumbers = await context.LeadAssignments
+                .Where(x => phoneNumbers.Contains(x.PhoneNumber))
+                .Select(x => x.PhoneNumber)
+                .ToHashSetAsync(cancellationToken);
+
+            var newLeads = candidates
+                .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
+                .ToList();
+
+            if (newLeads.Count == 0)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return 0;
+            }
+
+            await context.LeadAssignments.AddRangeAsync(newLeads, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return newLeads.Count;
         }
 
         public Task<LeadAssignment?> GetByIdAndConsultantAsync(long leadAssignmentId, long consultantProfileId)
         {
-            var burnedLevels = Enum.GetValues<ConsultantLevel>()
-                .Where(x => ConsultantDistributionPolicyResolver.Resolve(x).AllowsBurned)
-                .ToArray();
             return GetAll()
-                .FirstOrDefaultAsync(x => x.Id == leadAssignmentId &&
-                                          x.ConsultantProfileId == consultantProfileId &&
-                                          (!x.IsDeleted || burnedLevels.Contains(x.ConsultantProfile!.ConsultantLevel)));
+                .FirstOrDefaultAsync(x => !x.IsDeleted && x.Id == leadAssignmentId && x.ConsultantProfileId == consultantProfileId);
         }
 
         public Task<List<LeadAssignment>> GetAssignedLeadsPendingNotificationAsync()
@@ -184,49 +305,32 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public async Task<int> GetTodayPickupCountAsync(long consultantProfileId)
         {
-            // AssignedAt is persisted as UTC (see TryPickupLeadAsync), while the
-            // business definition of "today" is the Iran calendar day. Using the
-            // server's local date here caused leads picked up during the previous
-            // Iran evening to count against the new day's limit on UTC servers.
-            var todayInIran = IranTimeHelper.TodayInIran();
-            var (todayStartUtc, _) =
-                IranTimeHelper.GetIranDayRangeAsUtc(todayInIran);
-            var (tomorrowStartUtc, _) =
-                IranTimeHelper.GetIranDayRangeAsUtc(todayInIran.AddDays(1));
+            var today = IranTimeHelper.TodayInIran();
+            var (todayStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(today);
+            var (tomorrowStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(1));
 
             return await context.LeadAssignments
                 .CountAsync(x =>
+                    !x.IsDeleted &&
                     x.ConsultantProfileId == consultantProfileId &&
                     x.PickUp &&
                     x.AssignedAt >= todayStartUtc &&
                     x.AssignedAt < tomorrowStartUtc);
         }
 
-        public async Task<(int NewLeadCount, int BurnedLeadCount)> GetSellerDailyAllocationCountAsync(
-            long consultantProfileId, CancellationToken cancellationToken = default)
+        public async Task<int> GetTodayCallCountAsync(long consultantProfileId)
         {
             var today = IranTimeHelper.TodayInIran();
-            var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(today);
-            var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(1));
-            var counts = await context.LeadAssignments
-                .Where(x => x.ConsultantProfileId == consultantProfileId && x.PickUp &&
-                            x.AssignedAt >= start && x.AssignedAt < end)
-                .GroupBy(_ => 1)
-                .Select(g => new { New = g.Count(x => !x.IsDeleted), Burned = g.Count(x => x.IsDeleted) })
-                .SingleOrDefaultAsync(cancellationToken);
-            return counts == null ? (0, 0) : (counts.New, counts.Burned);
-        }
+            var (todayStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(today);
+            var (tomorrowStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(1));
 
-        public async Task<int> GetTodayAssignmentCountAsync(
-            long consultantProfileId, bool burned, CancellationToken cancellationToken = default)
-        {
-            var today = IranTimeHelper.TodayInIran();
-            var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(today);
-            var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(today.AddDays(1));
-            return await context.LeadAssignments.CountAsync(x =>
-                x.ConsultantProfileId == consultantProfileId && x.PickUp &&
-                x.IsDeleted == burned && x.AssignedAt >= start && x.AssignedAt < end,
-                cancellationToken);
+            return await context.LeadAssignments
+                .AsNoTracking()
+                .CountAsync(x =>
+                    !x.IsDeleted &&
+                    x.ConsultantProfileId == consultantProfileId &&
+                    x.CallInitiatedAt >= todayStartUtc &&
+                    x.CallInitiatedAt < tomorrowStartUtc);
         }
 
         public async Task<bool> TryPickupLeadAsync(
@@ -234,192 +338,54 @@ namespace DentalDashboard.Infrastracture.Repository
             long consultantProfileId,
             CancellationToken cancellationToken)
         {
-            var todayInIran = IranTimeHelper.TodayInIran();
-            var (todayStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(todayInIran);
-            var (tomorrowStartUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(todayInIran.AddDays(1));
-            var testPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.Test);
-            var sellerPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.Seller);
-            var topSellerPolicy = ConsultantDistributionPolicyResolver.Resolve(ConsultantLevel.TopSeller);
+            var preferredSourceType = await context.ConsultantProfiles.AsNoTracking()
+                .Where(x => x.Id == consultantProfileId && !x.IsDeleted)
+                .Select(x => x.PreferredLeadSourceType)
+                .SingleOrDefaultAsync(cancellationToken);
+            var sourceType = preferredSourceType ?? await context.LeadAssignmentSettings.AsNoTracking()
+                .Where(x => x.Id == LeadAssignmentSetting.SingletonId)
+                .Select(x => x.AssignmentSourceType)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (!Enum.IsDefined(sourceType))
+                sourceType = LeadAssignmentSourceType.NewLeads;
+
             var sql = @"
-DECLARE @applicationLockResult int;
-EXEC @applicationLockResult = sys.sp_getapplock
-    @Resource = @pickupLockResource,
-    @LockMode = 'Exclusive',
-    @LockOwner = 'Transaction',
-    @LockTimeout = 10000;
+        UPDATE LeadAssignments WITH (UPDLOCK, ROWLOCK)
+        SET
+            ConsultantProfileId = @consultantProfileId,
+            IsDeleted = 0,
+            DeletedAt = NULL,
+            PickUp = 1,
+            AssignedAt = GETUTCDATE(),
+            CallDeadlineAt = DATEADD(MINUTE, 3, GETUTCDATE()),
+            CallInitiatedAt = NULL,
+            LeadAssignmentState = @assignedState,
+            AssignmentType = @realTimeType,
+            RequiresThreeMinuteCall = 1,
+            ReportDescription = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE ReportDescription END,
+            ReportSubmittedAt = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE ReportSubmittedAt END,
+            ContactedAt = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE ContactedAt END,
+            CallResult = CASE WHEN @sourceType = @burnedSource THEN NULL ELSE CallResult END
+        WHERE Id = @leadAssignmentId
+          AND ((@sourceType = @newSource AND IsDeleted = 0 AND ConsultantProfileId IS NULL
+                AND PickUp = 0 AND ReportSubmittedAt IS NULL AND LeadAssignmentState = @newState
+                AND NOT EXISTS (
+                    SELECT 1 FROM LeadAssignments previous
+                    WHERE previous.Id <> LeadAssignments.Id
+                      AND previous.PhoneNumber = LeadAssignments.PhoneNumber
+                      AND previous.ReportSubmittedAt IS NOT NULL
+                ))
+            OR (@sourceType = @burnedSource
+                AND ((IsDeleted = 1 AND ConsultantProfileId IS NULL AND PickUp = 0)
+                  OR (IsDeleted = 0 AND ConsultantProfileId IS NOT NULL
+                    AND LeadAssignmentState <> @closedByConsultantState
+                    AND CallResult = @noAnswerResult
+                    AND ReportSubmittedAt IS NOT NULL))))
+    ";
 
-IF @applicationLockResult < 0
-    THROW 51000, 'Unable to acquire the consultant pickup allocation lock.', 1;
-
-UPDATE LeadAssignments
-SET
-    ConsultantProfileId = @consultantProfileId,
-    PickUp = 1,
-    AssignedAt = GETUTCDATE(),
-    CallDeadlineAt = DATEADD(MINUTE, 3, GETUTCDATE()),
-    LeadAssignmentState = @assignedState
-WHERE
-    Id = @leadAssignmentId
-    AND ConsultantProfileId IS NULL
-    AND PickUp = 0
-    AND AssignmentType = @realTimeType
-    AND LeadAssignmentState = @newState
-    AND ReportSubmittedAt IS NULL
-
-    AND EXISTS
-    (
-        SELECT 1
-        FROM ConsultantProfiles AS c
-        INNER JOIN Users AS u
-            ON u.Id = c.UserId
-
-        WHERE
-            c.Id = @consultantProfileId
-            AND c.IsDeleted = 0
-            AND c.IsCompleteProfile = 1
-            AND c.IsAvailable = 1
-            -- PickUpService atomically reserves the consultant (online ->
-            -- offline) first in this same transaction. This gives every flow
-            -- the same ConsultantProfiles -> LeadAssignments lock order.
-            AND c.IsOnline = 0
-            AND u.IsActive = 1
-
-            AND
-            (
-                ------------------------------------------------------------
-                -- Top Seller
-                ------------------------------------------------------------
-                (
-                    c.ConsultantLevel = @topSellerLevel
-                    AND c.TopSellerStartedAt IS NOT NULL
-                    AND LeadAssignments.IsDeleted = 0
-
-                    AND
-                    (
-                        SELECT COUNT(1)
-                        FROM LeadAssignments AS daily
-
-                        WHERE
-                            daily.ConsultantProfileId = c.Id
-                            AND daily.PickUp = 1
-                            AND daily.IsDeleted = 0
-                            AND daily.AssignedAt >= @todayStartUtc
-                            AND daily.AssignedAt < @tomorrowStartUtc
-                    ) < @topSellerRealTimeLimit
-                )
-
-                OR
-
-                ------------------------------------------------------------
-                -- Seller
-                ------------------------------------------------------------
-                (
-                    c.ConsultantLevel = @sellerLevel
-                    AND c.SellerStartedAt IS NOT NULL
-
-                    AND
-                    (
-                        ----------------------------------------------------
-                        -- Seller / RealTime
-                        ----------------------------------------------------
-                        (
-                            LeadAssignments.IsDeleted = 0
-
-                            AND
-                            (
-                                SELECT COUNT(1)
-                                FROM LeadAssignments AS daily
-
-                                WHERE
-                                    daily.ConsultantProfileId = c.Id
-                                    AND daily.PickUp = 1
-                                    AND daily.IsDeleted = 0
-                                    AND daily.AssignedAt >= @todayStartUtc
-                                    AND daily.AssignedAt < @tomorrowStartUtc
-                            ) < @sellerRealTimeLimit
-                        )
-
-                        OR
-
-                        ----------------------------------------------------
-                        -- Seller / Burned
-                        ----------------------------------------------------
-                        (
-                            LeadAssignments.IsDeleted = 1
-
-                            AND
-                            (
-                                SELECT COUNT(1)
-                                FROM LeadAssignments AS daily
-
-                                WHERE
-                                    daily.ConsultantProfileId = c.Id
-                                    AND daily.PickUp = 1
-                                    AND daily.IsDeleted = 1
-                                    AND daily.AssignedAt >= @todayStartUtc
-                                    AND daily.AssignedAt < @tomorrowStartUtc
-                            ) < @sellerBurnedLimit
-                        )
-                    )
-                )
-
-                OR
-
-                ------------------------------------------------------------
-                -- Test Consultant
-                ------------------------------------------------------------
-                (
-                    c.ConsultantLevel = @testLevel
-                    AND LeadAssignments.IsDeleted = 1
-                    AND c.TestStartedAt IS NOT NULL
-
-                    AND
-                    DATEDIFF
-                    (
-                        DAY,
-
-                        CAST
-                        (
-                            DATEADD
-                            (
-                                MINUTE,
-                                210,
-                                CAST(c.TestStartedAt AS datetime2)
-                            )
-                            AS date
-                        ),
-
-                        CAST
-                        (
-                            DATEADD
-                            (
-                                MINUTE,
-                                210,
-                                CAST(GETUTCDATE() AS datetime2)
-                            )
-                            AS date
-                        )
-                    ) BETWEEN 0 AND 4
-
-                    AND
-                    (
-                        SELECT COUNT(1)
-                        FROM LeadAssignments AS daily
-
-                        WHERE
-                            daily.ConsultantProfileId = c.Id
-                            AND daily.PickUp = 1
-                            AND daily.IsDeleted = 1
-                            AND daily.AssignedAt >= @todayStartUtc
-                            AND daily.AssignedAt < @tomorrowStartUtc
-                    ) < @testBurnedLimit
-                )
-            )
-    );
-";
-
-            var parameters = new object[]
-            {
+            var affectedRows = await context.Database
+                .ExecuteSqlRawAsync(
+                    sql,
                     new SqlParameter(
                         "@consultantProfileId",
                         consultantProfileId),
@@ -427,58 +393,18 @@ WHERE
                         "@leadAssignmentId",
                         leadAssignmentId),
                     new SqlParameter(
-                        "@pickupLockResource",
-                        $"DentalDashboard:LeadPickup:{consultantProfileId}"),
-                    new SqlParameter(
                         "@assignedState",
                         (int)LeadAssignmentState.Assigned),
-                    new SqlParameter("@testLevel", (byte)ConsultantLevel.Test),
-                    new SqlParameter("@sellerLevel", (byte)ConsultantLevel.Seller),
-                    new SqlParameter("@topSellerLevel", (byte)ConsultantLevel.TopSeller),
-                    new SqlParameter("@testBurnedLimit", testPolicy.BurnedDailyLimit),
-                    new SqlParameter("@sellerRealTimeLimit", sellerPolicy.RealTimeDailyLimit),
-                    new SqlParameter("@sellerBurnedLimit", sellerPolicy.BurnedDailyLimit),
-                    new SqlParameter("@topSellerRealTimeLimit", topSellerPolicy.RealTimeDailyLimit),
-                    new SqlParameter("@realTimeType", (int)LeadAssignmentType.RealTime),
                     new SqlParameter("@newState", (int)LeadAssignmentState.New),
-                    new SqlParameter("@todayStartUtc", todayStartUtc),
-                    new SqlParameter("@tomorrowStartUtc", tomorrowStartUtc)
-            };
-            var affectedRows = await context.Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
+                    new SqlParameter("@closedByConsultantState", (int)LeadAssignmentState.ClosedByConsultant),
+                    new SqlParameter("@noAnswerResult", (int)LeadCallResult.NoAnswer),
+                    new SqlParameter("@realTimeType", (int)LeadAssignmentType.RealTime),
+                    new SqlParameter("@sourceType", (int)sourceType),
+                    new SqlParameter("@newSource", (int)LeadAssignmentSourceType.NewLeads),
+                    new SqlParameter("@burnedSource", (int)LeadAssignmentSourceType.BurnedLeads)
+                );
 
             return affectedRows == 1;
-        }
-
-        public Task<bool> IsAvailableForPickupAsync(
-            long leadAssignmentId,
-            CancellationToken cancellationToken = default) =>
-            GetAll().AsNoTracking().AnyAsync(x =>
-                x.Id == leadAssignmentId &&
-                x.AssignmentType == LeadAssignmentType.RealTime &&
-                x.ConsultantProfileId == null &&
-                x.ReportSubmittedAt == null &&
-                x.LeadAssignmentState == LeadAssignmentState.New &&
-                !x.PickUp,
-                cancellationToken);
-
-        public async Task<LeadAssignment?> GetCurrentBurnedLeadForDispatchAsync(TimeSpan redispatchInterval)
-        {
-            var redispatchBefore = DateTime.UtcNow.Subtract(redispatchInterval);
-            var query = GetAll().Where(x => x.IsDeleted &&
-                                            x.AssignmentType == LeadAssignmentType.RealTime &&
-                                            x.ConsultantProfileId == null &&
-                                            x.ReportSubmittedAt == null &&
-                                            x.LeadAssignmentState == LeadAssignmentState.New &&
-                                            !x.PickUp);
-
-            var fresh = await query.Where(x => !x.NotificationSent)
-                .OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
-            if (fresh != null)
-                return fresh;
-
-            return await query.Where(x => x.NotificationSent &&
-                                          (x.LastDispatchAt == null || x.LastDispatchAt < redispatchBefore))
-                .OrderBy(x => x.LastDispatchAt ?? x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync();
         }
     }
 }

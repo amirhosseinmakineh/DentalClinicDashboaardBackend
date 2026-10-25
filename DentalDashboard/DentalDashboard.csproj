@@ -23,6 +23,18 @@
     <ProjectReference Include="..\DentalDashboard.ApplicationService\DentalDashboard.ApplicationService.csproj" />
     <ProjectReference Include="..\DentalDashboard.Infrastracture\DentalDashboard.Infrastracture.csproj" />
     <ProjectReference Include="..\DentalDashboard.Utilities\DentalDashboard.Utilities.csproj" />
+    <ProjectReference Include="..\DentalDashboard.LeadManagement\DentalDashboard.LeadManagement.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="web.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\uploads\guarantee-documents\" />
   </ItemGroup>
 
 </Project>

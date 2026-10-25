@@ -66,7 +66,7 @@ GET /api/admin/reports/daily-reservations?date=2026-08-12&consultantProfileId=15
       "patientRegion": "ونک",
       "businessName": null,
       "attendanceProbabilityPercent": 80,
-      "reservationAt": "2026-08-14T07:30:00Z",
+      "appointmentDateTime": "2026-08-14T11:00:00",
       "createdAt": "2026-08-12T08:10:00Z",
       "requestStatus": 2,
       "requestStatusTitle": "تایید شده",
@@ -81,7 +81,7 @@ GET /api/admin/reports/daily-reservations?date=2026-08-12&consultantProfileId=15
 }
 ```
 
-تاریخ‌وساعت‌های JSON با UTC برمی‌گردند. فرانت برای نمایش باید آن‌ها را به وقت ایران تبدیل کند. برای badgeها از فیلدهای آماده `requestStatusTitle` و `visitResultStatusTitle` استفاده کنید و به ترجمه enum در فرانت وابسته نشوید.
+`appointmentDateTime` مانند `reservationAt` در داشبورد منشی، ساعت محلی ایران است و بدون timezone برمی‌گردد. فرانت باید همان مقدار را مستقیماً نمایش دهد و نباید اختلاف `+03:30` یا `-03:30` روی آن اعمال کند. سایر تاریخ‌وساعت‌های سیستمی مانند `createdAt` با UTC برمی‌گردند و برای نمایش باید به وقت ایران تبدیل شوند. برای badgeها از فیلدهای آماده `requestStatusTitle` و `visitResultStatusTitle` استفاده کنید و به ترجمه enum در فرانت وابسته نشوید.
 
 ## ۲. دانلود فایل اکسل (CSV سازگار با Excel)
 

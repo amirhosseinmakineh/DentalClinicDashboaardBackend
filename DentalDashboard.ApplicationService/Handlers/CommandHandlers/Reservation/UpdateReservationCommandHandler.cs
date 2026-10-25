@@ -4,47 +4,59 @@ using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
-using DentalDashboard.Domain.Models;
-using DentalDashboard.Framwork.IRepositories;
-using Microsoft.EntityFrameworkCore;
+using DentalDashboard.ApplicationService.Handlers.Helpers;
+using DentalDashboard.Utilities.Time;
 
 namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservation
 {
     public class UpdateReservationCommandHandler : ICommandHandler<UpdateReservationCommand, ReservationItemResponse>
     {
         private const int MaxReservationsPerConsultantAtSameTime = 10;
+        private const int MaxPatientsPerReservation = 10;
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
-        private readonly IBaseRepository<long, ReservationTimeChange> timeChanges;
 
         public UpdateReservationCommandHandler(
             IReservationRepository reservationRepository,
-            ILeadAssignmentRepository leadAssignmentRepository,
-            IBaseRepository<long, ReservationTimeChange> timeChanges)
+            ILeadAssignmentRepository leadAssignmentRepository)
         {
             this.reservationRepository = reservationRepository;
             this.leadAssignmentRepository = leadAssignmentRepository;
-            this.timeChanges = timeChanges;
         }
 
         public async Task<Result<ReservationItemResponse>> HandleAsync(
             UpdateReservationCommand command,
             CancellationToken cancellationToken = default)
         {
+            if (command.PatientCount.HasValue &&
+                (command.PatientCount < 1 || command.PatientCount > MaxPatientsPerReservation))
+                return Result<ReservationItemResponse>.Failure("تعداد بیماران باید بین ۱ تا ۱۰ نفر باشد");
+
+            if (!ReservationAppointmentTime.TryResolve(
+                    command.ReservationAt,
+                    command.AppointmentDateTime,
+                    out var appointmentDateTime,
+                    out var appointmentError))
+                return Result<ReservationItemResponse>.Failure(appointmentError!);
+
             var reservation = await reservationRepository.GetByIdAsync(command.ReservationId);
             if (reservation == null || reservation.IsDeleted || reservation.IsCanceled)
                 return Result<ReservationItemResponse>.Failure("رزرو فعال یافت نشد");
 
+            List<DentalServiceType>? dentalServices = null;
+            if (command.DentalServices != null)
+            {
+                dentalServices = command.DentalServices.Distinct().ToList();
+                if (dentalServices.Count == 0 || dentalServices.Any(x => !Enum.IsDefined(x)))
+                    return Result<ReservationItemResponse>.Failure("انتخاب حداقل یک خدمت معتبر الزامی است");
+            }
+
             if (reservation.ConsultantProfileId != command.ConsultantProfileId)
                 return Result<ReservationItemResponse>.Failure("این رزرو متعلق به شما نیست");
 
-            if (await timeChanges.GetAll().AnyAsync(x => x.ReservationId == reservation.Id &&
-                    x.Status == ReservationTimeChangeStatus.PendingConsultantConfirmation, cancellationToken))
-                return Result<ReservationItemResponse>.Failure("این رزرو در انتظار تایید تغییر زمان توسط مشاور است");
-
-            if (reservation.AttendanceConfirmationStatus is
-                ReservationAttendanceConfirmationStatus.SecretaryApproved or
-                ReservationAttendanceConfirmationStatus.SecretaryRejected)
+            if (!command.IsSecretaryEdit && reservation.AttendanceConfirmationStatus is
+                    ReservationAttendanceConfirmationStatus.SecretaryApproved or
+                    ReservationAttendanceConfirmationStatus.SecretaryRejected)
             {
                 return Result<ReservationItemResponse>.Failure("پس از بررسی منشی امکان ویرایش رزرو وجود ندارد");
             }
@@ -74,15 +86,15 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 return Result<ReservationItemResponse>.Failure("احتمال حضور باید بین ۰ تا ۱۰۰ باشد");
             }
 
-            var reservationTimeChanged = reservation.ReservationAt != command.ReservationAt;
-            if (reservationTimeChanged && command.ReservationAt <= DateTime.Now)
+            var reservationTimeChanged = reservation.ReservationAt != appointmentDateTime;
+            if (reservationTimeChanged && appointmentDateTime <= IranTimeHelper.IranLocalNow)
                 return Result<ReservationItemResponse>.Failure("زمان رزرو باید در آینده باشد");
 
             if (reservationTimeChanged)
             {
                 var sameTimeCount = await reservationRepository.CountActiveReservationsAtExcludingAsync(
                     command.ConsultantProfileId,
-                    command.ReservationAt,
+                    appointmentDateTime,
                     reservation.Id);
                 if (sameTimeCount >= MaxReservationsPerConsultantAtSameTime)
                 {
@@ -101,24 +113,32 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             leadAssignmentRepository.Update(lead);
 
-            reservation.ReservationAt = command.ReservationAt;
+            reservation.ReservationAt = appointmentDateTime;
+            if (command.PatientCount.HasValue)
+                reservation.PatientCount = command.PatientCount.Value;
             reservation.Description = command.Description?.Trim();
             reservation.AttendancePrediction = string.IsNullOrWhiteSpace(command.AttendancePrediction)
                 ? null
                 : command.AttendancePrediction.Trim();
+            if (dentalServices != null)
+                reservation.DentalServices = dentalServices;
             reservation.UpdatedAt = DateTime.UtcNow;
 
             reservationRepository.Update(reservation);
-            await reservationRepository.SaveChange(cancellationToken);
+            await reservationRepository.SaveChange();
 
             return Result<ReservationItemResponse>.Success(new ReservationItemResponse
             {
                 Id = reservation.Id,
+                ReservationId = reservation.Id,
                 LeadAssignmentId = reservation.LeadAssignmentId,
                 ConsultantProfileId = reservation.ConsultantProfileId,
                 PatientUserId = reservation.PatientUserId,
                 RequiresPatientProfile = !reservation.PatientUserId.HasValue,
                 ReservationAt = reservation.ReservationAt,
+                AppointmentDateTime = reservation.ReservationAt,
+                PatientCount = reservation.PatientCount,
+                CreatedAt = reservation.CreatedAt,
                 PatientName = lead.UserName,
                 PatientPhoneNumber = lead.PhoneNumber,
                 SecondaryPhoneNumber = lead.SecondaryPhoneNumber,
@@ -135,15 +155,25 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 SecretaryUserId = reservation.SecretaryUserId,
                 SecretaryApprovedConsultantConfirmation = reservation.SecretaryApprovedConsultantConfirmation,
                 SecretaryReviewNote = reservation.SecretaryReviewNote,
+                SecretaryAnnouncementStatus = reservation.SecretaryAnnouncementStatus,
+                SecretaryAnnouncement = reservation.SecretaryAnnouncement,
+                SecretaryAnnouncementUpdatedAt = reservation.SecretaryAnnouncementUpdatedAt,
+                SecretaryAnnouncementUserId = reservation.SecretaryAnnouncementUserId,
                 IsAttendanceScoreApplied = reservation.IsAttendanceScoreApplied,
                 AttendanceScoreValue = reservation.AttendanceScoreValue,
                 AttendanceScoreAppliedAt = reservation.AttendanceScoreAppliedAt,
                 IsDueForConsultantConfirmation =
-                    reservation.ReservationAt <= DateTime.Now &&
+                    reservation.ReservationAt <= IranTimeHelper.IranLocalNow &&
                     reservation.AttendanceConfirmationStatus ==
                     ReservationAttendanceConfirmationStatus.PendingConsultantConfirmation,
+                CanEdit = !reservation.IsCanceled &&
+                    (command.IsSecretaryEdit || reservation.AttendanceConfirmationStatus is not
+                        (ReservationAttendanceConfirmationStatus.SecretaryApproved or
+                         ReservationAttendanceConfirmationStatus.SecretaryRejected)),
                 Description = reservation.Description,
-                IsCanceled = reservation.IsCanceled
+                DoctorName = reservation.DoctorName,
+                IsCanceled = reservation.IsCanceled,
+                DentalServices = reservation.DentalServices
             }, "رزرو با موفقیت ویرایش شد");
         }
     }

@@ -21,6 +21,9 @@ public class LastSeenTrackingMiddleware
     {
         await next(context);
 
+        if (context.RequestAborted.IsCancellationRequested)
+            return;
+
         if (context.User.Identity?.IsAuthenticated != true)
             return;
 
@@ -39,7 +42,7 @@ public class LastSeenTrackingMiddleware
             .Where(x => x.Id == userId && !x.IsDeleted)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.LastSeenAt, now)
-                .SetProperty(x => x.UpdatedAt, now));
+                .SetProperty(x => x.UpdatedAt, now), context.RequestAborted);
 
         if (updated > 0)
             LastPersistedAt[userId] = now;

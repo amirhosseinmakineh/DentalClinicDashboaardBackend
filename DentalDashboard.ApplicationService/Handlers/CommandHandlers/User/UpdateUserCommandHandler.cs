@@ -2,7 +2,6 @@
 using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.UpddateUser;
 using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.IRepositories;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -15,24 +14,27 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
         private readonly IUnitOfWork unitOfWork;
         private readonly IRoleService roleService;
         private readonly IConsultantProfileService consultantProfileService;
+        private readonly IConsultantProfileRepository consultantProfileRepository;
 
         public UpdateUserCommandHandler(
             IUnitOfWork unitOfWork,
             IUserRepository userRepository,
             IRoleService roleService,
-            IConsultantProfileService consultantProfileService)
+            IConsultantProfileService consultantProfileService,
+            IConsultantProfileRepository consultantProfileRepository)
         {
             this.unitOfWork = unitOfWork;
             this.userRepository = userRepository;
             this.roleService = roleService;
             this.consultantProfileService = consultantProfileService;
+            this.consultantProfileRepository = consultantProfileRepository;
         }
 
         public async Task<Result<UpdateUserResponse>> HandleAsync(
             UpdateUserCommand command,
             CancellationToken cancellationToken = default)
         {
-            await unitOfWork.BeginTransactionAsync(cancellationToken);
+            await unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -40,7 +42,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
                 if (user == null)
                 {
-                    await unitOfWork.RollbackAsync(CancellationToken.None);
+                    await unitOfWork.RollbackAsync();
                     return Result<UpdateUserResponse>.Failure("کاربر یافت نشد");
                 }
 
@@ -51,6 +53,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 user.AvatarImageName = command.AvatarImageName;
                 user.Gender = command.Gender;
                 user.IsActive = command.IsActive;
+                user.SecretaryType = string.Equals(command.RoleName, "Secretary", StringComparison.OrdinalIgnoreCase)
+                    ? command.SecretaryType ?? DentalDashboard.Domain.Enums.SecretaryType.Main
+                    : null;
 
                 userRepository.Update(user);
 
@@ -67,45 +72,34 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 {
                     await roleService.SetUserRole(user.Id, command.RoleName);
 
-                }
-
-                if (command.RoleName == "Consultant")
-                {
-                    await consultantProfileService.EnsureProfileExistsAsync(user.Id);
-
-                    if (command.ConsultantLevel.HasValue)
+                    if (command.RoleName == "Consultant")
                     {
-                        await consultantProfileService.SetConsultantLevelAsync(
-                            user.Id,
-                            command.ConsultantLevel.Value);
+                        var profileId = await consultantProfileService.EnsureProfileExistsAsync(user.Id);
+                        user.IsCompleteProfile = profileId.HasValue && await consultantProfileRepository
+                            .GetAll()
+                            .AnyAsync(profile => profile.Id == profileId.Value &&
+                                !profile.IsDeleted && profile.IsCompleteProfile,
+                                cancellationToken);
+                        if (!user.IsCompleteProfile)
+                            user.IsActive = false;
                     }
                 }
 
-                await userRepository.SaveChange(cancellationToken);
-
-                var consultantLevel = command.RoleName == "Consultant"
-                    ? await userRepository.GetAll()
-                        .Where(x => x.Id == user.Id && x.ConsultantProfile != null && !x.ConsultantProfile.IsDeleted)
-                        .Select(x => (ConsultantLevel?)x.ConsultantProfile!.ConsultantLevel)
-                        .FirstOrDefaultAsync(cancellationToken)
-                    : null;
-
-                await unitOfWork.SaveChangesAsync(cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await userRepository.SaveChange();
+                await unitOfWork.CommitAsync();
                 var response = new UpdateUserResponse()
                 {
                     FirstName = user.FirstName,
                     LastName = user.LastName,
                     IsActive = user.IsActive,
-                    RoleName = command.RoleName,
-                    ConsultantLevel = consultantLevel
+                    RoleName = command.RoleName
                 };
                 return Result<UpdateUserResponse>.Success(response,"ویرایش کاربر با موفقیت انجام شد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                await unitOfWork.RollbackAsync(CancellationToken.None);
-                return Result<UpdateUserResponse>.Failure($"خطا در ویرایش کاربر: {ex.Message}");
+                await unitOfWork.RollbackAsync();
+                return Result<UpdateUserResponse>.Failure("خطا در ویرایش کاربر");
             }
         }
     }

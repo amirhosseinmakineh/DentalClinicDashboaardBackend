@@ -59,7 +59,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (await userRepository.ExistsAsync(x => x.PhoneNumber == phoneNumber))
                 return Result<CompleteReservationPatientProfileResponse>.Failure("کاربری با این شماره موبایل قبلاً ثبت شده است");
 
-            await unitOfWork.BeginTransactionAsync(cancellationToken);
+            await unitOfWork.BeginTransactionAsync();
             try
             {
                 var user = new Domain.Models.User
@@ -69,6 +69,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     LastName = command.LastName.Trim(),
                     PhoneNumber = phoneNumber,
                     PasswordHash = PasswordHasher.HashPassword(command.PasswordHash),
+                    BirthDate = command.BirthDate,
                     Gender = command.Gender,
                     AvatarImageName = command.AvatarImageName,
                     IsActive = true,
@@ -90,8 +91,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 reservation.UpdatedAt = DateTime.UtcNow;
                 reservationRepository.Update(reservation);
 
-                await unitOfWork.SaveChangesAsync(cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await unitOfWork.CommitAsync();
 
                 return Result<CompleteReservationPatientProfileResponse>.Success(new CompleteReservationPatientProfileResponse
                 {
@@ -101,16 +101,17 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                     LeadAssignmentId = reservation.LeadAssignmentId,
                     ConsultantProfileId = reservation.ConsultantProfileId,
                     ReservationAt = reservation.ReservationAt,
+                    DoctorName = reservation.DoctorName,
                     PatientName = $"{user.FirstName} {user.LastName}",
                     PatientPhoneNumber = user.PhoneNumber,
                     IsCompleteProfile = user.IsCompleteProfile,
                     RoleName = PatientRoleName
                 }, "پرونده بیمار برای رزرو با موفقیت تشکیل شد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                await unitOfWork.RollbackAsync(CancellationToken.None);
-                return Result<CompleteReservationPatientProfileResponse>.Failure($"خطا در تشکیل پرونده بیمار: {ex.Message}");
+                await unitOfWork.RollbackAsync();
+                return Result<CompleteReservationPatientProfileResponse>.Failure("خطا در تشکیل پرونده بیمار");
             }
         }
     }

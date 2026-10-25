@@ -1,17 +1,13 @@
-using CsvHelper;
-using CsvHelper.Configuration;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
-using HtmlAgilityPack;
+using DentalDashboard.Infrastracture.Repository;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using System.Formats.Asn1;
-using System.Globalization;
 using System.Net;
-using System.Net.Http;
+using System.Text.RegularExpressions;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -19,14 +15,21 @@ namespace DentalDashboard.ApplicationService.Services
     {
         private readonly HttpClient httpClient;
         private static readonly TimeSpan RealtimeLeadRedispatchInterval = TimeSpan.FromSeconds(6);
-        private const string url = "https://docs.google.com/spreadsheets/d/1VvgKqW-53obpDHR-b1bHRVvW2VXjHj0cjXcDsxve2w8/edit?pli=1&gid=626178936#gid=626178936";
+        private const string LeadSourceUrl =
+            "https://landing.yektanet.com/form/export/xlsx/vSjrtffitGUytcOHgpLvEzttHcMQiELTANXzyAxTIywCuhjUaBzbMSTNFpZpxKuv/";
+        // Previous lead source, retained for rollback:
+        // https://docs.google.com/spreadsheets/d/1VvgKqW-53obpDHR-b1bHRVvW2VXjHj0cjXcDsxve2w8/export?format=xlsx&gid=1527887863
+        private const int MaximumHeaderSearchRows = 10;
+        private static readonly Regex IranianMobileRegex =
+            new("^09\\d{9}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly ILeadDomainService leadDomainService;
         private readonly IConsultantProfileRepository consultantProfileRepository;
         private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
         private readonly IPushNotificationService pushNotificationService;
-        private readonly ILogger<LeadAssignmentService> logger;
-        private readonly IUnitOfWork unitOfWork;
+        private readonly IServiceLogRepository serviceLogRepository;
+        private readonly ILeadAssignmentCandidateProvider candidateProvider;
+        private readonly ILeadAssignmentSettingRepository leadAssignmentSettingRepository;
 
         public LeadAssignmentService(
             HttpClient httpClient,
@@ -35,8 +38,9 @@ namespace DentalDashboard.ApplicationService.Services
             IConsultantProfileRepository consultantProfileRepository,
             ILeadAssignmentLimitService leadAssignmentLimitService,
             IPushNotificationService pushNotificationService,
-            ILogger<LeadAssignmentService> logger,
-            IUnitOfWork unitOfWork)
+            IServiceLogRepository serviceLogRepository,
+            ILeadAssignmentCandidateProvider candidateProvider,
+            ILeadAssignmentSettingRepository leadAssignmentSettingRepository)
         {
             this.httpClient = httpClient;
             this.leadAssignmentRepository = leadAssignmentRepository;
@@ -44,28 +48,14 @@ namespace DentalDashboard.ApplicationService.Services
             this.consultantProfileRepository = consultantProfileRepository;
             this.leadAssignmentLimitService = leadAssignmentLimitService;
             this.pushNotificationService = pushNotificationService;
-            this.logger = logger;
-            this.unitOfWork = unitOfWork;
+            this.serviceLogRepository = serviceLogRepository;
+            this.candidateProvider = candidateProvider;
+            this.leadAssignmentSettingRepository = leadAssignmentSettingRepository;
         }
 
         public async Task<LeadAssignment[]> LeadsListAsync(
-            CancellationToken cancellationToken = default)
+          CancellationToken cancellationToken = default)
         {
-            const string spreadsheetId =
-                "1VvgKqW-53obpDHR-b1bHRVvW2VXjHj0cjXcDsxve2w8";
-
-            const string sheetGid = "626178936";
-
-            const string query =
-                "select A,I,J where J is not null";
-
-            var htmlUrl =
-                $"https://docs.google.com/spreadsheets/d/{spreadsheetId}/gviz/tq" +
-                $"?gid={sheetGid}" +
-                $"&headers=2" +
-                $"&tqx=out:html" +
-                $"&tq={Uri.EscapeDataString(query)}";
-
             try
             {
                 if (!httpClient.DefaultRequestHeaders.UserAgent.Any())
@@ -75,222 +65,143 @@ namespace DentalDashboard.ApplicationService.Services
                 }
 
                 using var response = await httpClient.GetAsync(
-                    htmlUrl,
+                    LeadSourceUrl,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
 
+                var log = new ServiceLog()
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    DeletedAt = null,
+                    LogName = "YektanetLeadCapture",
+                    ResponseLog = response.ReasonPhrase
+                };
+                await serviceLogRepository.AddAsync(log);
+                await serviceLogRepository.SaveChange();
+
                 response.EnsureSuccessStatusCode();
 
-                var html = await response.Content.ReadAsStringAsync(
-                    cancellationToken);
-
-                var document = new HtmlDocument();
-                document.LoadHtml(html);
-
-                var rows = document.DocumentNode
-                    .SelectNodes("//table//tr");
-
-                if (rows == null || rows.Count == 0)
-                {
-                    logger.LogWarning(
-                        "No rows found in Google Sheet");
-
+                await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using var workbook = new XLWorkbook(stream);
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet is null)
                     return Array.Empty<LeadAssignment>();
-                }
 
-                logger.LogInformation(
-                    "Google Sheet returned {RowCount} rows",
-                    rows.Count);
+                var (headerRowNumber, fullNameColumn, phoneNumberColumn) =
+                    FindLeadColumns(worksheet);
 
-                var leads = new List<LeadAssignment>();
+                var lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? headerRowNumber;
+                var leadsByPhoneNumber = new Dictionary<string, LeadAssignment>(StringComparer.Ordinal);
 
-                var addedPhoneNumbers = new HashSet<string>(
-                    StringComparer.OrdinalIgnoreCase);
-
-                var emptyCount = 0;
-                var duplicateCount = 0;
-                var invalidStructureCount = 0;
-
-                foreach (var row in rows.Skip(3))
+                for (var rowNumber = headerRowNumber + 1; rowNumber <= lastRowNumber; rowNumber++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    var userName = Clean(worksheet.Cell(rowNumber, fullNameColumn).GetString());
+                    var phoneNumber = NormalizePhoneNumber(
+                        worksheet.Cell(rowNumber, phoneNumberColumn).GetFormattedString());
 
-                    var cells = row.SelectNodes("./td");
-
-                    if (cells == null || cells.Count < 3)
+                    if (string.IsNullOrWhiteSpace(userName) ||
+                        !IranianMobileRegex.IsMatch(phoneNumber) ||
+                        leadsByPhoneNumber.ContainsKey(phoneNumber))
                     {
-                        invalidStructureCount++;
                         continue;
                     }
 
-                    /*
-                     * چون Query فقط A,I,J را انتخاب کرده:
-                     *
-                     * cells[0] = ستون A = DateTime
-                     * cells[1] = ستون I = نام و نام خانوادگی
-                     * cells[2] = ستون J = شماره تماس
-                     */
-
-                    var createdAtText = Clean(
-                        HtmlEntity.DeEntitize(cells[0].InnerText));
-
-                    var userName = Clean(
-                        HtmlEntity.DeEntitize(cells[1].InnerText));
-
-                    var rawPhoneNumber = Clean(
-                        HtmlEntity.DeEntitize(cells[2].InnerText));
-
-                    logger.LogDebug(
-                        "Row values => Date: {Date}, Name: {Name}, Phone: {Phone}",
-                        createdAtText,
-                        userName,
-                        rawPhoneNumber);
-
-                    if (string.IsNullOrWhiteSpace(rawPhoneNumber))
-                    {
-                        emptyCount++;
-                        continue;
-                    }
-
-                    rawPhoneNumber = ConvertToEnglishDigits(
-                        rawPhoneNumber);
-
-                    var phoneNumber = new string(
-                        rawPhoneNumber
-                            .Where(char.IsDigit)
-                            .ToArray());
-
-                    if (string.IsNullOrWhiteSpace(phoneNumber))
-                    {
-                        emptyCount++;
-                        continue;
-                    }
-
-                    if (!phoneNumber.StartsWith("0"))
-                    {
-                        phoneNumber = "0" + phoneNumber;
-                    }
-
-                    if (!addedPhoneNumbers.Add(phoneNumber))
-                    {
-                        duplicateCount++;
-
-                        logger.LogDebug(
-                            "Duplicate phone skipped: {PhoneNumber}",
-                            phoneNumber);
-
-                        continue;
-                    }
-
-                    DateTime createdAt;
-
-                    if (!DateTime.TryParse(
-                            createdAtText,
-                            CultureInfo.InvariantCulture,
-                            DateTimeStyles.None,
-                            out createdAt))
-                    {
-                        if (!DateTime.TryParse(
-                                createdAtText,
-                                CultureInfo.CurrentCulture,
-                                DateTimeStyles.None,
-                                out createdAt))
-                        {
-                            createdAt = DateTime.UtcNow;
-                        }
-                    }
-
-                    leads.Add(new LeadAssignment
+                    leadsByPhoneNumber.Add(phoneNumber, new LeadAssignment
                     {
                         UserName = userName,
                         PhoneNumber = phoneNumber,
-                        CreatedAt = createdAt
+                        CreatedAt = DateTime.Now
                     });
                 }
 
-                logger.LogInformation(
-                    "Google Sheet completed. " +
-                    "Rows: {Rows}, " +
-                    "Unique leads: {LeadCount}, " +
-                    "Empty phones: {EmptyCount}, " +
-                    "Duplicates: {DuplicateCount}, " +
-                    "Invalid structure rows: {InvalidStructureCount}",
-                    rows.Count,
-                    leads.Count,
-                    emptyCount,
-                    duplicateCount,
-                    invalidStructureCount);
-
-                return leads.ToArray();
+                return leadsByPhoneNumber.Values.ToArray();
             }
-            catch (TaskCanceledException ex)
-                when (!cancellationToken.IsCancellationRequested)
+            catch (TaskCanceledException)
             {
-                logger.LogWarning(
-                    ex,
-                    "Timeout while fetching Google Sheet from {Url}",
-                    htmlUrl);
-
                 return Array.Empty<LeadAssignment>();
             }
-            catch (OperationCanceledException)
+            catch (HttpRequestException)
             {
-                throw;
-            }
-            catch (HttpRequestException ex)
-            {
-                logger.LogWarning(
-                    ex,
-                    "HTTP error while fetching Google Sheet from {Url}",
-                    htmlUrl);
-
                 return Array.Empty<LeadAssignment>();
             }
-            catch (Exception ex)
-            {
-                logger.LogError(
-                    ex,
-                    "Unexpected error while reading Google Sheet");
-
-                return Array.Empty<LeadAssignment>();
-            }
-        }
-
-        private static string ConvertToEnglishDigits(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return string.Empty;
-
-            return value
-                .Replace('۰', '0')
-                .Replace('۱', '1')
-                .Replace('۲', '2')
-                .Replace('۳', '3')
-                .Replace('۴', '4')
-                .Replace('۵', '5')
-                .Replace('۶', '6')
-                .Replace('۷', '7')
-                .Replace('۸', '8')
-                .Replace('۹', '9')
-                .Replace('٠', '0')
-                .Replace('١', '1')
-                .Replace('٢', '2')
-                .Replace('٣', '3')
-                .Replace('٤', '4')
-                .Replace('٥', '5')
-                .Replace('٦', '6')
-                .Replace('٧', '7')
-                .Replace('٨', '8')
-                .Replace('٩', '9');
         }
 
         private static string Clean(string value)
         {
-            return WebUtility.HtmlDecode(value)
-                .Replace("\n", "")
-                .Replace("\r", "")
-                .Replace("\t", "")
+            return Regex.Replace(
+                    WebUtility.HtmlDecode(value)
+                        .Replace('ي', 'ی')
+                        .Replace('ك', 'ک'),
+                    @"\s+",
+                    " ")
                 .Trim();
+        }
+
+        private static (int HeaderRowNumber, int FullNameColumn, int PhoneNumberColumn)
+            FindLeadColumns(IXLWorksheet worksheet)
+        {
+            var lastUsedRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
+            var lastHeaderCandidateRow = Math.Min(lastUsedRow, MaximumHeaderSearchRows);
+
+            for (var rowNumber = 1; rowNumber <= lastHeaderCandidateRow; rowNumber++)
+            {
+                int? fullNameColumn = null;
+                int? phoneNumberColumn = null;
+
+                foreach (var cell in worksheet.Row(rowNumber).CellsUsed())
+                {
+                    var normalizedHeader = NormalizeHeader(cell.GetString());
+
+                    if (IsFullNameHeader(normalizedHeader))
+                        fullNameColumn = cell.Address.ColumnNumber;
+
+                    if (IsPhoneNumberHeader(normalizedHeader))
+                        phoneNumberColumn = cell.Address.ColumnNumber;
+                }
+
+                if (fullNameColumn.HasValue && phoneNumberColumn.HasValue)
+                    return (rowNumber, fullNameColumn.Value, phoneNumberColumn.Value);
+            }
+
+            throw new InvalidDataException(
+                "Lead report must contain full-name and phone-number columns within its first 10 rows.");
+        }
+
+        private static string NormalizeHeader(string value) =>
+            string.Concat(Clean(value).Where(char.IsLetter));
+
+        private static bool IsFullNameHeader(string value) =>
+            value.Contains("نامونامخانوادگی", StringComparison.Ordinal);
+
+        private static bool IsPhoneNumberHeader(string value) =>
+            value.Contains("شمارهتماس", StringComparison.Ordinal) ||
+            value.Contains("شمارهتلفن", StringComparison.Ordinal) ||
+            value.Contains("موبایل", StringComparison.Ordinal);
+
+        private static string NormalizePhoneNumber(string value)
+        {
+            var normalized = Clean(value)
+                .Replace('۰', '0').Replace('۱', '1').Replace('۲', '2')
+                .Replace('۳', '3').Replace('۴', '4').Replace('۵', '5')
+                .Replace('۶', '6').Replace('۷', '7').Replace('۸', '8').Replace('۹', '9')
+                .Replace('٠', '0').Replace('١', '1').Replace('٢', '2')
+                .Replace('٣', '3').Replace('٤', '4').Replace('٥', '5')
+                .Replace('٦', '6').Replace('٧', '7').Replace('٨', '8').Replace('٩', '9')
+                .Replace(" ", string.Empty)
+                .Replace("-", string.Empty)
+                .Replace("(", string.Empty)
+                .Replace(")", string.Empty);
+
+            if (normalized.StartsWith("+98", StringComparison.Ordinal))
+                normalized = $"0{normalized[3..]}";
+            else if (normalized.StartsWith("0098", StringComparison.Ordinal))
+                normalized = $"0{normalized[4..]}";
+            else if (normalized.StartsWith("98", StringComparison.Ordinal) && normalized.Length == 12)
+                normalized = $"0{normalized[2..]}";
+            else if (normalized.StartsWith('9') && normalized.Length == 10)
+                normalized = $"0{normalized}";
+
+            return normalized;
         }
 
         public async Task AddLeadsAsync()
@@ -298,30 +209,17 @@ namespace DentalDashboard.ApplicationService.Services
             var now = DateTime.Now;
             var updatedLeads = await LeadsListAsync();
 
-            var existingPhoneNumbers = await leadAssignmentRepository.GetExistingPhoneNumbersAsync(
-                updatedLeads.Select(x => x.PhoneNumber));
-
-            var newLeads = updatedLeads
-                .Where(x => !existingPhoneNumbers.Contains(x.PhoneNumber))
-                .ToList();
-
-            if (!newLeads.Any())
-            {
-                logger.LogDebug("AddLeadsAsync skipped: no new phone numbers from landing page");
-                return;
-            }
-
-            foreach (var lead in newLeads)
+            foreach (var lead in updatedLeads)
             {
                 lead.CreatedAt = now;
                 lead.CallDeadlineAt = null;
                 lead.AssignmentType = LeadAssignmentType.RealTime;
                 lead.RequiresThreeMinuteCall = true;
                 lead.LeadAssignmentState = LeadAssignmentState.New;
+                lead.SourceType = LeadSourceType.Yektanet;
             }
 
-            await leadAssignmentRepository.AddRangeAsync(newLeads);
-            await leadAssignmentRepository.SaveChange();
+            await leadAssignmentRepository.AddNewLeadsIfPhoneDoesNotExistAsync(updatedLeads);
         }
 
         public async Task ReconcileMisclassifiedLeadStatesAsync()
@@ -349,11 +247,10 @@ namespace DentalDashboard.ApplicationService.Services
         }
 
         public async Task AssignRealTimeLeadsAsync(
-            IReadOnlyCollection<long>? excludedConsultantIds = null) 
+            IReadOnlyCollection<long>? excludedConsultantIds = null)
         {
             if (!leadDomainService.IsWorkingTime(DateTime.Now))
             {
-                logger.LogInformation("Realtime dispatch skipped: outside working hours");
                 return;
             }
 
@@ -370,7 +267,6 @@ namespace DentalDashboard.ApplicationService.Services
 
             if (!consultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no online consultants");
                 return;
             }
 
@@ -378,87 +274,85 @@ namespace DentalDashboard.ApplicationService.Services
 
             foreach (var consultant in consultants)
             {
-                var limit = await leadAssignmentLimitService.GetDailyLimitStatusAsync(consultant.Id);
-                if (limit.CanPickup)
-                {
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
                     availableConsultants.Add(consultant);
-                    logger.LogDebug(
-                        "Consultant {ConsultantId} with role {Role} eligible for realtime lead; assigned {AssignedToday}/{DailyLimit}",
-                        consultant.Id, consultant.ConsultantLevel, limit.TodayPickupCount, limit.EffectiveDailyLimit);
-                }
-                else
-                {
-                    logger.LogInformation(
-                        "Consultant {ConsultantId} with role {Role} reached realtime daily limit {AssignedToday}/{DailyLimit}",
-                        consultant.Id, consultant.ConsultantLevel, limit.TodayPickupCount, limit.EffectiveDailyLimit);
-                }
             }
 
             if (!availableConsultants.Any())
             {
-                logger.LogInformation("Realtime dispatch skipped: no consultant capacity");
                 return;
             }
 
-            var lead = await leadAssignmentRepository
-                .GetCurrentRealtimeLeadForDispatchAsync(RealtimeLeadRedispatchInterval);
+            await DispatchToConsultantsBySourceAsync(availableConsultants);
 
-            if (lead == null)
-            {
-                logger.LogInformation(
-                    "Realtime dispatch skipped: no lead ready for dispatch or reminder interval not elapsed");
-                return;
-            }
-
-            var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
-
-            var notifiedCount = await NotifyConsultantsForRealtimeLeadAsync(
-                lead, availableConsultants, isReminder);
-
-            if (notifiedCount == 0)
-            {
-                logger.LogInformation(
-                    "Realtime notification skipped for lead {LeadId}: every consultant has an unreported lead",
-                    lead.Id);
-                return;
-            }
-
-            lead.NotificationSent = true;
-            lead.LastDispatchAt = DateTime.UtcNow;
-
-            await leadAssignmentRepository.SaveChange();
-
-            logger.LogInformation(
-                "Realtime dispatch completed for lead {LeadId}. Reminder: {IsReminder}",
-                lead.Id,
-                isReminder);
         }
 
-        private async Task<int> NotifyConsultantsForRealtimeLeadAsync(
-            LeadAssignment lead,
-            IReadOnlyList<ConsultantProfile> consultants,
-            bool isReminder = false)
+        private async Task DispatchToConsultantsBySourceAsync(
+            IReadOnlyList<ConsultantProfile> consultants)
         {
-            var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
+            var globalSetting = await leadAssignmentSettingRepository.GetCurrentAsync();
+            var fallbackSource = globalSetting?.AssignmentSourceType ?? LeadAssignmentSourceType.NewLeads;
 
-            var notifiedCount = 0;
-            foreach (var consultant in consultants)
+            foreach (var group in consultants.GroupBy(consultant =>
+                         consultant.PreferredLeadSourceType is { } preferred && Enum.IsDefined(preferred)
+                             ? preferred
+                             : fallbackSource))
             {
-                if (!await leadAssignmentRepository.IsAvailableForPickupAsync(lead.Id))
+                var preferredLeadSource = await GetNextRealtimeLeadSourceAsync();
+                var candidate = await candidateProvider.GetCurrentForDispatchAsync(
+                    group.Key,
+                    RealtimeLeadRedispatchInterval,
+                    preferredLeadSource);
+                if (candidate.Lead is null)
                 {
-                    logger.LogInformation(
-                        "Realtime broadcast stopped for lead {LeadId}: lead is no longer unassigned",
-                        lead.Id);
-                    break;
+                    candidate = await candidateProvider.GetCurrentForDispatchAsync(
+                        group.Key,
+                        RealtimeLeadRedispatchInterval,
+                        preferredLeadSource == LeadSourceType.Yektanet
+                            ? LeadSourceType.AdminSheet
+                            : LeadSourceType.Yektanet);
                 }
+                var lead = candidate.Lead;
+                if (lead is null)
+                    continue;
 
-                if (await leadAssignmentRepository.HasUnreportedLeadAsync(consultant.Id))
+                // Never broadcast a new lead when this phone number already has
+                // a submitted report. The candidate query also applies this
+                // rule, but this final check closes the read-to-notification
+                // race window.
+                if (candidate.SourceType == LeadAssignmentSourceType.NewLeads &&
+                    await leadAssignmentRepository.GetAll().AnyAsync(x =>
+                        x.Id != lead.Id &&
+                        x.PhoneNumber == lead.PhoneNumber &&
+                        x.ReportSubmittedAt != null))
                 {
-                    logger.LogInformation(
-                        "Realtime notification suppressed for {ConsultantId}: an assignment has no report",
-                        consultant.Id);
                     continue;
                 }
+
+                var isReminder = lead.NotificationSent && lead.LastDispatchAt.HasValue;
+                await NotifyConsultantsForRealtimeLeadAsync(
+                    lead,
+                    group.ToList(),
+                    candidate.SourceType,
+                    isReminder);
+
+                lead.NotificationSent = true;
+                lead.LastDispatchAt = DateTime.UtcNow;
+            }
+
+            await leadAssignmentRepository.SaveChange();
+        }
+
+        private async Task NotifyConsultantsForRealtimeLeadAsync(
+            LeadAssignment lead,
+            IReadOnlyList<ConsultantProfile> consultants,
+            LeadAssignmentSourceType sourceType,
+            bool isReminder = false)
+        {
+            var (title, body) = BuildRealtimeLeadNotificationContent(lead, sourceType, isReminder);
+
+            foreach (var consultant in consultants)
+            {
                 await pushNotificationService.SendAsync(
                     consultant.UserId,
                     title,
@@ -467,86 +361,18 @@ namespace DentalDashboard.ApplicationService.Services
                     {
                         ["leadId"] = lead.Id.ToString(),
                         ["type"] = "RealtimeLead",
+                        ["leadLimitType"] = sourceType == LeadAssignmentSourceType.BurnedLeads ? "Burnt" : "Realtime",
                         ["userName"] = lead.UserName ?? string.Empty,
                         ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
                         ["isReminder"] = isReminder ? "true" : "false",
                     });
-                notifiedCount++;
             }
 
-            logger.LogInformation(
-                isReminder
-                    ? "Realtime lead reminder sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants"
-                    : "Realtime lead notification sent for lead {LeadId} ({UserName}, {PhoneNumber}) to {ConsultantCount} consultants",
-                lead.Id,
-                lead.UserName,
-                lead.PhoneNumber,
-                notifiedCount);
-            return notifiedCount;
-        }
-
-        public async Task BroadcastBurnedLeadAsync(
-            LeadAssignment lead,
-            IReadOnlyList<ConsultantProfile> consultants,
-            string audience,
-            bool isReminder,
-            CancellationToken cancellationToken = default)
-        {
-            var (title, body) = BuildRealtimeLeadNotificationContent(lead, isReminder);
-
-            var notifiedCount = 0;
-            foreach (var consultant in consultants)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (!await leadAssignmentRepository.IsAvailableForPickupAsync(
-                        lead.Id, cancellationToken))
-                {
-                    logger.LogInformation(
-                        "Burned lead broadcast stopped for lead {LeadId}: lead is no longer unassigned",
-                        lead.Id);
-                    break;
-                }
-
-                if (await leadAssignmentRepository.HasUnreportedLeadAsync(
-                        consultant.Id, cancellationToken))
-                {
-                    logger.LogInformation(
-                        "Burned lead notification suppressed for {ConsultantId}: an assignment has no report",
-                        consultant.Id);
-                    continue;
-                }
-                await pushNotificationService.SendAsync(
-                    consultant.UserId,
-                    title,
-                    body,
-                    new Dictionary<string, string>
-                    {
-                        ["leadId"] = lead.Id.ToString(),
-                        ["type"] = "RealtimeLead",
-                        ["userName"] = lead.UserName ?? string.Empty,
-                        ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
-                        ["isReminder"] = isReminder ? "true" : "false"
-                    });
-                notifiedCount++;
-            }
-
-            if (notifiedCount == 0)
-                return;
-
-            lead.NotificationSent = true;
-            lead.LastDispatchAt = DateTime.UtcNow;
-            await leadAssignmentRepository.SaveChange();
-
-            logger.LogInformation(
-                "Burned lead {LeadId} broadcast to {ConsultantCount} eligible {Audience} consultants. Reminder: {IsReminder}",
-                lead.Id,
-                notifiedCount,
-                audience,
-                isReminder);
         }
 
         private static (string Title, string Body) BuildRealtimeLeadNotificationContent(
             LeadAssignment lead,
+            LeadAssignmentSourceType sourceType,
             bool isReminder)
         {
             var name = string.IsNullOrWhiteSpace(lead.UserName)
@@ -556,9 +382,8 @@ namespace DentalDashboard.ApplicationService.Services
                 ? "نامشخص"
                 : lead.PhoneNumber.Trim();
 
-            var title = isReminder
-                ? $"یادآوری لید: {name}"
-                : $"لید جدید: {name}";
+            var leadTitle = sourceType == LeadAssignmentSourceType.BurnedLeads ? "شماره سوخته" : "لید جدید";
+            var title = isReminder ? $"یادآوری {leadTitle}: {name}" : $"{leadTitle}: {name}";
             var body = $"شماره تماس: {phone} — جهت دریافت روی اعلان کلیک کنید.";
 
             return (title, body);
@@ -587,27 +412,13 @@ namespace DentalDashboard.ApplicationService.Services
                     });
             }
 
-            logger.LogInformation(
-                "Realtime lead taken notification sent for lead {LeadId} to {ConsultantCount} consultants",
-                leadAssignmentId,
-                consultants.Count);
         }
 
         public async Task<ExpireLeadRequeueResult> ExpireAndRequeueRealTimeLeadAsync(
             LeadAssignment lead,
             ConsultantProfile consultant)
         {
-            await unitOfWork.BeginTransactionAsync();
-            try
-            {
-                await ExpireAndRequeueRealTimeLeadInternalAsync(lead, consultant);
-                await unitOfWork.CommitAsync();
-            }
-            catch
-            {
-                await unitOfWork.RollbackAsync(CancellationToken.None);
-                throw;
-            }
+            await ExpireAndRequeueRealTimeLeadInternalAsync(lead, consultant);
 
             return new ExpireLeadRequeueResult
             {
@@ -628,53 +439,33 @@ namespace DentalDashboard.ApplicationService.Services
                 return;
 
             var failedConsultantIds = new HashSet<long>();
-            await unitOfWork.BeginTransactionAsync();
-            try
+
+            foreach (var lead in expiredLeads)
             {
-                var affectedConsultants = new List<ConsultantProfile>();
-
-                foreach (var lead in expiredLeads)
+                if (lead.ConsultantProfile == null)
                 {
-                    if (lead.ConsultantProfile == null)
-                    {
-                        ResetLeadQueue(lead);
-                        continue;
-                    }
-
-                    var consultant = lead.ConsultantProfile;
-                    failedConsultantIds.Add(consultant.Id);
-                    affectedConsultants.Add(consultant);
-
                     ResetLeadQueue(lead);
+                    continue;
                 }
 
-                // Acquire lead-row locks before consultant-row locks. This is
-                // the same order used by pickup and report submission.
-                await leadAssignmentRepository.SaveChange();
+                var consultant = lead.ConsultantProfile;
+                failedConsultantIds.Add(consultant.Id);
 
-                foreach (var consultant in affectedConsultants)
+                ResetLeadQueue(lead);
+
+                if (leadDomainService.IsWorkingTime(now))
                 {
-                    if (leadDomainService.IsWorkingTime(now))
-                    {
-                        consultant.IsOnline = true;
-                        consultant.LastOnlineAt = now;
-                    }
-                    else
-                    {
-                        consultant.IsOnline = false;
-                        consultant.LastOfflineAt = now;
-                    }
+                    consultant.IsOnline = true;
+                    consultant.LastOnlineAt = now;
                 }
-
-                await leadAssignmentRepository.SaveChange();
-
-                await unitOfWork.CommitAsync();
+                else
+                {
+                    consultant.IsOnline = false;
+                    consultant.LastOfflineAt = now;
+                }
             }
-            catch
-            {
-                await unitOfWork.RollbackAsync(CancellationToken.None);
-                throw;
-            }
+
+            await leadAssignmentRepository.SaveChange();
 
             if (leadDomainService.IsWorkingTime(now))
                 await AssignRealTimeLeadsAsync(failedConsultantIds);
@@ -695,6 +486,14 @@ namespace DentalDashboard.ApplicationService.Services
             lead.RequiresThreeMinuteCall = true;
         }
 
+        private async Task<LeadSourceType> GetNextRealtimeLeadSourceAsync()
+        {
+            var lastPickedSource = await leadAssignmentRepository.GetLastPickedRealtimeSourceAsync();
+            return lastPickedSource is LeadSourceType.Yektanet or LeadSourceType.Website
+                ? LeadSourceType.AdminSheet
+                : LeadSourceType.Yektanet;
+        }
+
         private async Task ExpireAndRequeueRealTimeLeadInternalAsync(
             LeadAssignment lead,
             ConsultantProfile consultant)
@@ -703,9 +502,6 @@ namespace DentalDashboard.ApplicationService.Services
             var failedConsultantId = consultant.Id;
 
             ResetLeadQueue(lead);
-
-            leadAssignmentRepository.Update(lead);
-            await leadAssignmentRepository.SaveChange();
 
             if (leadDomainService.IsWorkingTime(now))
             {
@@ -718,11 +514,186 @@ namespace DentalDashboard.ApplicationService.Services
                 consultant.LastOfflineAt = now;
             }
 
+            leadAssignmentRepository.Update(lead);
             consultantProfileRepository.Update(consultant);
             await leadAssignmentRepository.SaveChange();
 
             if (leadDomainService.IsWorkingTime(now))
                 await AssignRealTimeLeadsAsync(new[] { failedConsultantId });
+        }
+
+        public async Task AssignLeadToTestConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
+        {
+            if (!leadDomainService.IsWorkingTime(DateTime.Now))
+            {
+                return;
+            }
+
+            var consultants = await consultantProfileRepository
+                .GetAvailableAndOnnlineTestConsultant();
+
+            excludedConsultantIds = await ManageExcludeConsultants();
+
+            if (excludedConsultantIds is { Count: > 0 })
+            {
+                var excluded = excludedConsultantIds.ToHashSet();
+                consultants = consultants
+                    .Where(x => !excluded.Contains(x.Id))
+                    .ToList();
+            }
+            if (!consultants.Any())
+            {
+                return;
+            }
+
+            var availableConsultants = new List<ConsultantProfile>();
+
+            foreach (var consultant in consultants)
+            {
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                    availableConsultants.Add(consultant);
+            }
+
+            if (!availableConsultants.Any())
+            {
+                return;
+            }
+
+            await DispatchToConsultantsBySourceAsync(availableConsultants);
+
+        }
+
+        public async Task AssignLeadToSellerConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
+        {
+            if (!leadDomainService.IsWorkingTime(DateTime.Now))
+            {
+                return;
+            }
+
+            var consultants = await consultantProfileRepository
+                .GetAvailableAndOnnlineSellerConsultant();
+
+            excludedConsultantIds = await ManageExcludeConsultants();
+
+            if (excludedConsultantIds is { Count: > 0 })
+            {
+                var excluded = excludedConsultantIds.ToHashSet();
+                consultants = consultants
+                    .Where(x => !excluded.Contains(x.Id))
+                    .ToList();
+            }
+            if (!consultants.Any())
+            {
+                return;
+            }
+            var availableConsultants = new List<ConsultantProfile>();
+
+            foreach (var consultant in consultants)
+            {
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                    availableConsultants.Add(consultant);
+            }
+
+            if (!availableConsultants.Any())
+            {
+                return;
+            }
+
+            await DispatchToConsultantsBySourceAsync(availableConsultants);
+
+        }
+
+        public async Task AssignLeadToTopSellertConsultant(IReadOnlyCollection<long>? excludedConsultantIds = null)
+        {
+            if (!leadDomainService.IsWorkingTime(DateTime.Now))
+            {
+                return;
+            }
+
+
+            var consultants = await consultantProfileRepository
+                .GetAvailableAndOnnlineTopSellerConsultant();
+
+            excludedConsultantIds = await ManageExcludeConsultants();
+
+            if (excludedConsultantIds is { Count: > 0 })
+            {
+                var excluded = excludedConsultantIds.ToHashSet();
+                consultants = consultants
+                    .Where(x => !excluded.Contains(x.Id))
+                    .ToList();
+
+            }
+            if (!consultants.Any())
+            {
+                return;
+            }
+            var availableConsultants = new List<ConsultantProfile>();
+
+            foreach (var consultant in consultants)
+            {
+                if (await leadAssignmentLimitService.CanPickupLeadAsync(consultant.Id))
+                    availableConsultants.Add(consultant);
+            }
+
+            if (!availableConsultants.Any())
+            {
+                return;
+            }
+
+            await DispatchToConsultantsBySourceAsync(availableConsultants);
+
+        }
+        private async Task<IReadOnlyCollection<long>> ManageExcludeConsultants()
+        {
+            var excludeConsultants = new List<long>();
+
+            var consultants = await consultantProfileRepository
+                .GetAll()
+                .Include(x => x.CallAssignments)
+                .ToListAsync();
+
+            foreach (var consultant in consultants)
+            {
+                var pendingLeadsCount = consultant.CallAssignments.Count(x =>
+                    x.LeadAssignmentState == LeadAssignmentState.Pending);
+                var unSubmitReportLead = consultant.CallAssignments
+                    .Count(x => !x.IsDeleted &&
+                                x.ConsultantProfileId == consultant.Id &&
+                                x.AssignmentType == LeadAssignmentType.RealTime &&
+                                x.LeadAssignmentState == LeadAssignmentState.Assigned &&
+                                x.ReportSubmittedAt == null);
+
+                if (pendingLeadsCount >= 20)
+                {
+                    excludeConsultants.Add(consultant.Id);
+
+                    await pushNotificationService.SendAsync(
+                        consultant.UserId,
+                        "خطا در گرفتن شماره جدید",
+                        "شما 20 شماره در حال پیگیری دارید. لطفاً ابتدا پیگیری شماره‌های فعلی را انجام دهید؛ تا آن زمان شماره جدیدی برای شما ارسال نمی‌شود.",
+                        new Dictionary<string, string>
+                        {
+                            ["type"] = "PendingLeadLimit",
+                            ["pendingCount"] = pendingLeadsCount.ToString()
+                        });
+                }
+                if (unSubmitReportLead >= 1)
+                {
+                    excludeConsultants.Add(consultant.Id);
+                    await pushNotificationService.SendAsync(
+                       consultant.UserId,
+                       "خطا در گرفتن شماره جدید",
+                       "شما 1 شماره گزارش ثبت نکرده دارید. لطفاً ابتدا شماره را تماس گرفته و گزارش ثبت کنید.  تا آن زمان شماره جدیدی برای شما ارسال نمی‌شود.",
+                       new Dictionary<string, string>
+                       {
+                           ["type"] = "UnSubmitReportLeadLimit",
+                           ["ubSubmitCount"] = unSubmitReportLead.ToString()
+                       });
+                }
+            }
+
+            return excludeConsultants;
         }
     }
 }

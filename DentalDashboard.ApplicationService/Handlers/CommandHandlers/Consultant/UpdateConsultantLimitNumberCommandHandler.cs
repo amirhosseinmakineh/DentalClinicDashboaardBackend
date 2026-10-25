@@ -27,10 +27,10 @@ public class UpdateConsultantLimitNumberCommandHandler
         CancellationToken cancellationToken = default)
     {
         if (command.LimitNumber.HasValue &&
-            (command.LimitNumber.Value < 1 || command.LimitNumber.Value > 100))
+            (command.LimitNumber.Value < 0 || command.LimitNumber.Value > 100))
         {
             return Result<ConsultantLimitUpdateResponse>.Failure(
-                "محدودیت دریافت شماره باید بین ۱ تا ۱۰۰ باشد؛ برای استفاده از مقدار پیش‌فرض آن را خالی بگذارید");
+                "محدودیت دریافت شماره باید بین ۰ تا ۱۰۰ باشد");
         }
 
         var profile = await consultantProfileRepository.GetAll()
@@ -45,7 +45,7 @@ public class UpdateConsultantLimitNumberCommandHandler
         profile.LimitNumber = command.LimitNumber;
 
         consultantProfileRepository.Update(profile);
-        await consultantProfileRepository.SaveChange(cancellationToken);
+        await consultantProfileRepository.SaveChange();
 
         var limitStatus = await leadAssignmentLimitService
             .GetDailyLimitStatusAsync(profile.Id);

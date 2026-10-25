@@ -22,6 +22,94 @@ namespace DentalDashboard.Infrastracture.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("DentalDashboard.Domain.Models.AdminLeadSheet", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AdminLeadSheets");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.AdminSheetLead", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AdminLeadSheetId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("LeadAssignmentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ProcessingStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminLeadSheetId");
+
+                    b.HasIndex("LeadAssignmentId");
+
+                    b.ToTable("AdminSheetLeads");
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.Attendance", b =>
                 {
                     b.Property<long>("Id")
@@ -79,6 +167,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("ConsultantRole")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -97,52 +188,24 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool>("IsOnline")
                         .HasColumnType("bit");
 
-                    b.Property<byte>("ConsultantLevel")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)2);
-
                     b.Property<DateTime?>("LastOfflineAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("LastOnlineAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("SellerEvaluatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("SellerStartedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<int?>("LimitNumber")
                         .HasColumnType("int");
-
-                    b.Property<DateTime?>("TestCompletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool?>("TestPassed")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("TestStartedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("TopSellerLastEvaluatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("TopSellerLastEvaluatedPeriodStart")
-                        .HasColumnType("datetime2");
-
-                    b.Property<byte>("TopSellerRewardLevel")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)0);
-
-                    b.Property<DateTime?>("TopSellerStartedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("NationalCode")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PreferredLeadSourceType")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -161,15 +224,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.HasIndex("ConsultantLevel", "TestStartedAt", "TestCompletedAt");
-
-                    b.HasIndex("ConsultantLevel", "SellerStartedAt", "SellerEvaluatedAt");
-
-                    b.HasIndex("ConsultantLevel", "TopSellerStartedAt", "TopSellerLastEvaluatedPeriodStart");
-
-                    b.ToTable("ConsultantProfiles", t =>
+                    b.ToTable("ConsultantProfiles", null, t =>
                         {
-                            t.HasCheckConstraint("CK_ConsultantProfiles_ConsultantLevel", "[ConsultantLevel] IN (1, 2, 3)");
+                            t.HasCheckConstraint("CK_ConsultantProfiles_PreferredLeadSourceType", "[PreferredLeadSourceType] IS NULL OR [PreferredLeadSourceType] IN (1, 2)");
                         });
                 });
 
@@ -203,7 +260,27 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<int?>("CallResult")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("ClosedByConsultantAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ClosureReason")
+                        .HasColumnType("int");
+
                     b.Property<long?>("ConsultantProfileId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ConsultationNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid?>("ConsultationRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long?>("ConsultationServiceId")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("ContactedAt")
@@ -261,6 +338,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool>("SmsSent")
                         .HasColumnType("bit");
 
+                    b.Property<int>("SourceType")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -274,9 +354,11 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("ConsultantProfileId");
 
-                    b.HasIndex("ConsultantProfileId", "PickUp", "IsDeleted", "AssignedAt");
+                    b.HasIndex("ConsultationRequestId")
+                        .IsUnique()
+                        .HasFilter("[ConsultationRequestId] IS NOT NULL");
 
-                    b.HasIndex("ConsultantProfileId", "ReportSubmittedAt");
+                    b.HasIndex("ConsultationServiceId");
 
                     b.HasIndex("PhoneNumber");
 
@@ -284,9 +366,129 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("AssignmentType", "LeadAssignmentState", "ConsultantProfileId");
 
-                    b.HasIndex("IsDeleted", "AssignmentType", "LeadAssignmentState", "ConsultantProfileId", "PickUp");
+                    b.HasIndex("IsDeleted", "LeadAssignmentState", "ConsultantProfileId", "CreatedAt");
 
                     b.ToTable("LeadAssignments");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignmentSetting", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("AssignmentSourceType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByAdminId");
+
+                    b.ToTable("LeadAssignmentSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LeadAssignmentSettings_Singleton", "[Id] = 1");
+
+                            t.HasCheckConstraint("CK_LeadAssignmentSettings_SourceType", "[AssignmentSourceType] IN (1, 2)");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            AssignmentSourceType = 1,
+                            CreatedAt = new DateTime(2026, 9, 3, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false
+                        });
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.PatientFile", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<long>("FileNumber")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<long?>("PatientReferenceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("SecretaryUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SourceType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FileNumber")
+                        .IsUnique();
+
+                    b.HasIndex("PatientReferenceId")
+                        .IsUnique()
+                        .HasFilter("[PatientReferenceId] IS NOT NULL AND [SourceType] = 1 AND [IsDeleted] = 0");
+
+                    b.HasIndex("PhoneNumber");
+
+                    b.HasIndex("SecretaryUserId");
+
+                    b.HasIndex("SourceType");
+
+                    b.HasIndex("SecretaryUserId", "PhoneNumber")
+                        .IsUnique()
+                        .HasFilter("[SecretaryUserId] IS NOT NULL AND [IsDeleted] = 0");
+
+                    b.ToTable("PatientFiles", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PatientFiles_FileNumber_Positive", "[FileNumber] > 0");
+                        });
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.PatientProfile", b =>
@@ -380,15 +582,15 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<int>("AttendanceConfirmationStatus")
                         .HasColumnType("int");
 
+                    b.Property<string>("AttendancePrediction")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<DateTime?>("AttendanceScoreAppliedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("AttendanceScoreValue")
                         .HasColumnType("int");
-
-                    b.Property<string>("AttendancePrediction")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("CanceledAt")
                         .HasColumnType("datetime2");
@@ -403,6 +605,22 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<long>("ConsultantProfileId")
                         .HasColumnType("bigint");
 
+                    b.Property<decimal?>("ConsultantRewardAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool?>("ConsultantRewardApprovedByAdmin")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ConsultantRewardEligibleAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ConsultantRewardReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ConsultantRewardReviewedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool?>("ConsultantSaysPatientAttended")
                         .HasColumnType("bit");
 
@@ -412,9 +630,20 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.PrimitiveCollection<string>("DentalServices")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("DoctorName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("InitialReservationAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("IsAttendanceScoreApplied")
                         .HasColumnType("bit");
@@ -425,8 +654,25 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("LastActivityAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<long>("LeadAssignmentId")
                         .HasColumnType("bigint");
+
+                    b.Property<int?>("OwnerType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("PatientCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<bool?>("PatientReceivedService")
+                        .HasColumnType("bit");
 
                     b.Property<Guid?>("PatientUserId")
                         .HasColumnType("uniqueidentifier");
@@ -434,7 +680,26 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<DateTime>("ReservationAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("ReservationType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SecretaryAnnouncement")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("SecretaryAnnouncementStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SecretaryAnnouncementUpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("SecretaryAnnouncementUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool?>("SecretaryApprovedConsultantConfirmation")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("SecretaryFollowUpContacted")
                         .HasColumnType("bit");
 
                     b.Property<string>("SecretaryReviewNote")
@@ -454,9 +719,19 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("PatientUserId");
 
+                    b.HasIndex("SecretaryAnnouncementStatus");
+
+                    b.HasIndex("ConsultantRewardApprovedByAdmin", "SecretaryReviewedAt");
+
                     b.HasIndex("LeadAssignmentId", "IsCanceled");
 
+                    b.HasIndex("ReservationType", "ReservationAt");
+
+                    b.HasIndex("SecretaryAnnouncementUserId", "SecretaryAnnouncementUpdatedAt");
+
                     b.HasIndex("ConsultantProfileId", "ReservationAt", "IsCanceled");
+
+                    b.HasIndex("OwnerType", "OwnerUserId", "CreatedAt");
 
                     b.ToTable("Reservations");
                 });
@@ -488,6 +763,157 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Roles");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessPermission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("PermissionType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SecretaryUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SecretaryUserId", "DayOfWeek", "PermissionType")
+                        .IsUnique();
+
+                    b.ToTable("SecretaryAccessPermissions", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "DayOfWeek")
+                        .IsUnique();
+
+                    b.ToTable("SecretaryAccessSchedules", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessScheduleAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("NewDays")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OldDays")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("SecretaryUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SecretaryUserId");
+
+                    b.ToTable("SecretaryAccessScheduleAudits", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.ServiceLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LogName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResponseLog")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ServiceLogs");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.User", b =>
@@ -544,6 +970,9 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Property<string>("PushNotificationToken")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SecretaryType")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -635,6 +1064,846 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.ToTable("UserRoles");
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.PatientReferrals.PatientReferral", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("ContactedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long?>("LeadAssignmentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ReferredFirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReferredLastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReferredPhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("nvarchar(11)");
+
+                    b.Property<Guid>("ReferrerPatientUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long?>("ReservationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ReviewedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("RewardAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("SecretaryUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeadAssignmentId");
+
+                    b.HasIndex("ReferredPhoneNumber");
+
+                    b.HasIndex("ReservationId");
+
+                    b.HasIndex("ReviewedByAdminId");
+
+                    b.HasIndex("SecretaryUserId");
+
+                    b.HasIndex("ReferrerPatientUserId", "CreatedAt");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("PatientReferrals", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.PatientReferrals.PatientWallet", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PatientUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientUserId")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("PatientWallets", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PatientWallets_Balance", "[Balance] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.PatientReferrals.PatientWalletTransaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("PatientReferralId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("PatientUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("TransactionType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("WalletId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
+
+                    b.HasIndex("PatientReferralId", "TransactionType")
+                        .IsUnique();
+
+                    b.HasIndex("PatientUserId", "CreatedAt");
+
+                    b.ToTable("PatientWalletTransactions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PatientWalletTransactions_Amount", "[Amount] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.Entities.ExpenseCategory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Title")
+                        .IsUnique();
+
+                    b.ToTable("ExpenseCategories", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.Entities.FinancialTransaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CounterpartyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<long?>("ExpenseCategoryId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ExpenseCategoryId");
+
+                    b.HasIndex("TransactionDate");
+
+                    b.HasIndex("Type", "ExpenseCategoryId");
+
+                    b.ToTable("FinancialTransactions", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientCheque", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsGuarantee")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OwnerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("PatientFinancialCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SayadNumber")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientFinancialCaseId", "DueDate", "Status");
+
+                    b.ToTable("PatientCheques");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientDebt", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PatientFinancialCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("SourceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SourceType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceType", "SourceId")
+                        .IsUnique();
+
+                    b.HasIndex("PatientFinancialCaseId", "Status", "DueDate");
+
+                    b.ToTable("PatientDebts");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AgreementType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ConsultantName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("DepositAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("GuaranteeAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("GuaranteeChequeRegistration")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("GuaranteeDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("GuaranteeDocument")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InstallmentStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("PrePaymentAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ReviewItems")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ServiceUnitCountsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("{}");
+
+                    b.PrimitiveCollection<string>("Services")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ToothUnitCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("PatientFinancialCases");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PatientFinancialCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientFinancialCaseId");
+
+                    b.ToTable("PatientFinancialDocuments");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialTransaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PatientFinancialCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("SourceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SourceType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("PatientFinancialCaseId");
+
+                    b.HasIndex("SourceType", "SourceId", "Type")
+                        .IsUnique();
+
+                    b.ToTable("PatientFinancialTransactions");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientPromissoryNote", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PatientFinancialCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SerialNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientFinancialCaseId", "DueDate", "Status");
+
+                    b.ToTable("PatientPromissoryNotes");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySale", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PatientUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ReviewedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("SalePrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("SecretaryReward")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("SecretaryUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("ServiceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientUserId");
+
+                    b.HasIndex("ReviewedByAdminId");
+
+                    b.HasIndex("ServiceId");
+
+                    b.HasIndex("SecretaryUserId", "CreatedAt");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("SecretarySales", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SecretarySales_SalePrice", "[SalePrice] > 0");
+
+                            t.HasCheckConstraint("CK_SecretarySales_SecretaryReward", "[SecretaryReward] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySaleService", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("SecretaryReward")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Title")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("SecretarySaleServices", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretaryWallet", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("SecretaryUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SecretaryUserId")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("SecretaryWallets", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SecretaryWallets_Balance", "[Balance] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretaryWalletTransaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long?>("SecretarySaleId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("SecretaryUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("TransactionType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("WalletId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
+
+                    b.HasIndex("SecretarySaleId", "TransactionType")
+                        .IsUnique()
+                        .HasFilter("[SecretarySaleId] IS NOT NULL AND [TransactionType] = 1");
+
+                    b.HasIndex("SecretaryUserId", "CreatedAt");
+
+                    b.ToTable("SecretaryWalletTransactions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SecretaryWalletTransactions_Amount", "[Amount] <> 0");
+                        });
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.AdminSheetLead", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.AdminLeadSheet", "AdminLeadSheet")
+                        .WithMany("Leads")
+                        .HasForeignKey("AdminLeadSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Models.LeadAssignment", "LeadAssignment")
+                        .WithMany()
+                        .HasForeignKey("LeadAssignmentId");
+
+                    b.Navigation("AdminLeadSheet");
+
+                    b.Navigation("LeadAssignment");
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.Attendance", b =>
                 {
                     b.HasOne("DentalDashboard.Domain.Models.ConsultantProfile", "ConsultantProfile")
@@ -663,7 +1932,41 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .WithMany("CallAssignments")
                         .HasForeignKey("ConsultantProfileId");
 
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySaleService", "ConsultationService")
+                        .WithMany()
+                        .HasForeignKey("ConsultationServiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("ConsultantProfile");
+
+                    b.Navigation("ConsultationService");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignmentSetting", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "UpdatedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("UpdatedByAdmin");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.PatientFile", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.LeadAssignment", "PatientReference")
+                        .WithMany()
+                        .HasForeignKey("PatientReferenceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", "SecretaryUser")
+                        .WithMany()
+                        .HasForeignKey("SecretaryUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("PatientReference");
+
+                    b.Navigation("SecretaryUser");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.PatientProfile", b =>
@@ -714,6 +2017,28 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("PatientUser");
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessPermission", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "SecretaryUser")
+                        .WithMany("SecretaryAccessPermissions")
+                        .HasForeignKey("SecretaryUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SecretaryUser");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessSchedule", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "User")
+                        .WithMany("SecretaryAccessSchedules")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.UserPresenceLog", b =>
                 {
                     b.HasOne("DentalDashboard.Domain.Models.User", "User")
@@ -744,6 +2069,259 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.PatientReferrals.PatientReferral", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.LeadAssignment", "LeadAssignment")
+                        .WithMany()
+                        .HasForeignKey("LeadAssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", "ReferrerPatientUser")
+                        .WithMany()
+                        .HasForeignKey("ReferrerPatientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Models.Reservation", "Reservation")
+                        .WithMany()
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", "ReviewedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", "SecretaryUser")
+                        .WithMany()
+                        .HasForeignKey("SecretaryUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("LeadAssignment");
+
+                    b.Navigation("ReferrerPatientUser");
+
+                    b.Navigation("Reservation");
+
+                    b.Navigation("ReviewedByAdmin");
+
+                    b.Navigation("SecretaryUser");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.PatientReferrals.PatientWallet", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "PatientUser")
+                        .WithMany()
+                        .HasForeignKey("PatientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PatientUser");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.PatientReferrals.PatientWalletTransaction", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.PatientReferrals.PatientReferral", "PatientReferral")
+                        .WithMany()
+                        .HasForeignKey("PatientReferralId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", "PatientUser")
+                        .WithMany()
+                        .HasForeignKey("PatientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.PatientReferrals.PatientWallet", "Wallet")
+                        .WithMany("Transactions")
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PatientReferral");
+
+                    b.Navigation("PatientUser");
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.Entities.FinancialTransaction", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.Entities.ExpenseCategory", "ExpenseCategory")
+                        .WithMany("FinancialTransactions")
+                        .HasForeignKey("ExpenseCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("ExpenseCategory");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientCheque", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
+                        .WithMany("Cheques")
+                        .HasForeignKey("PatientFinancialCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FinancialCase");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientDebt", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
+                        .WithMany("Debts")
+                        .HasForeignKey("PatientFinancialCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FinancialCase");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialDocument", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
+                        .WithMany()
+                        .HasForeignKey("PatientFinancialCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FinancialCase");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialTransaction", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
+                        .WithMany("Transactions")
+                        .HasForeignKey("PatientFinancialCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("FinancialCase");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientPromissoryNote", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
+                        .WithMany("PromissoryNotes")
+                        .HasForeignKey("PatientFinancialCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FinancialCase");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySale", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "PatientUser")
+                        .WithMany()
+                        .HasForeignKey("PatientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", "ReviewedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", "SecretaryUser")
+                        .WithMany()
+                        .HasForeignKey("SecretaryUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySaleService", "Service")
+                        .WithMany("Sales")
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PatientUser");
+
+                    b.Navigation("ReviewedByAdmin");
+
+                    b.Navigation("SecretaryUser");
+
+                    b.Navigation("Service");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretaryWallet", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", "SecretaryUser")
+                        .WithMany()
+                        .HasForeignKey("SecretaryUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SecretaryUser");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretaryWalletTransaction", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySale", "SecretarySale")
+                        .WithMany("WalletTransactions")
+                        .HasForeignKey("SecretarySaleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", "SecretaryUser")
+                        .WithMany()
+                        .HasForeignKey("SecretaryUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretaryWallet", "Wallet")
+                        .WithMany("Transactions")
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SecretarySale");
+
+                    b.Navigation("SecretaryUser");
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.AdminLeadSheet", b =>
+                {
+                    b.Navigation("Leads");
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.ConsultantProfile", b =>
                 {
                     b.Navigation("Attendances");
@@ -764,7 +2342,47 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Navigation("PushSubscriptions");
 
+                    b.Navigation("SecretaryAccessPermissions");
+
+                    b.Navigation("SecretaryAccessSchedules");
+
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.PatientReferrals.PatientWallet", b =>
+                {
+                    b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.Entities.ExpenseCategory", b =>
+                {
+                    b.Navigation("FinancialTransactions");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", b =>
+                {
+                    b.Navigation("Cheques");
+
+                    b.Navigation("Debts");
+
+                    b.Navigation("PromissoryNotes");
+
+                    b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySale", b =>
+                {
+                    b.Navigation("WalletTransactions");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySaleService", b =>
+                {
+                    b.Navigation("Sales");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretaryWallet", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

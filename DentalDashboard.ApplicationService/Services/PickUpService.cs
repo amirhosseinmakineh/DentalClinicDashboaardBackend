@@ -12,22 +12,19 @@ public class PickUpService : IPickupService
     private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
     private readonly IPushNotificationService pushNotificationService;
     private readonly IUnitOfWork unitOfWork;
-    private readonly IConsultantLeadWorkloadService workloadService;
 
     public PickUpService(
         ILeadAssignmentRepository leadAssignmentRepository,
         IConsultantProfileRepository consultantProfileRepository,
         ILeadAssignmentLimitService leadAssignmentLimitService,
         IPushNotificationService pushNotificationService,
-        IUnitOfWork unitOfWork,
-        IConsultantLeadWorkloadService workloadService)
+        IUnitOfWork unitOfWork)
     {
         this.leadAssignmentRepository = leadAssignmentRepository;
         this.consultantProfileRepository = consultantProfileRepository;
         this.leadAssignmentLimitService = leadAssignmentLimitService;
         this.pushNotificationService = pushNotificationService;
         this.unitOfWork = unitOfWork;
-        this.workloadService = workloadService;
     }
 
     public async Task<PickupLeadResult> PickupLeadAsync(
@@ -35,49 +32,7 @@ public class PickUpService : IPickupService
         long consultantProfileId,
         CancellationToken cancellationToken)
     {
-        var consultant = await consultantProfileRepository.GetAll()
-            .FirstOrDefaultAsync(
-                x => x.Id == consultantProfileId && !x.IsDeleted,
-                cancellationToken);
-
-        if (consultant == null ||
-            !consultant.IsCompleteProfile ||
-            !consultant.IsAvailable ||
-            !consultant.IsOnline)
-        {
-            return new PickupLeadResult
-            {
-                Status = PickupLeadStatus.WorkloadBlocked,
-                ConsultantProfileId = consultantProfileId,
-                Message = "برای دریافت لید باید حاضر و آنلاین باشید"
-            };
-        }
-
-        var workload = await workloadService.GetStatusAsync(consultantProfileId, cancellationToken);
-        if (workload.BlocksNewLeads)
-        {
-            return new PickupLeadResult
-            {
-                Status = PickupLeadStatus.WorkloadBlocked,
-                ConsultantProfileId = consultantProfileId,
-                Message = workload.BlockMessage
-            };
-        }
-
-        if (await leadAssignmentRepository.HasUnreportedLeadAsync(
-                consultantProfileId, cancellationToken))
-        {
-            return new PickupLeadResult
-            {
-                Status = PickupLeadStatus.WorkloadBlocked,
-                ConsultantProfileId = consultantProfileId,
-                Message = "ابتدا گزارش شماره قبلی را ثبت کنید"
-            };
-        }
-
-        var requestedLead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
-        if (requestedLead == null ||
-            !await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId, requestedLead.IsDeleted))
+        if (!await leadAssignmentLimitService.CanPickupLeadAsync(consultantProfileId))
         {
             return new PickupLeadResult
             {
@@ -86,36 +41,31 @@ public class PickUpService : IPickupService
             };
         }
 
-        await unitOfWork.BeginTransactionAsync(cancellationToken);
-        bool pickedUp;
-        try
+        var pickedUp = await leadAssignmentRepository
+            .TryPickupLeadAsync(
+                leadAssignmentId,
+                consultantProfileId,
+                cancellationToken);
+
+        if (!pickedUp)
         {
-            pickedUp = await leadAssignmentRepository.TryPickupLeadAsync(
-                leadAssignmentId, consultantProfileId, cancellationToken);
-
-            if (!pickedUp)
+            return new PickupLeadResult
             {
-                await unitOfWork.RollbackAsync(CancellationToken.None);
-                return new PickupLeadResult
-                {
-                    Status = PickupLeadStatus.AlreadyTaken,
-                    LeadAssignmentId = leadAssignmentId
-                };
-            }
+                Status = PickupLeadStatus.AlreadyTaken,
+                LeadAssignmentId = leadAssignmentId
+            };
+        }
 
-            // All flows which touch both aggregates acquire locks in this
-            // order: LeadAssignments, then ConsultantProfiles.
+        var consultant = await consultantProfileRepository
+            .GetByIdAsync(consultantProfileId);
+
+        if (consultant != null)
+        {
             consultant.IsOnline = false;
             consultant.LastOfflineAt = DateTime.UtcNow;
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
 
-            await unitOfWork.CommitAsync(cancellationToken);
-        }
-        catch
-        {
-            await unitOfWork.RollbackAsync(CancellationToken.None);
-            throw;
-        }
+        await unitOfWork.SaveChangesAsync();
 
         var lead = await leadAssignmentRepository.GetByIdAsync(leadAssignmentId);
 

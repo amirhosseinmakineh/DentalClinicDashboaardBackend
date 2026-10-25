@@ -2,7 +2,6 @@
 using DentalDashboard.ApplicationService.Contract.Requests.User.Commands.CreateUser;
 using DentalDashboard.ApplicationService.Contract.Responses.User;
 using DentalDashboard.Domain.IRepositories;
-using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
@@ -33,19 +32,19 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
         public async Task<Result<CreateUserResponse>> HandleAsync(CreateUserCommand command,CancellationToken cancellationToken = default)
         {
-            var exists = await userRepository.ExistsAsync(
-                x => x.PhoneNumber == command.PhoneNumber);
-
-            if (exists)
-            {
-                return Result<CreateUserResponse>.Failure(
-                    "کاربری با این شماره موبایل قبلاً ثبت شده است");
-            }
-
-            await unitOfWork.BeginTransactionAsync(cancellationToken);
+            await unitOfWork.BeginTransactionAsync();
 
             try
             {
+                var exists = await userRepository.ExistsAsync(
+                    x => x.PhoneNumber == command.PhoneNumber);
+
+                if (exists)
+                {
+                    await unitOfWork.RollbackAsync();
+                    return Result<CreateUserResponse>.Failure(
+                        "کاربری با این شماره موبایل قبلاً ثبت شده است");
+                }
 
                 var user = new Domain.Models.User
                 {
@@ -56,8 +55,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                     BirthDate = command.BirthDate,
                     Gender = command.Gender,
                     AvatarImageName = command.AvatarImageName,
-                    IsActive = false,
-                    IsCompleteProfile = false,
+                    IsActive = command.IsActive,
+                    IsCompleteProfile = command.IsCompleteProfile,
+                    SecretaryType = string.Equals(command.RoleName, "Secretary", StringComparison.OrdinalIgnoreCase)
+                        ? command.SecretaryType ?? DentalDashboard.Domain.Enums.SecretaryType.Main
+                        : null,
                 };
 
                 await userRepository.AddAsync(user);
@@ -67,28 +69,24 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
                 if (command.RoleName == "Consultant")
                 {
                     await consultantProfileService.EnsureProfileExistsAsync(user.Id);
-                    var consultantLevel = command.ConsultantLevel ?? ConsultantLevel.Seller;
-                    await consultantProfileService.SetConsultantLevelAsync(user.Id, consultantLevel);
+                    user.IsCompleteProfile = false;
+                    user.IsActive = false;
                 }
 
-                await unitOfWork.SaveChangesAsync(cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await unitOfWork.CommitAsync();
                 var response = new CreateUserResponse()
                 {
                     Id = user.Id,
                     IsActive = user.IsActive,
                     RoleName = command.RoleName,
-                    ConsultantLevel = command.RoleName == "Consultant"
-                        ? command.ConsultantLevel ?? ConsultantLevel.Seller
-                        : null,
                 };
 
                 return Result<CreateUserResponse>.Success(response,"ثبت کاربر جدید با موفقیت انجام شد");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                await unitOfWork.RollbackAsync(CancellationToken.None);
-                return Result<CreateUserResponse>.Failure($"خطا در ایجاد کاربر: {ex.Message}");
+                await unitOfWork.RollbackAsync();
+                return Result<CreateUserResponse>.Failure("خطا در ایجاد کاربر");
             }
         }
     }

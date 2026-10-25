@@ -22,25 +22,9 @@ public class ConsultantProfile : BaseAuditableEntity<long>
     public DateTime? LastOnlineAt { get; set; }
     public DateTime? LastOfflineAt { get; set; }
     public int? LimitNumber { get; set; }
-    public ConsultantLevel ConsultantLevel { get; set; } = ConsultantLevel.Seller;
-    public DateTime? TestStartedAt { get; set; }
-    public DateTime? TestCompletedAt { get; set; }
-    public bool? TestPassed { get; set; }
-    public DateTime? SellerStartedAt { get; set; }
-    public DateTime? SellerEvaluatedAt { get; set; }
-    public DateTime? TopSellerStartedAt { get; set; }
-    public DateTime? TopSellerLastEvaluatedPeriodStart { get; set; }
-    public DateTime? TopSellerLastEvaluatedAt { get; set; }
-    public TopSellerRewardLevel TopSellerRewardLevel { get; set; }
-
+    public LeadAssignmentSourceType? PreferredLeadSourceType { get; set; }
+    public ConsultantRole ConsultantRole { get; set; }
     public User User { get; set; } = default!;
     public ICollection<LeadAssignment> CallAssignments { get; set; }
     public ICollection<Attendance> Attendances { get; set; }
-
-    public void DeactivateCooperation()
-    {
-        IsAvailable = false;
-        IsOnline = false;
-        User.IsActive = false;
-    }
 }

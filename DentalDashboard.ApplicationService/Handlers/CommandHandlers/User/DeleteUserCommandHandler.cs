@@ -24,35 +24,48 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.User
 
         public async Task<Result<object>> HandleAsync(DeleteUserCommand command,CancellationToken cancellationToken = default)
         {
-            var user = await userRepository.GetByIdAsync(command.UserId);
-
-            if (user == null)
-            {
-                return Result<object>.Failure("کاربر یافت نشد");
-            }
-
-            var userRoles = await userRoleRepository.FindAsync(x => x.UserId == command.UserId);
+            if (command.UserId == Guid.Empty)
+                return Result<object>.Failure("شناسه کاربر معتبر نیست");
 
             await unitOfWork.BeginTransactionAsync(cancellationToken);
+
             try
             {
-                foreach (var userRole in userRoles)
+                var user = await userRepository.GetByIdAsync(command.UserId);
+
+                if (user == null || user.IsDeleted)
                 {
-                    userRoleRepository.Delete(userRole);
+                    await unitOfWork.RollbackAsync(cancellationToken);
+                    return Result<object>.Failure("کاربر یافت نشد");
                 }
 
-                userRepository.Delete(user);
+                var deletedAt = DateTime.UtcNow;
+                var userRoles = await userRoleRepository.FindAsync(x =>
+                    x.UserId == command.UserId && !x.IsDeleted);
 
-                await unitOfWork.SaveChangesAsync(cancellationToken);
+                foreach (var userRole in userRoles)
+                {
+                    userRole.IsDeleted = true;
+                    userRole.DeletedAt = deletedAt;
+                    userRole.UpdatedAt = deletedAt;
+                    userRoleRepository.Update(userRole);
+                }
+
+                user.IsDeleted = true;
+                user.IsActive = false;
+                user.DeletedAt = deletedAt;
+                user.UpdatedAt = deletedAt;
+                userRepository.Update(user);
+
                 await unitOfWork.CommitAsync(cancellationToken);
+
+                return Result<object>.Success(true,"حذف کاربر با موفقیت انجام شد");
             }
             catch
             {
-                await unitOfWork.RollbackAsync(CancellationToken.None);
+                await unitOfWork.RollbackAsync(cancellationToken);
                 throw;
             }
-
-            return Result<object>.Success(true,"حذف کاربر با موفقیت انجام شد");
         }
     }
 }

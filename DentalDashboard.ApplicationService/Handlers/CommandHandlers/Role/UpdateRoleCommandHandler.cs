@@ -23,7 +23,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Role
             {
                 role.RoleName = command.RoleName;
                 roleRepository.Update(role);
-                await roleRepository.SaveChange(cancellationToken);
+                await roleRepository.SaveChange();
                 var response = new UpdateRoleResponse()
                 {
                     RoleName = role.RoleName,

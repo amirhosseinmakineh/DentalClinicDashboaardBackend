@@ -54,26 +54,17 @@ public class RegisterUserPushTokenCommandHandler : ICommandHandler<RegisterUserP
                 command.DeviceToken.Trim());
             user.UpdatedAt = DateTime.UtcNow;
             userRepository.Update(user);
-            await pushSubscriptionRepository.SaveChange(cancellationToken);
+            await pushSubscriptionRepository.SaveChange();
 
             return Result.Success("توکن نوتیفیکیشن ثبت شد");
         }
-        catch (DbUpdateException ex)
+        catch (DbUpdateException)
         {
-            var inner = ex.InnerException?.Message ?? ex.Message;
-
-            if (inner.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase) &&
-                inner.Contains("PushSubscriptions", StringComparison.OrdinalIgnoreCase))
-            {
-                return Result.Failure(
-                    "جدول PushSubscriptions روی سرور وجود ندارد یا migration اجرا نشده است. بک‌اند را redeploy کنید.");
-            }
-
-            return Result.Failure($"ثبت subscription در دیتابیس انجام نشد: {inner}");
+            return Result.Failure("ثبت subscription در دیتابیس انجام نشد");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return Result.Failure($"ثبت subscription انجام نشد: {ex.Message}");
+            return Result.Failure("ثبت subscription انجام نشد");
         }
     }
 }

@@ -57,7 +57,7 @@ public class SendTestPushNotificationCommandHandler : ICommandHandler<SendTestPu
                 profile.User.PushNotificationToken,
                 command.DeviceToken.Trim());
             profile.User.UpdatedAt = DateTime.UtcNow;
-            await consultantProfileRepository.SaveChange(cancellationToken);
+            await consultantProfileRepository.SaveChange();
         }
 
         var subscriptions = await pushSubscriptionRepository.GetActiveByUserIdAsync(

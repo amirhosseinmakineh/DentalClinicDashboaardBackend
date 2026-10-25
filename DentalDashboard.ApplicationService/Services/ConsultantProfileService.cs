@@ -1,9 +1,8 @@
-﻿using DentalDashboard.ApplicationService.Contract.IServices;
-using DentalDashboard.Domain.Enums;
+﻿using DentalDashboard.ApplicationService.Contract.Dtos.Consultant;
+using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using Microsoft.EntityFrameworkCore;
-using DentalDashboard.Utilities.Time;
 
 namespace DentalDashboard.ApplicationService.Services
 {
@@ -92,58 +91,6 @@ namespace DentalDashboard.ApplicationService.Services
                 consultant.LastOfflineAt = DateTime.Now;
             }
 
-            await repository.SaveChange();
-        }
-
-        public async Task SetConsultantLevelAsync(Guid userId, ConsultantLevel consultantLevel)
-        {
-            if (!Enum.IsDefined(consultantLevel))
-                throw new ArgumentOutOfRangeException(nameof(consultantLevel), "سطح مشاور نامعتبر است.");
-
-            var consultant = await repository.GetAll()
-                .FirstOrDefaultAsync(x => x.UserId == userId && !x.IsDeleted);
-
-            if (consultant is null)
-                throw new InvalidOperationException("پروفایل مشاور پیدا نشد.");
-
-            consultant.ConsultantLevel = consultantLevel;
-            if (consultantLevel == ConsultantLevel.Test)
-            {
-                // Returning from Seller starts a fresh TEST evaluation window.
-                consultant.TestStartedAt = DateTime.UtcNow;
-                consultant.TestCompletedAt = null;
-                consultant.TestPassed = null;
-            }
-            else if (consultantLevel == ConsultantLevel.Seller)
-            {
-                consultant.SellerStartedAt = DateTime.UtcNow;
-                consultant.SellerEvaluatedAt = null;
-            }
-            else if (consultantLevel == ConsultantLevel.TopSeller)
-            {
-                var (startUtc, _) = IranTimeHelper.GetIranDayRangeAsUtc(IranTimeHelper.TodayInIran());
-                consultant.TopSellerStartedAt = startUtc;
-                consultant.TopSellerLastEvaluatedPeriodStart = null;
-                consultant.TopSellerLastEvaluatedAt = null;
-                consultant.TopSellerRewardLevel = TopSellerRewardLevel.None;
-            }
-            consultant.UpdatedAt = DateTime.UtcNow;
-            repository.Update(consultant);
-            await repository.SaveChange();
-        }
-
-        public async Task DeactivateConsultantAsync(long consultantProfileId)
-        {
-            var consultant = await repository.GetAll().Include(x => x.User)
-                .FirstOrDefaultAsync(x => x.Id == consultantProfileId && !x.IsDeleted);
-            if (consultant == null)
-                return;
-
-            // Idempotent cooperation/dashboard deactivation. Login already rejects
-            // inactive users and distribution queries require all three flags.
-            consultant.DeactivateCooperation();
-            consultant.UpdatedAt = DateTime.UtcNow;
-            repository.Update(consultant);
             await repository.SaveChange();
         }
 

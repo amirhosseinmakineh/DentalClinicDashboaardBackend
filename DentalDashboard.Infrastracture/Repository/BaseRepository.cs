@@ -74,15 +74,7 @@ namespace DentalDashboard.Infrastracture.Repository
 
         public void Update(TEntity entity)
         {
-            // Queries from this repository are tracking by default. Calling
-            // DbSet.Update for an already tracked entity marks every mapped
-            // column as modified, producing unnecessarily wide UPDATEs and
-            // increasing lock/index maintenance work. DetectChanges will mark
-            // only the properties that actually changed.
-            if (context.Entry(entity).State == EntityState.Detached)
-            {
-                DbSet.Update(entity);
-            }
+            DbSet.Update(entity);
         }
 
         public void Delete(TEntity entity)
@@ -101,9 +93,9 @@ namespace DentalDashboard.Infrastracture.Repository
             return await DbSet.CountAsync();
         }
 
-        public Task SaveChange(CancellationToken cancellationToken = default)
+        public Task SaveChange()
         {
-            return context.SaveChangesAsync(cancellationToken);
+            return context.SaveChangesAsync();
         }
     }
 }

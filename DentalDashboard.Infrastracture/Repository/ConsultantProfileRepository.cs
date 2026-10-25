@@ -12,11 +12,43 @@ namespace DentalDashboard.Infrastracture.Repository
         {
         }
 
+        public  Task<List<ConsultantProfile>> GetAvailableAndOnnlineSellerConsultant()
+        {
+            return  GetAll()
+                .Where(x=> 
+                x.IsAvailable == true &&
+                x.IsOnline == true &&
+                x.ConsultantRole == ConsultantRole.Seller && x.IsCompleteProfile == true)
+                .ToListAsync();
+
+        }
+
+        public Task<List<ConsultantProfile>> GetAvailableAndOnnlineTestConsultant()
+        {
+            return GetAll()
+              .Where(x =>
+              x.IsAvailable == true &&
+              x.IsOnline == true &&
+              x.ConsultantRole == ConsultantRole.Test 
+              && x.IsCompleteProfile == true)
+              .ToListAsync();
+        }
+
+        public Task<List<ConsultantProfile>> GetAvailableAndOnnlineTopSellerConsultant()
+        {
+            return GetAll()
+                .Where(x =>
+                x.IsAvailable == true &&
+                x.IsOnline == true &&
+                x.ConsultantRole == ConsultantRole.TopSeller
+                && x.IsCompleteProfile == true)
+                .ToListAsync();
+        }
+
         public Task<List<ConsultantProfile>> GetAvailableConsultantsAsync()
         {
             return GetAll()
-                .Where(x => !x.IsDeleted && x.User.IsActive &&
-                            x.ConsultantLevel != ConsultantLevel.Test &&
+                .Where(x => !x.IsDeleted &&
                             x.IsCompleteProfile &&
                             x.IsAvailable &&
                             !x.IsOnline)
@@ -27,17 +59,13 @@ namespace DentalDashboard.Infrastracture.Repository
         public Task<List<ConsultantProfile>> GetOnlineConsultantsReadyForRealTimeAsync()
         {
             return GetAll()
-                .Where(x => !x.IsDeleted && x.User.IsActive &&
-                            x.ConsultantLevel != ConsultantLevel.Test &&
+                .Where(x => !x.IsDeleted &&
                             x.IsCompleteProfile &&
                             x.IsAvailable &&
                             x.IsOnline &&
-                            !x.CallAssignments.Any(l => l.ReportSubmittedAt == null) &&
-                            x.CallAssignments.Count(l => !l.IsDeleted &&
-                                                         l.ReportSubmittedAt != null &&
-                                                         l.CallResult.HasValue &&
-                                                         l.CallResult.Value == LeadCallResult.NeedFollowUp &&
-                                                         l.LeadAssignmentState == LeadAssignmentState.Pending) <= 10)
+                            !x.CallAssignments.Any(l => l.AssignmentType == LeadAssignmentType.RealTime &&
+                                                        l.LeadAssignmentState == LeadAssignmentState.Assigned &&
+                                                        l.ReportSubmittedAt == null))
                 .OrderBy(x => x.Id)
                 .ToListAsync();
         }
@@ -50,92 +78,5 @@ namespace DentalDashboard.Infrastracture.Repository
                                x.IsAvailable &&
                                x.IsOnline);
         }
-
-        public async Task<bool> TryReserveForPickupAsync(
-            long consultantProfileId,
-            DateTime reservedAtUtc,
-            CancellationToken cancellationToken) =>
-            await GetAll()
-                .Where(x => x.Id == consultantProfileId &&
-                            !x.IsDeleted &&
-                            x.IsCompleteProfile &&
-                            x.IsAvailable &&
-                            x.IsOnline &&
-                            x.User.IsActive)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(x => x.IsOnline, false)
-                    .SetProperty(x => x.LastOfflineAt, reservedAtUtc),
-                    cancellationToken) == 1;
-
-        public Task<List<ConsultantProfile>> GetTestConsultantsReadyForDistributionAsync()
-        {
-            return GetAll().Include(x => x.User)
-                .Where(x => !x.IsDeleted && x.User.IsActive && x.IsCompleteProfile &&
-                            x.IsAvailable && x.IsOnline &&
-                            x.ConsultantLevel == ConsultantLevel.Test &&
-                            x.TestStartedAt != null && x.TestCompletedAt == null &&
-                            !x.CallAssignments.Any(l => l.ConsultantProfileId == x.Id &&
-                                                        l.ReportSubmittedAt == null) &&
-                            x.CallAssignments.Count(l => l.ConsultantProfileId == x.Id &&
-                                                         l.ReportSubmittedAt != null &&
-                                                         l.CallResult == LeadCallResult.NeedFollowUp &&
-                                                         l.LeadAssignmentState == LeadAssignmentState.Pending) <= 10)
-                .OrderBy(x => x.Id).ToListAsync();
-        }
-
-        public Task<List<ConsultantProfile>> GetTestConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore)
-        {
-            return GetAll().Include(x => x.User)
-                .Where(x => !x.IsDeleted && x.ConsultantLevel == ConsultantLevel.Test &&
-                            x.TestStartedAt != null && x.TestStartedAt < evaluationStartedBefore &&
-                            x.TestCompletedAt == null)
-                .OrderBy(x => x.Id).ToListAsync();
-        }
-
-        public Task<List<ConsultantProfile>> GetActiveSellerConsultantsAsync() => GetAll()
-            .Include(x => x.User)
-            .Where(x => !x.IsDeleted && x.User.IsActive && x.IsCompleteProfile &&
-                        x.IsAvailable && x.IsOnline && x.ConsultantLevel == ConsultantLevel.Seller &&
-                        x.SellerStartedAt != null &&
-                        !x.CallAssignments.Any(l => l.ReportSubmittedAt == null))
-            .OrderBy(x => x.Id).ToListAsync();
-
-        public Task<List<ConsultantProfile>> GetSellerConsultantsReadyForEvaluationAsync(DateTime evaluationStartedBefore) =>
-            GetAll().Include(x => x.User)
-                .Where(x => !x.IsDeleted && x.ConsultantLevel == ConsultantLevel.Seller &&
-                            x.SellerStartedAt != null && x.SellerStartedAt < evaluationStartedBefore &&
-                            x.SellerEvaluatedAt == null)
-                .OrderBy(x => x.Id).ToListAsync();
-
-        public async Task<bool> TryCompleteSellerEvaluationAsync(long consultantProfileId, DateTime evaluatedAt) =>
-            await GetAll().Where(x => x.Id == consultantProfileId && x.SellerEvaluatedAt == null)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.SellerEvaluatedAt, evaluatedAt)) == 1;
-
-        public Task<List<ConsultantProfile>> GetActiveTopSellerConsultantsAsync() => GetAll().AsNoTracking()
-            .Include(x => x.User)
-            .Where(x => !x.IsDeleted && x.User.IsActive && x.IsCompleteProfile &&
-                        x.IsAvailable && x.IsOnline && x.ConsultantLevel == ConsultantLevel.TopSeller &&
-                        x.TopSellerStartedAt != null &&
-                        !x.CallAssignments.Any(l => l.ReportSubmittedAt == null))
-            .OrderBy(x => x.Id).ToListAsync();
-
-        public Task<List<ConsultantProfile>> GetTopSellerConsultantsReadyForEvaluationAsync(DateTime startedBefore) =>
-            GetAll().Include(x => x.User)
-                .Where(x => !x.IsDeleted && x.ConsultantLevel == ConsultantLevel.TopSeller &&
-                            x.TopSellerStartedAt != null && x.TopSellerStartedAt < startedBefore)
-                .OrderBy(x => x.Id).ToListAsync();
-
-        public async Task<bool> TryCompleteTopSellerEvaluationAsync(
-            long consultantProfileId, DateTime periodStart, DateTime evaluatedAt,
-            DateTime nextPeriodStart, TopSellerRewardLevel rewardLevel) =>
-            await GetAll().Where(x => x.Id == consultantProfileId &&
-                                      x.ConsultantLevel == ConsultantLevel.TopSeller &&
-                                      x.TopSellerStartedAt == periodStart &&
-                                      x.TopSellerLastEvaluatedPeriodStart != periodStart)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(x => x.TopSellerLastEvaluatedPeriodStart, periodStart)
-                    .SetProperty(x => x.TopSellerLastEvaluatedAt, evaluatedAt)
-                    .SetProperty(x => x.TopSellerRewardLevel, rewardLevel)
-                    .SetProperty(x => x.TopSellerStartedAt, nextPeriodStart)) == 1;
     }
 }

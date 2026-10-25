@@ -9,6 +9,11 @@ namespace DentalDashboard.Infrastracture.Configuration
         public void Configure(EntityTypeBuilder<LeadAssignment> builder)
         {
             builder.HasIndex(x => x.PhoneNumber);
+            builder.Property(x => x.ConsultationNotes).HasMaxLength(1000);
+            builder.HasIndex(x => x.ConsultationRequestId).IsUnique()
+                .HasFilter("[ConsultationRequestId] IS NOT NULL");
+            builder.HasOne(x => x.ConsultationService).WithMany()
+                .HasForeignKey(x => x.ConsultationServiceId).OnDelete(DeleteBehavior.Restrict);
 
             builder.HasIndex(x => new
             {
@@ -19,29 +24,19 @@ namespace DentalDashboard.Infrastracture.Configuration
 
             builder.HasIndex(x => x.CallDeadlineAt);
             builder.HasIndex(x => x.ReportSubmittedAt);
-            // Supports the daily-limit count executed while a consultant-scoped
-            // SQL application lock serializes competing pickup attempts.
-            builder.HasIndex(x => new
-            {
-                x.ConsultantProfileId,
-                x.PickUp,
-                x.IsDeleted,
-                x.AssignedAt
-            });
-            builder.HasIndex(x => new { x.ConsultantProfileId, x.ReportSubmittedAt });
             builder.HasIndex(x => new
             {
                 x.IsDeleted,
-                x.AssignmentType,
                 x.LeadAssignmentState,
                 x.ConsultantProfileId,
-                x.PickUp
+                x.CreatedAt
             });
 
             builder.Property(x => x.PatientCity).HasMaxLength(100);
             builder.Property(x => x.PatientRegion).HasMaxLength(100);
             builder.Property(x => x.BusinessName).HasMaxLength(200);
             builder.Property(x => x.SecondaryPhoneNumber).HasMaxLength(20);
+            builder.Property(x => x.ClosureDescription).HasMaxLength(500);
         }
     }
 }

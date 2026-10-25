@@ -1,9 +1,13 @@
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Lead.Queryies;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
+using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Domain;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Controllers
 {
@@ -14,33 +18,80 @@ namespace DentalDashboard.Controllers
         private readonly IQueryDispatcher dispatcher;
         private readonly IPickupService pickupService;
         private readonly ILeadAssignmentLimitService leadAssignmentLimitService;
+        private readonly ISecretaryAccessService secretaryAccessService;
+        private readonly IConsultantProfileRepository consultantProfileRepository;
 
         public LeadAssignmentController(
             IQueryDispatcher dispatcher,
             IPickupService pickupService,
-            ILeadAssignmentLimitService leadAssignmentLimitService)
+            ILeadAssignmentLimitService leadAssignmentLimitService,
+            ISecretaryAccessService secretaryAccessService,
+            IConsultantProfileRepository consultantProfileRepository)
         {
             this.dispatcher = dispatcher;
             this.pickupService = pickupService;
             this.leadAssignmentLimitService = leadAssignmentLimitService;
+            this.secretaryAccessService = secretaryAccessService;
+            this.consultantProfileRepository = consultantProfileRepository;
         }
 
         [HttpGet]
-        public async Task<IActionResult> Get([FromQuery] GetAllLeadsQuery query)
+        [Authorize(Roles = "Admin,Secretary")]
+        public async Task<IActionResult> Get(
+            [FromQuery] GetAllLeadsQuery query,
+            CancellationToken cancellationToken)
         {
-            var result = await dispatcher.DispatchAsync(query);
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            var access = await secretaryAccessService.GetAccessAsync(userId, cancellationToken);
+            if (access.IsSecretary &&
+                (!await secretaryAccessService.HasPermissionAsync(userId,
+                     DentalDashboard.Domain.Enums.SecretaryPermissionType.CreateReservation, cancellationToken) ||
+                 !await secretaryAccessService.HasPermissionAsync(userId,
+                     DentalDashboard.Domain.Enums.SecretaryPermissionType.ViewPatients, cancellationToken)))
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    Result.Failure("شما دسترسی مشاهده بیماران و ایجاد رزرو را ندارید"));
+
+            if (access.IsSecretary)
+                query.ReservationOptionsOnly = true;
+
+            var result = await dispatcher.DispatchAsync(query, cancellationToken);
             return Ok(result);
         }
 
+        private bool TryGetCurrentUserId(out Guid userId)
+        {
+            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                        User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
+            return Guid.TryParse(value, out userId);
+        }
+
         [HttpPost("{leadAssignmentId}/pickup")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> Pickup(
             long leadAssignmentId,
             long consultantProfileId,
             CancellationToken cancellationToken)
         {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+
+            var ownConsultantProfile = await consultantProfileRepository.GetAll()
+                .AsNoTracking()
+                .Where(profile => profile.UserId == userId && !profile.IsDeleted)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (ownConsultantProfile == null) return Forbid();
+            if (consultantProfileId != ownConsultantProfile.Id) return Forbid();
+            if (!ownConsultantProfile.IsCompleteProfile ||
+                !ownConsultantProfile.IsAvailable ||
+                !ownConsultantProfile.IsOnline)
+            {
+                return Conflict(Result.Failure(
+                    "برای دریافت لید باید حضور ثبت‌شده و وضعیت آنلاین داشته باشید"));
+            }
+
             var result = await pickupService.PickupLeadAsync(
                 leadAssignmentId,
-                consultantProfileId,
+                ownConsultantProfile.Id,
                 cancellationToken);
 
             if (result.Status == PickupLeadStatus.Success)
@@ -61,13 +112,6 @@ namespace DentalDashboard.Controllers
                 return StatusCode(
                     StatusCodes.Status429TooManyRequests,
                     Result.Failure(limitStatus.DailyLimitReachedMessage));
-            }
-
-            if (result.Status == PickupLeadStatus.WorkloadBlocked)
-            {
-                return StatusCode(
-                    StatusCodes.Status423Locked,
-                    Result.Failure(result.Message!));
             }
 
             return Conflict(Result.Failure("این لید قبلاً توسط مشاور دیگری برداشته شده است."));

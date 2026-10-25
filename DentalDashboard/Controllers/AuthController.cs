@@ -21,6 +21,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterCommand command, CancellationToken cancellationToken)
         {
             var result = await dispatcher.DispatchAsync(command, cancellationToken);
@@ -28,6 +29,7 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost("Login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login(LoginCommand command, CancellationToken cancellationToken)
         {
             var result = await dispatcher.DispatchAsync(command, cancellationToken);
@@ -35,10 +37,13 @@ namespace DentalDashboard.Controllers
         }
 
         [HttpPost("ForgotPassword")]
+        [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordCommand command, CancellationToken cancellationToken)
         {
-            var result = await dispatcher.DispatchAsync(command, cancellationToken);
-            return Ok(result);
+            await Task.CompletedTask;
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                Result.Failure("بازیابی رمز عبور تا فعال‌شدن تأیید شماره موبایل موقتاً در دسترس نیست"));
         }
 
         [Authorize]

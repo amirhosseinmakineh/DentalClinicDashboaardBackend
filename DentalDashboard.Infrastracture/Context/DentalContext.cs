@@ -1,32 +1,51 @@
-﻿using DentalDashboard.Domain.Models;
+using DentalDashboard.Domain.Models;
+using DentalDashboard.Domain.PatientReferrals;
 using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Domain.Secretary.Accountant.Entities;
+using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
+using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
 
 namespace DentalDashboard.Infrastracture.Context
 {
     public class DentalContext : DbContext
     {
-        public DentalContext(DbContextOptions<DentalContext> options):base(options)
+        public DentalContext(DbContextOptions<DentalContext> options) : base(options)
         {
-            
+
         }
+        public DbSet<PatientReferral> PatientReferrals => Set<PatientReferral>();
+        public DbSet<PatientWallet> PatientWallets => Set<PatientWallet>();
+        public DbSet<PatientWalletTransaction> PatientWalletTransactions => Set<PatientWalletTransaction>();
         public DbSet<User> Users => Set<User>();
         public DbSet<Role> Roles => Set<Role>();
         public DbSet<UserRole> UserRoles => Set<UserRole>();
         public DbSet<PatientProfile> PatientProfiles => Set<PatientProfile>();
         public DbSet<ConsultantProfile> ConsultantProfiles => Set<ConsultantProfile>();
         public DbSet<LeadAssignment> LeadAssignments => Set<LeadAssignment>();
+        public DbSet<AdminLeadSheet> AdminLeadSheets => Set<AdminLeadSheet>();
+        public DbSet<AdminSheetLead> AdminSheetLeads => Set<AdminSheetLead>();
+        public DbSet<LeadAssignmentSetting> LeadAssignmentSettings => Set<LeadAssignmentSetting>();
         public DbSet<Attendance> Attendances => Set<Attendance>();
         public DbSet<Reservation> Reservations => Set<Reservation>();
         public DbSet<UserPresenceLog> UserPresenceLogs => Set<UserPresenceLog>();
         public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
-        public DbSet<ReservationTimeChange> ReservationTimeChanges => Set<ReservationTimeChange>();
-        public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
-        public DbSet<ReservationFollowUp> ReservationFollowUps => Set<ReservationFollowUp>();
-        public DbSet<SecretaryReservationActivity> SecretaryReservationActivities => Set<SecretaryReservationActivity>();
-        public DbSet<ReservationContactLog> ReservationContactLogs => Set<ReservationContactLog>();
-        public DbSet<ReservationNote> ReservationNotes => Set<ReservationNote>();
-        public DbSet<ReservationNotificationOutbox> ReservationNotificationOutbox => Set<ReservationNotificationOutbox>();
-
+        public DbSet<SecretaryAccessSchedule> SecretaryAccessSchedules => Set<SecretaryAccessSchedule>();
+        public DbSet<SecretaryAccessScheduleAudit> SecretaryAccessScheduleAudits => Set<SecretaryAccessScheduleAudit>();
+        public DbSet<SecretaryAccessPermission> SecretaryAccessPermissions => Set<SecretaryAccessPermission>();
+        public DbSet<ServiceLog> ServiceLogs => Set<ServiceLog>();
+        public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
+        public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+        public DbSet<PatientFinancialCase> PatientFinancialCases => Set<PatientFinancialCase>();
+        public DbSet<PatientFinancialDocument> PatientFinancialDocuments => Set<PatientFinancialDocument>();
+         public DbSet<PatientCheque> PatientCheques => Set<PatientCheque>();
+        public DbSet<PatientPromissoryNote> PatientPromissoryNotes => Set<PatientPromissoryNote>();
+        public DbSet<PatientDebt> PatientDebts => Set<PatientDebt>();
+        public DbSet<PatientFinancialTransaction> PatientFinancialTransactions => Set<PatientFinancialTransaction>();
+        public DbSet<PatientFile> PatientFiles => Set<PatientFile>();
+        public DbSet<SecretarySaleService> SecretarySaleServices => Set<SecretarySaleService>();
+        public DbSet<SecretarySale> SecretarySales => Set<SecretarySale>();
+        public DbSet<SecretaryWallet> SecretaryWallets => Set<SecretaryWallet>();
+        public DbSet<SecretaryWalletTransaction> SecretaryWalletTransactions => Set<SecretaryWalletTransaction>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,0 +1,10 @@
+namespace DentalDashboard.ApplicationService.Contract.Responses.SecretaryResponse;
+
+public class SecretaryDashboardSummaryResponse
+{
+    public int NeedCall { get; set; }
+    public int Confirmed { get; set; }
+    public int NoAnswer { get; set; }
+    public int Cancelled { get; set; }
+    public int AfterSalesServices { get; set; }
+}

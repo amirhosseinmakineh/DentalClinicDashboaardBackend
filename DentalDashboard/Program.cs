@@ -10,18 +10,38 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using DentalDashboard.Hubs;
+using DentalDashboard.LeadManagement.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
+using DentalDashboard.Controllers;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Stage and production must never silently use a connection string from a
+// checked-in appsettings file (or the development database).
+var configuredConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(configuredConnection) ||
+    (!builder.Environment.IsDevelopment() &&
+     string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"))))
+{
+    throw new InvalidOperationException(
+        $"A database connection string must be configured for {builder.Environment.EnvironmentName} " +
+        "using the ConnectionStrings__DefaultConnection environment variable.");
+}
 
 // ====================================
 // Services
 // ====================================
 
 builder.Services.AddControllers();
+builder.Services.AddConsultationRateLimiting();
+builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var jwtSecretKey = jwtSettings["SecretKey"];
@@ -43,15 +63,35 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
+        ClockSkew = TimeSpan.FromMinutes(1),
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
         NameClaimType = System.Security.Claims.ClaimTypes.Name,
         RoleClaimType = System.Security.Claims.ClaimTypes.Role
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            if (!string.IsNullOrEmpty(accessToken) &&
+                context.HttpContext.Request.Path.StartsWithSegments("/hubs/reservations"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 //builder.Services.AddCors(options =>
 //{
@@ -67,14 +107,25 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendCors", policy =>
     {
+        var allowedOrigins = builder.Configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>()?
+            .Where(origin => !string.IsNullOrWhiteSpace(origin))
+            .Select(origin => origin.Trim().TrimEnd('/'))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? new List<string>
+        {
+            "https://drsaeedmoghadam.com",
+            "https://www.drsaeedmoghadam.com",
+            "https://drmoghadam.runflare.run",
+            "https://stage.drsaeedmoghadam.com"
+        };
+
+        if (builder.Environment.IsDevelopment())
+            allowedOrigins.Add("http://localhost:4200");
+
         policy
-          .WithOrigins(
-    "https://drsaeedmoghadam.com",
-    "https://www.drsaeedmoghadam.com",
-    "http://localhost:4200",
-    "https://drmoghadam.runflare.run",
-    "http://drsaeedmoghadam.com"
-)
+            .WithOrigins(allowedOrigins.ToArray())
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -92,7 +143,9 @@ builder.Services.AddScoped<DentalDashboard.Services.ConsultantsExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.ConsultantsDailySummaryService>();
 builder.Services.AddScoped<DentalDashboard.Services.ReservationsExportService>();
 builder.Services.AddScoped<DentalDashboard.Services.DailyReservationsReportService>();
-builder.Services.AddScoped<DentalDashboard.Services.SecretaryDashboardService>();
+builder.Services.AddScoped<DentalDashboard.Services.PatientFinanceAdminReportService>();
+builder.Services.AddScoped<DentalDashboard.Services.AdminAccountingReportService>();
+builder.Services.AddScoped<IFileStorageService, DentalDashboard.Services.FileStorageService>();
 builder.Services.AddScoped<ILeadAssignmentLimitService, LeadAssignmentLimitService>();
 
 builder.Services.Configure<HostOptions>(options =>
@@ -100,14 +153,11 @@ builder.Services.Configure<HostOptions>(options =>
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
 });
 
-// Legacy/default distribution disabled in favor of the role-based
-// TEST/SELLER/TOPSELLER distribution flow. Source is intentionally retained.
-// builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
-builder.Services.AddHostedService<RoleBasedLeadDistributionBackgroundService>();
-builder.Services.AddHostedService<AddLeadBackgroundService>();
-builder.Services.AddHostedService<TestConsultantBackgroundService>();
-builder.Services.AddHostedService<SellerLeadDistributionBackgroundService>();
-builder.Services.AddHostedService<TopSellerConsultantBackgroundService>();
+//builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
+builder.Services.AddHostedService<TestConsultantLeadAssignmentBackgroundService>();
+builder.Services.AddHostedService<SellerConsultantLeadAssignmentBackgroundService>();
+builder.Services.AddHostedService<TopSellerConsultantLeadAssignmentBackgroundService>();
+builder.Services.AddLeadManagement(builder.Configuration);
 
 builder.Services.AddInfrastructure(
     builder.Configuration);
@@ -128,7 +178,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         migrationLogger.LogInformation("Applying EF Core database migrations...");
-        dbContext.Database.Migrate();
+        //dbContext.Database.Migrate();
         migrationLogger.LogInformation("Database migrations applied successfully.");
     }
     catch (Exception ex)
@@ -140,17 +190,77 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// ====================================
-// Middleware
-// ====================================
+ //====================================
+ //Middleware
+ //====================================
 
-app.UseHttpsRedirection();
+app.UseMiddleware<DentalDashboard.Middleware.RequestCancellationMiddleware>();
+
+app.UseExceptionHandler(exceptionHandler =>
+{
+    exceptionHandler.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            type = "https://httpstatuses.com/500",
+            title = "خطای داخلی سرور",
+            status = StatusCodes.Status500InternalServerError,
+            detail = "در پردازش درخواست خطایی رخ داد"
+        });
+    });
+});
+
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
+        context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
+
+// Authenticated API data must never be served from a browser, CDN or proxy cache.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers.CacheControl = "no-store, no-cache, max-age=0, must-revalidate";
+            context.Response.Headers.Pragma = "no-cache";
+            context.Response.Headers.Expires = "0";
+            return Task.CompletedTask;
+        });
+    }
+
+    await next();
+});
 
 //app.UseCors("CorsPolicy");
+app.UseStaticFiles();
+
+// روی لیارا /app read-only است — از /tmp استفاده می‌کنیم
+var uploadsPath = OperatingSystem.IsWindows()
+    ? Path.Combine(app.Environment.ContentRootPath, "uploads")
+    : "/tmp/uploads";
+Directory.CreateDirectory(uploadsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
+
 app.UseCors("FrontendCors");
 
 app.UseAuthentication();
-
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.UseMiddleware<DentalDashboard.Middleware.LastSeenTrackingMiddleware>();
@@ -162,6 +272,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
+
+
 app.MapControllers();
+app.MapHub<ReservationsHub>("/hubs/reservations");
+app.MapHealthChecks("/healthz").AllowAnonymous();
+app.MapGet("/readyz", async (DentalContext dbContext, CancellationToken cancellationToken) =>
+    await dbContext.Database.CanConnectAsync(cancellationToken)
+        ? Results.Ok(new { status = "ready" })
+        : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
+    .AllowAnonymous();
 
 app.Run();

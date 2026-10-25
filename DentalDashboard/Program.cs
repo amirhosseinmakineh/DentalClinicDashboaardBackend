@@ -119,11 +119,13 @@ builder.Services.AddCors(options =>
             "https://stage.drsaeedmoghadam.com"
         };
 
+        allowedOrigins.Add("https://localhost");
+
         if (builder.Environment.IsDevelopment())
             allowedOrigins.Add("http://localhost:4200");
 
         policy
-            .WithOrigins(allowedOrigins.ToArray())
+            .WithOrigins(allowedOrigins.Distinct(StringComparer.OrdinalIgnoreCase).ToArray())
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -258,7 +260,9 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseCors("FrontendCors");
 
 app.UseAuthentication();
+
 app.UseAuthorization();
+
 
 app.UseMiddleware<DentalDashboard.Middleware.LastSeenTrackingMiddleware>();
 

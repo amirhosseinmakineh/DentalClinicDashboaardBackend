@@ -1,18 +1,15 @@
-using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Commands;
 using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
-using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
-using DentalDashboard.Domain.Enums;
-using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
-using DentalDashboard.Framwork.Domain;
-using DentalDashboard.Hubs;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using DentalDashboard.Framwork.Domain;
+using DentalDashboard.Domain.Enums;
+using DentalDashboard.Services;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace DentalDashboard.Controllers
 {
@@ -22,513 +19,237 @@ namespace DentalDashboard.Controllers
     {
         private readonly ICommandDispatcher commandDispatcher;
         private readonly IQueryDispatcher queryDispatcher;
-        private readonly ISecretaryAccessService secretaryAccessService;
-        private readonly IConsultantProfileRepository consultantProfileRepository;
-        private readonly IReservationRepository reservationRepository;
-        private readonly IHubContext<ReservationsHub> reservationsHub;
+        private readonly SecretaryDashboardService secretaryDashboardService;
 
-        public ReservationController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher,
-            ISecretaryAccessService secretaryAccessService,
-            IConsultantProfileRepository consultantProfileRepository,
-            IReservationRepository reservationRepository,
-            IHubContext<ReservationsHub> reservationsHub)
+        public ReservationController(ICommandDispatcher commandDispatcher, IQueryDispatcher queryDispatcher, SecretaryDashboardService secretaryDashboardService)
         {
             this.commandDispatcher = commandDispatcher;
             this.queryDispatcher = queryDispatcher;
-            this.secretaryAccessService = secretaryAccessService;
-            this.consultantProfileRepository = consultantProfileRepository;
-            this.reservationRepository = reservationRepository;
-            this.reservationsHub = reservationsHub;
+            this.secretaryDashboardService = secretaryDashboardService;
         }
 
-        [HttpPost("SecretaryReservations/{reservationId:long}/time")]
-        [Authorize]
-        public async Task<IActionResult> UpdateSecretaryReservationTime(long reservationId, [FromBody] UpdateSecretaryReservationTimeRequest request, CancellationToken cancellationToken)
+        [HttpPost]
+        public async Task<IActionResult> CreateReservation(CreateReservationCommand command)
         {
-            try
-            {
-                if (!TryGetCurrentUserId(out var userId))
-                    return Unauthorized();
-
-                var hasPermission = await secretaryAccessService.HasPermissionAsync(
-                    userId,
-                    SecretaryPermissionType.EditReservations);
-
-                if (!hasPermission)
-                    return Forbid();
-
-                var canAccess = await secretaryAccessService.CanAccessReservationAsync(
-                    userId,
-                    reservationId);
-
-                if (!canAccess)
-                    return Forbid();
-
-                var reservation = await reservationRepository.GetByIdAsync(reservationId);
-
-                if (reservation == null || reservation.IsDeleted || reservation.IsCanceled)
-                {
-                    return Ok(
-                        Result<ReservationItemResponse>.Failure("رزرو فعال یافت نشد")
-                    );
-                }
-
-                var command = new UpdateReservationCommand
-                {
-                    ReservationId = reservationId,
-                    ConsultantProfileId = reservation.ConsultantProfileId,
-                    ReservationAt = request.ReservationAt,
-                    AppointmentDateTime = request.AppointmentDateTime,
-                    PatientCount = request.PatientCount,
-                    Description = reservation.Description,
-                    AttendancePrediction = reservation.AttendancePrediction,
-                    DentalServices = request.DentalServices,
-                    IsSecretaryEdit = true,
-                    ReservationOwnerType = ReservationOwnerType.Secretary,
-
-                };
-
-                var result = await commandDispatcher.DispatchAsync(
-                    command,
-                    cancellationToken);
-
-                await BroadcastReservationUpdatedAsync(
-                    result,
-                    userId,
-                    cancellationToken);
-
-                return Ok(result);
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new
-                {
-                    message = "در پردازش درخواست خطایی رخ داد"
-                });
-            }
-        }
-
-        [HttpGet("SecretaryReservations")]
-        [Authorize(Roles = "Admin,Secretary")]
-        public async Task<IActionResult> GetSecretaryReservations([FromQuery] GetSecretaryReservationsQuery query)
-        {
-            if (!TryGetCurrentUserId(out var userId))
-                return Unauthorized();
-
-            if (User.IsInRole("Admin"))
-            {
-                query.IsAdmin = true;
-                return Ok(await queryDispatcher.DispatchAsync(query));
-            }
-
-            var hasPermission = await secretaryAccessService.HasPermissionAsync(userId, SecretaryPermissionType.ViewReservations);
-
-            if (!hasPermission)
-                return Forbid();
-
-            query.SecretaryUserId = userId;
-
-            var result = await queryDispatcher.DispatchAsync(query);
-
-            return Ok(result);
-        }
-
-        [HttpGet("/api/reservations")]
-        [Authorize(Roles = "Admin,Secretary")]
-        public async Task<IActionResult> GetReservations([FromQuery] GetSecretaryReservationsQuery query)
-        {
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-            if (User.IsInRole("Admin"))
-            {
-                query.IsAdmin = true;
-                return Ok(await queryDispatcher.DispatchAsync(query));
-            }
-            if (!await secretaryAccessService.HasPermissionAsync(userId, SecretaryPermissionType.ViewReservations)) return Forbid();
-            query.SecretaryUserId = userId;
-            var result = await queryDispatcher.DispatchAsync(query);
-            return Ok(result);
-        }
-
-        [HttpGet("{reservationId:long}")]
-        [Authorize]
-        public async Task<IActionResult> GetSecretaryReservationDetails(
-            long reservationId,
-            CancellationToken cancellationToken)
-        {
-            if (!TryGetCurrentUserId(out var userId))
-            {
-                return Unauthorized();
-            }
-
-            if (!await secretaryAccessService.HasPermissionAsync(
-                    userId,
-                    SecretaryPermissionType.ViewReservations))
-            {
-                return Forbid();
-            }
-
-            var reservationExists = await reservationRepository.GetAll()
-                .AsNoTracking()
-                .AnyAsync(
-                    reservation =>
-                        reservation.Id == reservationId &&
-                        !reservation.IsDeleted,
-                    cancellationToken);
-
-            if (!reservationExists)
-            {
-                return NotFound(Result.Failure("رزرو یافت نشد"));
-            }
-
-            if (!await secretaryAccessService.CanAccessReservationAsync(
-                    userId,
-                    reservationId,
-                    cancellationToken))
-            {
-                return Forbid();
-            }
-
-            var result = await queryDispatcher.DispatchAsync(
-                new GetSecretaryReservationDetailsQuery(reservationId),
-                cancellationToken);
-
-            return result == null ? NotFound() : Ok(result);
-        }
-
-        [HttpPost("{reservationId:long}/assign-doctor")]
-        [Authorize]
-        public async Task<IActionResult> AssignReservationDoctor(
-            long reservationId,
-            [FromBody] UpdateReservationDoctorRequest request,
-            CancellationToken cancellationToken)
-        {
-            if (!TryGetCurrentUserId(out var userId))
-            {
-                return Unauthorized();
-            }
-
-            if (!await secretaryAccessService.HasPermissionAsync(
-                    userId,
-                    SecretaryPermissionType.EditReservations))
-            {
-                return Forbid();
-            }
-
-            var reservationExists = await reservationRepository.GetAll()
-                .AsNoTracking()
-                .AnyAsync(
-                    reservation =>
-                        reservation.Id == reservationId &&
-                        !reservation.IsDeleted,
-                    cancellationToken);
-
-            if (!reservationExists)
-            {
-                return NotFound(Result.Failure("رزرو یافت نشد"));
-            }
-
-            if (!await secretaryAccessService.CanAccessReservationAsync(
-                    userId,
-                    reservationId,
-                    cancellationToken))
-            {
-                return Forbid();
-            }
-
-            var command = new UpdateReservationDoctorCommand
-            {
-                ReservationId = reservationId,
-                DoctorName = request.DoctorName
-            };
-            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
-
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        [HttpPost("ReviewAttendance")]
-        [Authorize]
-        public async Task<IActionResult> ReviewAttendance(ReviewReservationAttendanceCommand command)
-        {
-            if (!TryGetCurrentUserId(out var userId)) 
-                return Unauthorized();
-
-            command.SecretaryUserId = userId;
-
-            if (!await secretaryAccessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ConfirmAttendance) ||
-                !await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
-
             var result = await commandDispatcher.DispatchAsync(command);
-
             return Ok(result);
         }
 
-        [HttpPut("SecretaryAnnouncement")]
-        [Authorize]
-        public async Task<IActionResult> UpdateSecretaryAnnouncement(UpdateSecretaryAnnouncementCommand command)
+        [HttpPost("CompletePatientProfile")]
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> CompletePatientProfile(CompleteReservationPatientProfileCommand command)
         {
-            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                              User.FindFirstValue("userId") ??
-                              User.FindFirstValue("Id");
-            if (!Guid.TryParse(userIdValue, out var secretaryUserId))
-                return Unauthorized();
-
-            command.SecretaryUserId = secretaryUserId;
-            if (!await secretaryAccessService.HasPermissionAsync(secretaryUserId, DentalDashboard.Domain.Enums.SecretaryPermissionType.SecretaryAnnouncement) ||
-                !await secretaryAccessService.CanAccessReservationAsync(secretaryUserId, command.ReservationId))
-                return Forbid();
-
             var result = await commandDispatcher.DispatchAsync(command);
-
             return Ok(result);
         }
 
         [HttpGet("GetConsultantReservations")]
-        [Authorize]
-        public async Task<IActionResult> GetConsultantReservations(
-            [FromQuery] GetConsultantReservationsQuery query,
-            CancellationToken cancellationToken)
+        public async Task<IActionResult> GetConsultantReservations([FromQuery] GetConsultantReservationsQuery query)
         {
-            if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
-                return BadRequest(Result.Failure("تاریخ شروع نباید بعد از تاریخ پایان باشد"));
-
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-
-            var consultantProfileId = await consultantProfileRepository.GetAll()
-                .Where(x => x.UserId == userId && !x.IsDeleted)
-                .Select(x => (long?)x.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (!consultantProfileId.HasValue)
-                return Forbid();
-
-            query.ConsultantProfileId = consultantProfileId.Value;
-
-            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
-            return Ok(result);
-        }
-
-        [HttpPut("ConsultantReservations/{reservationId:long}")]
-        [Authorize]
-        public async Task<IActionResult> UpdateConsultantReservation(
-            long reservationId,
-            UpdateConsultantReservationRequest request,
-            CancellationToken cancellationToken)
-        {
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-
-            var consultantProfileId = await consultantProfileRepository.GetAll()
-                .Where(x => x.UserId == userId && !x.IsDeleted)
-                .Select(x => (long?)x.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (!consultantProfileId.HasValue) return Forbid();
-
-            var command = new UpdateReservationCommand
-            {
-                ReservationId = reservationId,
-                ConsultantProfileId = consultantProfileId.Value,
-                ReservationAt = request.ReservationAt,
-                AppointmentDateTime = request.AppointmentDateTime,
-                PatientCount = request.PatientCount,
-                Description = request.Description,
-                PatientCity = request.PatientCity,
-                PatientRegion = request.PatientRegion,
-                AttendanceProbabilityPercent = request.AttendanceProbabilityPercent,
-                AttendancePrediction = request.AttendancePrediction,
-                SecondaryPhoneNumber = request.SecondaryPhoneNumber,
-                DentalServices = request.DentalServices,
-                ReservationOwnerType = ReservationOwnerType.Consultant
-            };
-
-            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
-            await BroadcastReservationUpdatedAsync(result, userId, cancellationToken);
-            return Ok(result);
-        }
-
-        [HttpGet("ConsultantPatientProfiles")]
-        [Authorize(Roles = "Consultant,Secretary,Admin")]
-        public async Task<IActionResult> GetConsultantPatientProfiles(
-            [FromQuery] GetConsultantPatientProfilesQuery query,
-            CancellationToken cancellationToken)
-        {
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-
-            if (User.IsInRole("Consultant"))
-            {
-                var consultantProfileId = await GetConsultantProfileIdAsync(userId, cancellationToken);
-                if (!consultantProfileId.HasValue) return Forbid();
-                query.ConsultantProfileId = consultantProfileId.Value;
-            }
-            else if (User.IsInRole("Secretary") &&
-                     !await secretaryAccessService.HasPermissionAsync(
-                         userId,
-                         SecretaryPermissionType.ViewPatients,
-                         cancellationToken))
-            {
-                return Forbid();
-            }
-
-            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
-            return Ok(result);
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "Admin,Secretary,Consultant")]
-        public async Task<IActionResult> CreateReservation(CreateReservationCommand command)
-        {
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-            {
-                var access = await secretaryAccessService.GetAccessAsync(userId);
-                var isOwnConsultantReservation = await consultantProfileRepository.GetAll()
-                    .AnyAsync(x => x.UserId == userId && !x.IsDeleted &&
-                                   x.Id == command.ConsultantProfileId);
-
-                if (!User.IsInRole("Admin") && !isOwnConsultantReservation &&
-                    (!access.IsSecretary || !await secretaryAccessService.HasPermissionAsync(userId,
-                        SecretaryPermissionType.CreateReservation))) return Forbid();
-
-                command.OwnerUserId = userId;
-                command.OwnerType = access.IsSecretary
-                    ? DentalDashboard.Domain.Enums.ReservationOwnerType.Secretary
-                    : DentalDashboard.Domain.Enums.ReservationOwnerType.Consultant;
-                command.AllowHistoricalReservation = access.IsSecretary || isOwnConsultantReservation;
-            }
-            var result = await commandDispatcher.DispatchAsync(command);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        [HttpPost("CompletePatientProfile")]
-        [Authorize(Roles = "Consultant,Secretary,Admin")]
-        public async Task<IActionResult> CompletePatientProfile(
-            CompleteReservationPatientProfileCommand command,
-            CancellationToken cancellationToken)
-        {
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-
-            var reservation = await reservationRepository.GetAll()
-                .AsNoTracking()
-                .Where(item => item.Id == command.ReservationId && !item.IsDeleted)
-                .Select(item => new { item.Id, item.ConsultantProfileId })
-                .FirstOrDefaultAsync(cancellationToken);
-            if (reservation is null) return NotFound(Result.Failure("رزرو یافت نشد"));
-
-            if (User.IsInRole("Consultant"))
-            {
-                var consultantProfileId = await GetConsultantProfileIdAsync(userId, cancellationToken);
-                if (!consultantProfileId.HasValue ||
-                    reservation.ConsultantProfileId != consultantProfileId.Value)
-                    return Forbid();
-            }
-            else if (User.IsInRole("Secretary") &&
-                     (!await secretaryAccessService.HasPermissionAsync(
-                          userId,
-                          SecretaryPermissionType.ViewPatients,
-                          cancellationToken) ||
-                      !await secretaryAccessService.CanAccessReservationAsync(
-                          userId,
-                          reservation.Id,
-                          cancellationToken)))
-            {
-                return Forbid();
-            }
-
-            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
+            var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
         }
 
         [HttpGet("DueConfirmations")]
-        [Authorize(Roles = "Consultant")]
-        public async Task<IActionResult> GetDueConfirmations(
-            [FromQuery] GetDueReservationConfirmationsQuery query,
-            CancellationToken cancellationToken)
+        public async Task<IActionResult> GetDueConfirmations([FromQuery] GetDueReservationConfirmationsQuery query)
         {
-            if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
-                return BadRequest(Result.Failure("تاریخ شروع نباید بعد از تاریخ پایان باشد"));
-
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-            var consultantProfileId = await GetConsultantProfileIdAsync(userId, cancellationToken);
-            if (!consultantProfileId.HasValue) return Forbid();
-
-            query.ConsultantProfileId = consultantProfileId.Value;
-            var result = await queryDispatcher.DispatchAsync(query, cancellationToken);
+            var result = await queryDispatcher.DispatchAsync(query);
             return Ok(result);
         }
 
-        [HttpPost("ConfirmAttendance")]
-        [Authorize(Roles = "Consultant")]
-        public async Task<IActionResult> ConfirmAttendance(
-            ConfirmReservationAttendanceCommand command,
-            CancellationToken cancellationToken)
+        [HttpGet("SecretaryReservations")]
+        [Authorize(Roles = "Secretary,Admin")]
+        public async Task<IActionResult> GetSecretaryReservations([FromQuery] GetSecretaryReservationsQuery query)
         {
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-            var consultantProfileId = await GetConsultantProfileIdAsync(userId, cancellationToken);
-            if (!consultantProfileId.HasValue) return Forbid();
+            var result = await queryDispatcher.DispatchAsync(query);
+            return Ok(result);
+        }
 
-            command.ConsultantProfileId = consultantProfileId.Value;
-            var result = await commandDispatcher.DispatchAsync(command, cancellationToken);
+        [HttpGet("SecretaryDashboard")]
+        [Authorize(Roles = "Secretary,Admin")]
+        public async Task<IActionResult> GetSecretaryDashboard([FromQuery] DateOnly? date, [FromQuery] string? timeZone = "Asia/Tehran", [FromQuery] int listSize = 5, CancellationToken cancellationToken = default)
+        {
+            try { return Ok(Result<SecretaryDashboardDto>.Success(await secretaryDashboardService.GetAsync(date, timeZone, listSize, cancellationToken), "داشبورد منشی دریافت شد")); }
+            catch (TimeZoneNotFoundException) { return BadRequest(Result.Failure("منطقه زمانی معتبر نیست")); }
+        }
+
+        [HttpPost("{reservationId:long}/secretary-confirm")]
+        [Authorize(Roles = "Secretary")]
+        public Task<IActionResult> SecretaryConfirm(long reservationId, SecretaryConfirmRequest request, CancellationToken ct) =>
+            ReviewRequest(reservationId, ReservationRequestStatus.Confirmed, null, request.Note, null, null, ct);
+
+        [HttpPost("{reservationId:long}/secretary-reschedule")]
+        [Authorize(Roles = "Secretary")]
+        public Task<IActionResult> SecretaryReschedule(long reservationId, SecretaryRescheduleRequest request, CancellationToken ct) =>
+            ReviewRequest(reservationId, ReservationRequestStatus.Rescheduled, request.ReservationAt, request.Note, null, request.Reason, ct);
+
+        [HttpPost("{reservationId:long}/secretary-reject")]
+        [Authorize(Roles = "Secretary")]
+        public Task<IActionResult> SecretaryReject(long reservationId, SecretaryRejectRequest request, CancellationToken ct) =>
+            ReviewRequest(reservationId, ReservationRequestStatus.Rejected, null, null, request.ReasonCode, request.Reason, ct);
+
+        [HttpPost("{reservationId:long}/patient-confirmation")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> PatientConfirmation(long reservationId, PatientConfirmationRequest request, CancellationToken ct) =>
+            await ExecuteMutation(async actor => await secretaryDashboardService.SetPatientConfirmationAsync(reservationId, actor, request.Confirmed, request.Note, ct));
+
+        [HttpPost("{reservationId:long}/visit-result")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> VisitResult(long reservationId, VisitResultRequest request, CancellationToken ct) =>
+            await ExecuteMutation(async actor => await secretaryDashboardService.SetVisitResultAsync(reservationId, actor, request.VisitResultStatus, request.Note, ct));
+
+        [HttpPost("{reservationId:long}/follow-ups")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> CreateFollowUp(long reservationId, CreateFollowUpHttpRequest request, CancellationToken ct)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            if (!HasExplicitOffset(request.ScheduledAt) || !DateTimeOffset.TryParse(request.ScheduledAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var scheduledAt))
+                return BadRequest(Result.Failure("زمان پیگیری باید ISO-8601 و دارای offset باشد", "INVALID_REQUEST"));
+            try { var result = await secretaryDashboardService.CreateFollowUpAsync(reservationId, actor, new CreateFollowUpRequest(scheduledAt, request.Reason), ct); return Ok(Result<FollowUpCreatedDto>.Success(result, "پیگیری ثبت شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        [HttpPost("{reservationId:long}/contacts")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> AddContact(long reservationId, ContactRequest request, CancellationToken ct)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            try { return Ok(Result<ContactCreatedDto>.Success(await secretaryDashboardService.AddContactAsync(reservationId, actor, request, ct), "تماس ثبت شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        [HttpPost("{reservationId:long}/notes")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> AddNote(long reservationId, ReservationNoteRequest request, CancellationToken ct)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            try { return Ok(Result<NoteCreatedDto>.Success(await secretaryDashboardService.AddNoteAsync(reservationId, actor, request.Note, ct), "یادداشت ثبت شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        [HttpPost("{reservationId:long}/cancel")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> Cancel(long reservationId, ReservationCancelRequest request, CancellationToken ct) =>
+            await ExecuteMutation(actor => secretaryDashboardService.CancelAsync(reservationId, actor, request.Reason, ct));
+
+        [HttpGet("{reservationId:long}/history")]
+        [Authorize(Roles = "Secretary,Admin")]
+        public async Task<IActionResult> History(long reservationId, CancellationToken ct)
+        {
+            try { return Ok(Result<List<HistoryItemDto>>.Success(await secretaryDashboardService.HistoryAsync(reservationId, ct), "تاریخچه دریافت شد")); }
+            catch (KeyNotFoundException ex) { return MutationError(ex); }
+        }
+
+        [HttpPut("{reservationId:long}/follow-ups/{followUpId:long}")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> UpdateFollowUp(long reservationId, long followUpId, FollowUpRequest request, CancellationToken ct) =>
+            await ExecuteMutation(async actor => await secretaryDashboardService.UpdateFollowUpAsync(reservationId, followUpId, actor, request, ct));
+
+        private async Task<IActionResult> ReviewRequest(long id, ReservationRequestStatus status, DateTime? at, string? note, int? reasonCode, string? reason, CancellationToken ct)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            try { return Ok(Result<ReservationMutationDto>.Success(await secretaryDashboardService.ReviewAsync(id, actor, status, at, note, reasonCode, reason, ct), "وضعیت درخواست رزرو ثبت شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        private async Task<IActionResult> ExecuteMutation(Func<Guid, Task> action)
+        {
+            if (!TryGetAuthenticatedUserId(out var actor)) return Unauthorized(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            try { await action(actor); return Ok(Result.Success("عملیات با موفقیت انجام شد")); }
+            catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException or InvalidOperationException) { return MutationError(ex); }
+        }
+
+        private IActionResult MutationError(Exception ex) => ex switch
+        {
+            KeyNotFoundException => NotFound(Result.Failure(ErrorMessage(ex.Message), ex.Message)),
+            InvalidOperationException => Conflict(Result.Failure(ErrorMessage(ex.Message), ex.Message)),
+            ArgumentException => UnprocessableEntity(Result.Failure(ErrorMessage(ex.Message), ex.Message)),
+            _ => BadRequest(Result.Failure(ErrorMessage(ex.Message), ex.Message))
+        };
+
+        private static string ErrorMessage(string code) => code switch
+        {
+            "RESERVATION_NOT_FOUND" => "رزرو یافت نشد",
+            "RESERVATION_ALREADY_REVIEWED" => "درخواست رزرو قبلاً بررسی شده است",
+            "RESERVATION_TIME_CONFLICT" => "زمان انتخاب‌شده دارای تداخل است",
+            "RESERVATION_TIME_IN_PAST" => "زمان انتخاب‌شده در گذشته است",
+            "FOLLOW_UP_TIME_IN_PAST" => "زمان پیگیری معتبر نیست",
+            "FOLLOW_UP_REASON_REQUIRED" => "دلیل پیگیری الزامی است",
+            "RESERVATION_NOT_FOLLOWABLE" => "برای این رزرو امکان ثبت پیگیری وجود ندارد",
+            "INVALID_CONTACT_RESULT" => "نتیجه تماس معتبر نیست",
+            "NOTE_REQUIRED" => "متن یادداشت الزامی است",
+            "TEXT_TOO_LONG" => "متن واردشده بیش از حد مجاز است",
+            "VISIT_RESULT_TOO_EARLY" => "ثبت نتیجه پیش از سررسید رزرو ممکن نیست",
+            "CONCURRENCY_CONFLICT" => "رزرو هم‌زمان توسط کاربر دیگری تغییر کرده است",
+            _ => code
+        };
+
+        [HttpPost("ConfirmAttendance")]
+        public async Task<IActionResult> ConfirmAttendance(ConfirmReservationAttendanceCommand command)
+        {
+            var result = await commandDispatcher.DispatchAsync(command);
+            return Ok(result);
+        }
+
+        [HttpPost("ReviewAttendance")]
+        public async Task<IActionResult> ReviewAttendance(ReviewReservationAttendanceCommand command)
+        {
+            var result = await commandDispatcher.DispatchAsync(command);
             return Ok(result);
         }
 
         [HttpPut]
-        [Authorize(Roles = "Admin,Secretary,Consultant")]
+        [Authorize(Roles = "Consultant")]
         public async Task<IActionResult> UpdateReservation(UpdateReservationCommand command)
         {
-            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
-            {
-                var access = await secretaryAccessService.GetAccessAsync(userId);
-                var isOwnConsultantReservation = await consultantProfileRepository.GetAll()
-                    .AnyAsync(x => x.UserId == userId && !x.IsDeleted &&
-                                   x.Id == command.ConsultantProfileId);
-
-                if (!User.IsInRole("Admin") && !isOwnConsultantReservation && !access.IsSecretary)
-                    return Forbid();
-
-                if (access.IsSecretary && !isOwnConsultantReservation && !User.IsInRole("Admin"))
-                {
-                    if (!await secretaryAccessService.HasPermissionAsync(userId,
-                            DentalDashboard.Domain.Enums.SecretaryPermissionType.EditReservations) ||
-                        !await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
-
-                    command.IsSecretaryEdit = true;
-                }
-            }
             var result = await commandDispatcher.DispatchAsync(command);
-            await BroadcastReservationUpdatedAsync(result, TryGetCurrentUserId(out var updatedBy) ? updatedBy : null);
             return Ok(result);
         }
 
-        private async Task BroadcastReservationUpdatedAsync(
-            Result<ReservationItemResponse> result,
-            Guid? updatedByUserId = null,
-            CancellationToken cancellationToken = default)
+        [HttpPost("SecretaryChangeTime")]
+        [Authorize(Roles = "Secretary")]
+        public async Task<IActionResult> SecretaryChangeTime(SecretaryChangeReservationTimeCommand command)
         {
-            if (!result.IsSuccess || result.Data == null) return;
-
-            await reservationsHub.Clients.All.SendAsync("ReservationUpdated", new
-            {
-                reservationId = result.Data.ReservationId,
-                consultantProfileId = result.Data.ConsultantProfileId,
-                reservationAt = result.Data.ReservationAt,
-                appointmentDateTime = result.Data.AppointmentDateTime,
-                updatedByUserId,
-                updatedAt = DateTime.UtcNow,
-                reservation = result.Data
-            }, cancellationToken);
+            if (!TryGetAuthenticatedUserId(out var userId))
+                return Ok(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            command.AuthenticatedUserId = userId;
+            return Ok(await commandDispatcher.DispatchAsync(command));
         }
 
-        private async Task<long?> GetConsultantProfileIdAsync(
-            Guid userId,
-            CancellationToken cancellationToken) =>
-            await consultantProfileRepository.GetAll()
-                .Where(profile => profile.UserId == userId && !profile.IsDeleted)
-                .Select(profile => (long?)profile.Id)
-                .FirstOrDefaultAsync(cancellationToken);
+        [HttpPost("ConfirmSecretaryTimeChange")]
+        [Authorize(Roles = "Consultant")]
+        public async Task<IActionResult> ConfirmSecretaryTimeChange(ConfirmSecretaryTimeChangeCommand command)
+        {
+            if (!TryGetAuthenticatedUserId(out var userId))
+                return Ok(Result.Failure("شناسه کاربر در توکن معتبر نیست"));
+            command.AuthenticatedUserId = userId;
+            return Ok(await commandDispatcher.DispatchAsync(command));
+        }
 
-        private bool TryGetCurrentUserId(out Guid userId)
+        private bool TryGetAuthenticatedUserId(out Guid userId)
         {
             var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
             return Guid.TryParse(value, out userId);
         }
 
+        private static bool HasExplicitOffset(string? value) => value is not null &&
+            Regex.IsMatch(value, @"(?:Z|[+-]\d{2}:\d{2})$", RegexOptions.CultureInvariant);
+
+        [HttpGet("ConsultantPatientProfiles")]
+        public async Task<IActionResult> GetConsultantPatientProfiles(
+            [FromQuery] GetConsultantPatientProfilesQuery query)
+        {
+            var result = await queryDispatcher.DispatchAsync(query);
+            return Ok(result);
+        }
     }
+
+    public record SecretaryConfirmRequest(string? Note);
+    public record SecretaryRescheduleRequest(DateTime ReservationAt, string Reason, string? Note);
+    public record SecretaryRejectRequest(int ReasonCode, string Reason);
+    public record PatientConfirmationRequest(bool Confirmed, string? Note);
+    public record VisitResultRequest(VisitResultStatus VisitResultStatus, string? Note);
+    public record ReservationNoteRequest(string Note);
+    public record ReservationCancelRequest(string Reason);
+    public record CreateFollowUpHttpRequest(string ScheduledAt, string? Reason);
 }

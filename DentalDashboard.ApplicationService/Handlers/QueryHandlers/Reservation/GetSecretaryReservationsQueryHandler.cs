@@ -1,9 +1,10 @@
-using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.ApplicationService.Contract.Requests.Reservation.Queries;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.ReservationResponse;
+using DentalDashboard.ApplicationService.Handlers.Helpers;
+using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
-using DentalDashboard.Utilities.Convertor;
-using DentalDashboard.Utilities.Time;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
@@ -11,353 +12,142 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
     public class GetSecretaryReservationsQueryHandler : IQueryHandler<GetSecretaryReservationsQuery, PaginatedResult<SecretaryReservationItemResponse>>
     {
         private readonly IReservationRepository reservationRepository;
-        private readonly IUserRepository userRepository;
-        private readonly ISecretaryAccessService secretaryAccessService;
 
-        public GetSecretaryReservationsQueryHandler(
-            IReservationRepository reservationRepository,
-            IUserRepository userRepository,
-            ISecretaryAccessService secretaryAccessService)
+        public GetSecretaryReservationsQueryHandler(IReservationRepository reservationRepository)
         {
             this.reservationRepository = reservationRepository;
-            this.userRepository = userRepository;
-            this.secretaryAccessService = secretaryAccessService;
         }
 
-        public async Task<PaginatedResult<SecretaryReservationItemResponse>> HandleAsync(
-            GetSecretaryReservationsQuery query,
-            CancellationToken cancellationToken = default)
+        public async Task<PaginatedResult<SecretaryReservationItemResponse>> HandleAsync(GetSecretaryReservationsQuery query, CancellationToken cancellationToken = default)
         {
-            var pageNumber = Math.Max(query.PageNumber, 1);
-            var pageSize = Math.Clamp(query.PageSize, 1, 100);
+            var pageNumber = query.PageNumber <= 0 ? 1 : query.PageNumber;
+            var pageSize = new[] { 10, 20, 50 }.Contains(query.PageSize) ? query.PageSize : 20;
 
-            if (!query.IsAdmin)
-            {
-                var access = await secretaryAccessService.GetAccessAsync(query.SecretaryUserId, cancellationToken);
-                if (!access.IsSecretary)
-                    return EmptyResult(pageNumber, pageSize);
-            }
-
-            var reservations = reservationRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => !x.IsDeleted);
-
-            // ------------------------------------------------------------
-            // Basic filters
-            // ------------------------------------------------------------
+            var reservations = reservationRepository.GetAll().AsNoTracking();
 
             if (!query.IncludeCanceled)
-            {
                 reservations = reservations.Where(x => !x.IsCanceled);
-            }
 
             if (query.ConsultantProfileId.HasValue)
+                reservations = reservations.Where(x => x.ConsultantProfileId == query.ConsultantProfileId.Value);
+
+            reservations = reservations.ApplyReservationAtFilter(query.Date, query.From, query.To);
+
+            if (query.ReservationRequestStatus.HasValue)
+                reservations = reservations.Where(x => x.ReservationRequestStatus == query.ReservationRequestStatus);
+            if (query.VisitResultStatus.HasValue)
+                reservations = reservations.Where(x => x.VisitResultStatus == query.VisitResultStatus);
+            if (query.IsConfirmedWithPatient.HasValue)
+                reservations = reservations.Where(x => x.IsConfirmedWithPatient == query.IsConfirmedWithPatient);
+            if (!string.IsNullOrWhiteSpace(query.SearchText))
             {
-                var consultantProfileId = query.ConsultantProfileId.Value;
-
-                reservations = reservations.Where(x =>
-                    x.ConsultantProfileId == consultantProfileId);
+                var term = query.SearchText.Trim();
+                reservations = reservations.Where(x => x.LeadAssignment.UserName.Contains(term) ||
+                    x.LeadAssignment.PhoneNumber.Contains(term) ||
+                    (x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName).Contains(term));
             }
-
-            if (query.ReservationType.HasValue)
-            {
-                var reservationType = query.ReservationType.Value;
-
-                reservations = reservations.Where(x =>
-                    x.ReservationType == reservationType);
-            }
-
-            // ------------------------------------------------------------
-            // Patient search
-            // ------------------------------------------------------------
-
-            var patientSearch = !string.IsNullOrWhiteSpace(query.Search)
-                ? query.Search
-                : query.SearchText;
-            if (!string.IsNullOrWhiteSpace(patientSearch))
-            {
-                var search = patientSearch.Trim();
-
-                reservations = reservations.Where(x =>
-                    x.LeadAssignment.UserName.Contains(search) ||
-                    x.LeadAssignment.PhoneNumber.Contains(search) ||
-                    (
-                        x.LeadAssignment.SecondaryPhoneNumber != null &&
-                        x.LeadAssignment.SecondaryPhoneNumber.Contains(search)
-                    ));
-            }
-
-            // ------------------------------------------------------------
-            // Consultant search
-            // ------------------------------------------------------------
-
             if (!string.IsNullOrWhiteSpace(query.ConsultantName))
             {
-                var consultantName = query.ConsultantName.Trim();
-
-                reservations = reservations.Where(x =>
-                    x.ConsultantProfile.User.FirstName.Contains(consultantName) ||
-                    x.ConsultantProfile.User.LastName.Contains(consultantName) ||
-                    (
-                        x.ConsultantProfile.User.FirstName + " " +
-                        x.ConsultantProfile.User.LastName
-                    ).Contains(consultantName));
+                var consultant = query.ConsultantName.Trim();
+                reservations = reservations.Where(x => (x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName).Contains(consultant));
             }
-
-            // ------------------------------------------------------------
-            // ReservationAt date range in Iran wall-clock time
-            // ------------------------------------------------------------
-
-            if (query.Date.HasValue)
+            if (query.ReservationDate.HasValue)
             {
-                var (start, _) = IranTimeHelper.GetIranLocalDayRange(query.Date.Value);
-                var endExclusive = query.Date.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
-                reservations = reservations.Where(x =>
-                    x.ReservationAt >= start && x.ReservationAt < endExclusive);
+                var zone = ResolveTimeZone(query.TimeZone);
+                var localStart = query.ReservationDate.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+                var start = TimeZoneInfo.ConvertTimeToUtc(localStart, zone);
+                var end = TimeZoneInfo.ConvertTimeToUtc(localStart.AddDays(1), zone);
+                reservations = reservations.Where(x => x.ReservationAt >= start && x.ReservationAt < end);
             }
-
-            var fromValue = query.FromDate ?? query.From;
-            if (!query.Date.HasValue && fromValue.HasValue)
+            if (query.FollowUpDueOn.HasValue)
             {
-                var fromDate = IranTimeHelper.GetDateInIran(fromValue.Value);
-                var (start, _) = IranTimeHelper.GetIranLocalDayRange(fromDate);
-
-                reservations = reservations.Where(x => x.ReservationAt >= start);
+                var zone = ResolveTimeZone(query.TimeZone);
+                var localStart = query.FollowUpDueOn.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+                var start = TimeZoneInfo.ConvertTimeToUtc(localStart, zone);
+                var end = TimeZoneInfo.ConvertTimeToUtc(localStart.AddDays(1), zone);
+                reservations = reservations.Where(x => x.FollowUps.Any(f => !f.IsDeleted && f.Status == FollowUpStatus.Pending &&
+                    ((f.ScheduledAt >= start && f.ScheduledAt < end) || (f.ReminderAt >= start && f.ReminderAt < end))));
             }
 
-            var toValue = query.ToDate ?? query.To;
-            if (!query.Date.HasValue && toValue.HasValue)
-            {
-                var toDate = IranTimeHelper.GetDateInIran(toValue.Value);
-                var toDateExclusive = toDate.AddDays(1).ToDateTime(TimeOnly.MinValue);
-
-                reservations = reservations.Where(x => x.ReservationAt < toDateExclusive);
-            }
-            // ------------------------------------------------------------
-            // Secretary announcement status
-            // ------------------------------------------------------------
-
-            if (query.SecretaryAnnouncementStatus.HasValue)
-            {
-                var status = query.SecretaryAnnouncementStatus.Value;
-
-                reservations = reservations.Where(x =>
-                    x.SecretaryAnnouncementStatus == status);
-            }
-
-            // ------------------------------------------------------------
-            // Attendance status
-            // ------------------------------------------------------------
-
-            var attendanceStatus = query.AttendanceStatus ?? query.AttendanceConfirmationStatus;
-            if (attendanceStatus.HasValue)
-            {
-                var status = attendanceStatus.Value;
-
-                reservations = reservations.Where(x =>
-                    x.AttendanceConfirmationStatus == status);
-            }
+            if (query.AttendanceConfirmationStatus.HasValue)
+                reservations = reservations.Where(x => x.AttendanceConfirmationStatus == query.AttendanceConfirmationStatus.Value);
 
             if (query.OnlyWaitingForSecretaryReview)
-            {
-                reservations = reservations.Where(x =>
-                    x.SecretaryReviewedAt == null &&
-                    (x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
-                     x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent));
-            }
+                reservations = reservations.Where(x => x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
+                                                       x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
 
             if (query.OnlyConsultantAttendanceConfirmed)
-            {
                 reservations = reservations.Where(x =>
+                    x.ConsultantAttendanceConfirmedAt != null ||
                     x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
                     x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent);
-            }
-
-            if (query.OnlyDue)
-                reservations = reservations.Where(x => x.ReservationAt <= IranTimeHelper.IranLocalNow);
-
-            if (!string.IsNullOrWhiteSpace(query.ReservationStatus))
-            {
-                reservations = query.ReservationStatus.Trim().ToLowerInvariant() switch
-                {
-                    "pending" => reservations.Where(x =>
-                        !x.IsCanceled &&
-                        x.SecretaryReviewedAt == null),
-
-                    "confirmed" => reservations.Where(x =>
-                        !x.IsCanceled &&
-                        x.SecretaryReviewedAt != null &&
-                        x.SecretaryApprovedConsultantConfirmation == true),
-
-                    "cancelled" => reservations.Where(x =>
-                        x.IsCanceled),
-
-                    _ => reservations
-                };
-            }
-
-            // ------------------------------------------------------------
-            // Count BEFORE paging
-            // ------------------------------------------------------------
 
             var totalCount = await reservations.CountAsync(cancellationToken);
-
-            if (totalCount == 0)
+            var ascending = string.Equals(query.SortDirection, "asc", StringComparison.OrdinalIgnoreCase);
+            reservations = (query.SortBy?.ToLowerInvariant(), ascending) switch
             {
-                return EmptyResult(pageNumber, pageSize);
-            }
-
-            // ------------------------------------------------------------
-            // Sorting
-            // ------------------------------------------------------------
-
-            reservations = query.SortDirection?.ToLowerInvariant() switch
-            {
-                "desc" => reservations
-                    .OrderByDescending(x => x.ReservationAt)
-                    .ThenByDescending(x => x.Id),
-
-                _ => reservations
-                    .OrderBy(x => x.ReservationAt)
-                    .ThenBy(x => x.Id)
+                ("reservationat", true) => reservations.OrderBy(x => x.ReservationAt).ThenBy(x => x.Id),
+                ("reservationat", false) => reservations.OrderByDescending(x => x.ReservationAt).ThenByDescending(x => x.Id),
+                ("reservationrequeststatus", true) => reservations.OrderBy(x => x.ReservationRequestStatus).ThenBy(x => x.Id),
+                ("reservationrequeststatus", false) => reservations.OrderByDescending(x => x.ReservationRequestStatus).ThenByDescending(x => x.Id),
+                ("requestcreatedat", true) => reservations.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id),
+                _ => reservations.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
             };
-
-            // ------------------------------------------------------------
-            // Paging + Projection
-            // ------------------------------------------------------------
-
             var items = await reservations
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(x => new SecretaryReservationItemResponse
                 {
                     Id = x.Id,
-                    ReservationId = x.Id,
-
                     LeadAssignmentId = x.LeadAssignmentId,
-
                     ConsultantProfileId = x.ConsultantProfileId,
                     ConsultantUserId = x.ConsultantProfile.UserId,
-
-                    ConsultantFullName =
-                        x.ConsultantProfile.User.FirstName + " " +
-                        x.ConsultantProfile.User.LastName,
-
+                    ConsultantFullName = x.ConsultantProfile.User.FirstName + " " + x.ConsultantProfile.User.LastName,
                     PatientUserId = x.PatientUserId,
-                    RequiresPatientProfile = !x.PatientUserId.HasValue,
-
                     ReservationAt = x.ReservationAt,
-                    AppointmentDateTime = x.ReservationAt,
-                    PatientCount = x.PatientCount,
-                    CreatedAt = x.CreatedAt,
-
-                    ReservationType = x.ReservationType,
-
-                    PatientReceivedService = x.PatientReceivedService,
-
+                    InitialReservationAt = x.InitialReservationAt,
+                    RequestCreatedAt = x.CreatedAt,
+                    LastActivityAt = x.LastActivityAt,
                     PatientName = x.LeadAssignment.UserName,
                     PatientPhoneNumber = x.LeadAssignment.PhoneNumber,
-                    SecondaryPhoneNumber =
-                        x.LeadAssignment.SecondaryPhoneNumber,
-
-                    PatientCity =
-                        x.LeadAssignment.PatientCity ?? string.Empty,
-
-                    PatientRegion =
-                        x.LeadAssignment.PatientRegion,
-
-                    BusinessName =
-                        x.LeadAssignment.BusinessName,
-
-                    AttendanceProbabilityPercent =
-                        x.LeadAssignment.AttendanceProbabilityPercent,
-
-                    AttendanceConfirmationStatus =
-                        x.AttendanceConfirmationStatus,
-
-                    ConsultantAttendanceConfirmedAt =
-                        x.ConsultantAttendanceConfirmedAt,
-
-                    ConsultantSaysPatientAttended =
-                        x.ConsultantSaysPatientAttended,
-
-                    ConsultantAttendanceNote =
-                        x.ConsultantAttendanceNote,
-
-                    IsWaitingForSecretaryReview =
-                        x.SecretaryReviewedAt == null &&
-                        (
-                            x.AttendanceConfirmationStatus ==
-                                ReservationAttendanceConfirmationStatus
-                                    .ConsultantConfirmedPresent
-                            ||
-                            x.AttendanceConfirmationStatus ==
-                                ReservationAttendanceConfirmationStatus
-                                    .ConsultantConfirmedAbsent
-                        ),
-
-                    SecretaryReviewedAt =
-                        x.SecretaryReviewedAt,
-
-                    SecretaryUserId =
-                        x.SecretaryUserId,
-
-                    SecretaryApprovedConsultantConfirmation =
-                        x.SecretaryApprovedConsultantConfirmation,
-
-                    SecretaryReviewNote =
-                        x.SecretaryReviewNote,
-
-                    SecretaryAnnouncementStatus =
-                        x.SecretaryAnnouncementStatus,
-
-                    SecretaryAnnouncement =
-                        x.SecretaryAnnouncement,
-
-                    SecretaryAnnouncementUpdatedAt =
-                        x.SecretaryAnnouncementUpdatedAt,
-
-                    SecretaryAnnouncementUserId =
-                        x.SecretaryAnnouncementUserId,
-
-                    IsAttendanceScoreApplied =
-                        x.IsAttendanceScoreApplied,
-
-                    AttendanceScoreValue =
-                        x.AttendanceScoreValue,
-
-                    AttendanceScoreAppliedAt =
-                        x.AttendanceScoreAppliedAt,
-
-                    Description =
-                        x.Description,
-
-                    DoctorName =
-                        x.DoctorName,
-
-                    IsCanceled =
-                        x.IsCanceled,
-
-                    DentalServices =
-                        x.DentalServices
+                    SecondaryPhoneNumber = x.LeadAssignment.SecondaryPhoneNumber,
+                    PatientCity = x.LeadAssignment.PatientCity ?? string.Empty,
+                    PatientRegion = x.LeadAssignment.PatientRegion,
+                    BusinessName = x.LeadAssignment.BusinessName,
+                    AttendanceProbabilityPercent = x.LeadAssignment.AttendanceProbabilityPercent,
+                    AttendanceConfirmationStatus = x.AttendanceConfirmationStatus,
+                    ConsultantAttendanceConfirmedAt = x.ConsultantAttendanceConfirmedAt,
+                    ConsultantSaysPatientAttended = x.ConsultantSaysPatientAttended,
+                    ConsultantAttendanceNote = x.ConsultantAttendanceNote,
+                    IsWaitingForSecretaryReview = x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedPresent ||
+                                                   x.AttendanceConfirmationStatus == ReservationAttendanceConfirmationStatus.ConsultantConfirmedAbsent,
+                    SecretaryReviewedAt = x.SecretaryReviewedAt,
+                    SecretaryUserId = x.SecretaryUserId,
+                    SecretaryApprovedConsultantConfirmation = x.SecretaryApprovedConsultantConfirmation,
+                    SecretaryReviewNote = x.SecretaryReviewNote,
+                    IsAttendanceScoreApplied = x.IsAttendanceScoreApplied,
+                    AttendanceScoreValue = x.AttendanceScoreValue,
+                    AttendanceScoreAppliedAt = x.AttendanceScoreAppliedAt,
+                    Description = x.Description,
+                    IsCanceled = x.IsCanceled
+                    ,ReservationRequestStatus = x.ReservationRequestStatus
+                    ,VisitResultStatus = x.VisitResultStatus
+                    ,IsConfirmedWithPatient = x.IsConfirmedWithPatient
+                    ,ConfirmedWithPatientAt = x.ConfirmedWithPatientAt
+                    ,IsWaitingForConsultantTimeConfirmation = x.ReservationTimeChanges.Any(c => c.Status == ReservationTimeChangeStatus.PendingConsultantConfirmation)
+                    ,SecretaryTimeChangeNote = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => c.Note).FirstOrDefault()
+                    ,SecretaryChangedReservationAt = x.ReservationTimeChanges.OrderByDescending(c => c.CreatedAt).Select(c => (DateTime?)c.CreatedAt).FirstOrDefault()
+                    ,CallCount = x.ContactLogs.Count(c => !c.IsDeleted)
+                    ,LastContactResult = x.ContactLogs.Where(c => !c.IsDeleted).OrderByDescending(c => c.CreatedAt).Select(c => c.Result.ToString()).FirstOrDefault()
+                    ,LastFollowUpAt = x.FollowUps.Where(f => !f.IsDeleted).OrderByDescending(f => f.CreatedAt).Select(f => (DateTime?)f.ScheduledAt).FirstOrDefault()
+                    ,RejectionReason = x.RejectionReason
+                    ,CancellationReason = x.CancellationReason
+                    ,RequestedServiceName = x.Description
+                    ,ConsultantReport = x.LeadAssignment.ReportDescription
+                    ,Priority = x.FollowUps.Where(f => !f.IsDeleted && f.Status == FollowUpStatus.Pending).Select(f => (FollowUpPriority?)f.Priority).Max()
+                    ,LastChangedByName = x.SecretaryActivities.OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Select(a => a.ActorUser.FirstName + " " + a.ActorUser.LastName).FirstOrDefault()
                 })
                 .ToListAsync(cancellationToken);
-
-            // ------------------------------------------------------------
-            // Non-database formatting
-            // ------------------------------------------------------------
-
-            foreach (var item in items)
-            {
-                item.ReservationAtPersian =
-                    item.ReservationAt.ToPersianDateTimeString();
-
-                item.CreatedAtPersian =
-                    item.CreatedAt.ToPersianDateTimeString();
-
-                item.SecretaryReviewedAtPersian =
-                    item.SecretaryReviewedAt?.ToPersianDateTimeString();
-            }
 
             return new PaginatedResult<SecretaryReservationItemResponse>
             {
@@ -368,17 +158,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             };
         }
 
-        private static PaginatedResult<SecretaryReservationItemResponse> EmptyResult(
-            int pageNumber,
-            int pageSize)
+        private static TimeZoneInfo ResolveTimeZone(string id)
         {
-            return new PaginatedResult<SecretaryReservationItemResponse>
-            {
-                Items = [],
-                TotalCount = 0,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
+            try { return TimeZoneInfo.FindSystemTimeZoneById(string.IsNullOrWhiteSpace(id) ? "Asia/Tehran" : id); }
+            catch (TimeZoneNotFoundException) when (id == "Asia/Tehran") { return TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time"); }
         }
     }
 }

@@ -57,6 +57,8 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 leads = leads.Where(x => x.PatientCity != null && x.PatientCity.Contains(city));
             }
 
+            if (query.SourceType.HasValue)
+                leads = leads.Where(x => x.SourceType == query.SourceType.Value);
             leads = leads.ApplyAssignedAtFilter(query);
             var pageNumber = Math.Clamp(query.PageNumber, 1, 1_000_000);
             var pageSize = Math.Clamp(query.PageSize, 1, 100);
@@ -67,6 +69,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 .Select(x => new LeadsAssignmentItemsResponse
                 {
                     Id = x.Id,
+                SourceType = x.SourceType,
+                ConsultationDescription = x.ConsultationDescription,
+                RequestedServices = x.RequestedServices.Select(service =>
+                    new RequestedServiceResponse(service.ServiceId, service.Service.Title)).ToList(),
                     LeadAssignmentState = x.LeadAssignmentState,
                     leadAssignmentType = x.AssignmentType,
                     ConsultantProfileId = x.ConsultantProfileId,

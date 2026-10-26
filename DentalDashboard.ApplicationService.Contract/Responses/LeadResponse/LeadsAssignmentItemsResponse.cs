@@ -4,6 +4,9 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
 {
     public record LeadsAssignmentItemsResponse : BaseResponse<long>
     {
+        public LeadSourceType SourceType { get; set; }
+        public string? ConsultationDescription { get; set; }
+        public List<RequestedServiceResponse> RequestedServices { get; set; } = [];
         public long LeadAssignmentId => Id;
         public string UserName { get; set; } = default!;
         public string FullName => UserName;
@@ -33,4 +36,5 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
         public LeadClosureReason? ClosureReason { get; set; }
         public string? ClosureDescription { get; set; }
     }
+    public sealed record RequestedServiceResponse(long Id, string Title);
 }

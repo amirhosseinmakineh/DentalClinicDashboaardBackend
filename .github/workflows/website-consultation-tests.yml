@@ -1,0 +1,37 @@
+name: Website consultation integration tests
+on:
+  pull_request:
+    paths:
+      - 'DentalDashboard*/**'
+      - '.github/workflows/website-consultation-tests.yml'
+permissions:
+  contents: read
+jobs:
+  sql-integration:
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          # Disposable CI container credential; never used by the application.
+          MSSQL_SA_PASSWORD: 'Disposable_CI_Only_4826!'
+        ports:
+          - 1433:1433
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Wait for local SQL Server
+        run: |
+          for attempt in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/1433) >/dev/null 2>&1; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Test real SQL, HTTP, imports, dispatch, pickup and panel APIs
+        env:
+          CLINIC_TEST_SQL_CONNECTION: 'Server=127.0.0.1,1433;Database=master;User Id=sa;Password=Disposable_CI_Only_4826!;TrustServerCertificate=True;Connect Timeout=15'
+        run: dotnet test DentalDashboard.IntegrationTests/DentalDashboard.IntegrationTests.csproj --logger 'console;verbosity=normal'

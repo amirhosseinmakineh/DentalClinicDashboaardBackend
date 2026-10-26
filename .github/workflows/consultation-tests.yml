@@ -1,0 +1,33 @@
+name: Consultation SQL integration tests
+on:
+  push:
+    branches: [feature/website-lead-operational-transfer-20261027]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sql-tests:
+    runs-on: ubuntu-latest
+    services:
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Consultation_CI_Only_4829!
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Consultation_CI_Only_4829!' -C -Q 'SELECT 1'"
+          --health-interval=10s --health-timeout=5s --health-retries=15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      # Disposable service-container credentials; never a production connection.
+      CONSULTATION_TEST_SQL: 'Server=localhost,1433;User Id=sa;Password=Consultation_CI_Only_4829!;TrustServerCertificate=true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build DentalDashboard.slnx --configuration Release
+      - run: dotnet test DentalDashboard.Consultation.Tests --configuration Release --logger 'console;verbosity=normal'

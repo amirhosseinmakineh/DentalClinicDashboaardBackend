@@ -5,6 +5,10 @@ namespace DentalDashboard.Domain.Models;
 public class LeadAssignment : BaseAuditableEntity<long>
 {
     public LeadSourceType SourceType { get; set; } = LeadSourceType.Yektanet;
+    public long? ConsultationServiceId { get; set; }
+    public DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySaleService? ConsultationService { get; set; }
+    public string? ConsultationNotes { get; set; }
+    public Guid? ConsultationRequestId { get; set; }
     public string UserName { get; set; } = default!;
 
     public string PhoneNumber { get; set; } = default!;

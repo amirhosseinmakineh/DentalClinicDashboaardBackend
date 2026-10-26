@@ -13,6 +13,7 @@ using System.Text;
 using DentalDashboard.Hubs;
 using DentalDashboard.LeadManagement.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using DentalDashboard.Controllers;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,7 @@ if (string.IsNullOrWhiteSpace(configuredConnection) ||
 // ====================================
 
 builder.Services.AddControllers();
+builder.Services.AddConsultationRateLimiting();
 builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -260,7 +262,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseCors("FrontendCors");
 
 app.UseAuthentication();
-
+app.UseRateLimiter();
 app.UseAuthorization();
 
 

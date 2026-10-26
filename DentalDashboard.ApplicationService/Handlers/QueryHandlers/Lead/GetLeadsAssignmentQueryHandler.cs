@@ -26,6 +26,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                             x.ConsultantProfileId == query.ProfileId &&
                             x.LeadAssignmentState != LeadAssignmentState.ClosedByConsultant);
 
+            if (query.SourceType.HasValue)
+                leadsQuery = leadsQuery.Where(x => x.SourceType == query.SourceType.Value);
+
             if (query.leadAssignmentState.HasValue)
             {
                 leadsQuery = leadsQuery.Where(x => x.LeadAssignmentState == query.leadAssignmentState.Value);
@@ -81,6 +84,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             var allLeads = leadsQuery.Select(x => new LeadsAssignmentItemsResponse()
             {
                 Id = x.Id,
+                SourceType = x.SourceType,
+                ConsultationServiceId = x.ConsultationServiceId,
+                ConsultationServiceTitle = x.ConsultationService != null ? x.ConsultationService.Title : null,
+                ConsultationNotes = x.ConsultationNotes,
                 LeadAssignmentState = x.LeadAssignmentState,
                 leadAssignmentType = x.AssignmentType,
                 PhoneNumber = x.PhoneNumber,
@@ -189,6 +196,10 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 .Select(x => new LeadsAssignmentItemsResponse()
                 {
                     Id = x.Id,
+                    SourceType = x.SourceType,
+                    ConsultationServiceId = x.ConsultationServiceId,
+                    ConsultationServiceTitle = x.ConsultationService != null ? x.ConsultationService.Title : null,
+                    ConsultationNotes = x.ConsultationNotes,
                     LeadAssignmentState = x.LeadAssignmentState,
                     leadAssignmentType = x.AssignmentType,
                     PhoneNumber = x.PhoneNumber,
@@ -214,6 +225,9 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                     ClosureReason = x.ClosureReason,
                     ClosureDescription = x.ClosureDescription,
                 });
+            if (query.SourceType.HasValue)
+                allLeads = allLeads.Where(x => x.SourceType == query.SourceType.Value);
+
             if (query.leadAssignmentState.HasValue)
             {
                 allLeads = allLeads.Where(x => x.LeadAssignmentState == query.leadAssignmentState.Value);

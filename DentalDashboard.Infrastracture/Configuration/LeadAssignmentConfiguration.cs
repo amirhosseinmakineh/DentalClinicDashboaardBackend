@@ -17,6 +17,18 @@ namespace DentalDashboard.Infrastracture.Configuration
                 x.ConsultantProfileId
             });
 
+            // Supports the consultant's active-leads list and its AssignedAt/Id pagination.
+            // Keep existing indexes intact for other lead-assignment workflows.
+            builder.HasIndex(x => new
+            {
+                x.ConsultantProfileId,
+                x.AssignedAt,
+                x.Id
+            })
+            .HasDatabaseName("IX_LeadAssignments_Consultant_Active_AssignedAt_Id")
+            .IsDescending(false, true, true)
+            .HasFilter("[IsDeleted] = 0 AND [ReportSubmittedAt] IS NULL");
+
             builder.HasIndex(x => x.CallDeadlineAt);
             builder.HasIndex(x => x.ReportSubmittedAt);
             builder.HasIndex(x => new

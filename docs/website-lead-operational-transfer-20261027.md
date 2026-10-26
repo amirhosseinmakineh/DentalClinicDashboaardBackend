@@ -69,7 +69,7 @@ The only new migration adds three nullable columns to `LeadAssignments`, a nulla
 
 The target snapshot was already stale (omitted existing AdminSheet, financial and other models introduced by prior migrations). Regeneration therefore produces a larger snapshot diff than the migration body. A Unit Test compares the regenerated snapshot with EF's actual target design model and requires zero differences. Snapshot reconciliation does not execute those historical schema changes.
 
-The pre-existing history contains both `CreateDatabase` and later `InitialCreate` migrations creating overlapping tables. This task does not reset that history. SQL migration tests start from a disposable database representing the current target schema, apply the additive Website down/up operations, and verify existing lead/source preservation. This is an upgrade test, **not evidence that replaying the entire legacy migration chain on an empty database succeeds**. No production database or credentials are used.
+The pre-existing history contains both `CreateDatabase` and later `InitialCreate` migrations creating overlapping tables. This task does not reset that history. SQL migration tests start from a disposable database representing the current target schema, remove only the Website fields, adopt the existing baseline migration history, then run the real EF migrator to apply the additive Website upgrade and verify existing lead/source and active-index preservation. This is an upgrade test, **not evidence that replaying the entire legacy migration chain on an empty database succeeds**. No production database or credentials are used.
 
 ## Validation
 

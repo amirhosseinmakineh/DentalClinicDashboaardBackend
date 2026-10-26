@@ -17,20 +17,17 @@ using ClosedXML.Excel;
 using Microsoft.AspNetCore.Http;
 using System.Net;
 using System.Net.Http.Json;
-using System.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using DentalDashboard.Controllers;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
-using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Infrastracture.Repository;
 using DentalDashboard.LeadManagement.Application;
@@ -318,12 +315,21 @@ public sealed class ConsultationTests : IAsyncLifetime
         var generator = db.GetService<IMigrationsSqlGenerator>();
         foreach (var sql in generator.Generate(migration.DownOperations, db.Model))
             await db.Database.ExecuteSqlRawAsync(sql.CommandText);
-        foreach (var sql in generator.Generate(migration.UpOperations, db.Model))
-            await db.Database.ExecuteSqlRawAsync(sql.CommandText);
+        // Adopt the known operational schema/history, then use EF's real migrator for the upgrade.
+        // Legacy migration history itself contains overlapping initial creates and is not reset here.
+        var history = db.GetService<IHistoryRepository>();
+        await db.Database.ExecuteSqlRawAsync(history.GetCreateIfNotExistsScript());
+        foreach (var id in db.GetService<IMigrationsAssembly>().Migrations.Keys.Where(x => x != "20261024171233_AddWebsiteConsultationMetadata"))
+            await db.Database.ExecuteSqlRawAsync(history.GetInsertScript(new HistoryRow(id, "10.0.8")));
+        await db.Database.MigrateAsync();
+        Assert.Contains("20261024171233_AddWebsiteConsultationMetadata", await db.Database.GetAppliedMigrationsAsync());
+        Assert.False(db.Database.HasPendingModelChanges());
         db.ChangeTracker.Clear();
         var preserved = await db.LeadAssignments.SingleAsync();
         Assert.Equal(old.Id, preserved.Id);
         Assert.Equal(LeadSourceType.AdminSheet, preserved.SourceType);
+        var activeIndex = await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM sys.indexes WHERE name = 'IX_LeadAssignments_Consultant_Active_AssignedAt_Id'").SingleAsync();
+        Assert.Equal(1, activeIndex);
         Assert.IsType<OkObjectResult>(await Controller(db).Create(Request(), default));
     }
 

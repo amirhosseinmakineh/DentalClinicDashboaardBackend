@@ -1,3 +1,12 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
+using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using DentalDashboard.ApplicationService.Contract.Responses;
+using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
+using DentalDashboard.Infrastracture.Services;
 using Microsoft.Extensions.Logging;
 using DentalDashboard.ApplicationService.Services;
 using DentalDashboard.Domain.DomainServices;
@@ -254,18 +263,44 @@ public sealed class ConsultationTests : IAsyncLifetime
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Services.AddControllers().AddApplicationPart(typeof(ConsultationRequestsController).Assembly);
         builder.Services.AddAuthorization();
+        builder.Services.AddAuthentication("ConsultationTest").AddScheme<AuthenticationSchemeOptions, ConsultationTestAuthentication>("ConsultationTest", _ => { });
+        builder.Services.AddScoped<IQueryDispatcher, QueryDispatcher>();
+        builder.Services.AddScoped<ICommandDispatcher, CommandDispatcher>();
+        builder.Services.AddScoped<DentalDashboard.ApplicationService.Contract.IServices.ISecretaryAccessService, SecretaryAccessService>();
+        builder.Services.AddScoped<DentalDashboard.Domain.IRepositories.IUnitOfWork, UnitOfWork>();
+        builder.Services.AddScoped<DentalDashboard.Domain.IRepositories.IConsultantProfileRepository, ConsultantProfileRepository>();
+        builder.Services.AddScoped<DentalDashboard.Domain.IRepositories.IReservationRepository, ReservationRepository>();
+        builder.Services.AddScoped<IQueryHandler<GetNewLeadsQuery, DentalDashboard.ApplicationService.Contract.Responses.PaginatedResult<LeadsAssignmentItemsResponse>>, GetNewLeadsQueryHandler>();
+        builder.Services.AddScoped<IQueryHandler<GetLeadsQuery, DentalDashboard.ApplicationService.Contract.Responses.PaginatedResult<LeadsAssignmentItemsResponse>>, GetLeadsAssignmentQueryHandler>();
         builder.Services.AddConsultationRateLimiting();
         builder.Services.AddDbContext<DentalContext>(options => options.UseSqlServer(connection));
         builder.Services.AddScoped<DentalDashboard.Domain.IRepositories.ILeadAssignmentRepository, LeadAssignmentRepository>();
         var app = builder.Build();
         app.UseRateLimiter();
+        app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
         if (staticFiles)
         {
+            // Test-host-only setup: exercise the existing allocation and pickup services.
+            // These routes and the authentication scheme are never in the application.
+            app.MapPost("/test/pickup/{phone}", async (string phone) =>
+            {
+                await using var db = Db();
+                var lead = await db.LeadAssignments.SingleAsync(x => x.PhoneNumber == phone);
+                await AssignmentService(db).AssignRealTimeLeadsAsync();
+                var profile = await db.ConsultantProfiles.Include(x => x.User)
+                    .FirstAsync(x => !db.LeadAssignments.Any(l => l.ConsultantProfileId == x.Id));
+                var leads = new LeadAssignmentRepository(db); var profiles = new ConsultantProfileRepository(db);
+                var pickup = await new PickUpService(leads, profiles, new LeadAssignmentLimitService(leads, profiles), Push(db), new UnitOfWork(db))
+                    .PickupLeadAsync(lead.Id, profile.Id, default);
+                Assert.Equal(PickupLeadStatus.Success, pickup.Status);
+                return Results.Ok(new { profileId = profile.Id, userId = profile.UserId, leadId = lead.Id });
+            });
             var root = Environment.GetEnvironmentVariable("CONSULTATION_FRONTEND_DIST")!;
             app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(root) });
-            app.MapFallback(async ctx => await ctx.Response.SendFileAsync(Path.Combine(root, "index.html")));
+            var index = File.Exists(Path.Combine(root, "index.csr.html")) ? "index.csr.html" : "index.html";
+            app.MapFallback(async ctx => await ctx.Response.SendFileAsync(Path.Combine(root, index)));
         }
         await app.StartAsync();
         return app;
@@ -323,6 +358,7 @@ public sealed class ConsultationTests : IAsyncLifetime
     [BrowserFact]
     public async Task BrowserSubmitsRealFormOnDesktopAndMobile()
     {
+        await SeedConsultants();
         await using var app = await StartHttpApp(true);
         var script = Environment.GetEnvironmentVariable("CONSULTATION_BROWSER_SCRIPT")!;
         var start = new ProcessStartInfo("node") { RedirectStandardOutput = true, RedirectStandardError = true };
@@ -335,19 +371,9 @@ public sealed class ConsultationTests : IAsyncLifetime
         await using var db = Db();
         Assert.Equal(2, await db.LeadAssignments.CountAsync(x => x.SourceType == LeadSourceType.Website));
         Assert.All(await db.LeadAssignments.ToListAsync(), x => Assert.Equal(serviceId, x.ConsultationServiceId));
-        var consultants = await SeedConsultants();
-        await AssignmentService(db).AssignRealTimeLeadsAsync();
-        var created = await db.LeadAssignments.OrderBy(x => x.Id).ToListAsync();
-        for (int i = 0; i < created.Count; i++)
-        {
-            var leads = new LeadAssignmentRepository(db); var profiles = new ConsultantProfileRepository(db);
-            var pickup = await new PickUpService(leads, profiles, new LeadAssignmentLimitService(leads, profiles), Push(db), new UnitOfWork(db))
-                .PickupLeadAsync(created[i].Id, consultants[i], default);
-            Assert.Equal(DentalDashboard.ApplicationService.Contract.Responses.LeadResponse.PickupLeadStatus.Success, pickup.Status);
-            var panel = await new GetLeadsAssignmentQueryHandler(leads, new ReservationRepository(db))
-                .HandleAsync(new GetLeadsQuery { ProfileId = consultants[i] });
-            Assert.Equal("درخواست تست مرورگر", Assert.Single(panel.Items).ConsultationNotes);
-        }
+        var created = await db.LeadAssignments.ToListAsync();
+        Assert.All(created, lead => Assert.NotNull(lead.ConsultantProfileId));
+        Assert.Equal(2, created.Select(lead => lead.ConsultantProfileId).Distinct().Count());
     }
 }
 
@@ -357,5 +383,18 @@ public sealed class BrowserFactAttribute : FactAttribute
     {
         if (Environment.GetEnvironmentVariable("CONSULTATION_FRONTEND_DIST") == null)
             Skip = "Set CONSULTATION_FRONTEND_DIST and CONSULTATION_BROWSER_SCRIPT to run real browser tests.";
+    }
+}
+
+// Isolated test host only. Actual controller role/ownership checks still execute.
+public sealed class ConsultationTestAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options,
+    ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        if (!Guid.TryParse(Request.Headers["X-Consultation-Test-User"], out var userId))
+            return Task.FromResult(AuthenticateResult.NoResult());
+        var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, "Consultant")], Scheme.Name);
+        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name)));
     }
 }

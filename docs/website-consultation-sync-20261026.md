@@ -2,14 +2,14 @@
 
 ## Paired revisions
 
-Frontend: `005554246168825055c1897de3616a63c548546a`, PR #382, target lowercase `stage`.
+Frontend: `af4149647a7f86c311e5a414913fcca1841173c5`, PR #382, target lowercase `stage`.
 Backend: this feature branch targets `main`; it retains Website changes already merged through PR #260 and incorporates the existing latest `codex-lflotm` changes through `0bd548f`. No allocation algorithm is introduced.
 
 ## Broken merge repaired
 
 A real build of `main` (`e80ebb3`) failed because secretary reservation code referenced absent `ReservationRequestStatus`, `VisitResultStatus`, `FollowUpPriority`, `ReservationContactLog`, `ReservationNote` and `ReservationNotificationOutbox` models. Comparing with the common ancestor `b268768` and the current `codex-lflotm` showed unrelated/inconsistent reservation files introduced while reconciling Website intake.
 
-The existing, consistent files are restored byte-for-byte from `codex-lflotm`:
+The existing, consistent files are restored from `codex-lflotm`:
 
 - `DentalDashboard.ApplicationService.Contract/Responses/ReservationResponse/SecretaryReservationItemResponse.cs`
 - `DentalDashboard.ApplicationService/Handlers/QueryHandlers/Reservation/GetSecretaryReservationsQueryHandler.cs`

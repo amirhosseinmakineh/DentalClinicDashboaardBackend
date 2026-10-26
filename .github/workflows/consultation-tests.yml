@@ -36,8 +36,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: amirhosseinmakineh/drsaeedMoghadamFront
-          fetch-depth: 0
-          ref: 005554246168825055c1897de3616a63c548546a
+          ref: af4149647a7f86c311e5a414913fcca1841173c5
           path: .consultation-frontend
       - uses: actions/setup-node@v4
         with:

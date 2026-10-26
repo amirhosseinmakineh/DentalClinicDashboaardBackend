@@ -364,6 +364,11 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("ReportSubmittedAt");
 
+                    b.HasIndex("ConsultantProfileId", "AssignedAt", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("IX_LeadAssignments_Consultant_Active_AssignedAt_Id")
+                        .HasFilter("[IsDeleted] = 0 AND [ReportSubmittedAt] IS NULL");
+
                     b.HasIndex("AssignmentType", "LeadAssignmentState", "ConsultantProfileId");
 
                     b.HasIndex("IsDeleted", "LeadAssignmentState", "ConsultantProfileId", "CreatedAt");

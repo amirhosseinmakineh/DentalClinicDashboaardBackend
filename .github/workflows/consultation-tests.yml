@@ -12,6 +12,7 @@ permissions:
 jobs:
   sql-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       sql:
         image: mcr.microsoft.com/mssql/server:2022-latest
@@ -32,4 +33,37 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet test DentalDashboard.Consultation.Tests --configuration Release --logger 'console;verbosity=normal'
+      - uses: actions/checkout@v4
+        with:
+          repository: amirhosseinmakineh/drsaeedMoghadamFront
+          fetch-depth: 0
+          ref: af4149647a7f86c311e5a414913fcca1841173c5
+          path: .consultation-frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: .consultation-frontend/package-lock.json
+      - name: Compile the actual frontend
+        working-directory: .consultation-frontend
+        run: |
+          npm ci
+          npm run check:source
+          npm run typecheck
+          CLINIC_BACKEND_SOURCE=.. npm run test:consultant
+          npx ng build demo --configuration development
+      - name: Install test-only browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/clinic-browser" playwright@1.56.1
+          "$RUNNER_TEMP/clinic-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Test real HTTP, SQL, shared allocation and consultant UI
+        env:
+          CONSULTATION_FRONTEND_DIST: ${{ github.workspace }}/.consultation-frontend/dist/demo/browser
+          CONSULTATION_BROWSER_SCRIPT: ${{ github.workspace }}/.consultation-frontend/scripts/test-consultation.mjs
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/clinic-browser/node_modules/playwright
+        run: dotnet test DentalDashboard.Consultation.Tests --configuration Release --logger 'console;verbosity=normal' --logger 'trx;LogFileName=consultation.trx'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: consultation-test-results
+          path: DentalDashboard.Consultation.Tests/TestResults/*.trx

@@ -6,7 +6,7 @@ namespace DentalDashboard.Domain.DomainServices
     public class LeadDomainService : ILeadDomainService
     {
         private static readonly TimeSpan WorkDayStart = TimeSpan.FromHours(9);
-        private static readonly TimeSpan WorkDayEnd = TimeSpan.FromHours(21);
+        private static readonly TimeSpan WorkDayEnd = TimeSpan.FromHours(22);
 
         public IEnumerable<LeadAssignment> GetNewLeads(IEnumerable<LeadAssignment> oldNumbers, IEnumerable<LeadAssignment> newNumbers)
         {

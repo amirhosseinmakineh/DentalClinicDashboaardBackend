@@ -9,6 +9,11 @@ namespace DentalDashboard.Infrastracture.Configuration
         public void Configure(EntityTypeBuilder<LeadAssignment> builder)
         {
             builder.HasIndex(x => x.PhoneNumber);
+            builder.Property(x => x.ConsultationNotes).HasMaxLength(1000);
+            builder.HasIndex(x => x.ConsultationRequestId).IsUnique()
+                .HasFilter("[ConsultationRequestId] IS NOT NULL");
+            builder.HasOne(x => x.ConsultationService).WithMany()
+                .HasForeignKey(x => x.ConsultationServiceId).OnDelete(DeleteBehavior.Restrict);
 
             builder.HasIndex(x => new
             {

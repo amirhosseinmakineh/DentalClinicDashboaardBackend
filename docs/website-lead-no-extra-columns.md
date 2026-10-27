@@ -68,6 +68,14 @@ Migration جدید `20261027080000_UseExistingWebsiteLeadSchema` هم Up/Down ب
 
 تست HTTP فقط نام و شماره ارسال می‌کند؛ تست سازگاری دیگری هم ثابت می‌کند کلید اضافه فرانت قدیمی یا consultantProfileId ارسالی، باعث تخصیص مشاور هنگام ذخیره نمی‌شود. Unit Test قرارداد دو Property، نبود فیلد/Navigation در مدل، SQL بدون نام ستون‌ها، تطابق Snapshot و خالی‌بودن Up/Down هر دو Migration را بررسی می‌کند.
 
-نتایج اولیه محلی: Build کامل Release و ۵ تست Unit موفق. تست نهایی SQL CI در حال اجراست و تا دریافت نتیجه، موفق اعلام نمی‌شود.
+نتایج نهایی:
+
+- Build کامل Release محلی: موفق، صفر Error؛ هشدارهای موجود پروژه تغییری نکرده‌اند.
+- Unit محلی: ۵ از ۵ موفق.
+- CI با SQL Server موقت: **۲۶ از ۲۶ موفق، صفر شکست و صفر Skip**؛ شامل هر چهار حالت Migration، ذخیره و Queryها بدون سه ستون، تخصیص، API واقعی مشاور، مهلت تماس، کنترل ظرفیت، رگرشن یکتانت/AdminSheet و رزرو، و سازگاری payload قدیمی فرانت.
+- [اجرای موفق CI شماره 40446573148](https://github.com/amirhosseinmakineh/DentalClinicDashboaardBackend/actions/runs/40446573148) کد `6da5b1433ffb0031517290ce5f6c84c78072d91c` را تست کرده است. کامیت بعدی فقط همین نتیجه را به گزارش اضافه می‌کند.
+- تطابق Snapshot با مدل نهایی و نبود هر سه Property/Navigation در EF با Unit Test تأیید شد.
+- فایل‌های Repository، سرویس تخصیص، AdminLeadSheetService، coordinator و enum منبع با مبنای عملیاتی byte-for-byte مقایسه شدند و تغییر نکرده‌اند.
+- اصلاح پس از موفقیت تست‌ها به‌صورت fast-forward روی codex-lflotm قرار می‌گیرد؛ main با آن Merge نشده است.
 
 هیچ دیتابیس عملیاتی Drop/Reset/تغییر داده نشده و هیچ Deploy انجام نشده است.

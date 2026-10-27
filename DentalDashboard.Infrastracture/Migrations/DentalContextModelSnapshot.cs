@@ -273,16 +273,6 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<long?>("ConsultantProfileId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("ConsultationNotes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<Guid?>("ConsultationRequestId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<long?>("ConsultationServiceId")
-                        .HasColumnType("bigint");
-
                     b.Property<DateTime?>("ContactedAt")
                         .HasColumnType("datetime2");
 
@@ -351,12 +341,6 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CallDeadlineAt");
-
-                    b.HasIndex("ConsultationRequestId")
-                        .IsUnique()
-                        .HasFilter("[ConsultationRequestId] IS NOT NULL");
-
-                    b.HasIndex("ConsultationServiceId");
 
                     b.HasIndex("PhoneNumber");
 
@@ -1935,14 +1919,7 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .WithMany("CallAssignments")
                         .HasForeignKey("ConsultantProfileId");
 
-                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.SecretarySales.Entities.SecretarySaleService", "ConsultationService")
-                        .WithMany()
-                        .HasForeignKey("ConsultationServiceId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("ConsultantProfile");
-
-                    b.Navigation("ConsultationService");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignmentSetting", b =>

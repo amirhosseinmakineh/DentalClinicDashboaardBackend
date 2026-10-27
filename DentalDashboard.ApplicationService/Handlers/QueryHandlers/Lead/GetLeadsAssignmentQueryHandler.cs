@@ -85,9 +85,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
             {
                 Id = x.Id,
                 SourceType = x.SourceType,
-                ConsultationServiceId = x.ConsultationServiceId,
-                ConsultationServiceTitle = x.ConsultationService != null ? x.ConsultationService.Title : null,
-                ConsultationNotes = x.ConsultationNotes,
                 LeadAssignmentState = x.LeadAssignmentState,
                 leadAssignmentType = x.AssignmentType,
                 PhoneNumber = x.PhoneNumber,
@@ -197,9 +194,6 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Lead
                 {
                     Id = x.Id,
                     SourceType = x.SourceType,
-                    ConsultationServiceId = x.ConsultationServiceId,
-                    ConsultationServiceTitle = x.ConsultationService != null ? x.ConsultationService.Title : null,
-                    ConsultationNotes = x.ConsultationNotes,
                     LeadAssignmentState = x.LeadAssignmentState,
                     leadAssignmentType = x.AssignmentType,
                     PhoneNumber = x.PhoneNumber,

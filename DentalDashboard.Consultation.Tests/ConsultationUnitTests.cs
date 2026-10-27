@@ -17,9 +17,9 @@ public sealed class ConsultationUnitTests
         "Server=127.0.0.1,1;Database=NeverConnected;User Id=sa;Password=NeverUsed_4829!;Connect Timeout=1;TrustServerCertificate=true").Options);
 
     [Fact]
-    public void PublicRequestContractContainsOnlyNamePhoneAndInternalRequestId()
+    public void PublicRequestContractContainsOnlyNameAndPhone()
     {
-        Assert.Equal(new[] { "FullName", "PhoneNumber", "RequestId" },
+        Assert.Equal(new[] { "FullName", "PhoneNumber" },
             typeof(ConsultationRequest).GetProperties().Select(x => x.Name).OrderBy(x => x).ToArray());
         Assert.Equal(1, (int)LeadSourceType.Yektanet);
         Assert.Equal(2, (int)LeadSourceType.Clinic);
@@ -28,15 +28,14 @@ public sealed class ConsultationUnitTests
     }
 
     [Theory]
-    [InlineData("ا", "09123456789", false)]
-    [InlineData("امیر حسین", "bad", false)]
-    [InlineData("امیر حسین", "09123456789", true)]
-    public async Task InvalidInputRejectedBeforeAnyDatabaseAccess(string name, string phone, bool emptyId)
+    [InlineData("ا", "09123456789")]
+    [InlineData("امیر حسین", "bad")]
+    public async Task InvalidInputRejectedBeforeAnyDatabaseAccess(string name, string phone)
     {
         await using var db = Db();
-        var controller = new ConsultationRequestsController(db, new LeadAssignmentRepository(db));
+        var controller = new ConsultationRequestsController(new LeadAssignmentRepository(db));
         Assert.IsType<BadRequestObjectResult>(await controller.Create(
-            new ConsultationRequest(name, phone, emptyId ? Guid.Empty : Guid.NewGuid()), default));
+            new ConsultationRequest(name, phone), default));
     }
 
     [Fact]
@@ -49,6 +48,24 @@ public sealed class ConsultationUnitTests
         Assert.Empty(db.GetService<IMigrationsModelDiffer>().GetDifferences(initialized.GetRelationalModel(), current.GetRelationalModel()));
         var lead = current.FindEntityType(typeof(DentalDashboard.Domain.Models.LeadAssignment))!;
         Assert.Contains(lead.GetIndexes(), x => x.GetDatabaseName() == "IX_LeadAssignments_Consultant_Active_AssignedAt_Id");
-        Assert.Contains(lead.GetIndexes(), x => x.Properties.SingleOrDefault(p => p.Name == "ConsultationRequestId") != null && x.IsUnique);
+        foreach (var name in new[] { "ConsultationNotes", "ConsultationRequestId", "ConsultationServiceId" })
+            Assert.Null(lead.FindProperty(name));
+        Assert.Null(lead.FindNavigation("ConsultationService"));
+        var sql = db.LeadAssignments.AsNoTracking().ToQueryString();
+        Assert.DoesNotContain("Consultation", sql);
     }
+    [Fact]
+    public void RetiredAndReplacementMigrationsNeverCreateOrDropColumns()
+    {
+        Migration[] migrations = [
+            new DentalDashboard.Infrastracture.Migrations.AddWebsiteConsultationMetadata(),
+            new DentalDashboard.Infrastracture.Migrations.UseExistingWebsiteLeadSchema()
+        ];
+        foreach (var migration in migrations)
+        {
+            Assert.Empty(migration.UpOperations);
+            Assert.Empty(migration.DownOperations);
+        }
+    }
+
 }

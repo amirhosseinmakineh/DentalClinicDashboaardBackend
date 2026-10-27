@@ -1,7 +1,7 @@
 name: Consultation SQL integration tests
 on:
   push:
-    branches: [feature/website-lead-operational-transfer-20261027]
+    branches: [feature/website-lead-operational-transfer-20261027, fix/website-lead-no-extra-columns]
   pull_request:
   workflow_dispatch:
 permissions:

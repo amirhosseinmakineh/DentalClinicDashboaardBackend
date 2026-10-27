@@ -45,8 +45,8 @@ public sealed class ConsultationTests : IAsyncLifetime
 {
     private string connection = "";
     private DentalContext Db() => new(new DbContextOptionsBuilder<DentalContext>().UseSqlServer(connection).Options);
-    private ConsultationRequestsController Controller(DentalContext db) => new(db, new LeadAssignmentRepository(db));
-    private ConsultationRequest Request(string phone = "09123456789") => new("امیر حسین", phone, Guid.NewGuid());
+    private ConsultationRequestsController Controller(DentalContext db) => new(new LeadAssignmentRepository(db));
+    private ConsultationRequest Request(string phone = "09123456789") => new("امیر حسین", phone);
     public async Task InitializeAsync()
     {
         var source = Environment.GetEnvironmentVariable("CONSULTATION_TEST_SQL")
@@ -55,6 +55,7 @@ public sealed class ConsultationTests : IAsyncLifetime
         connection = builder.ConnectionString;
         await using var db = Db();
         await db.Database.EnsureCreatedAsync();
+        Assert.Equal(0, await MetadataColumnCount(db));
     }
     public async Task DisposeAsync() { await using var db = Db(); await db.Database.EnsureDeletedAsync(); }
 
@@ -69,8 +70,6 @@ public sealed class ConsultationTests : IAsyncLifetime
         Assert.Equal(LeadSourceType.Website, lead.SourceType);
         Assert.Equal(LeadAssignmentState.New, lead.LeadAssignmentState);
         Assert.Null(lead.ConsultantProfileId);
-        Assert.Null(lead.ConsultationServiceId);
-        Assert.Null(lead.ConsultationNotes);
         Assert.True(lead.RequiresThreeMinuteCall);
         var repository = new LeadAssignmentRepository(db);
         Assert.Equal(lead.Id, (await repository.GetCurrentRealtimeLeadForDispatchAsync(TimeSpan.Zero, LeadSourceType.Yektanet))?.Id);
@@ -81,14 +80,14 @@ public sealed class ConsultationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RetryDoesNotInsertTwiceAndDifferentPayloadCannotReuseKey()
+    public async Task DuplicateNormalizedPhoneIsRejectedByExistingRepository()
     {
         var request = Request();
         await using var db = Db();
         Assert.IsType<OkObjectResult>(await Controller(db).Create(request, default));
-        Assert.IsType<OkObjectResult>(await Controller(db).Create(request, default));
+        Assert.IsType<ConflictObjectResult>(await Controller(db).Create(request, default));
         Assert.IsType<ConflictObjectResult>(await Controller(db).Create(request with { FullName = "نام تغییر یافته" }, default));
-        Assert.IsType<ConflictObjectResult>(await Controller(db).Create(Request(), default));
+        Assert.IsType<ConflictObjectResult>(await Controller(db).Create(Request("+98 912-345-6789"), default));
         Assert.Equal(1, await db.LeadAssignments.CountAsync());
     }
 
@@ -120,7 +119,7 @@ public sealed class ConsultationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ConcurrentPickupsHaveOnlyOneWinnerAndConsultantPanelContainsRequestMetadata()
+    public async Task ConcurrentPickupsHaveOnlyOneWinnerAndConsultantPanelContainsWebsiteSource()
     {
         long id;
         long[] consultants;
@@ -284,8 +283,9 @@ public sealed class ConsultationTests : IAsyncLifetime
         await using var app = await StartHttpApp();
         using var client = new HttpClient { BaseAddress = new Uri(Address(app)) };
         var request = Request();
-        for (int i = 0; i < 5; i++)
-            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/consultation-requests", request)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/consultation-requests", request)).StatusCode);
+        for (int i = 0; i < 4; i++)
+            Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/consultation-requests", request)).StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, (await client.PostAsJsonAsync("/api/consultation-requests", request)).StatusCode);
         await using var db = Db();
         Assert.Equal(1, await db.LeadAssignments.CountAsync());
@@ -303,34 +303,6 @@ public sealed class ConsultationTests : IAsyncLifetime
     private sealed class FailSave : SaveChangesInterceptor
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData data, InterceptionResult<int> result, CancellationToken ct = default) => throw new DbUpdateException("Synthetic database failure");
-    }
-
-    [Fact]
-    public async Task AdditiveMigrationPreservesExistingLeadAndOrigin()
-    {
-        await using var db = Db();
-        var old = new LeadAssignment { UserName = "قدیمی", PhoneNumber = "09123456780", CreatedAt = DateTime.Now, SourceType = LeadSourceType.AdminSheet };
-        db.Add(old); await db.SaveChangesAsync();
-        var migration = new DentalDashboard.Infrastracture.Migrations.AddWebsiteConsultationMetadata();
-        var generator = db.GetService<IMigrationsSqlGenerator>();
-        foreach (var sql in generator.Generate(migration.DownOperations, db.Model))
-            await db.Database.ExecuteSqlRawAsync(sql.CommandText);
-        // Adopt the known operational schema/history, then use EF's real migrator for the upgrade.
-        // Legacy migration history itself contains overlapping initial creates and is not reset here.
-        var history = db.GetService<IHistoryRepository>();
-        await db.Database.ExecuteSqlRawAsync(history.GetCreateIfNotExistsScript());
-        foreach (var id in db.GetService<IMigrationsAssembly>().Migrations.Keys.Where(x => x != "20261024171233_AddWebsiteConsultationMetadata"))
-            await db.Database.ExecuteSqlRawAsync(history.GetInsertScript(new HistoryRow(id, "10.0.8")));
-        await db.Database.MigrateAsync();
-        Assert.Contains("20261024171233_AddWebsiteConsultationMetadata", await db.Database.GetAppliedMigrationsAsync());
-        Assert.False(db.Database.HasPendingModelChanges());
-        db.ChangeTracker.Clear();
-        var preserved = await db.LeadAssignments.SingleAsync();
-        Assert.Equal(old.Id, preserved.Id);
-        Assert.Equal(LeadSourceType.AdminSheet, preserved.SourceType);
-        var activeIndex = await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM sys.indexes WHERE name = 'IX_LeadAssignments_Consultant_Active_AssignedAt_Id'").SingleAsync();
-        Assert.Equal(1, activeIndex);
-        Assert.IsType<OkObjectResult>(await Controller(db).Create(Request(), default));
     }
 
     [Fact]
@@ -429,6 +401,87 @@ public sealed class ConsultationTests : IAsyncLifetime
         Assert.Empty((await handler.HandleAsync(new GetSecretaryReservationsQuery { IsAdmin = true, Date = new DateOnly(2026, 10, 30) })).Items);
         // Unknown/non-secretary user still cannot read reservation rows.
         Assert.Empty((await handler.HandleAsync(new GetSecretaryReservationsQuery { SecretaryUserId = Guid.NewGuid() })).Items);
+    }
+
+    private const string RetiredMigrationId = "20261024171233_AddWebsiteConsultationMetadata";
+    private const string FinalMigrationId = "20261027080000_UseExistingWebsiteLeadSchema";
+
+    private static Task<int> MetadataColumnCount(DentalContext db) => db.Database.SqlQueryRaw<int>(
+        "SELECT COUNT(*) AS [Value] FROM sys.columns WHERE object_id = OBJECT_ID(N'LeadAssignments') AND name IN (N'ConsultationNotes', N'ConsultationRequestId', N'ConsultationServiceId')").SingleAsync();
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task MigrationRetirementPreservesDataAndNeverAddsColumns(bool oldMigrationApplied, bool physicalMetadataExists)
+    {
+        await using var db = Db();
+        var old = new LeadAssignment { UserName = "قدیمی", PhoneNumber = "09123456780", CreatedAt = DateTime.UtcNow, SourceType = LeadSourceType.AdminSheet };
+        db.Add(old);
+        await db.SaveChangesAsync();
+        if (physicalMetadataExists)
+        {
+            // A fixture representing an installation that previously applied the old migration.
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE LeadAssignments ADD ConsultationServiceId bigint NULL, ConsultationNotes nvarchar(1000) NULL, ConsultationRequestId uniqueidentifier NULL;");
+            await db.Database.ExecuteSqlRawAsync("UPDATE LeadAssignments SET ConsultationNotes = N'preserve existing data', ConsultationRequestId = '550e8400-e29b-41d4-a716-446655440000' WHERE Id = {0}", old.Id);
+        }
+        var history = db.GetService<IHistoryRepository>();
+        await db.Database.ExecuteSqlRawAsync(history.GetCreateIfNotExistsScript());
+        // Adopt the existing operational model baseline, not the broken legacy initial-create chain.
+        foreach (var id in db.GetService<IMigrationsAssembly>().Migrations.Keys.Where(x =>
+                     x != FinalMigrationId && (oldMigrationApplied || x != RetiredMigrationId)))
+            await db.Database.ExecuteSqlRawAsync(history.GetInsertScript(new HistoryRow(id, "10.0.8")));
+        await db.Database.MigrateAsync();
+        Assert.Contains(RetiredMigrationId, await db.Database.GetAppliedMigrationsAsync());
+        Assert.Contains(FinalMigrationId, await db.Database.GetAppliedMigrationsAsync());
+        Assert.False(db.Database.HasPendingModelChanges());
+        Assert.Equal(physicalMetadataExists ? 3 : 0, await MetadataColumnCount(db));
+        if (physicalMetadataExists)
+            Assert.Equal("preserve existing data", await db.Database.SqlQueryRaw<string>("SELECT ConsultationNotes AS [Value] FROM LeadAssignments WHERE Id = {0}", old.Id).SingleAsync());
+        db.ChangeTracker.Clear();
+        var preserved = await db.LeadAssignments.SingleAsync();
+        Assert.Equal(old.Id, preserved.Id);
+        Assert.Equal(LeadSourceType.AdminSheet, preserved.SourceType);
+        Assert.IsType<OkObjectResult>(await Controller(db).Create(Request(), default));
+        Assert.Equal(1, await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM sys.indexes WHERE name = N'IX_LeadAssignments_Consultant_Active_AssignedAt_Id'").SingleAsync());
+    }
+
+    [Fact]
+    public async Task PublicHttpRequestNeedsOnlyNameAndPhoneAndNeverAssignsConsultantOnInsert()
+    {
+        await using var app = await StartHttpApp();
+        using var client = new HttpClient { BaseAddress = new Uri(Address(app)) };
+        var response = await client.PostAsJsonAsync("/api/consultation-requests", new { fullName = "علی رضایی", phoneNumber = "۰۹۱۲۳۴۵۶۷۸۹" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await using var db = Db();
+        Assert.Equal(0, await MetadataColumnCount(db));
+        var lead = await db.LeadAssignments.SingleAsync();
+        Assert.Equal(LeadSourceType.Website, lead.SourceType);
+        Assert.Null(lead.ConsultantProfileId);
+        Assert.False(lead.PickUp);
+        Assert.Null(lead.AssignedAt);
+        Assert.Null(lead.CallDeadlineAt);
+        var repository = new LeadAssignmentRepository(db);
+        var all = await new GetAllLeadsAssignmentQueryHandler(repository, new ReservationRepository(db)).HandleAsync(new GetAllLeadsQuery { SourceType = LeadSourceType.Website });
+        Assert.Equal(lead.Id, Assert.Single(all.Items).Id);
+    }
+
+    [Fact]
+    public async Task LegacyFrontendExtraRequestIdIsIgnoredAndNeverBecomesConsultantId()
+    {
+        await using var app = await StartHttpApp();
+        using var client = new HttpClient { BaseAddress = new Uri(Address(app)) };
+        var response = await client.PostAsJsonAsync("/api/consultation-requests", new {
+            fullName = "علی رضایی", phoneNumber = "09123456789",
+            requestId = "550e8400-e29b-41d4-a716-446655440000", consultantProfileId = 999999
+        });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await using var db = Db();
+        var lead = await db.LeadAssignments.SingleAsync();
+        Assert.Null(lead.ConsultantProfileId);
+        Assert.Equal(LeadSourceType.Website, lead.SourceType);
+        Assert.Equal(0, await MetadataColumnCount(db));
     }
 
 }

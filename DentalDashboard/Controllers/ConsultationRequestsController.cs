@@ -34,7 +34,7 @@ public sealed class ConsultationRequestsController(DentalContext db, ILeadAssign
         {
             // A retry can succeed only for the exact payload that was committed.
             var previous = await db.LeadAssignments.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.ConsultationRequestId == request.RequestId, ct);
+                .FirstOrDefaultAsync(x => x.PhoneNumber == request.PhoneNumber, ct);
             if (previous != null)
                 return Replay(previous, name, phone);
             var lead = new LeadAssignment
@@ -63,7 +63,7 @@ public sealed class ConsultationRequestsController(DentalContext db, ILeadAssign
     private IActionResult Replay(LeadAssignment previous, string name, string phone) =>
         previous.SourceType == LeadSourceType.Website && previous.UserName == name && previous.PhoneNumber == phone
             ? Ok(new { success = true })
-            : Conflict(new { message = "شناسه درخواست قبلاً استفاده شده است. صفحه را تازه کنید." });
+            : Conflict(new { message = "درخواست مشاوره ای با این شماره از قبل در سیستم موجود میباشد" });
 
     internal static string NormalizePhone(string? input)
     {

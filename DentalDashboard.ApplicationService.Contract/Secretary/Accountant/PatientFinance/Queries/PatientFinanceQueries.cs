@@ -90,6 +90,7 @@ public sealed record PatientFinancialCaseDto(
     public string? InstallmentStatus { get; init; }
     public string? GuaranteeDocument { get; init; }
     public string? Notes { get; init; }
+    public string? OpgImageUrl { get; init; }
     public string? ConsultantName { get; init; }
     public int? ToothUnitCount { get; init; }
     public string ServiceUnitCountsJson { get; init; } = "{}";

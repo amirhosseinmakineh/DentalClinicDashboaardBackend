@@ -12,6 +12,7 @@ public sealed class PatientFinancialCaseConfiguration
         .HasColumnType("nvarchar(max)")
         .HasDefaultValue("{}")
         .IsRequired();
+    b.Property(x => x.OpgImageUrl).HasMaxLength(2048);
     b.Property(x => x.TotalAmount).HasPrecision(18, 2);
     b.Property(x => x.PrePaymentAmount).HasPrecision(18, 2);
     b.Property(x => x.DepositAmount).HasPrecision(18, 2);

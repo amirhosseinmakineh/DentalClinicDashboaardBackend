@@ -57,6 +57,7 @@ public sealed class GetConsultantFollowUpsQueryHandler(
                     .Where(u => u.Id == x.SecretaryAnnouncementUserId)
                     .Select(u => u.FirstName + " " + u.LastName)
                     .FirstOrDefault() ?? string.Empty,
+                SecretaryAnnouncementStatus = x.SecretaryAnnouncementStatus,
                 Contacted = x.SecretaryFollowUpContacted ?? false,
                 ContactResult = x.SecretaryAnnouncement,
                 CreatedAt = x.SecretaryAnnouncementUpdatedAt!.Value

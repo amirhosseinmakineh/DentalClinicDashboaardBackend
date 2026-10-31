@@ -201,6 +201,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("OpgImageUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 

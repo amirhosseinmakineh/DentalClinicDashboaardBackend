@@ -1,3 +1,5 @@
+using DentalDashboard.Licensing;
+using DentalDashboard.Framwork.Licensing;
 using DentalDashboard.ApplicationService;
 using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Services;
@@ -33,6 +35,8 @@ if (string.IsNullOrWhiteSpace(configuredConnection) ||
 // ====================================
 // Services
 // ====================================
+
+builder.Services.AddClinicLicensing(builder.Configuration, builder.Environment);
 
 builder.Services.AddControllers();
 builder.Services.AddConsultationRateLimiting();
@@ -245,6 +249,9 @@ app.Use(async (context, next) =>
     await next();
 });
 
+app.UseCors("FrontendCors");
+app.UseMiddleware<LicenseMiddleware>();
+
 //app.UseCors("CorsPolicy");
 app.UseStaticFiles();
 
@@ -258,8 +265,6 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
     RequestPath = "/uploads"
 });
-
-app.UseCors("FrontendCors");
 
 app.UseAuthentication();
 app.UseRateLimiter();
@@ -277,6 +282,9 @@ if (app.Environment.IsDevelopment())
 
 
 
+
+app.MapGet("/api/license/status", (ILicenseAccess license) => Results.Ok(license.Status))
+    .AllowAnonymous();
 
 app.MapControllers();
 app.MapHub<ReservationsHub>("/hubs/reservations");

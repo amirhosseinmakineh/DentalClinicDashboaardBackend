@@ -8,17 +8,20 @@ COPY DentalDashboard/DentalDashboard.csproj DentalDashboard/
 COPY DentalDashboard.ApplicationService/DentalDashboard.ApplicationService.csproj DentalDashboard.ApplicationService/
 COPY DentalDashboard.ApplicationService.Contract/DentalDashboard.ApplicationService.Contract.csproj DentalDashboard.ApplicationService.Contract/
 COPY DentalDashboard.Domain/DentalDashboard.Domain.csproj DentalDashboard.Domain/
-COPY DentalDashboard.Framwork/DentalDashboard.Framwork.csproj DentalDashboard.Framwork/
 COPY DentalDashboard.Infrastracture/DentalDashboard.Infrastracture.csproj DentalDashboard.Infrastracture/
 COPY DentalDashboard.Security/DentalDashboard.Security.csproj DentalDashboard.Security/
 COPY DentalDashboard.Utilities/DentalDashboard.Utilities.csproj DentalDashboard.Utilities/
+COPY DentalDashboard.LeadManagement/DentalDashboard.LeadManagement.csproj DentalDashboard.LeadManagement/
 
-RUN dotnet restore DentalDashboard/DentalDashboard.csproj
+RUN --mount=type=secret,id=nuget_config,required=true \
+    dotnet restore DentalDashboard/DentalDashboard.csproj \
+    --configfile /run/secrets/nuget_config
 
 COPY . .
 RUN dotnet publish DentalDashboard/DentalDashboard.csproj \
     --configuration Release \
     --output /app/publish \
+    --no-restore \
     /p:UseAppHost=false \
     && rm -f /app/publish/appsettings*.json \
     && cp DentalDashboard/appsettings.Container.json /app/publish/appsettings.json

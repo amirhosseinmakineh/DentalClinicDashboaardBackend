@@ -5,16 +5,26 @@ on:
   push:
     branches: [codex-lflotm, develop, stage, production]
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   docker-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-private-framework
+        id: framework
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: false
+          secret-files: |
+            nuget_config=${{ steps.framework.outputs.config-file }}
           tags: dental-back:test
           cache-from: type=gha
           cache-to: type=gha,mode=max

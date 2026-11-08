@@ -11,3 +11,7 @@ Dockerfile*
 docker-compose*
 DentalDashboard/appsettings*.json
 !DentalDashboard/appsettings.Container.json
+
+# Local private-feed credentials
+NuGet.Private.Config
+nuget.private.config

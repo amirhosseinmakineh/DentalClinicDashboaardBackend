@@ -4,6 +4,8 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Read;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
+using DentalDashboard.Framwork.Licensing;
+using DentalDashboard.Licensing;
 using DentalDashboard.ApplicationService.Contract.Responses;
 using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Infrastracture.Services;
@@ -248,7 +250,7 @@ public sealed class ConsultationTests : IAsyncLifetime
         db.ChangeTracker.Clear(); Assert.Null((await db.LeadAssignments.SingleAsync()).ConsultantProfileId);
     }
 
-    private async Task<WebApplication> StartHttpApp()
+    private async Task<WebApplication> StartHttpApp(bool licenseValid = true)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
         builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning);
@@ -256,6 +258,7 @@ public sealed class ConsultationTests : IAsyncLifetime
         builder.Services.AddControllers().AddApplicationPart(typeof(ConsultationRequestsController).Assembly);
         builder.Services.AddAuthorization();
         builder.Services.AddAuthentication("ConsultationTest").AddScheme<AuthenticationSchemeOptions, ConsultationTestAuthentication>("ConsultationTest", _ => { });
+        builder.Services.AddSingleton<ILicenseAccess>(new TestLicenseAccess { IsValid = licenseValid });
         builder.Services.AddScoped<IQueryDispatcher, QueryDispatcher>();
         builder.Services.AddScoped<ICommandDispatcher, CommandDispatcher>();
         builder.Services.AddScoped<DentalDashboard.ApplicationService.Contract.IServices.ISecretaryAccessService, SecretaryAccessService>();
@@ -268,6 +271,7 @@ public sealed class ConsultationTests : IAsyncLifetime
         builder.Services.AddDbContext<DentalContext>(options => options.UseSqlServer(connection));
         builder.Services.AddScoped<DentalDashboard.Domain.IRepositories.ILeadAssignmentRepository, LeadAssignmentRepository>();
         var app = builder.Build();
+        app.UseMiddleware<LicenseMiddleware>();
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -276,6 +280,34 @@ public sealed class ConsultationTests : IAsyncLifetime
         return app;
     }
     private static string Address(WebApplication app) => app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+
+    private sealed class TestLicenseAccess : ILicenseAccess
+    {
+        public bool IsValid { get; set; }
+        public LicenseValidationResult Status => IsValid
+            ? LicenseValidationResult.Valid(DateTimeOffset.UtcNow.AddHours(1))
+            : LicenseValidationResult.Invalid("license_disabled");
+        public void EnsureAllowed()
+        {
+            if (!IsValid) throw new LicenseUnavailableException("license_disabled");
+        }
+    }
+
+    [Fact]
+    public async Task DisabledLicenseBlocksWebsiteInsertAndReactivationRestoresAccess()
+    {
+        await using var app = await StartHttpApp(licenseValid: false);
+        using var client = new HttpClient { BaseAddress = new Uri(Address(app)) };
+        Assert.Equal(HttpStatusCode.ServiceUnavailable,
+            (await client.PostAsJsonAsync("/api/consultation-requests", Request())).StatusCode);
+        await using var db = Db();
+        Assert.Empty(await db.LeadAssignments.ToListAsync());
+
+        ((TestLicenseAccess)app.Services.GetRequiredService<ILicenseAccess>()).IsValid = true;
+        Assert.Equal(HttpStatusCode.OK,
+            (await client.PostAsJsonAsync("/api/consultation-requests", Request())).StatusCode);
+        Assert.Equal(1, await db.LeadAssignments.CountAsync());
+    }
 
     [Fact]
     public async Task PublicHttpEndpointCommitsAndRateLimits()

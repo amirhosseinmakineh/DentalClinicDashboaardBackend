@@ -1,4 +1,5 @@
-﻿using DentalDashboard.ApplicationService.Contract.IServices;
+using DentalDashboard.Framwork.Licensing;
+using DentalDashboard.ApplicationService.Contract.IServices;
 
 namespace DentalDashboard.BackgroundServices;
 
@@ -23,6 +24,12 @@ public class AddLeadBackgroundService : BackgroundService
             try
             {
                 using var scope = scopeFactory.CreateScope();
+                if (!scope.ServiceProvider.GetRequiredService<ILicenseAccess>().Status.IsValid)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                    continue;
+                }
+
 
                 var leadService =
                     scope.ServiceProvider

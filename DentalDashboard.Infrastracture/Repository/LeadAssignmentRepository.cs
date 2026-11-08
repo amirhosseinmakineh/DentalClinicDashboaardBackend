@@ -96,7 +96,7 @@ namespace DentalDashboard.Infrastracture.Repository
             var query = GetAll().Where(x => !x.IsDeleted && x.AssignmentType == LeadAssignmentType.RealTime && x.ConsultantProfileId == null && x.ReportSubmittedAt == null && x.LeadAssignmentState == LeadAssignmentState.New && !x.PickUp && !context.LeadAssignments.Any(previous => previous.Id != x.Id && previous.PhoneNumber == x.PhoneNumber && previous.ReportSubmittedAt != null));
             if (sourceType.HasValue)
                 query = sourceType.Value == LeadSourceType.Yektanet
-                    ? query.Where(x => x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.Website)
+                    ? query.Where(x => x.SourceType == LeadSourceType.Yektanet || x.SourceType == LeadSourceType.Website || x.SourceType == LeadSourceType.SmsPanel)
                     : query.Where(x => x.SourceType == sourceType.Value);
 
             var lead = await query.Where(x => x.NotificationSent).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).FirstOrDefaultAsync()

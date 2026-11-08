@@ -1,10 +1,11 @@
-﻿using DentalDashboard.Domain.Enums;
+using DentalDashboard.Domain.Enums;
 
 namespace DentalDashboard.ApplicationService.Contract.Responses.LeadResponse
 {
     public record LeadsAssignmentItemsResponse : BaseResponse<long>
     {
         public long LeadAssignmentId => Id;
+        public LeadSourceType SourceType { get; set; }
         public string UserName { get; set; } = default!;
         public string FullName => UserName;
         public string PhoneNumber { get; set; } = default!;

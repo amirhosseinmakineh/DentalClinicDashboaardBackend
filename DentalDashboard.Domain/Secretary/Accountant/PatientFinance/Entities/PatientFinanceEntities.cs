@@ -19,6 +19,7 @@ public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
   public decimal? GuaranteeAmount { get; set; }
   public string? GuaranteeChequeRegistration { get; set; }
   public string? Notes { get; set; }
+  public string? OpgImageUrl { get; set; }
   public string? ConsultantName { get; set; }
   public string? ReviewItems { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }

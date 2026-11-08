@@ -30,6 +30,7 @@ public sealed class CreatePatientFinancialCaseCommand
   public string? InstallmentStatus { get; set; }
   public string? GuaranteeDocument { get; set; }
   public string? Notes { get; set; }
+  public string? OpgImageUrl { get; set; }
   public string? ConsultantName { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
   public List<CreatePatientChequeDto>? Cheques { get; set; }
@@ -52,6 +53,7 @@ public sealed class UpdatePatientFinancialCaseCommand
   public string? InstallmentStatus { get; set; }
   public string? GuaranteeDocument { get; set; }
   public string? Notes { get; set; }
+  public string? OpgImageUrl { get; set; }
   public string? ConsultantName { get; set; }
   public PatientFinancialAgreementType AgreementType { get; set; }
 }

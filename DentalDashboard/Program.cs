@@ -15,6 +15,7 @@ using System.Text;
 using DentalDashboard.Hubs;
 using DentalDashboard.LeadManagement.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using DentalDashboard.Controllers;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +39,7 @@ if (string.IsNullOrWhiteSpace(configuredConnection) ||
 builder.Services.AddClinicLicensing(builder.Configuration, builder.Environment);
 
 builder.Services.AddControllers();
+builder.Services.AddConsultationRateLimiting();
 builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -123,11 +125,13 @@ builder.Services.AddCors(options =>
             "https://stage.drsaeedmoghadam.com"
         };
 
+        allowedOrigins.Add("https://localhost");
+
         if (builder.Environment.IsDevelopment())
             allowedOrigins.Add("http://localhost:4200");
 
         policy
-            .WithOrigins(allowedOrigins.ToArray())
+            .WithOrigins(allowedOrigins.Distinct(StringComparer.OrdinalIgnoreCase).ToArray())
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -263,7 +267,9 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
+
 
 app.UseMiddleware<DentalDashboard.Middleware.LastSeenTrackingMiddleware>();
 

@@ -137,6 +137,7 @@ public sealed class CreatePatientFinancialCaseCommandHandler(
       InstallmentStatus = c.InstallmentStatus,
       GuaranteeDocument = c.GuaranteeDocument,
       Notes = c.Notes,
+      OpgImageUrl = c.OpgImageUrl,
       ConsultantName = c.ConsultantName,
       ToothUnitCount = c.ServiceUnitCounts!.Values.Sum(),
       ServiceUnitCountsJson = ServiceUnitCountRules.Serialize(
@@ -258,6 +259,7 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
     x.InstallmentStatus = c.InstallmentStatus;
     x.GuaranteeDocument = c.GuaranteeDocument;
     x.Notes = c.Notes;
+    x.OpgImageUrl = c.OpgImageUrl;
     x.ConsultantName = c.ConsultantName;
     x.ToothUnitCount = c.ServiceUnitCounts!.Values.Sum();
     x.Status = c.PrePaymentAmount + c.DepositAmount + paid >= c.TotalAmount

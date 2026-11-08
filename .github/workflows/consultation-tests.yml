@@ -1,0 +1,36 @@
+name: Consultation SQL integration tests
+on:
+  push:
+    branches: [feature/website-lead-operational-transfer-20261027, fix/website-lead-no-extra-columns]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: read
+jobs:
+  sql-tests:
+    runs-on: ubuntu-latest
+    services:
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Consultation_CI_Only_4829!
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Consultation_CI_Only_4829!' -C -Q 'SELECT 1'"
+          --health-interval=10s --health-timeout=5s --health-retries=15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      # Disposable service-container credentials; never a production connection.
+      CONSULTATION_TEST_SQL: 'Server=localhost,1433;User Id=sa;Password=Consultation_CI_Only_4829!;TrustServerCertificate=true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-private-framework
+        id: framework
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: dotnet restore DentalDashboard.slnx --configfile "${{ steps.framework.outputs.config-file }}"
+      - run: dotnet build DentalDashboard.slnx --configuration Release --no-restore
+      - run: dotnet test DentalDashboard.slnx --configuration Release --no-build --no-restore --logger 'console;verbosity=normal'

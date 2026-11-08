@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Data;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
@@ -63,6 +64,7 @@ public sealed class AdminLeadSheetService(DentalContext db) : IAdminLeadSheetSer
         {
             try
             {
+                await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
                 var alreadyExists = await db.LeadAssignments.AnyAsync(x => x.PhoneNumber == row.PhoneNumber && !x.IsDeleted, cancellationToken);
                 if (!alreadyExists)
                 {
@@ -82,6 +84,8 @@ public sealed class AdminLeadSheetService(DentalContext db) : IAdminLeadSheetSer
                 }
                 row.ProcessingStatus = 1;
                 row.ProcessedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
             }
             catch (Exception exception)
             {

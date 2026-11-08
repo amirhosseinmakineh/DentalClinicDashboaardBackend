@@ -1,20 +1,23 @@
-# WebOne inbound SMS leads
+# WebOne incoming SMS webhook
 
-Webhook endpoint:
+Configure the following URL in the WebOne panel's **لینک وب هوک** field:
 
-```http
-GET /api/sms/webone/receive?key=YOUR_SECRET&text=5&from=09123456789&to=YOUR_LINE
+```text
+https://YOUR_BACKEND_DOMAIN/api/sms/webone/receive
 ```
 
-Configure on the backend host:
+WebOne sends an HTTP GET request with exactly the documented query parameters:
 
-- `WebOneSms__WebhookSecret` (required): a strong random value kept out of source control.
-- `WebOneSms__DedicatedLine` (optional): the exact recipient number from WebOne's `to` parameter. If set, other recipient numbers are ignored.
+```http
+GET /api/sms/webone/receive?text=5&from=09123456789&to=10002
+```
 
-The WebOne panel must preserve the configured URL's existing `key` query parameter when appending `text`, `from`, and `to`. Verify this with a live webhook test before enabling. Without the key, requests are rejected (401); without server configuration, the endpoint returns 503.
+No `key` or `WebhookSecret` is required. The `text` parameter is the SMS body, `from` is the sender phone, and `to` is the recipient line.
 
-Messages equal to 5 (ASCII, Persian or Arabic-Indic digits) after trimming create a real-time lead with source `SmsPanel = 5`, name `پنل پیامکی(5)`, and normalized Iranian mobile number. Duplicate phone numbers are not inserted. Invalid text/phone/recipient return HTTP 200 without insertion. Database errors return HTTP 503.
+Optional backend environment variable: `WebOneSms__DedicatedLine=10002`. If set, messages received on other lines are ignored; if not set, all recipient lines are eligible.
 
-The existing `consultation` rate-limiting policy is applied. Ensure HTTPS and redact the `key` query value from reverse-proxy and application access logs. The `to` field is not an authentication mechanism.
+Only a message equal to 5 (ASCII, Persian, or Arabic-Indic digits, with surrounding whitespace ignored) from a valid Iranian mobile phone creates a lead. Leads use `SmsPanel = 5`, `RealTime`, `RequiresThreeMinuteCall = true`, and `New`. Existing phone numbers are not inserted again. Other messages and invalid phones return HTTP 200 without insertion; database failures return HTTP 503.
 
-Before rollout: verify that the existing lead dispatch process accepts source 5, that the frontend displays it correctly, and that any SQL CHECK constraint on `LeadAssignments.SourceType` permits 5. A real inbound SMS test and successful builds are still required.
+The existing consultation rate limiter is applied. The WebOne documentation does not specify authentication or request signing; therefore this endpoint cannot authenticate WebOne as the sender. Use HTTPS and consider provider IP allowlisting only if WebOne supplies authoritative IP ranges. Checking the `to` value does not authenticate a request.
+
+Before deployment, verify the lead-dispatch path and frontend handling of source 5, any SQL CHECK constraint, and successful build and live WebOne delivery.

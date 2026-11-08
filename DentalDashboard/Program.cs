@@ -263,7 +263,6 @@ app.UseCors("FrontendCors");
 
 app.UseAuthentication();
 app.UseRateLimiter();
-app.UseAuthorization();
 
 
 app.UseMiddleware<DentalDashboard.Middleware.LastSeenTrackingMiddleware>();
@@ -274,6 +273,7 @@ if (app.Environment.IsDevelopment())
 
     app.UseSwaggerUI();
 }
+app.UseAuthorization();
 
 
 

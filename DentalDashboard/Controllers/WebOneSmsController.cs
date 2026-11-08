@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.RegularExpressions;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IRepositories;
@@ -25,19 +23,8 @@ public sealed class WebOneSmsController(
         [FromQuery(Name = "text")] string? text,
         [FromQuery(Name = "from")] string? sender,
         [FromQuery(Name = "to")] string? receiver,
-        [FromQuery(Name = "key")] string? key,
         CancellationToken cancellationToken)
     {
-        var secret = configuration["WebOneSms:WebhookSecret"];
-        if (string.IsNullOrWhiteSpace(secret))
-            return StatusCode(StatusCodes.Status503ServiceUnavailable);
-
-        if (string.IsNullOrWhiteSpace(key) ||
-            !CryptographicOperations.FixedTimeEquals(
-                SHA256.HashData(Encoding.UTF8.GetBytes(key)),
-                SHA256.HashData(Encoding.UTF8.GetBytes(secret))))
-            return Unauthorized();
-
         var dedicatedLine = configuration["WebOneSms:DedicatedLine"];
         if (!string.IsNullOrWhiteSpace(dedicatedLine) &&
             !string.Equals(receiver?.Trim(), dedicatedLine.Trim(), StringComparison.Ordinal))

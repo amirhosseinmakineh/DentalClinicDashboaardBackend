@@ -4,7 +4,6 @@ using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Controllers;
@@ -18,7 +17,6 @@ public sealed class WebOneSmsController(
     ILogger<WebOneSmsController> logger) : ControllerBase
 {
     [HttpGet("receive")]
-    [EnableRateLimiting("consultation")]
     public async Task<IActionResult> Receive(
         [FromQuery(Name = "text")] string? text,
         [FromQuery(Name = "from")] string? sender,

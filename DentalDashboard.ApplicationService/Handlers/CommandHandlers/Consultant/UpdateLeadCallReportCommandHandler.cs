@@ -67,6 +67,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
                 return Result<SubmitLeadCallReportResponse>.Failure("توضیحات گزارش الزامی است");
             }
 
+            if (!string.IsNullOrWhiteSpace(command.UserName))
+                lead.UserName = command.UserName.Trim();
+
             lead.CallResult = command.CallResult;
             lead.ReportDescription = command.ReportDescription;
             lead.PatientCity = command.PatientCity?.Trim();

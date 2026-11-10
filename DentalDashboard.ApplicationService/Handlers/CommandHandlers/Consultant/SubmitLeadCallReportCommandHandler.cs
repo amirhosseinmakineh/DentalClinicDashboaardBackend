@@ -92,6 +92,9 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             }
 
             var now = DateTime.Now;
+            if (!string.IsNullOrWhiteSpace(command.UserName))
+                lead.UserName = command.UserName.Trim();
+
             lead.CallResult = command.CallResult;
             lead.ReportDescription = command.ReportDescription;
             lead.PatientCity = command.PatientCity?.Trim();

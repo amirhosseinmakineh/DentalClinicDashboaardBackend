@@ -122,13 +122,8 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
                 if (matchingUsers.Count > 1)
                     return Result<CreateReservationResponse>.Failure("چند کاربر با این شماره موبایل ثبت شده‌اند؛ بررسی اطلاعات بیمار ضروری است");
 
-                if (matchingUsers.Count == 1)
-                {
-                    if (!matchingUsers[0].HasPatientProfile)
-                        return Result<CreateReservationResponse>.Failure("این شماره موبایل قبلاً ثبت شده، اما پرونده بیمار ندارد");
-
+                if (matchingUsers.Count == 1 && matchingUsers[0].HasPatientProfile)
                     patientUserId = matchingUsers[0].Id;
-                }
             }
 
             var reservation = new Domain.Models.Reservation

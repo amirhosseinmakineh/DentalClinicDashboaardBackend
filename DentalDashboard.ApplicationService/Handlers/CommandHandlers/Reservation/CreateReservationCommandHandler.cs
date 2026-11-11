@@ -17,12 +17,14 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
         private readonly IReservationRepository reservationRepository;
         private readonly ILeadAssignmentRepository leadAssignmentRepository;
         private readonly IConsultantProfileRepository consultantProfileRepository;
+        private readonly IUserRepository userRepository;
 
-        public CreateReservationCommandHandler(IReservationRepository reservationRepository, ILeadAssignmentRepository leadAssignmentRepository, IConsultantProfileRepository consultantProfileRepository)
+        public CreateReservationCommandHandler(IReservationRepository reservationRepository, ILeadAssignmentRepository leadAssignmentRepository, IConsultantProfileRepository consultantProfileRepository, IUserRepository userRepository)
         {
             this.reservationRepository = reservationRepository;
             this.leadAssignmentRepository = leadAssignmentRepository;
             this.consultantProfileRepository = consultantProfileRepository;
+            this.userRepository = userRepository;
         }
 
         public async Task<Result<CreateReservationResponse>> HandleAsync(CreateReservationCommand command, CancellationToken cancellationToken = default)
@@ -100,10 +102,40 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (sameTimeCount >= MaxReservationsPerConsultantAtSameTime)
                 return Result<CreateReservationResponse>.Failure("ظرفیت این بازه زمانی برای مشاور تکمیل است");
 
+            // Reuse an existing patient file instead of requiring a duplicate registration.
+            // A matching user without a patient profile must not be treated as a patient.
+            Guid? patientUserId = null;
+            var phoneNumber = lead.PhoneNumber?.Trim();
+            if (!string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                var matchingUsers = await userRepository.GetAll()
+                    .AsNoTracking()
+                    .Where(x => !x.IsDeleted && x.PhoneNumber == phoneNumber)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        HasPatientProfile = x.PatientProfile != null
+                    })
+                    .Take(2)
+                    .ToListAsync(cancellationToken);
+
+                if (matchingUsers.Count > 1)
+                    return Result<CreateReservationResponse>.Failure("چند کاربر با این شماره موبایل ثبت شده‌اند؛ بررسی اطلاعات بیمار ضروری است");
+
+                if (matchingUsers.Count == 1)
+                {
+                    if (!matchingUsers[0].HasPatientProfile)
+                        return Result<CreateReservationResponse>.Failure("این شماره موبایل قبلاً ثبت شده، اما پرونده بیمار ندارد");
+
+                    patientUserId = matchingUsers[0].Id;
+                }
+            }
+
             var reservation = new Domain.Models.Reservation
             {
                 LeadAssignmentId = lead.Id,
                 ConsultantProfileId = command.ConsultantProfileId,
+                PatientUserId = patientUserId,
                 OwnerType = command.OwnerType ?? ReservationOwnerType.Consultant,
                 OwnerUserId = command.OwnerUserId,
                 ReservationAt = appointmentDateTime,

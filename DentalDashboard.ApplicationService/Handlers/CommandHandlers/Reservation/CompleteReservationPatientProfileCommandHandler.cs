@@ -56,27 +56,43 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             if (reservation.LeadAssignment.PhoneNumber != phoneNumber)
                 return Result<CompleteReservationPatientProfileResponse>.Failure("شماره موبایل بیمار باید با شماره لید رزرو شده یکسان باشد");
 
-            if (await userRepository.ExistsAsync(x => x.PhoneNumber == phoneNumber))
-                return Result<CompleteReservationPatientProfileResponse>.Failure("کاربری با این شماره موبایل قبلاً ثبت شده است");
+            var matchingUsers = await userRepository.GetAll()
+                .Where(x => !x.IsDeleted && x.PhoneNumber == phoneNumber)
+                .Take(2)
+                .ToListAsync(cancellationToken);
+
+            if (matchingUsers.Count > 1)
+                return Result<CompleteReservationPatientProfileResponse>.Failure("چند کاربر با این شماره موبایل ثبت شده‌اند؛ بررسی اطلاعات بیمار ضروری است");
+
+            var existingUser = matchingUsers.SingleOrDefault();
+            if (existingUser != null &&
+                await patientProfileRepository.GetAll().AnyAsync(x => x.UserId == existingUser.Id && !x.IsDeleted, cancellationToken))
+                return Result<CompleteReservationPatientProfileResponse>.Failure("برای این شماره موبایل قبلاً پرونده بیمار تشکیل شده است");
 
             await unitOfWork.BeginTransactionAsync();
             try
             {
-                var user = new Domain.Models.User
+                // Keep existing account credentials and identity intact.
+                var user = existingUser;
+                if (user == null)
                 {
-                    Id = Guid.NewGuid(),
-                    FirstName = command.FirstName.Trim(),
-                    LastName = command.LastName.Trim(),
-                    PhoneNumber = phoneNumber,
-                    PasswordHash = PasswordHasher.HashPassword(command.PasswordHash),
-                    BirthDate = command.BirthDate,
-                    Gender = command.Gender,
-                    AvatarImageName = command.AvatarImageName,
-                    IsActive = true,
-                    IsCompleteProfile = true
-                };
+                    user = new Domain.Models.User
+                    {
+                        Id = Guid.NewGuid(),
+                        FirstName = command.FirstName.Trim(),
+                        LastName = command.LastName.Trim(),
+                        PhoneNumber = phoneNumber,
+                        PasswordHash = PasswordHasher.HashPassword(command.PasswordHash),
+                        BirthDate = command.BirthDate,
+                        Gender = command.Gender,
+                        AvatarImageName = command.AvatarImageName,
+                        IsActive = true,
+                        IsCompleteProfile = true
+                    };
 
-                await userRepository.AddAsync(user);
+                    await userRepository.AddAsync(user);
+                }
+
                 await roleService.AddRoleToUser(user.Id, PatientRoleName);
 
                 var patientProfile = new PatientProfile

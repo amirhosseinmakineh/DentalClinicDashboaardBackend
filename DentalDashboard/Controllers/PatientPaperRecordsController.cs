@@ -25,7 +25,7 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
         var record = await db.PatientPaperRecords.AsNoTracking()
             .SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
         if (record is null)
-            return Ok(new PatientPaperRecordRequest(new PatientPaperIntake(), [], new JsonElement()));
+            return Ok(new PatientPaperRecordRequest(new PatientPaperIntake(), [], JsonDocument.Parse("{}").RootElement.Clone()));
 
         return Ok(new PatientPaperRecordRequest(
             JsonSerializer.Deserialize<PatientPaperIntake>(record.IntakeJson) ?? new(),

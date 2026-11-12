@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.Json;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
@@ -16,10 +17,26 @@ namespace DentalDashboard.Controllers;
 [Route("api/secretary/patient-files/{patientFileId:long}/paper-record")]
 public sealed class PatientPaperRecordsController(DentalContext db) : ControllerBase
 {
+    private bool TryGetScope(out Guid? secretaryId, out bool isAdmin)
+    {
+        isAdmin = User.IsInRole("Admin");
+        secretaryId = null;
+        if (isAdmin) return true;
+
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                    User.FindFirstValue("userId") ??
+                    User.FindFirstValue("Id");
+        if (!Guid.TryParse(claim, out var userId)) return false;
+
+        secretaryId = userId;
+        return true;
+    }
+
     [HttpGet]
     public async Task<IActionResult> Get(long patientFileId, CancellationToken ct)
     {
-        if (!await db.PatientFiles.AsNoTracking().AnyAsync(x => x.Id == patientFileId, ct))
+        if (!TryGetScope(out var secretaryId, out var isAdmin)) return Unauthorized();
+        if (!await db.PatientFiles.AsNoTracking().AnyAsync(x => x.Id == patientFileId && (isAdmin || x.SecretaryUserId == secretaryId), ct))
             return NotFound(new { message = "پرونده بیمار یافت نشد" });
 
         var record = await db.PatientPaperRecords.AsNoTracking()

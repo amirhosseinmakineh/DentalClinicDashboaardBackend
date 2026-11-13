@@ -109,7 +109,8 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
             (request.ConsultationCompleted.HasValue && request.ConsultationCompleted != workflow.ConsultationCompleted))
             workflow.ClearApproval();
         if (workflow.TreatmentConfirmedAtUtc.HasValue &&
-            (record.TreatmentsJson != treatmentsJson || record.DentalChartJson != chartJson || intakeJson != record.IntakeJson))
+            (record.TreatmentsJson != treatmentsJson || record.DentalChartJson != chartJson || intakeJson != record.IntakeJson ||
+             request.ConsultationCompleted == false))
             return Conflict(new { message = "طرح درمان تأیید شده است؛ برای تغییر آن ابتدا باید تأییدهای بعدی بازبینی شوند." });
         if (request.ConsultationCompleted.HasValue)
         {

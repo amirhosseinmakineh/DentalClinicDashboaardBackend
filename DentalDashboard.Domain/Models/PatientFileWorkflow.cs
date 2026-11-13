@@ -12,6 +12,12 @@ public sealed class PatientFileWorkflow
     public long PatientFileId { get; set; }
     public PatientFile PatientFile { get; set; } = default!;
     public bool ConsultationCompleted { get; set; }
+    public DateTime? TreatmentConfirmedAtUtc { get; set; }
+    public Guid? TreatmentConfirmedByUserId { get; set; }
+    public DateTime? FinanceConfirmedAtUtc { get; set; }
+    public Guid? FinanceConfirmedByUserId { get; set; }
+    public DateTime? ProfileConfirmedAtUtc { get; set; }
+    public Guid? ProfileConfirmedByUserId { get; set; }
     public Guid? FinancialCaseId { get; set; }
     public PatientFinancialCase? FinancialCase { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
@@ -30,7 +36,7 @@ public static class PatientFileWorkflowRules
 {
     public static bool CanApprove(PatientFileWorkflow? workflow)
     {
-        if (workflow?.ConsultationCompleted != true || !HasFinance(workflow)) return false;
+        if (workflow?.ConsultationCompleted != true || workflow.TreatmentConfirmedAtUtc is null || workflow.FinanceConfirmedAtUtc is null || workflow.ProfileConfirmedAtUtc is null || !HasFinance(workflow)) return false;
         var c = workflow.FinancialCase!;
         var paid = c.PrePaymentAmount + c.DepositAmount + c.Transactions.Where(x => !x.IsDeleted).Sum(x => x.Amount);
         var pending = c.Cheques.Where(x => !x.IsDeleted && !x.IsGuarantee && x.Status == PatientChequeStatus.Pending).Sum(x => x.Amount) +

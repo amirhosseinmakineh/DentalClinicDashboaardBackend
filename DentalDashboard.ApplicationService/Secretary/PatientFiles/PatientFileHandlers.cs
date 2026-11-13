@@ -166,6 +166,10 @@ internal static class PatientFileFinanceLoader
             var approved = PatientFileWorkflowRules.IsApproved(workflow);
             return file with {
                 ConsultationCompleted = workflow?.ConsultationCompleted ?? false,
+                TreatmentConfirmedAtUtc = workflow?.TreatmentConfirmedAtUtc,
+                FinanceConfirmedAtUtc = workflow?.FinanceConfirmedAtUtc,
+                ProfileConfirmedAtUtc = workflow?.ProfileConfirmedAtUtc,
+                WorkflowStage = approved ? "ReadyForTreatment" : workflow?.ProfileConfirmedAtUtc != null ? "ProfileConfirmed" : workflow?.FinanceConfirmedAtUtc != null ? "FinanceConfirmed" : PatientFileWorkflowRules.HasFinance(workflow) ? "FinanceRegistered" : workflow?.TreatmentConfirmedAtUtc != null ? "TreatmentConfirmed" : "FileCreated",
                 CompletionFinancialCaseId = workflow?.FinancialCaseId,
                 FinanceCompleted = PatientFileWorkflowRules.HasFinance(workflow),
                 ServiceApproved = approved,

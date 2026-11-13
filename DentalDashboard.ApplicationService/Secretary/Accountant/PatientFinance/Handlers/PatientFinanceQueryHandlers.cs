@@ -91,73 +91,114 @@ public sealed class GetPatientFinancialCasesQueryHandler(
 
         var totalCount = await financialCasesQuery.CountAsync(cancellationToken);
 
-        var projectedItems = await financialCasesQuery
-            .OrderByDescending(financialCase => financialCase.CreatedAt)
-            .ThenByDescending(financialCase => financialCase.Id)
+        // Page first: avoid correlated subqueries and repeated aggregates per row.
+        var pageRows = await financialCasesQuery
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .Select(financialCase => new PatientFinancialCaseDto(
-                financialCase.Id,
-                financialCase.PatientId,
-                financialCase.Patient.Id,
-                (financialCase.Patient.FirstName + " " + financialCase.Patient.LastName).Trim(),
-                patientFinanceRepository.PatientFiles
-                    .Where(patientFile =>
-                        patientFile.PhoneNumber == financialCase.Patient.PhoneNumber)
-                    .Select(patientFile => patientFile.FileNumber.ToString())
-                    .FirstOrDefault() ?? "",
-                financialCase.Patient.PhoneNumber,
-                financialCase.Services.Select(s => (int)s).ToList(),
-                financialCase.Services.Select(s =>
-                    s == DentalDashboard.Domain.Enums.DentalServiceType.Composite ? "کامپوزیت" :
-                    s == DentalDashboard.Domain.Enums.DentalServiceType.Implant ? "ایمپلنت" :
-                    s == DentalDashboard.Domain.Enums.DentalServiceType.Laminate ? "لمینت" :
-                    s == DentalDashboard.Domain.Enums.DentalServiceType.Crown ? "روکش" :
-                    s == DentalDashboard.Domain.Enums.DentalServiceType.RootCanal ? "عصب کشی" :
-                    s == DentalDashboard.Domain.Enums.DentalServiceType.Filling ? "ترمیم" :
-                    s == DentalDashboard.Domain.Enums.DentalServiceType.ToothExtraction ? "کشیدن دندان" :
-                    s.ToString()).ToList(),
-                financialCase.TotalAmount,
-                financialCase.PrePaymentAmount,
-                financialCase.DepositAmount,
-                financialCase.PrePaymentAmount + financialCase.DepositAmount +
-                (financialCase.Transactions
-                    .Where(transaction =>
-                        transaction.Type == PatientFinancialTransactionType.Payment)
-                    .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
-                Math.Max(
-                    financialCase.TotalAmount -
-                    financialCase.PrePaymentAmount -
-                    financialCase.DepositAmount -
-                    (financialCase.Transactions
-                        .Where(transaction =>
-                            transaction.Type == PatientFinancialTransactionType.Payment)
-                        .Sum(transaction => (decimal?)transaction.Amount) ?? 0),
-                    0),
-                financialCase.Debts
-                    .Where(debt => debt.Status == PatientDebtStatus.Unpaid)
-                    .Sum(debt => (decimal?)debt.Amount) ?? 0,
-                financialCase.AgreementType,
-                financialCase.Status,
-                financialCase.CreatedAt) { BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment).Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, OpgImageUrl = financialCase.OpgImageUrl, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ToothUnitCount = financialCase.ToothUnitCount, ServiceUnitCountsJson = financialCase.ServiceUnitCountsJson })
-            .ToListAsync(cancellationToken);
-        var caseIds = projectedItems.Select(item => item.Id).ToArray();
-        var cheques = await patientFinanceRepository.Cheques.AsNoTracking()
-            .Where(cheque => caseIds.Contains(cheque.PatientFinancialCaseId) &&
-                cheque.Status != PatientChequeStatus.Cancelled)
-            .OrderBy(cheque => cheque.DueDate)
-            .ThenBy(cheque => cheque.Id)
-            .Select(cheque => new { cheque.PatientFinancialCaseId, cheque.DueDate, cheque.SayadNumber })
-            .ToListAsync(cancellationToken);
-        var chequesByCase = cheques.GroupBy(cheque => cheque.PatientFinancialCaseId)
-            .ToDictionary(group => group.Key, group => group.ToList());
-        var items = projectedItems.Select(item => chequesByCase.TryGetValue(item.Id, out var rows)
-            ? item with
+            .Select(x => new
             {
-                ChequeDates = rows.Select(row => row.DueDate).ToArray(),
-                ChequeRegistrations = rows.Select(row => row.SayadNumber).ToArray()
-            }
-            : item).ToList();
+                x.Id,
+                x.PatientId,
+                PatientName = x.Patient.FirstName + " " + x.Patient.LastName,
+                PhoneNumber = x.Patient.PhoneNumber,
+                x.Services,
+                x.TotalAmount,
+                x.PrePaymentAmount,
+                x.DepositAmount,
+                x.AgreementType,
+                x.Status,
+                x.CreatedAt,
+                x.PaymentMethod,
+                x.InstallmentStatus,
+                x.GuaranteeDocument,
+                x.OpgImageUrl,
+                x.Notes,
+                x.ConsultantName,
+                x.ToothUnitCount,
+                x.ServiceUnitCountsJson
+            })
+            .ToListAsync(cancellationToken);
+
+        var caseIds = pageRows.Select(x => x.Id).ToArray();
+        var phoneNumbers = pageRows.Select(x => x.PhoneNumber).Distinct().ToArray();
+
+        // One grouped query per financial aggregate, only for the current page.
+        var paymentRows = await patientFinanceRepository.Transactions.AsNoTracking()
+            .Where(x => caseIds.Contains(x.PatientFinancialCaseId) &&
+                        x.Type == PatientFinancialTransactionType.Payment)
+            .GroupBy(x => x.PatientFinancialCaseId)
+            .Select(g => new { Id = g.Key, Amount = g.Sum(x => x.Amount) })
+            .ToListAsync(cancellationToken);
+        var payments = paymentRows.ToDictionary(x => x.Id, x => x.Amount);
+
+        var debtRows = await patientFinanceRepository.Debts.AsNoTracking()
+            .Where(x => caseIds.Contains(x.PatientFinancialCaseId) &&
+                        x.Status == PatientDebtStatus.Unpaid)
+            .GroupBy(x => x.PatientFinancialCaseId)
+            .Select(g => new { Id = g.Key, Amount = g.Sum(x => x.Amount) })
+            .ToListAsync(cancellationToken);
+        var debts = debtRows.ToDictionary(x => x.Id, x => x.Amount);
+
+        // Resolve file numbers once, instead of a correlated lookup for every case.
+        var fileRows = await patientFinanceRepository.PatientFiles.AsNoTracking()
+            .Where(x => phoneNumbers.Contains(x.PhoneNumber))
+            .OrderBy(x => x.FileNumber)
+            .Select(x => new { x.PhoneNumber, x.FileNumber })
+            .ToListAsync(cancellationToken);
+        var fileNumbers = fileRows.GroupBy(x => x.PhoneNumber)
+            .ToDictionary(g => g.Key, g => g.First().FileNumber.ToString());
+
+        var cheques = await patientFinanceRepository.Cheques.AsNoTracking()
+            .Where(x => caseIds.Contains(x.PatientFinancialCaseId) &&
+                        x.Status != PatientChequeStatus.Cancelled)
+            .OrderBy(x => x.DueDate)
+            .ThenBy(x => x.Id)
+            .Select(x => new { x.PatientFinancialCaseId, x.DueDate, x.SayadNumber })
+            .ToListAsync(cancellationToken);
+        var chequesByCase = cheques.ToLookup(x => x.PatientFinancialCaseId);
+
+        var items = pageRows.Select(x =>
+        {
+            var services = x.Services ?? [];
+            var serviceIds = services.Select(service => (int)service).ToList();
+            var serviceNames = services.Select(service =>
+                service == DentalDashboard.Domain.Enums.DentalServiceType.Composite ? "کامپوزیت" :
+                service == DentalDashboard.Domain.Enums.DentalServiceType.Implant ? "ایمپلنت" :
+                service == DentalDashboard.Domain.Enums.DentalServiceType.Laminate ? "لمینت" :
+                service == DentalDashboard.Domain.Enums.DentalServiceType.Crown ? "روکش" :
+                service == DentalDashboard.Domain.Enums.DentalServiceType.RootCanal ? "عصب کشی" :
+                service == DentalDashboard.Domain.Enums.DentalServiceType.Filling ? "ترمیم" :
+                service == DentalDashboard.Domain.Enums.DentalServiceType.ToothExtraction ? "کشیدن دندان" :
+                service.ToString()).ToList();
+            var paid = x.PrePaymentAmount + x.DepositAmount +
+                       payments.GetValueOrDefault(x.Id);
+            var balance = x.TotalAmount - paid;
+            var caseCheques = chequesByCase[x.Id].ToList();
+            return new PatientFinancialCaseDto(
+                x.Id, x.PatientId, x.PatientId,
+                x.PatientName.Trim(),
+                fileNumbers.GetValueOrDefault(x.PhoneNumber) ?? "",
+                x.PhoneNumber, serviceIds, serviceNames,
+                x.TotalAmount, x.PrePaymentAmount, x.DepositAmount,
+                paid, Math.Max(balance, 0),
+                debts.GetValueOrDefault(x.Id),
+                x.AgreementType, x.Status, x.CreatedAt)
+            {
+                BalanceAmount = balance,
+                PaymentMethod = x.PaymentMethod,
+                InstallmentStatus = x.InstallmentStatus,
+                GuaranteeDocument = x.GuaranteeDocument,
+                OpgImageUrl = x.OpgImageUrl,
+                Notes = x.Notes,
+                ConsultantName = x.ConsultantName,
+                ToothUnitCount = x.ToothUnitCount,
+                ServiceUnitCountsJson = x.ServiceUnitCountsJson,
+                ChequeDates = caseCheques.Select(c => c.DueDate).ToArray(),
+                ChequeRegistrations = caseCheques.Select(c => c.SayadNumber).ToArray()
+            };
+        }).ToList();
 
         return new()
         {

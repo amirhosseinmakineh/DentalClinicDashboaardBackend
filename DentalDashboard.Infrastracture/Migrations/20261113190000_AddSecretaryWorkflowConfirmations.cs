@@ -23,7 +23,10 @@ public partial class AddSecretaryWorkflowConfirmations : Migration
             migrationBuilder.CreateIndex("IX_PatientFileWorkflows_" + prefix + "ConfirmedByUserId",
                 "PatientFileWorkflows", prefix + "ConfirmedByUserId");
             migrationBuilder.AddForeignKey("FK_PatientFileWorkflows_Users_" + prefix + "ConfirmedByUserId",
-                "PatientFileWorkflows", prefix + "ConfirmedByUserId", "Users", "Id",
+                table: "PatientFileWorkflows",
+                column: prefix + "ConfirmedByUserId",
+                principalTable: "Users",
+                principalColumn: "Id",
                 onDelete: ReferentialAction.Restrict);
         }
     }

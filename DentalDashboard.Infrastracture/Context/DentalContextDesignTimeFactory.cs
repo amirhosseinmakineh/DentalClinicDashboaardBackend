@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.Extensions.Configuration;
+using System.Text.Json;
 
 namespace DentalDashboard.Infrastracture.Context;
 
-/// <summary>Uses the same configuration sources as the web application for EF design-time operations.</summary>
+/// <summary>Resolves the same DefaultConnection configured for the web application.</summary>
 public sealed class DentalContextDesignTimeFactory : IDesignTimeDbContextFactory<DentalContext>
 {
     public DentalContext CreateDbContext(string[] args)
@@ -13,24 +13,31 @@ public sealed class DentalContextDesignTimeFactory : IDesignTimeDbContextFactory
             ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
             ?? "Development";
 
-        var startupDirectory = Path.Combine(Directory.GetCurrentDirectory(), "DentalDashboard");
-        if (!File.Exists(Path.Combine(startupDirectory, "appsettings.json")))
+        var workingDirectory = Directory.GetCurrentDirectory();
+        var startupDirectory = File.Exists(Path.Combine(workingDirectory, "DentalDashboard", "appsettings.json"))
+            ? Path.Combine(workingDirectory, "DentalDashboard")
+            : workingDirectory;
+
+        string? connection = null;
+        foreach (var fileName in new[] { "appsettings.json", $"appsettings.{environment}.json" })
         {
-            startupDirectory = Directory.GetCurrentDirectory();
+            var filePath = Path.Combine(startupDirectory, fileName);
+            if (!File.Exists(filePath)) continue;
+
+            using var document = JsonDocument.Parse(File.ReadAllText(filePath));
+            if (document.RootElement.TryGetProperty("ConnectionStrings", out var connections) &&
+                connections.TryGetProperty("DefaultConnection", out var configuredConnection) &&
+                configuredConnection.ValueKind == JsonValueKind.String)
+            {
+                connection = configuredConnection.GetString();
+            }
         }
 
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(startupDirectory)
-            .AddJsonFile("appsettings.json", optional: true)
-            .AddJsonFile($"appsettings.{environment}.json", optional: true)
-            .AddEnvironmentVariables()
-            .Build();
-
-        var connection = configuration.GetConnectionString("DefaultConnection");
+        connection = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? connection;
         if (string.IsNullOrWhiteSpace(connection))
         {
             throw new InvalidOperationException(
-                "No DefaultConnection configured for EF migrations. Check the startup project's appsettings files.");
+                "DefaultConnection was not found in the startup appsettings files or environment variables.");
         }
 
         return new DentalContext(

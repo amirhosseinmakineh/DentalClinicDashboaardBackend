@@ -155,7 +155,6 @@ internal static class PatientFileFinanceLoader
 
         var fileIds = patientFiles.Select(x => x.Id).ToList();
         var workflows = await patientFileRepository.Workflows.AsNoTracking()
-            .AsSplitQuery()
             .Where(x => fileIds.Contains(x.PatientFileId))
             .Include(x => x.FinancialCase!).ThenInclude(x => x.Cheques)
             .Include(x => x.FinancialCase!).ThenInclude(x => x.PromissoryNotes)

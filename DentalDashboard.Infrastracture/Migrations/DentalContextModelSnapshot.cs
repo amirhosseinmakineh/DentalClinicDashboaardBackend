@@ -201,10 +201,6 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("OpgImageUrl")
-                        .HasMaxLength(2048)
-                        .HasColumnType("nvarchar(2048)");
-
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
@@ -480,6 +476,63 @@ namespace DentalDashboard.Infrastracture.Migrations
                         {
                             t.HasCheckConstraint("CK_PatientFiles_FileNumber_Positive", "[FileNumber] > 0");
                         });
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.PatientFileWorkflow", b =>
+                {
+                    b.Property<long>("PatientFileId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApprovedFinanceHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("ConsultationCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("FinancialCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("PatientFileId");
+
+                    b.HasIndex("ApprovedByUserId");
+
+                    b.HasIndex("FinancialCaseId")
+                        .IsUnique()
+                        .HasFilter("[FinancialCaseId] IS NOT NULL");
+
+                    b.ToTable("PatientFileWorkflows", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.PatientPaperRecord", b =>
+                {
+                    b.Property<long>("PatientFileId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("DentalChartJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IntakeJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TreatmentsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("PatientFileId");
+
+                    b.ToTable("PatientPaperRecords", (string)null);
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.PatientProfile", b =>
@@ -1488,6 +1541,10 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("OpgImageUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1951,6 +2008,40 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("PatientReference");
 
                     b.Navigation("SecretaryUser");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.PatientFileWorkflow", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
+                        .WithOne()
+                        .HasForeignKey("DentalDashboard.Domain.Models.PatientFileWorkflow", "FinancialCaseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.PatientFile", "PatientFile")
+                        .WithOne()
+                        .HasForeignKey("DentalDashboard.Domain.Models.PatientFileWorkflow", "PatientFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FinancialCase");
+
+                    b.Navigation("PatientFile");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.PatientPaperRecord", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.PatientFile", "PatientFile")
+                        .WithOne()
+                        .HasForeignKey("DentalDashboard.Domain.Models.PatientPaperRecord", "PatientFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PatientFile");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.PatientProfile", b =>

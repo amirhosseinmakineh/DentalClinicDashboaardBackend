@@ -36,23 +36,26 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
     public async Task<IActionResult> Get(long patientFileId, CancellationToken ct)
     {
         if (!TryGetScope(out var secretaryId, out var isAdmin)) return Unauthorized();
-        if (!await db.PatientFiles.AsNoTracking().AnyAsync(x => x.Id == patientFileId && (isAdmin || x.SecretaryUserId == secretaryId), ct))
+        if (!await db.PatientFiles.AsNoTracking().AnyAsync(x => x.Id == patientFileId, ct))
             return NotFound(new { message = "پرونده بیمار یافت نشد" });
 
         var record = await db.PatientPaperRecords.AsNoTracking()
             .SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
+        var completed = await db.PatientFileWorkflows.AsNoTracking()
+            .Where(x => x.PatientFileId == patientFileId).Select(x => x.ConsultationCompleted).FirstOrDefaultAsync(ct);
         if (record is null)
-            return Ok(new PatientPaperRecordRequest(new PatientPaperIntake(), [], JsonDocument.Parse("{}").RootElement.Clone()));
+            return Ok(new PatientPaperRecordRequest(new PatientPaperIntake(), [], JsonSerializer.SerializeToElement(new { }), completed));
 
         return Ok(new PatientPaperRecordRequest(
             JsonSerializer.Deserialize<PatientPaperIntake>(record.IntakeJson) ?? new(),
             JsonSerializer.Deserialize<List<PatientPaperTreatment>>(record.TreatmentsJson) ?? [],
-            JsonSerializer.Deserialize<JsonElement>(record.DentalChartJson)));
+            JsonSerializer.Deserialize<JsonElement>(record.DentalChartJson), completed));
     }
 
     [HttpPut]
     public async Task<IActionResult> Save(long patientFileId, [FromBody] PatientPaperRecordRequest request, CancellationToken ct)
     {
+        if (!TryGetScope(out _, out _)) return Unauthorized();
         if (!await db.PatientFiles.AsNoTracking().AnyAsync(x => x.Id == patientFileId, ct))
             return NotFound(new { message = "پرونده بیمار یافت نشد" });
 
@@ -63,8 +66,8 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
 
         foreach (var row in request.Treatments)
         {
-            if (row.Cost < 0 || row.PaidAmount < 0 || row.PaidAmount > row.Cost ||
-                string.IsNullOrWhiteSpace(row.DentistName) || row.DentistName.Length > 200 ||
+            if (row is null || row.Cost < 0 || row.PaidAmount < 0 || (row.PaidAmount ?? 0) > (row.Cost ?? 0) ||
+                row.DentistName?.Length > 200 ||
                 row.Description?.Length > 2000)
                 return BadRequest(new { message = "اطلاعات ردیف درمان معتبر نیست" });
         }
@@ -77,6 +80,7 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
         if (chartJson.Length > 200_000)
             return BadRequest(new { message = "حجم چارت دندان بیش از حد مجاز است" });
 
+        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
         var record = await db.PatientPaperRecords.SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
         if (record is null)
         {
@@ -84,11 +88,25 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
             db.PatientPaperRecords.Add(record);
         }
 
-        record.IntakeJson = JsonSerializer.Serialize(request.Intake);
-        record.TreatmentsJson = JsonSerializer.Serialize(request.Treatments);
+        var intakeJson = JsonSerializer.Serialize(request.Intake);
+        var treatmentsJson = JsonSerializer.Serialize(request.Treatments);
+        var workflow = await db.PatientFileWorkflows.SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
+        if (workflow is null)
+        {
+            workflow = new PatientFileWorkflow { PatientFileId = patientFileId };
+            db.PatientFileWorkflows.Add(workflow);
+        }
+        if (record.TreatmentsJson != treatmentsJson || record.DentalChartJson != chartJson ||
+            (request.ConsultationCompleted.HasValue && request.ConsultationCompleted != workflow.ConsultationCompleted))
+            workflow.ClearApproval();
+        if (request.ConsultationCompleted.HasValue)
+            workflow.ConsultationCompleted = request.ConsultationCompleted.Value;
+        record.IntakeJson = intakeJson;
+        record.TreatmentsJson = treatmentsJson;
         record.DentalChartJson = chartJson;
         record.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         return Ok(new { patientFileId, record.UpdatedAtUtc });
     }
 }
@@ -96,15 +114,16 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
 public sealed record PatientPaperRecordRequest(
     PatientPaperIntake Intake,
     List<PatientPaperTreatment> Treatments,
-    JsonElement DentalChart);
+    JsonElement DentalChart,
+    bool? ConsultationCompleted = null);
 
 public sealed record PatientPaperTreatment(
-    DateOnly TreatmentDate,
+    DateOnly? TreatmentDate,
     string? Description,
     bool HasFollowUp,
-    decimal Cost,
-    decimal PaidAmount,
-    string DentistName)
+    decimal? Cost,
+    decimal? PaidAmount,
+    string? DentistName)
 {
-    public decimal RemainingAmount => Cost - PaidAmount;
+    public decimal RemainingAmount => (Cost ?? 0) - (PaidAmount ?? 0);
 }

@@ -153,6 +153,26 @@ internal static class PatientFileFinanceLoader
         if (patientFiles.Count == 0)
             return [];
 
+        var fileIds = patientFiles.Select(x => x.Id).ToList();
+        var workflows = await patientFileRepository.Workflows.AsNoTracking()
+            .Where(x => fileIds.Contains(x.PatientFileId))
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.Cheques)
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.PromissoryNotes)
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.Transactions)
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.Debts)
+            .ToDictionaryAsync(x => x.PatientFileId, cancellationToken);
+        patientFiles = patientFiles.Select(file => {
+            workflows.TryGetValue(file.Id, out var workflow);
+            var approved = PatientFileWorkflowRules.IsApproved(workflow);
+            return file with {
+                ConsultationCompleted = workflow?.ConsultationCompleted ?? false,
+                CompletionFinancialCaseId = workflow?.FinancialCaseId,
+                FinanceCompleted = PatientFileWorkflowRules.HasFinance(workflow),
+                ServiceApproved = approved,
+                ServiceApprovedAtUtc = approved ? workflow!.ApprovedAtUtc : null
+            };
+        }).ToList();
+
         var phoneNumbers = patientFiles
             .Select(patientFile => patientFile.PhoneNumber)
             .Distinct()

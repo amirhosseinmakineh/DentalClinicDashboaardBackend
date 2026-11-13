@@ -19,6 +19,11 @@ public sealed record PatientFileDto(
     PatientFileFinanceDto? Finance)
 {
     public Guid? FinancialPatientId { get; init; }
+    public bool ConsultationCompleted { get; init; }
+    public Guid? CompletionFinancialCaseId { get; init; }
+    public bool FinanceCompleted { get; init; }
+    public bool ServiceApproved { get; init; }
+    public DateTime? ServiceApprovedAtUtc { get; init; }
 }
 
 public sealed record PatientFileFinanceDto(

@@ -565,7 +565,7 @@ public sealed class UpdatePatientChequeStatusCommandHandler(
             "ثبت نتیجه پرداخت فقط از روز سررسید امکان‌پذیر است");
       }
       if (c.Status == PatientChequeStatus.Paid) {var paid=await repo.Transactions.Where(t=>t.PatientFinancialCaseId==x.PatientFinancialCaseId).SumAsync(t=>(decimal?)t.Amount,ct)??0;
-        if (paid + x.Amount > x.FinancialCase.TotalAmount) {
+        if (paid + x.Amount + x.FinancialCase.PrePaymentAmount + x.FinancialCase.DepositAmount > x.FinancialCase.TotalAmount) {
           await uow.RollbackAsync();
           return Result<PatientFinanceIdResponse>.Failure(
               "پرداخت از مبلغ کل درمان بیشتر " +
@@ -585,7 +585,7 @@ public sealed class UpdatePatientChequeStatusCommandHandler(
                     SourceId = x.Id,
                     CreatedByUserId = c.ActorUserId },
             ct);
-        if (paid + x.Amount == x.FinancialCase.TotalAmount)
+        if (paid + x.Amount + x.FinancialCase.PrePaymentAmount + x.FinancialCase.DepositAmount == x.FinancialCase.TotalAmount)
           x.FinancialCase.Status = PatientFinancialCaseStatus.Completed;
       } else if (c.Status == PatientChequeStatus.Unpaid) {
         if (await repo.Debts.AnyAsync(d => d.SourceType ==
@@ -643,7 +643,7 @@ public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
             "ثبت نتیجه پرداخت فقط از روز سررسید امکان‌پذیر است");
       }
       if (c.Status == PatientPromissoryNoteStatus.Paid) {var paid=await repo.Transactions.Where(t=>t.PatientFinancialCaseId==x.PatientFinancialCaseId).SumAsync(t=>(decimal?)t.Amount,ct)??0;
-        if (paid + x.Amount > x.FinancialCase.TotalAmount) {
+        if (paid + x.Amount + x.FinancialCase.PrePaymentAmount + x.FinancialCase.DepositAmount > x.FinancialCase.TotalAmount) {
           await uow.RollbackAsync();
           return Result<PatientFinanceIdResponse>.Failure(
               "پرداخت از مبلغ کل درمان بیشتر " +
@@ -664,7 +664,7 @@ public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
                     SourceId = x.Id,
                     CreatedByUserId = c.ActorUserId },
             ct);
-        if (paid + x.Amount == x.FinancialCase.TotalAmount)
+        if (paid + x.Amount + x.FinancialCase.PrePaymentAmount + x.FinancialCase.DepositAmount == x.FinancialCase.TotalAmount)
           x.FinancialCase.Status = PatientFinancialCaseStatus.Completed;
       } else if (c.Status == PatientPromissoryNoteStatus.Unpaid) {
         if (await repo.Debts.AnyAsync(
@@ -733,7 +733,7 @@ public sealed class PayPatientDebtCommandHandler(IPatientFinanceRepository repo,
                        .Where(x => x.PatientFinancialCaseId ==
                                    d.PatientFinancialCaseId)
                        .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
-      if (paid + d.Amount > d.FinancialCase.TotalAmount) {
+      if (paid + d.Amount + d.FinancialCase.PrePaymentAmount + d.FinancialCase.DepositAmount > d.FinancialCase.TotalAmount) {
         await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure(
             "پرداخت از مبلغ کل درمان بیشتر " +
@@ -768,7 +768,7 @@ public sealed class PayPatientDebtCommandHandler(IPatientFinanceRepository repo,
                   CreatedByUserId = c.ActorUserId },
           ct);
       d.Status = PatientDebtStatus.Paid;
-      if (paid + d.Amount == d.FinancialCase.TotalAmount)
+      if (paid + d.Amount + d.FinancialCase.PrePaymentAmount + d.FinancialCase.DepositAmount == d.FinancialCase.TotalAmount)
         d.FinancialCase.Status = PatientFinancialCaseStatus.Completed;
       await uow.CommitAsync(ct);
       return Result<PatientFinanceIdResponse>.Success(new(d.Id));

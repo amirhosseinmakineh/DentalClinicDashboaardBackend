@@ -11,6 +11,7 @@ namespace DentalDashboard.Infrastracture.Repository;
 public sealed class PatientFileRepository(DentalContext context) : IPatientFileRepository
 {
     public IQueryable<PatientFile> PatientFiles => context.PatientFiles;
+    public IQueryable<PatientFileWorkflow> Workflows => context.PatientFileWorkflows.AsSplitQuery();
     public IQueryable<LeadAssignment> Patients => context.LeadAssignments;
     public IQueryable<Reservation> Reservations => context.Reservations;
 

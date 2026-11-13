@@ -5,6 +5,7 @@ namespace DentalDashboard.Domain.IRepositories;
 public interface IPatientFileRepository
 {
     IQueryable<PatientFile> PatientFiles { get; }
+    IQueryable<PatientFileWorkflow> Workflows { get; }
     IQueryable<LeadAssignment> Patients { get; }
     IQueryable<Reservation> Reservations { get; }
     Task AddAsync(PatientFile entity, CancellationToken cancellationToken);

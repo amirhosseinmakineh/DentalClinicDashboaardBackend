@@ -1,7 +1,8 @@
 namespace DentalDashboard.Domain.Models;
 
 /// <summary>
-/// Data collected from the clinic's paper patient intake form.
+/// Data collected from the clinic's 
+/// patient intake form.
 /// This is an additive contract; it does not generate or modify PatientFile.FileNumber.
 /// Persistence and API integration must be added before using it for patient records.
 /// </summary>

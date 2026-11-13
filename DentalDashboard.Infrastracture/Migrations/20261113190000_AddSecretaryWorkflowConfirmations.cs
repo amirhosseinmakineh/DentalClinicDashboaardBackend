@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using DentalDashboard.Infrastracture.Context;
 
 #nullable disable
 
 namespace DentalDashboard.Infrastracture.Migrations;
 
+[DbContext(typeof(DentalContext))]
 [Migration("20261113190000_AddSecretaryWorkflowConfirmations")]
 public partial class AddSecretaryWorkflowConfirmations : Migration
 {

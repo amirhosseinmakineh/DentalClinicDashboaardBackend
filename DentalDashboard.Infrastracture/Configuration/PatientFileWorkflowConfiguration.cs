@@ -10,6 +10,9 @@ public sealed class PatientFileWorkflowConfiguration : IEntityTypeConfiguration<
     {
         b.ToTable("PatientFileWorkflows");
         b.HasKey(x => x.PatientFileId);
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.TreatmentConfirmedByUserId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.FinanceConfirmedByUserId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.ProfileConfirmedByUserId).OnDelete(DeleteBehavior.Restrict);
         b.Property(x => x.ApprovedFinanceHash).HasMaxLength(64);
         b.HasOne(x => x.PatientFile).WithOne().HasForeignKey<PatientFileWorkflow>(x => x.PatientFileId)
             .OnDelete(DeleteBehavior.Restrict);

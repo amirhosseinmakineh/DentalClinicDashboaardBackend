@@ -78,7 +78,7 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
         // A secretary must explicitly confirm a meaningful treatment plan before finance opens.
         // A mere consultation checkbox with an empty treatment plan is not sufficient.
         if (request.ConsultationCompleted == true &&
-            (!request.Intake.ConsentAccepted ||
+            (request.Intake.ConsentAccepted != true ||
              request.Treatments.Count == 0 ||
              request.Treatments.All(x => string.IsNullOrWhiteSpace(x.Description)) ||
              request.Treatments.Any(x => string.IsNullOrWhiteSpace(x.Description) || !x.Cost.HasValue || x.Cost <= 0)))

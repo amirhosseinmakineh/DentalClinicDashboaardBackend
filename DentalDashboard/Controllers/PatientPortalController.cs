@@ -43,8 +43,9 @@ public sealed class PatientPortalController(DentalContext db) : ControllerBase
             .Include(x => x.Transactions).Include(x => x.Debts)
             .AsSplitQuery().OrderByDescending(x => x.CreatedAt).ToListAsync(ct);
 
+        var caseIds = cases.Select(c => c.Id).ToList();
         var workflows = await db.PatientFileWorkflows.AsNoTracking()
-            .Where(x => x.FinancialCaseId.HasValue && cases.Select(c => c.Id).Contains(x.FinancialCaseId.Value))
+            .Where(x => x.FinancialCaseId.HasValue && caseIds.Contains(x.FinancialCaseId.Value))
             .Select(x => new { x.FinancialCaseId, x.PatientFileId, x.TreatmentConfirmedAtUtc,
                 x.FinanceConfirmedAtUtc, x.ProfileConfirmedAtUtc, x.ApprovedAtUtc })
             .ToListAsync(ct);

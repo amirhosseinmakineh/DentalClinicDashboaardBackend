@@ -53,6 +53,40 @@ public class AdminReportsController : ControllerBase
         this.queryDispatcher = queryDispatcher;
     }
 
+    // Full read-only case dossier for the admin; child queries are filtered by case ID.
+    [HttpGet("patient-finances/{id:guid}/full-report")]
+    public async Task<IActionResult> GetPatientFinanceFullReport(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var details = await queryDispatcher.DispatchAsync(
+            new GetPatientFinancialCaseDetailsQuery(id), cancellationToken);
+        if (details is null)
+            return NotFound(Result<object?>.Failure("پرونده مالی موردنظر یافت نشد."));
+
+        var transactions = await queryDispatcher.DispatchAsync(
+            new GetPatientFinancialTransactionsQuery
+            {
+                PatientFinancialCaseId = id,
+                Page = 1,
+                PageSize = 100
+            }, cancellationToken);
+        var debts = await queryDispatcher.DispatchAsync(
+            new GetPatientDebtsQuery
+            {
+                PatientFinancialCaseId = id,
+                Page = 1,
+                PageSize = 100
+            }, cancellationToken);
+
+        return Ok(new
+        {
+            FinancialCase = details,
+            Transactions = transactions,
+            Debts = debts
+        });
+    }
+
     [Authorize(Roles = "Admin")]
     [HttpGet("patient-finances/{id:guid}/details")]
     public async Task<IActionResult> GetPatientFinanceDetails(

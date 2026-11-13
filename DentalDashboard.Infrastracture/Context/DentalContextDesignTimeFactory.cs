@@ -1,23 +1,36 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
 
 namespace DentalDashboard.Infrastracture.Context;
 
-/// <summary>
-/// Design-time database selection must be explicit. Never silently migrate a
-/// separate placeholder database when running Update-Database.
-/// </summary>
+/// <summary>Uses the same configuration sources as the web application for EF design-time operations.</summary>
 public sealed class DentalContextDesignTimeFactory : IDesignTimeDbContextFactory<DentalContext>
 {
     public DentalContext CreateDbContext(string[] args)
     {
-        var connection = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+            ?? "Development";
+
+        var startupDirectory = Path.Combine(Directory.GetCurrentDirectory(), "DentalDashboard");
+        if (!File.Exists(Path.Combine(startupDirectory, "appsettings.json")))
+        {
+            startupDirectory = Directory.GetCurrentDirectory();
+        }
+
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(startupDirectory)
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
+        var connection = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connection))
         {
             throw new InvalidOperationException(
-                "Set ConnectionStrings__DefaultConnection to the target SQL Server connection string " +
-                "in the current terminal/Package Manager Console before running EF Core migrations. " +
-                "The design-time factory will not select a database implicitly.");
+                "No DefaultConnection configured for EF migrations. Check the startup project's appsettings files.");
         }
 
         return new DentalContext(

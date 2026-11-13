@@ -108,12 +108,23 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
         if (record.TreatmentsJson != treatmentsJson || record.DentalChartJson != chartJson ||
             (request.ConsultationCompleted.HasValue && request.ConsultationCompleted != workflow.ConsultationCompleted))
             workflow.ClearApproval();
+        if (workflow.TreatmentConfirmedAtUtc.HasValue &&
+            (record.TreatmentsJson != treatmentsJson || record.DentalChartJson != chartJson || intakeJson != record.IntakeJson))
+            return Conflict(new { message = "طرح درمان تأیید شده است؛ برای تغییر آن ابتدا باید تأییدهای بعدی بازبینی شوند." });
         if (request.ConsultationCompleted.HasValue)
         {
             // Once finance is attached, do not silently reopen the treatment plan.
             if (workflow.FinancialCaseId.HasValue && !request.ConsultationCompleted.Value)
                 return Conflict(new { message = "پس از اتصال پرونده مالی، بازگشایی طرح درمان نیازمند رسیدگی مالی است." });
             workflow.ConsultationCompleted = request.ConsultationCompleted.Value;
+            if (request.ConsultationCompleted.Value && workflow.TreatmentConfirmedAtUtc is null)
+            {
+                var actorClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                    User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
+                if (!Guid.TryParse(actorClaim, out var actor)) return Unauthorized();
+                workflow.TreatmentConfirmedAtUtc = DateTime.UtcNow;
+                workflow.TreatmentConfirmedByUserId = actor;
+            }
         }
         record.IntakeJson = intakeJson;
         record.TreatmentsJson = treatmentsJson;

@@ -230,7 +230,6 @@ internal static class PatientFileFinanceLoader
 
         var financialCases = await patientFinanceRepository.Cases
             .AsNoTracking()
-            .AsSplitQuery()
             .Where(financialCase => phoneNumbers.Contains(financialCase.Patient.PhoneNumber))
             .OrderByDescending(financialCase => financialCase.CreatedAt)
             .Select(financialCase => new

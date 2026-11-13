@@ -362,7 +362,9 @@ internal static class PatientFileFinanceLoader
                             transaction.CreatedAt))
                         .ToList()) { PrePaymentAmount = financialCase.PrePaymentAmount, DepositAmount = financialCase.DepositAmount, BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ToothUnitCount = financialCase.ToothUnitCount }
             };
-        }).ToList();        var financialCasesByPhoneNumber = financialCases
+        }).ToList();
+
+        var financialCasesByPhoneNumber = financialCases
             .GroupBy(financialCase => financialCase.PhoneNumber)
             .ToDictionary(group => group.Key, group => group.ToList());
 

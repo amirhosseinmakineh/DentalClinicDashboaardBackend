@@ -154,18 +154,53 @@ internal static class PatientFileFinanceLoader
             return [];
 
         var fileIds = patientFiles.Select(x => x.Id).ToList();
+        // Load workflow and finance collections separately to avoid cartesian row multiplication.
         var workflows = await patientFileRepository.Workflows.AsNoTracking()
             .Where(x => fileIds.Contains(x.PatientFileId))
-            .Include(x => x.FinancialCase!).ThenInclude(x => x.Cheques)
-            .Include(x => x.FinancialCase!).ThenInclude(x => x.PromissoryNotes)
-            .Include(x => x.FinancialCase!).ThenInclude(x => x.Transactions)
-            .Include(x => x.FinancialCase!).ThenInclude(x => x.Debts)
+            .Include(x => x.FinancialCase)
             .ToDictionaryAsync(x => x.PatientFileId, cancellationToken);
+
+        var workflowCaseIds = workflows.Values
+            .Where(x => x.FinancialCase is not null)
+            .Select(x => x.FinancialCaseId!.Value)
+            .Distinct().ToList();
+        if (workflowCaseIds.Count > 0)
+        {
+            var cheques = await patientFinanceRepository.Cheques.AsNoTracking()
+                .Where(x => workflowCaseIds.Contains(x.PatientFinancialCaseId))
+                .ToListAsync(cancellationToken);
+            var notes = await patientFinanceRepository.PromissoryNotes.AsNoTracking()
+                .Where(x => workflowCaseIds.Contains(x.PatientFinancialCaseId))
+                .ToListAsync(cancellationToken);
+            var transactions = await patientFinanceRepository.Transactions.AsNoTracking()
+                .Where(x => workflowCaseIds.Contains(x.PatientFinancialCaseId))
+                .ToListAsync(cancellationToken);
+            var debts = await patientFinanceRepository.Debts.AsNoTracking()
+                .Where(x => workflowCaseIds.Contains(x.PatientFinancialCaseId))
+                .ToListAsync(cancellationToken);
+            var chequeGroups = cheques.ToLookup(x => x.PatientFinancialCaseId);
+            var noteGroups = notes.ToLookup(x => x.PatientFinancialCaseId);
+            var transactionGroups = transactions.ToLookup(x => x.PatientFinancialCaseId);
+            var debtGroups = debts.ToLookup(x => x.PatientFinancialCaseId);
+            foreach (var workflow in workflows.Values)
+            {
+                if (workflow.FinancialCase is not { } financialCase) continue;
+                var id = financialCase.Id;
+                financialCase.Cheques = chequeGroups[id].ToList();
+                financialCase.PromissoryNotes = noteGroups[id].ToList();
+                financialCase.Transactions = transactionGroups[id].ToList();
+                financialCase.Debts = debtGroups[id].ToList();
+            }
+        }
         patientFiles = patientFiles.Select(file => {
             workflows.TryGetValue(file.Id, out var workflow);
             var approved = PatientFileWorkflowRules.IsApproved(workflow);
             return file with {
                 ConsultationCompleted = workflow?.ConsultationCompleted ?? false,
+                TreatmentConfirmedAtUtc = workflow?.TreatmentConfirmedAtUtc,
+                FinanceConfirmedAtUtc = workflow?.FinanceConfirmedAtUtc,
+                ProfileConfirmedAtUtc = workflow?.ProfileConfirmedAtUtc,
+                WorkflowStage = approved ? "ReadyForTreatment" : workflow?.ProfileConfirmedAtUtc != null ? "ProfileConfirmed" : workflow?.FinanceConfirmedAtUtc != null ? "FinanceConfirmed" : PatientFileWorkflowRules.HasFinance(workflow) ? "FinanceRegistered" : workflow?.TreatmentConfirmedAtUtc != null ? "TreatmentConfirmed" : "FileCreated",
                 CompletionFinancialCaseId = workflow?.FinancialCaseId,
                 FinanceCompleted = PatientFileWorkflowRules.HasFinance(workflow),
                 ServiceApproved = approved,
@@ -223,13 +258,42 @@ internal static class PatientFileFinanceLoader
             .Select(patient => patient.Id)
             .ToHashSet();
 
-        var financialCases = await patientFinanceRepository.Cases
-            .AsNoTracking()
-            .Where(financialCase => phoneNumbers.Contains(financialCase.Patient.PhoneNumber))
-            .OrderByDescending(financialCase => financialCase.CreatedAt)
-            .Select(financialCase => new
+        // Fetch only matching cases first, then load each child table in one bounded query.
+        var caseRows = await patientFinanceRepository.Cases.AsNoTracking()
+            .Where(x => phoneNumbers.Contains(x.Patient.PhoneNumber))
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new { Case = x, PhoneNumber = x.Patient.PhoneNumber })
+            .ToListAsync(cancellationToken);
+        var caseIds = caseRows.Select(x => x.Case.Id).ToList();
+        if (caseIds.Count > 0)
+        {
+            var cheques = await patientFinanceRepository.Cheques.AsNoTracking()
+                .Where(x => caseIds.Contains(x.PatientFinancialCaseId)).ToListAsync(cancellationToken);
+            var notes = await patientFinanceRepository.PromissoryNotes.AsNoTracking()
+                .Where(x => caseIds.Contains(x.PatientFinancialCaseId)).ToListAsync(cancellationToken);
+            var transactions = await patientFinanceRepository.Transactions.AsNoTracking()
+                .Where(x => caseIds.Contains(x.PatientFinancialCaseId)).ToListAsync(cancellationToken);
+            var debts = await patientFinanceRepository.Debts.AsNoTracking()
+                .Where(x => caseIds.Contains(x.PatientFinancialCaseId)).ToListAsync(cancellationToken);
+            var chequeGroups = cheques.ToLookup(x => x.PatientFinancialCaseId);
+            var noteGroups = notes.ToLookup(x => x.PatientFinancialCaseId);
+            var transactionGroups = transactions.ToLookup(x => x.PatientFinancialCaseId);
+            var debtGroups = debts.ToLookup(x => x.PatientFinancialCaseId);
+            foreach (var row in caseRows)
             {
-                PhoneNumber = financialCase.Patient.PhoneNumber,
+                var c = row.Case;
+                c.Cheques = chequeGroups[c.Id].ToList();
+                c.PromissoryNotes = noteGroups[c.Id].ToList();
+                c.Transactions = transactionGroups[c.Id].ToList();
+                c.Debts = debtGroups[c.Id].ToList();
+            }
+        }
+        var financialCases = caseRows.Select(row =>
+        {
+            var financialCase = row.Case;
+            return new
+            {
+                PhoneNumber = row.PhoneNumber,
                 financialCase.PatientId,
                 Case = new PatientFileFinancialCaseDto(
                     financialCase.Id,
@@ -297,8 +361,8 @@ internal static class PatientFileFinanceLoader
                             transaction.SourceId,
                             transaction.CreatedAt))
                         .ToList()) { PrePaymentAmount = financialCase.PrePaymentAmount, DepositAmount = financialCase.DepositAmount, BalanceAmount = financialCase.TotalAmount - financialCase.PrePaymentAmount - financialCase.DepositAmount - (financialCase.Transactions.Sum(transaction => (decimal?)transaction.Amount) ?? 0), PaymentMethod = financialCase.PaymentMethod, InstallmentStatus = financialCase.InstallmentStatus, GuaranteeDocument = financialCase.GuaranteeDocument, Notes = financialCase.Notes, ConsultantName = financialCase.ConsultantName, ToothUnitCount = financialCase.ToothUnitCount }
-            })
-            .ToListAsync(cancellationToken);
+            };
+        }).ToList();
 
         var financialCasesByPhoneNumber = financialCases
             .GroupBy(financialCase => financialCase.PhoneNumber)

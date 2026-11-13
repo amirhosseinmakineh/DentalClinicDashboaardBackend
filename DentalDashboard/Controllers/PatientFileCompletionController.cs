@@ -68,7 +68,7 @@ public sealed class PatientFileCompletionController(DentalContext db) : Controll
         if (file is null) return NotFound();
         var workflow = await db.PatientFileWorkflows.Include(x => x.FinancialCase)
             .SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
-        if (workflow?.ConsultationCompleted != true)
+        if (workflow?.TreatmentConfirmedAtUtc is null)
             return BadRequest(new { message = "ابتدا پایان مشاوره را ثبت کنید." });
         if (PatientFileWorkflowRules.HasFinance(workflow))
             return Conflict(new { message = "پرونده مالی قبلاً متصل شده است." });
@@ -134,6 +134,62 @@ public sealed class PatientFileCompletionController(DentalContext db) : Controll
         return Ok(new { financialCaseId = financialCase.Id });
     }
 
+    [HttpPost("confirm-finance")]
+    public async Task<IActionResult> ConfirmFinance(long patientFileId, CancellationToken ct)
+    {
+        if (Actor is not { } actor) return Unauthorized();
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var workflow = await db.PatientFileWorkflows
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.Cheques)
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.PromissoryNotes)
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.Transactions)
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.Debts)
+            .AsSplitQuery().SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
+        if (workflow?.TreatmentConfirmedAtUtc is null || !PatientFileWorkflowRules.HasFinance(workflow))
+            return BadRequest(new { message = "ابتدا طرح درمان و پرونده مالی باید ثبت و تأیید شوند." });
+        // The secretary confirms receipt of funds/documents, not settlement of future installments.
+        var c = workflow.FinancialCase!;
+        var paid = c.PrePaymentAmount + c.DepositAmount + c.Transactions.Where(x => !x.IsDeleted).Sum(x => x.Amount);
+        var pending = c.Cheques.Where(x => !x.IsDeleted && !x.IsGuarantee && x.Status == PatientChequeStatus.Pending).Sum(x => x.Amount)
+            + c.PromissoryNotes.Where(x => !x.IsDeleted && x.Status == PatientPromissoryNoteStatus.Pending).Sum(x => x.Amount);
+        if (c.TotalAmount <= 0 || paid + pending != c.TotalAmount ||
+            (c.PaymentMethod == "نقدی" && paid != c.TotalAmount) ||
+            c.Debts.Any(x => !x.IsDeleted && x.Status == PatientDebtStatus.Unpaid))
+            return BadRequest(new { message = "مبلغ نقدی و اسناد معتبر، کل هزینه درمان را پوشش نمی‌دهند." });
+        workflow.FinanceConfirmedAtUtc = DateTime.UtcNow;
+        workflow.FinanceConfirmedByUserId = actor;
+        workflow.ProfileConfirmedAtUtc = null;
+        workflow.ProfileConfirmedByUserId = null;
+        workflow.ClearApproval();
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+        return Ok(new { workflow.FinanceConfirmedAtUtc });
+    }
+
+    [HttpPost("confirm-profile")]
+    public async Task<IActionResult> ConfirmProfile(long patientFileId, CancellationToken ct)
+    {
+        if (Actor is not { } actor) return Unauthorized();
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var file = await db.PatientFiles.SingleOrDefaultAsync(x => x.Id == patientFileId, ct);
+        if (file is null) return NotFound();
+        var workflow = await db.PatientFileWorkflows
+            .Include(x => x.FinancialCase)
+            .SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
+        if (workflow?.FinanceConfirmedAtUtc is null || !PatientFileWorkflowRules.HasFinance(workflow))
+            return BadRequest(new { message = "ابتدا تأیید مالی منشی الزامی است." });
+        if (!await db.Users.AnyAsync(x => x.Id == workflow.FinancialCase!.PatientId &&
+            x.PhoneNumber == file.PhoneNumber && !x.IsDeleted &&
+            x.PatientProfile != null && !x.PatientProfile.IsDeleted, ct))
+            return BadRequest(new { message = "پروفایل فعال و منطبق با بیمار وجود ندارد؛ ابتدا پروفایل را تکمیل کنید." });
+        workflow.ProfileConfirmedAtUtc = DateTime.UtcNow;
+        workflow.ProfileConfirmedByUserId = actor;
+        workflow.ClearApproval();
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+        return Ok(new { workflow.ProfileConfirmedAtUtc });
+    }
+
     [HttpPost("approve-service")]
     public async Task<IActionResult> Approve(long patientFileId, CancellationToken ct)
     {
@@ -146,7 +202,7 @@ public sealed class PatientFileCompletionController(DentalContext db) : Controll
             .Include(x => x.FinancialCase!).ThenInclude(x => x.Transactions)
             .Include(x => x.FinancialCase!).ThenInclude(x => x.Debts)
             .AsSplitQuery().SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
-        if (workflow?.ConsultationCompleted != true || !PatientFileWorkflowRules.HasFinance(workflow))
+        if (workflow?.TreatmentConfirmedAtUtc is null || workflow.FinanceConfirmedAtUtc is null || workflow.ProfileConfirmedAtUtc is null || !PatientFileWorkflowRules.HasFinance(workflow))
             return BadRequest(new { message = "مشاوره و ثبت مالی باید قبل از اجازه انجام خدمات تکمیل شوند." });
         var c = workflow.FinancialCase!;
         if (!PatientFileWorkflowRules.CanApprove(workflow))

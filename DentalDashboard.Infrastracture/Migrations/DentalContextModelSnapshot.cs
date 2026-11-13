@@ -499,9 +499,32 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<Guid?>("FinancialCaseId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("TreatmentConfirmedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("TreatmentConfirmedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("FinanceConfirmedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("FinanceConfirmedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ProfileConfirmedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ProfileConfirmedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+
                     b.HasKey("PatientFileId");
 
                     b.HasIndex("ApprovedByUserId");
+
+                    b.HasIndex("TreatmentConfirmedByUserId");
+                    b.HasIndex("FinanceConfirmedByUserId");
+                    b.HasIndex("ProfileConfirmedByUserId");
 
                     b.HasIndex("FinancialCaseId")
                         .IsUnique()
@@ -2015,6 +2038,21 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasOne("DentalDashboard.Domain.Models.User", null)
                         .WithMany()
                         .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("TreatmentConfirmedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("FinanceConfirmedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalDashboard.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("ProfileConfirmedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")

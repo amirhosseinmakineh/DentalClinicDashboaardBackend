@@ -75,6 +75,15 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
         if (request.Intake.PatientSignature?.Length > 100_000)
             return BadRequest(new { message = "اندازه امضای بیمار بیش از حد مجاز است" });
 
+        // A secretary must explicitly confirm a meaningful treatment plan before finance opens.
+        // A mere consultation checkbox with an empty treatment plan is not sufficient.
+        if (request.ConsultationCompleted == true &&
+            (request.Intake.ConsentAccepted != true ||
+             request.Treatments.Count == 0 ||
+             request.Treatments.All(x => string.IsNullOrWhiteSpace(x.Description)) ||
+             request.Treatments.Any(x => string.IsNullOrWhiteSpace(x.Description) || !x.Cost.HasValue || x.Cost <= 0)))
+            return BadRequest(new { message = "برای تأیید طرح درمان، رضایت بیمار و حداقل یک خدمت با شرح و هزینه معتبر الزامی است." });
+
         var chartJson = request.DentalChart.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
             ? "{}" : request.DentalChart.GetRawText();
         if (chartJson.Length > 200_000)
@@ -99,8 +108,25 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
         if (record.TreatmentsJson != treatmentsJson || record.DentalChartJson != chartJson ||
             (request.ConsultationCompleted.HasValue && request.ConsultationCompleted != workflow.ConsultationCompleted))
             workflow.ClearApproval();
+        if (workflow.TreatmentConfirmedAtUtc.HasValue &&
+            (record.TreatmentsJson != treatmentsJson || record.DentalChartJson != chartJson || intakeJson != record.IntakeJson ||
+             request.ConsultationCompleted == false))
+            return Conflict(new { message = "طرح درمان تأیید شده است؛ برای تغییر آن ابتدا باید تأییدهای بعدی بازبینی شوند." });
         if (request.ConsultationCompleted.HasValue)
+        {
+            // Once finance is attached, do not silently reopen the treatment plan.
+            if (workflow.FinancialCaseId.HasValue && !request.ConsultationCompleted.Value)
+                return Conflict(new { message = "پس از اتصال پرونده مالی، بازگشایی طرح درمان نیازمند رسیدگی مالی است." });
             workflow.ConsultationCompleted = request.ConsultationCompleted.Value;
+            if (request.ConsultationCompleted.Value && workflow.TreatmentConfirmedAtUtc is null)
+            {
+                var actorClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                    User.FindFirstValue("userId") ?? User.FindFirstValue("Id");
+                if (!Guid.TryParse(actorClaim, out var actor)) return Unauthorized();
+                workflow.TreatmentConfirmedAtUtc = DateTime.UtcNow;
+                workflow.TreatmentConfirmedByUserId = actor;
+            }
+        }
         record.IntakeJson = intakeJson;
         record.TreatmentsJson = treatmentsJson;
         record.DentalChartJson = chartJson;

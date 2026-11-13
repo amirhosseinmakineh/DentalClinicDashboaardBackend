@@ -1,3 +1,5 @@
+using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.IRepositories;
+using Microsoft.EntityFrameworkCore;
 using DentalDashboard.Services;
 using DentalDashboard.Utilities.Time;
 using DentalDashboard.Utilities.Convertor;
@@ -28,6 +30,7 @@ public class AdminReportsController : ControllerBase
     private readonly PatientFinanceAdminReportService patientFinanceAdminReportService;
     private readonly ICommandDispatcher commandDispatcher;
     private readonly IQueryDispatcher queryDispatcher;
+    private readonly IPatientFinanceRepository patientFinanceRepository;
 
     public AdminReportsController(
         LeadCallReportExportService leadCallReportExportService,
@@ -39,7 +42,8 @@ public class AdminReportsController : ControllerBase
         DailyReservationsReportService dailyReservationsReportService,
         PatientFinanceAdminReportService patientFinanceAdminReportService,
         ICommandDispatcher commandDispatcher,
-        IQueryDispatcher queryDispatcher)
+        IQueryDispatcher queryDispatcher,
+        IPatientFinanceRepository patientFinanceRepository)
     {
         this.leadCallReportExportService = leadCallReportExportService;
         this.usersExportService = usersExportService;
@@ -51,6 +55,59 @@ public class AdminReportsController : ControllerBase
         this.patientFinanceAdminReportService = patientFinanceAdminReportService;
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
+        this.patientFinanceRepository = patientFinanceRepository;
+    }
+
+    // Full read-only case dossier for the admin; child queries are filtered by case ID.
+    [HttpGet("patient-finances/{id:guid}/full-report")]
+    public async Task<IActionResult> GetPatientFinanceFullReport(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var details = await queryDispatcher.DispatchAsync(
+            new GetPatientFinancialCaseDetailsQuery(id), cancellationToken);
+        if (details is null)
+            return NotFound(Result<object?>.Failure("پرونده مالی موردنظر یافت نشد."));
+
+        var transactions = await queryDispatcher.DispatchAsync(
+            new GetPatientFinancialTransactionsQuery
+            {
+                PatientFinancialCaseId = id,
+                Page = 1,
+                PageSize = 100
+            }, cancellationToken);
+        var debts = await queryDispatcher.DispatchAsync(
+            new GetPatientDebtsQuery
+            {
+                PatientFinancialCaseId = id,
+                Page = 1,
+                PageSize = 100
+            }, cancellationToken);
+
+        var patientPhone = details.Case.PatientPhoneNumber;
+        var patientFiles = await patientFinanceRepository.PatientFiles.AsNoTracking()
+                .Where(file => patientPhone != null && file.PhoneNumber == patientPhone)
+                .OrderByDescending(file => file.CreatedAt)
+                .Select(file => new
+                {
+                    file.Id,
+                    file.FileNumber,
+                    file.FirstName,
+                    file.LastName,
+                    file.PhoneNumber,
+                    file.Description,
+                    file.SourceType,
+                    file.CreatedAt
+                })
+                .ToListAsync(cancellationToken);
+
+        return Ok(new
+        {
+            PatientFiles = patientFiles,
+            FinancialCase = details,
+            Transactions = transactions,
+            Debts = debts
+        });
     }
 
     [Authorize(Roles = "Admin")]

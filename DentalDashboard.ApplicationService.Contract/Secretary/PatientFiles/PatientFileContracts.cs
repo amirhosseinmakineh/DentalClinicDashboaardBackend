@@ -20,6 +20,10 @@ public sealed record PatientFileDto(
 {
     public Guid? FinancialPatientId { get; init; }
     public bool ConsultationCompleted { get; init; }
+    public DateTime? TreatmentConfirmedAtUtc { get; init; }
+    public DateTime? FinanceConfirmedAtUtc { get; init; }
+    public DateTime? ProfileConfirmedAtUtc { get; init; }
+    public string WorkflowStage { get; init; } = "FileCreated";
     public Guid? CompletionFinancialCaseId { get; init; }
     public bool FinanceCompleted { get; init; }
     public bool ServiceApproved { get; init; }

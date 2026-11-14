@@ -65,6 +65,11 @@ public sealed class PatientInstallmentsController(DentalContext db) : Controller
         var row = await db.PatientInstallments.SingleOrDefaultAsync(x => x.Id == id && x.PatientFinancialCaseId == caseId, ct);
         if (row is null) return NotFound();
         if (row.PaidAtUtc.HasValue) return Conflict(new { message = "این قسط قبلاً پرداخت شده است." });
+        var financialCase = await db.PatientFinancialCases.SingleAsync(x => x.Id == caseId, ct);
+        var collected = await db.PatientFinancialTransactions.Where(x => x.PatientFinancialCaseId == caseId)
+            .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
+        if (financialCase.PrePaymentAmount + financialCase.DepositAmount + collected + row.Amount > financialCase.TotalAmount)
+            return Conflict(new { message = "ثبت این قسط از مانده واقعی پرونده بیشتر است." });
         row.PaidAtUtc = DateTime.UtcNow;
         row.PaidByUserId = actor;
         db.PatientFinancialTransactions.Add(new PatientFinancialTransaction {

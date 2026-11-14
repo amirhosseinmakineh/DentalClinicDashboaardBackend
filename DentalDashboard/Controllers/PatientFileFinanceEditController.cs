@@ -27,7 +27,7 @@ public static class PatientFileFinanceEditRules
         IranTimeHelper.ToIranLocalTime(DateTime.SpecifyKind(value, DateTimeKind.Utc)));
     public static string? BlockReason(PatientFinancialCase c) =>
         c.IsDeleted || c.Status == PatientFinancialCaseStatus.Cancelled ? "صورت‌حساب لغوشده قابل ویرایش نیست." :
-        c.Transactions.Any(x => !x.IsDeleted) || c.Debts.Any(x => !x.IsDeleted) ||
+        c.Installments.Any(x => !x.IsDeleted && x.PaidAtUtc.HasValue) || c.Transactions.Any(x => !x.IsDeleted) || c.Debts.Any(x => !x.IsDeleted) ||
         c.Cheques.Any(x => !x.IsDeleted && x.Status != PatientChequeStatus.Pending) ||
         c.PromissoryNotes.Any(x => !x.IsDeleted && x.Status != PatientPromissoryNoteStatus.Pending) ||
         !string.IsNullOrWhiteSpace(c.GuaranteeDocument)
@@ -87,6 +87,10 @@ public static class PatientFileFinanceEditRules
             x.DueDate = IranTimeHelper.GetIranDayRangeAsUtc(draft.DueDate!.Value).StartUtc;
             x.UpdatedAt = now;
         }
+        foreach (var existing in c.Installments.Where(x => !x.IsDeleted))
+            existing.IsDeleted = true;
+        foreach (var installment in r.Installments ?? [])
+            c.Installments.Add(new PatientInstallment { Amount = installment.Amount, DueDate = installment.DueDate });
         workflow.FinanceConfirmedAtUtc = null; workflow.FinanceConfirmedByUserId = null;
         workflow.ProfileConfirmedAtUtc = null; workflow.ProfileConfirmedByUserId = null;
         workflow.ClearApproval();
@@ -101,6 +105,7 @@ public sealed class PatientFileFinanceEditController(DentalContext db, ILogger<P
     private Guid? Actor => Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ??
         User.FindFirstValue("userId") ?? User.FindFirstValue("Id"), out var id) ? id : null;
     private Task<PatientFileWorkflow?> Load(long id, CancellationToken ct) => db.PatientFileWorkflows
+        .Include(x => x.FinancialCase!).ThenInclude(x => x.Installments)
         .Include(x => x.FinancialCase!).ThenInclude(x => x.Cheques)
         .Include(x => x.FinancialCase!).ThenInclude(x => x.PromissoryNotes)
         .Include(x => x.FinancialCase!).ThenInclude(x => x.Transactions)
@@ -122,7 +127,7 @@ public sealed class PatientFileFinanceEditController(DentalContext db, ILogger<P
             c.Cheques.Where(x => !x.IsDeleted).Select(x => new CompletionCheque(x.Amount, x.SayadNumber, x.OwnerName,
                 PatientFileFinanceEditRules.DueDay(x.DueDate), true, x.Id, x.IsGuarantee)).ToList(),
             c.PromissoryNotes.Where(x => !x.IsDeleted).Select(x => new CompletionNote(x.Amount, x.SerialNumber,
-                PatientFileFinanceEditRules.DueDay(x.DueDate), x.Id, x.IsGuarantee)).ToList(), c.Notes);
+                PatientFileFinanceEditRules.DueDay(x.DueDate), x.Id, x.IsGuarantee)).ToList(), c.Notes, c.Installments.Where(x => !x.IsDeleted).Select(x => new InstallmentInput(x.Amount, x.DueDate)).ToList());
         return Ok(new EditPatientFileFinanceRequest(PatientFileFinanceEditRules.EditHash(c), finance));
     }
 
@@ -139,6 +144,13 @@ public sealed class PatientFileFinanceEditController(DentalContext db, ILogger<P
         if (PatientChartFinanceRules.ValidateSelection(request.Finance.ServiceUnitCounts, units) is { } chartError)
             return Conflict(new { message = chartError });
         if (PatientFileFinanceEditRules.Validate(c, request) is { } error) return Conflict(new { message = error });
+        var chequeNumbers = request.Finance.Cheques.Select(x => x.Number.Trim()).ToList();
+        var noteNumbers = request.Finance.Notes.Select(x => x.Number.Trim()).ToList();
+        if (await db.PatientCheques.AnyAsync(x => chequeNumbers.Contains(x.SayadNumber) &&
+                !request.Finance.Cheques.Where(y => y.Id.HasValue).Select(y => y.Id!.Value).Contains(x.Id), ct) ||
+            await db.PatientPromissoryNotes.AnyAsync(x => noteNumbers.Contains(x.SerialNumber) &&
+                !request.Finance.Notes.Where(y => y.Id.HasValue).Select(y => y.Id!.Value).Contains(x.Id), ct))
+            return Conflict(new { message = "شماره چک یا سفته قبلاً ثبت شده است." });
         PatientFileFinanceEditRules.Apply(workflow, request.Finance with { ServiceUnitCounts = units }, IranTimeHelper.TodayInIran());
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);

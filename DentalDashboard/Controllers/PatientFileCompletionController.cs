@@ -184,6 +184,7 @@ public sealed class PatientFileCompletionController(DentalContext db) : Controll
         if (Actor is not { } actor) return Unauthorized();
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var workflow = await db.PatientFileWorkflows
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.Installments)
             .Include(x => x.FinancialCase!).ThenInclude(x => x.Cheques)
             .Include(x => x.FinancialCase!).ThenInclude(x => x.PromissoryNotes)
             .Include(x => x.FinancialCase!).ThenInclude(x => x.Transactions)

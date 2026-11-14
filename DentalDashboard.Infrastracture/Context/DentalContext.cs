@@ -37,7 +37,8 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
         public DbSet<PatientFinancialCase> PatientFinancialCases => Set<PatientFinancialCase>();
         public DbSet<PatientFinancialDocument> PatientFinancialDocuments => Set<PatientFinancialDocument>();
-         public DbSet<PatientCheque> PatientCheques => Set<PatientCheque>();
+         public DbSet<PatientInstallment> PatientInstallments => Set<PatientInstallment>();
+        public DbSet<PatientCheque> PatientCheques => Set<PatientCheque>();
         public DbSet<PatientPromissoryNote> PatientPromissoryNotes => Set<PatientPromissoryNote>();
         public DbSet<PatientDebt> PatientDebts => Set<PatientDebt>();
         public DbSet<PatientFinancialTransaction> PatientFinancialTransactions => Set<PatientFinancialTransaction>();

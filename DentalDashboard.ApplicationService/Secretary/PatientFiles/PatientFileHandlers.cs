@@ -330,7 +330,7 @@ internal static class PatientFileFinanceLoader
                             cheque.SayadNumber,
                             cheque.OwnerName,
                             cheque.DueDate,
-                            cheque.Status))
+                            cheque.Status, cheque.IsGuarantee))
                         .ToList(),
                     financialCase.PromissoryNotes
                         .OrderBy(promissoryNote => promissoryNote.DueDate)
@@ -339,7 +339,7 @@ internal static class PatientFileFinanceLoader
                             promissoryNote.SerialNumber,
                             promissoryNote.Amount,
                             promissoryNote.DueDate,
-                            promissoryNote.Status))
+                            promissoryNote.Status, promissoryNote.IsGuarantee))
                         .ToList(),
                     financialCase.Debts
                         .OrderBy(debt => debt.DueDate)

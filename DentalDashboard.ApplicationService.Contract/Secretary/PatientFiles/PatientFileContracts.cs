@@ -74,14 +74,14 @@ public sealed record PatientFileChequeDto(
     string SayadNumber,
     string OwnerName,
     DateTime DueDate,
-    PatientChequeStatus Status);
+    PatientChequeStatus Status, bool IsGuarantee = false);
 
 public sealed record PatientFilePromissoryNoteDto(
     long Id,
     string SerialNumber,
     decimal Amount,
     DateTime DueDate,
-    PatientPromissoryNoteStatus Status);
+    PatientPromissoryNoteStatus Status, bool IsGuarantee = false);
 
 public sealed record PatientFileDebtDto(
     long Id,

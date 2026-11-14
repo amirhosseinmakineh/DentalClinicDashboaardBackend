@@ -45,6 +45,7 @@ public sealed class PatientChequeConfiguration
 public sealed class PatientPromissoryNoteConfiguration
     : IEntityTypeConfiguration<PatientPromissoryNote> {
   public void Configure(EntityTypeBuilder<PatientPromissoryNote> b) {
+    b.Property(x => x.IsGuarantee).HasDefaultValue(false);
     b.Property(x => x.Amount).HasPrecision(18, 2);
     b.Property(x => x.SerialNumber).HasMaxLength(64).IsRequired();
     b.HasIndex(x => new { x.PatientFinancialCaseId, x.DueDate, x.Status });

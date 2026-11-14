@@ -37,12 +37,7 @@ public static class PatientFileWorkflowRules
     public static bool CanApprove(PatientFileWorkflow? workflow)
     {
         if (workflow?.ConsultationCompleted != true || workflow.TreatmentConfirmedAtUtc is null || workflow.FinanceConfirmedAtUtc is null || workflow.ProfileConfirmedAtUtc is null || !HasFinance(workflow)) return false;
-        var c = workflow.FinancialCase!;
-        var paid = c.PrePaymentAmount + c.DepositAmount + c.Transactions.Where(x => !x.IsDeleted).Sum(x => x.Amount);
-        var pending = c.Cheques.Where(x => !x.IsDeleted && !x.IsGuarantee && x.Status == PatientChequeStatus.Pending).Sum(x => x.Amount) +
-            c.PromissoryNotes.Where(x => !x.IsDeleted && x.Status == PatientPromissoryNoteStatus.Pending).Sum(x => x.Amount);
-        return c.TotalAmount > 0 && (c.PaymentMethod != "نقدی" || paid == c.TotalAmount) &&
-            paid + pending == c.TotalAmount && !c.Debts.Any(x => !x.IsDeleted && x.Status == PatientDebtStatus.Unpaid);
+        return PatientFinanceCoverage.CanConfirm(workflow.FinancialCase!);
     }
 
     public static bool HasFinance(PatientFileWorkflow? workflow) =>
@@ -69,6 +64,9 @@ public static class PatientFileWorkflowRules
             Transactions = c.Transactions.Where(x => !x.IsDeleted).OrderBy(x => x.Id)
                 .Select(x => new { x.Id, x.Amount, x.SourceType, x.SourceId })
         });
+        // Keep hashes of legacy, non-guarantee records unchanged on deployment.
+        var guarantees = c.PromissoryNotes.Where(x => !x.IsDeleted && x.IsGuarantee).OrderBy(x => x.Id).Select(x => x.Id).ToArray();
+        if (guarantees.Length > 0) json += "\nGuaranteeNotes:" + JsonSerializer.Serialize(guarantees);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json)));
     }
 }

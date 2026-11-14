@@ -230,13 +230,25 @@ public class AdminReportsController : ControllerBase
 
     [Authorize(Roles = "Admin")]
     [HttpGet("patient-finances/cheques/due")]
-    public async Task<IActionResult> GetPatientChequesDue([FromQuery] DateOnly? date,
+    public async Task<IActionResult> GetPatientChequesDue([FromQuery] DateOnly? date, [FromQuery] DateOnly? fromDate, [FromQuery] DateOnly? toDate,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken cancellationToken = default)
     {
-        var selectedDate = date ?? IranTimeHelper.TodayInIran();
-        if (selectedDate < new DateOnly(1900, 1, 1) || selectedDate == DateOnly.MaxValue)
+        var selectedDate = fromDate ?? date ?? IranTimeHelper.TodayInIran();
+        var endDate = toDate ?? selectedDate;
+        if (selectedDate < new DateOnly(1900, 1, 1) || endDate == DateOnly.MaxValue || endDate < selectedDate)
             return BadRequest(new { message = "تاریخ سررسید معتبر نیست." });
-        return Ok(await patientFinanceAdminReportService.GetDueChequesAsync(selectedDate, page, pageSize, cancellationToken));
+        return Ok(await patientFinanceAdminReportService.GetDueChequesAsync(selectedDate, page, pageSize, cancellationToken, endDate));
+    }
+
+    [HttpGet("patient-finances/notes/due")]
+    public async Task<IActionResult> GetPatientNotesDue([FromQuery] DateOnly? date, [FromQuery] DateOnly? fromDate, [FromQuery] DateOnly? toDate,
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken cancellationToken = default)
+    {
+        var selectedDate = fromDate ?? date ?? IranTimeHelper.TodayInIran();
+        var endDate = toDate ?? selectedDate;
+        if (selectedDate < new DateOnly(1900, 1, 1) || endDate == DateOnly.MaxValue || endDate < selectedDate)
+            return BadRequest(new { message = "تاریخ سررسید معتبر نیست." });
+        return Ok(await patientFinanceAdminReportService.GetDueNotesAsync(selectedDate, page, pageSize, cancellationToken, endDate));
     }
 
     [HttpGet("patient-finances/export")]

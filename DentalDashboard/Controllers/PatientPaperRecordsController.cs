@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Infrastracture.Context;
+using DentalDashboard.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -99,26 +100,25 @@ public sealed class PatientPaperRecordsController(DentalContext db) : Controller
 
         var intakeJson = JsonSerializer.Serialize(request.Intake);
         var treatmentsJson = JsonSerializer.Serialize(request.Treatments);
-        var workflow = await db.PatientFileWorkflows.SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
+        var workflow = await db.PatientFileWorkflows.Include(x => x.FinancialCase).SingleOrDefaultAsync(x => x.PatientFileId == patientFileId, ct);
         if (workflow is null)
         {
             workflow = new PatientFileWorkflow { PatientFileId = patientFileId };
             db.PatientFileWorkflows.Add(workflow);
         }
-        if (record.TreatmentsJson != treatmentsJson || record.DentalChartJson != chartJson ||
-            (request.ConsultationCompleted.HasValue && request.ConsultationCompleted != workflow.ConsultationCompleted))
-            workflow.ClearApproval();
-        if (workflow.TreatmentConfirmedAtUtc.HasValue &&
-            (record.TreatmentsJson != treatmentsJson || record.DentalChartJson != chartJson || intakeJson != record.IntakeJson ||
-             request.ConsultationCompleted == false))
-            return Conflict(new { message = "طرح درمان تأیید شده است؛ برای تغییر آن ابتدا باید تأییدهای بعدی بازبینی شوند." });
+        var chartChanged = record.DentalChartJson != chartJson;
+        var changed = record.TreatmentsJson != treatmentsJson || chartChanged || intakeJson != record.IntakeJson ||
+            (request.ConsultationCompleted.HasValue && request.ConsultationCompleted != workflow.ConsultationCompleted);
+        if (PatientChartFinanceRules.RevisePlan(workflow, chartJson, chartChanged, changed) is { } revisionError)
+            return Conflict(new { message = revisionError });
         if (request.ConsultationCompleted.HasValue)
         {
-            // Once finance is attached, do not silently reopen the treatment plan.
-            if (workflow.FinancialCaseId.HasValue && !request.ConsultationCompleted.Value)
-                return Conflict(new { message = "پس از اتصال پرونده مالی، بازگشایی طرح درمان نیازمند رسیدگی مالی است." });
             workflow.ConsultationCompleted = request.ConsultationCompleted.Value;
-            if (request.ConsultationCompleted.Value && workflow.TreatmentConfirmedAtUtc is null)
+            if (!request.ConsultationCompleted.Value) {
+                workflow.TreatmentConfirmedAtUtc = null;
+                workflow.TreatmentConfirmedByUserId = null;
+            }
+            else if (changed || workflow.TreatmentConfirmedAtUtc is null)
             {
                 var actorClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
                     User.FindFirstValue("userId") ?? User.FindFirstValue("Id");

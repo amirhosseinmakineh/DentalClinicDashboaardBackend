@@ -225,10 +225,10 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
                               transaction.Type == PatientFinancialTransactionType.Payment)
         .SumAsync(transaction => (decimal?)transaction.Amount, ct) ?? 0;
     var commitments = (await repo.Cheques
-        .Where(item => item.PatientFinancialCaseId == c.Id)
+        .Where(item => item.PatientFinancialCaseId == c.Id && !item.IsGuarantee)
         .SumAsync(item => (decimal?)item.Amount, ct) ?? 0) +
         (await repo.PromissoryNotes
-        .Where(item => item.PatientFinancialCaseId == c.Id)
+        .Where(item => item.PatientFinancialCaseId == c.Id && !item.IsGuarantee)
         .SumAsync(item => (decimal?)item.Amount, ct) ?? 0);
     if (c.TotalAmount <= 0 || c.TotalAmount < paid)
       return Result<PatientFinancialCaseIdResponse>.Failure(
@@ -351,12 +351,12 @@ public sealed class UpdatePatientChequeCommandHandler(
       }
       var otherCommitments = await repo.Cheques
           .Where(x => x.PatientFinancialCaseId == cheque.PatientFinancialCaseId &&
-                      x.Id != cheque.Id)
+                      x.Id != cheque.Id && !x.IsGuarantee)
           .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
       otherCommitments += await repo.PromissoryNotes
-          .Where(x => x.PatientFinancialCaseId == cheque.PatientFinancialCaseId)
+          .Where(x => x.PatientFinancialCaseId == cheque.PatientFinancialCaseId && !x.IsGuarantee)
           .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
-      if (otherCommitments + c.Amount > cheque.FinancialCase.TotalAmount) {
+      if (!c.IsGuarantee && otherCommitments + c.Amount > cheque.FinancialCase.TotalAmount) {
         await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure(
             "مجموع تعهدات نمی‌تواند از مبلغ کل پرونده بیشتر باشد");
@@ -422,12 +422,12 @@ public sealed class UpdatePatientPromissoryNoteCommandHandler(
       }
       var otherCommitments = await repo.PromissoryNotes
           .Where(x => x.PatientFinancialCaseId == note.PatientFinancialCaseId &&
-                      x.Id != note.Id)
+                      x.Id != note.Id && !x.IsGuarantee)
           .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
       otherCommitments += await repo.Cheques
-          .Where(x => x.PatientFinancialCaseId == note.PatientFinancialCaseId)
+          .Where(x => x.PatientFinancialCaseId == note.PatientFinancialCaseId && !x.IsGuarantee)
           .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
-      if (otherCommitments + c.Amount > note.FinancialCase.TotalAmount) {
+      if (!note.IsGuarantee && otherCommitments + c.Amount > note.FinancialCase.TotalAmount) {
         await uow.RollbackAsync(ct);
         return Result<PatientFinanceIdResponse>.Failure(
             "مجموع تعهدات نمی‌تواند از مبلغ کل پرونده بیشتر باشد");
@@ -553,6 +553,10 @@ public sealed class UpdatePatientChequeStatusCommandHandler(
         await uow.RollbackAsync();
         return Result<PatientFinanceIdResponse>.Failure("چک یافت نشد");
       }
+      if (x.IsGuarantee) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure("چک ضمانت سند پرداخت اقساط نیست؛ پس از عدم پرداخت اقساط، وصول آن باید از مسیر تسویه بدهی ثبت شود.");
+      }
       if (x.Status != PatientChequeStatus.Pending) {
         await uow.RollbackAsync();
         return Result<PatientFinanceIdResponse>.Failure(
@@ -630,6 +634,10 @@ public sealed class UpdatePatientPromissoryNoteStatusCommandHandler(
       if (x is null) {
         await uow.RollbackAsync();
         return Result<PatientFinanceIdResponse>.Failure("سفته یافت نشد");
+      }
+      if (x.IsGuarantee) {
+        await uow.RollbackAsync(ct);
+        return Result<PatientFinanceIdResponse>.Failure("سفته ضمانت سند پرداخت نیست؛ دریافت واقعی اقساط باید جداگانه ثبت شود و مبلغ اسمی سفته به پرداخت یا بدهی تبدیل نمی‌شود.");
       }
       if (x.Status != PatientPromissoryNoteStatus.Pending) {
         await uow.RollbackAsync();
@@ -709,11 +717,11 @@ public sealed class PayPatientDebtCommandHandler(IPatientFinanceRepository repo,
       var hasPendingCommitment =
           await repo.Cheques.AnyAsync(
               x => x.PatientFinancialCaseId == d.PatientFinancialCaseId &&
-                   x.Status == PatientChequeStatus.Pending,
+                   !x.IsGuarantee && x.Status == PatientChequeStatus.Pending,
               ct) ||
           await repo.PromissoryNotes.AnyAsync(
               x => x.PatientFinancialCaseId == d.PatientFinancialCaseId &&
-                   x.Status == PatientPromissoryNoteStatus.Pending,
+                   !x.IsGuarantee && x.Status == PatientPromissoryNoteStatus.Pending,
               ct);
       if (hasPendingCommitment) {
         await uow.RollbackAsync(ct);

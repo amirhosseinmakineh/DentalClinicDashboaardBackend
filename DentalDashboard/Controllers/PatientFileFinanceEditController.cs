@@ -1,12 +1,15 @@
 using System.Data;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
 using DentalDashboard.Infrastracture.Context;
 using DentalDashboard.Utilities.Time;
+using DentalDashboard.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,13 +20,15 @@ public sealed record EditPatientFileFinanceRequest(string ExpectedFinanceHash, C
 
 public static class PatientFileFinanceEditRules
 {
+    public static string EditHash(PatientFinancialCase c) => Convert.ToHexString(SHA256.HashData(
+        Encoding.UTF8.GetBytes(PatientFileWorkflowRules.FinanceHash(c) + "\n" + c.Notes)));
     // SQL datetime values have Unspecified Kind, but financial due dates are stored as UTC.
     public static DateOnly DueDay(DateTime value) => DateOnly.FromDateTime(
         IranTimeHelper.ToIranLocalTime(DateTime.SpecifyKind(value, DateTimeKind.Utc)));
     public static string? BlockReason(PatientFinancialCase c) =>
         c.IsDeleted || c.Status == PatientFinancialCaseStatus.Cancelled ? "صورت‌حساب لغوشده قابل ویرایش نیست." :
         c.Transactions.Any(x => !x.IsDeleted) || c.Debts.Any(x => !x.IsDeleted) ||
-        c.Cheques.Any(x => !x.IsDeleted && (x.Status != PatientChequeStatus.Pending || x.IsGuarantee)) ||
+        c.Cheques.Any(x => !x.IsDeleted && x.Status != PatientChequeStatus.Pending) ||
         c.PromissoryNotes.Any(x => !x.IsDeleted && x.Status != PatientPromissoryNoteStatus.Pending) ||
         !string.IsNullOrWhiteSpace(c.GuaranteeDocument)
             ? "این صورت‌حساب دارای سابقه وصول، بدهی یا سند ضمانت است؛ اصلاح آن باید از حسابداری مدیر انجام شود." : null;
@@ -31,7 +36,7 @@ public static class PatientFileFinanceEditRules
     public static string? Validate(PatientFinancialCase c, EditPatientFileFinanceRequest request)
     {
         if (BlockReason(c) is { } reason) return reason;
-        if (request.ExpectedFinanceHash != PatientFileWorkflowRules.FinanceHash(c))
+        if (request.ExpectedFinanceHash != EditHash(c))
             return "اطلاعات مالی هم‌زمان تغییر کرده است؛ فرم را ببندید و دوباره باز کنید.";
         var r = request.Finance;
         if (r is null || r.PatientId != c.PatientId) return "هویت بیمار قابل تغییر نیست.";
@@ -50,6 +55,7 @@ public static class PatientFileFinanceEditRules
         var c = workflow.FinancialCase!;
         var now = DateTime.UtcNow;
         c.TotalAmount = r.TotalAmount;
+        c.Notes = string.IsNullOrWhiteSpace(r.InstallmentDescription) ? null : r.InstallmentDescription.Trim();
         c.PrePaymentAmount = r.CashReceived;
         c.DepositAmount = 0;
         c.PaymentMethod = r.PaymentMode == "cash" ? "نقدی" : "اقساط";
@@ -68,6 +74,7 @@ public static class PatientFileFinanceEditRules
         foreach (var draft in r.Cheques) {
             var x = draft.Id.HasValue ? c.Cheques.Single(x => x.Id == draft.Id) : new PatientCheque();
             if (!draft.Id.HasValue) c.Cheques.Add(x);
+            x.IsGuarantee = draft.IsGuarantee;
             x.Amount = draft.Amount; x.SayadNumber = draft.Number.Trim(); x.OwnerName = draft.OwnerName.Trim();
             x.DueDate = IranTimeHelper.GetIranDayRangeAsUtc(draft.Installment ? draft.DueDate!.Value : today).StartUtc;
             x.UpdatedAt = now;
@@ -76,6 +83,7 @@ public static class PatientFileFinanceEditRules
             var x = draft.Id.HasValue ? c.PromissoryNotes.Single(x => x.Id == draft.Id) : new PatientPromissoryNote();
             if (!draft.Id.HasValue) c.PromissoryNotes.Add(x);
             x.Amount = draft.Amount; x.SerialNumber = draft.Number.Trim();
+            x.IsGuarantee = draft.IsGuarantee;
             x.DueDate = IranTimeHelper.GetIranDayRangeAsUtc(draft.DueDate!.Value).StartUtc;
             x.UpdatedAt = now;
         }
@@ -106,27 +114,32 @@ public sealed class PatientFileFinanceEditController(DentalContext db, ILogger<P
         var workflow = await Load(patientFileId, ct);
         if (workflow?.FinancialCase is not { } c) return NotFound(new { message = "صورت‌حساب پرونده یافت نشد." });
         if (PatientFileFinanceEditRules.BlockReason(c) is { } reason) return Conflict(new { message = reason });
-        var units = JsonSerializer.Deserialize<Dictionary<int, int>>(c.ServiceUnitCountsJson) ?? [];
-        if (units.Count == 0) units = c.Services.Distinct().ToDictionary(x => (int)x, _ => 1);
+        var units = PatientChartFinanceRules.ReadUnits(await db.PatientPaperRecords.Where(x => x.PatientFileId == patientFileId)
+            .Select(x => x.DentalChartJson).SingleOrDefaultAsync(ct));
         var finance = new CompletePatientFileRequest(c.PatientId,
             c.PaymentMethod == "نقدی" || (c.PaymentMethod is null && !c.Cheques.Any(x => !x.IsDeleted) && !c.PromissoryNotes.Any(x => !x.IsDeleted)) ? "cash" : "installments",
             c.TotalAmount, c.PrePaymentAmount + c.DepositAmount, units,
             c.Cheques.Where(x => !x.IsDeleted).Select(x => new CompletionCheque(x.Amount, x.SayadNumber, x.OwnerName,
-                PatientFileFinanceEditRules.DueDay(x.DueDate), true, x.Id)).ToList(),
+                PatientFileFinanceEditRules.DueDay(x.DueDate), true, x.Id, x.IsGuarantee)).ToList(),
             c.PromissoryNotes.Where(x => !x.IsDeleted).Select(x => new CompletionNote(x.Amount, x.SerialNumber,
-                PatientFileFinanceEditRules.DueDay(x.DueDate), x.Id)).ToList());
-        return Ok(new EditPatientFileFinanceRequest(PatientFileWorkflowRules.FinanceHash(c), finance));
+                PatientFileFinanceEditRules.DueDay(x.DueDate), x.Id, x.IsGuarantee)).ToList(), c.Notes);
+        return Ok(new EditPatientFileFinanceRequest(PatientFileFinanceEditRules.EditHash(c), finance));
     }
 
     [HttpPut]
     public async Task<IActionResult> Update(long patientFileId, EditPatientFileFinanceRequest request, CancellationToken ct)
     {
         if (Actor is not { } actor) return Unauthorized();
+        if (request.Finance is null) return BadRequest(new { message = "اطلاعات مالی معتبر نیست." });
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var workflow = await Load(patientFileId, ct);
         if (workflow?.FinancialCase is not { } c) return NotFound(new { message = "صورت‌حساب پرونده یافت نشد." });
+        var units = PatientChartFinanceRules.ReadUnits(await db.PatientPaperRecords.Where(x => x.PatientFileId == patientFileId)
+            .Select(x => x.DentalChartJson).SingleOrDefaultAsync(ct));
+        if (PatientChartFinanceRules.ValidateSelection(request.Finance.ServiceUnitCounts, units) is { } chartError)
+            return Conflict(new { message = chartError });
         if (PatientFileFinanceEditRules.Validate(c, request) is { } error) return Conflict(new { message = error });
-        PatientFileFinanceEditRules.Apply(workflow, request.Finance, IranTimeHelper.TodayInIran());
+        PatientFileFinanceEditRules.Apply(workflow, request.Finance with { ServiceUnitCounts = units }, IranTimeHelper.TodayInIran());
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         logger.LogInformation("Patient finance {CaseId} edited by {Actor} for file {FileId}; approvals cleared", c.Id, actor, patientFileId);

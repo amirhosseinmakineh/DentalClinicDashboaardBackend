@@ -58,6 +58,7 @@ public sealed class PatientCheque : BaseAuditableEntity<long> {
 }
 
 public sealed class PatientPromissoryNote : BaseAuditableEntity<long> {
+  public bool IsGuarantee { get; set; }
   public Guid PatientFinancialCaseId { get; set; }
   public string SerialNumber { get; set; } = default!;
   public decimal Amount { get; set; }

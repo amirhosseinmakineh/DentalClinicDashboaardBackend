@@ -96,7 +96,7 @@ public sealed class PatientFileServiceResultTests
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) => callback(targetMethod!);
     }
 
-    private sealed class AsyncQuery<T>(IQueryable<T> source) : IQueryable<T>, IAsyncQueryProvider
+    internal sealed class AsyncQuery<T>(IQueryable<T> source) : IQueryable<T>, IAsyncQueryProvider
     {
         public Type ElementType => typeof(T);
         public Expression Expression => source.Expression;

@@ -1708,6 +1708,10 @@ namespace DentalDashboard.Infrastracture.Migrations
 
             modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientPromissoryNote", b =>
                 {
+                    b.Property<bool>("IsGuarantee")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");

@@ -67,6 +67,7 @@ public sealed class PatientFileWorkflowTests
     {
         var c = new PatientFinancialCase { Id = Guid.NewGuid(), TotalAmount = 1000, PrePaymentAmount = 1000 };
         var workflow = new PatientFileWorkflow { ConsultationCompleted = true, FinancialCase = c, FinancialCaseId = c.Id,
+            TreatmentConfirmedAtUtc = DateTime.UtcNow, FinanceConfirmedAtUtc = DateTime.UtcNow, ProfileConfirmedAtUtc = DateTime.UtcNow,
             ApprovedAtUtc = DateTime.UtcNow, ApprovedByUserId = Guid.NewGuid() };
         workflow.ApprovedFinanceHash = PatientFileWorkflowRules.FinanceHash(c);
         Assert.True(PatientFileWorkflowRules.IsApproved(workflow));
@@ -87,7 +88,8 @@ public sealed class PatientFileWorkflowTests
         var c = new PatientFinancialCase { TotalAmount = 1000, PrePaymentAmount = 100, PaymentMethod = "اقساط" };
         c.Cheques.Add(new PatientCheque { Amount = 500, Status = PatientChequeStatus.Pending });
         c.PromissoryNotes.Add(new PatientPromissoryNote { Amount = 400, Status = PatientPromissoryNoteStatus.Pending });
-        var workflow = new PatientFileWorkflow { ConsultationCompleted = true, FinancialCase = c };
+        var workflow = new PatientFileWorkflow { ConsultationCompleted = true, FinancialCase = c,
+            TreatmentConfirmedAtUtc = DateTime.UtcNow, FinanceConfirmedAtUtc = DateTime.UtcNow, ProfileConfirmedAtUtc = DateTime.UtcNow };
         Assert.True(PatientFileWorkflowRules.CanApprove(workflow));
         c.PaymentMethod = "نقدی";
         Assert.False(PatientFileWorkflowRules.CanApprove(workflow));
@@ -96,7 +98,7 @@ public sealed class PatientFileWorkflowTests
         Assert.False(PatientFileWorkflowRules.CanApprove(workflow));
         c.Debts.Clear();
         c.Cheques.First().IsGuarantee = true;
-        Assert.False(PatientFileWorkflowRules.CanApprove(workflow));
+        Assert.True(PatientFileWorkflowRules.CanApprove(workflow));
     }
 
     [Fact]

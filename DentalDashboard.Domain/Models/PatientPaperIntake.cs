@@ -8,6 +8,7 @@ namespace DentalDashboard.Domain.Models;
 /// </summary>
 public sealed class PatientPaperIntake
 {
+    public string? NationalCode { get; set; }
     public DateOnly? BirthDate { get; set; }
     public string? MaritalStatus { get; set; }
     public string? EducationLevel { get; set; }

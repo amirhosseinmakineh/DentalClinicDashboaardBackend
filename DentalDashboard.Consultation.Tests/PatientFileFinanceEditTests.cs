@@ -15,7 +15,7 @@ public sealed class PatientFileFinanceEditTests
         PaymentMethod = "نقدی", CreatedByUserId = Guid.NewGuid()
     };
     private static CompletePatientFileRequest Cash(PatientFinancialCase c) => new(c.PatientId, "cash", 1200, 1200, new() { [1] = 2 }, [], []);
-    private static EditPatientFileFinanceRequest Edit(PatientFinancialCase c, CompletePatientFileRequest r) => new(PatientFileWorkflowRules.FinanceHash(c), r);
+    private static EditPatientFileFinanceRequest Edit(PatientFinancialCase c, CompletePatientFileRequest r) => new(PatientFileFinanceEditRules.EditHash(c), r);
 
     [Fact]
     public void CashCorrectionKeepsSameCaseAndAuditIdentityAndRequiresNewApprovals()
@@ -76,7 +76,7 @@ public sealed class PatientFileFinanceEditTests
         c.Cheques.Add(cheque); Assert.NotNull(PatientFileFinanceEditRules.BlockReason(c));
         cheque.Status = PatientChequeStatus.Unpaid; Assert.NotNull(PatientFileFinanceEditRules.BlockReason(c));
         cheque.Status = PatientChequeStatus.Pending; cheque.IsGuarantee = true;
-        Assert.NotNull(PatientFileFinanceEditRules.BlockReason(c));
+        Assert.Null(PatientFileFinanceEditRules.BlockReason(c));
         c.Cheques.Clear(); c.Transactions.Add(new()); Assert.NotNull(PatientFileFinanceEditRules.BlockReason(c));
         c.Transactions.Clear(); c.Debts.Add(new()); Assert.NotNull(PatientFileFinanceEditRules.BlockReason(c));
     }

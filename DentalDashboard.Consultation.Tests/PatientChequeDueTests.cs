@@ -11,6 +11,39 @@ namespace DentalDashboard.Consultation.Tests;
 public sealed class PatientChequeDueTests
 {
     [Fact]
+    public void ChequeAndNoteRangesIncludeBothIranDaysAndExcludeOutsideDocuments()
+    {
+        var from = new DateOnly(2026, 11, 14);
+        var to = from.AddDays(7);
+        var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(from);
+        var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(to.AddDays(1));
+        var dates = new[] { start.AddTicks(-1), start, start.AddDays(3), end.AddTicks(-1), end };
+        var cheques = dates.Select((date, id) => new PatientCheque {
+            Id = id, DueDate = date, IsGuarantee = id == 2, FinancialCase = new()
+        }).ToArray();
+        var notes = dates.Select((date, id) => new PatientPromissoryNote {
+            Id = id, DueDate = date, IsGuarantee = true, FinancialCase = new()
+        }).ToArray();
+        Assert.Equal(new long[] { 1, 2, 3 }, PatientChequeDueQuery.ForRange(cheques.AsQueryable(), from, to).Select(x => x.Id));
+        Assert.Equal(new long[] { 1, 2, 3 }, PatientChequeDueQuery.NotesForRange(notes.AsQueryable(), from, to).Select(x => x.Id));
+        notes[1].IsDeleted = true;
+        notes[2].FinancialCase.Status = PatientFinancialCaseStatus.Cancelled;
+        notes[3].Status = PatientPromissoryNoteStatus.Cancelled;
+        Assert.Empty(PatientChequeDueQuery.NotesForRange(notes.AsQueryable(), from, to));
+    }
+
+    [Fact]
+    public void NoteRangeTranslatesToSqlWithoutConnectingToDatabase()
+    {
+        using var db = new DentalContextDesignTimeFactory().CreateDbContext([]);
+        var sql = PatientChequeDueQuery.NotesForRange(db.Set<PatientPromissoryNote>(),
+            new DateOnly(2026, 11, 14), new DateOnly(2026, 12, 14)).ToQueryString();
+        Assert.Contains("DueDate", sql);
+        Assert.Contains(">=", sql);
+        Assert.Contains("<", sql);
+    }
+
+    [Fact]
     public void DueDateUsesIranMidnightAndExcludesNextDay()
     {
         var day = new DateOnly(2026, 11, 14);

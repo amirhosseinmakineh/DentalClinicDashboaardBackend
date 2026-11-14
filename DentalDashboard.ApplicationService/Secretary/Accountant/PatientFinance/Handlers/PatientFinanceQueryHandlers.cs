@@ -317,7 +317,7 @@ public sealed class GetPatientFinancialCaseDetailsQueryHandler(
                         promissoryNote.SerialNumber,
                         promissoryNote.Amount,
                         promissoryNote.DueDate,
-                        promissoryNote.Status))
+                        promissoryNote.Status, promissoryNote.IsGuarantee))
                     .ToList()))
             .FirstOrDefaultAsync(cancellationToken);
 }
@@ -352,9 +352,10 @@ public sealed class GetPatientFinancialCaseSummaryQueryHandler(
               financialCase.Cheques
                   .Where(cheque => cheque.Status != PatientChequeStatus.Cancelled)
                   .Sum(cheque => (decimal?)cheque.Amount) ?? 0,
-              financialCase.Cheques
-                  .Where(cheque => cheque.Status == PatientChequeStatus.Paid)
-                  .Sum(cheque => (decimal?)cheque.Amount) ?? 0,
+              financialCase.Transactions
+                  .Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment &&
+                      transaction.SourceType == PatientFinancialTransactionSourceType.Cheque)
+                  .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
               financialCase.Cheques
                   .Where(cheque => cheque.Status == PatientChequeStatus.Pending)
                   .Sum(cheque => (decimal?)cheque.Amount) ?? 0,
@@ -365,10 +366,10 @@ public sealed class GetPatientFinancialCaseSummaryQueryHandler(
                   .Where(promissoryNote =>
                       promissoryNote.Status != PatientPromissoryNoteStatus.Cancelled)
                   .Sum(promissoryNote => (decimal?)promissoryNote.Amount) ?? 0,
-              financialCase.PromissoryNotes
-                  .Where(promissoryNote =>
-                      promissoryNote.Status == PatientPromissoryNoteStatus.Paid)
-                  .Sum(promissoryNote => (decimal?)promissoryNote.Amount) ?? 0,
+              financialCase.Transactions
+                  .Where(transaction => transaction.Type == PatientFinancialTransactionType.Payment &&
+                      transaction.SourceType == PatientFinancialTransactionSourceType.PromissoryNote)
+                  .Sum(transaction => (decimal?)transaction.Amount) ?? 0,
               financialCase.PromissoryNotes
                   .Where(promissoryNote =>
                       promissoryNote.Status == PatientPromissoryNoteStatus.Pending)
@@ -590,7 +591,7 @@ public sealed class GetPatientPromissoryNotesQueryHandler(
                 promissoryNote.SerialNumber,
                 promissoryNote.Amount,
                 promissoryNote.DueDate,
-                promissoryNote.Status))
+                promissoryNote.Status, promissoryNote.IsGuarantee))
             .ToListAsync(cancellationToken);
 
         return new()
@@ -808,7 +809,7 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
         var chequesQuery = patientFinanceRepository.Cheques
             .AsNoTracking()
             .Where(cheque =>
-                cheque.Status == PatientChequeStatus.Pending &&
+                !cheque.IsGuarantee && cheque.Status == PatientChequeStatus.Pending &&
                 (!fromDate.HasValue || cheque.DueDate >= fromDate.Value) &&
                 cheque.DueDate <= toDate &&
                 (request.PatientId == null ||
@@ -817,7 +818,7 @@ public sealed class GetDuePatientFinancialCommitmentsQueryHandler(
         var promissoryNotesQuery = patientFinanceRepository.PromissoryNotes
             .AsNoTracking()
             .Where(promissoryNote =>
-                promissoryNote.Status == PatientPromissoryNoteStatus.Pending &&
+                !promissoryNote.IsGuarantee && promissoryNote.Status == PatientPromissoryNoteStatus.Pending &&
                 (!fromDate.HasValue || promissoryNote.DueDate >= fromDate.Value) &&
                 promissoryNote.DueDate <= toDate &&
                 (request.PatientId == null ||

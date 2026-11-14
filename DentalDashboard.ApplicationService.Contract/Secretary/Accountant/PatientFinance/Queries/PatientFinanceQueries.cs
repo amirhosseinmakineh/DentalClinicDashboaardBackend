@@ -112,7 +112,7 @@ public sealed record PatientPromissoryNoteDto(
     long Id, Guid PatientFinancialCaseId, Guid PatientId, string PatientName,
     string PatientFileNumber,
     string SerialNumber, decimal Amount, DateTime DueDate,
-    PatientPromissoryNoteStatus Status);
+    PatientPromissoryNoteStatus Status, bool IsGuarantee = false);
 public sealed record PatientDebtDto(long Id, Guid PatientId, string PatientName,
                                     string PatientFileNumber,
                                     string? PatientPhoneNumber,

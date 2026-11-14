@@ -10,17 +10,34 @@ public sealed record PatientChequeDueItem(long Id, Guid CaseId, string PatientNa
     string FileNumber, string SayadNumber, string OwnerName, decimal Amount, DateTime DueDate,
     PatientChequeStatus Status, bool IsGuarantee);
 public sealed record PatientChequesDueReport(DateOnly Date, IReadOnlyList<PatientChequeDueItem> Items,
-    int TotalCount, decimal TotalAmount, int PageNumber, int PageSize);
+    int TotalCount, decimal TotalAmount, int PageNumber, int PageSize)
+{
+    public DateOnly FromDate { get; init; } = Date;
+    public DateOnly ToDate { get; init; } = Date;
+}
 
 public static class PatientChequeDueQuery
 {
     public static IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientCheque> ForDay(
         IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientCheque> query, DateOnly date)
+    => ForRange(query, date, date);
+
+    public static IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientCheque> ForRange(
+        IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientCheque> query, DateOnly fromDate, DateOnly toDate)
     {
-        var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(date);
-        var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(date.AddDays(1));
+        var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(fromDate);
+        var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(toDate.AddDays(1));
         return query.Where(x => !x.IsDeleted && !x.FinancialCase.IsDeleted &&
             x.Status != PatientChequeStatus.Cancelled && x.FinancialCase.Status != PatientFinancialCaseStatus.Cancelled &&
+            x.DueDate >= start && x.DueDate < end);
+    }
+    public static IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientPromissoryNote> NotesForRange(
+        IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientPromissoryNote> query, DateOnly fromDate, DateOnly toDate)
+    {
+        var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(fromDate);
+        var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(toDate.AddDays(1));
+        return query.Where(x => !x.IsDeleted && !x.FinancialCase.IsDeleted &&
+            x.Status != PatientPromissoryNoteStatus.Cancelled && x.FinancialCase.Status != PatientFinancialCaseStatus.Cancelled &&
             x.DueDate >= start && x.DueDate < end);
     }
 }
@@ -95,11 +112,11 @@ public sealed record PatientFinanceAdminReportResult(
 public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository repository)
 {
     public async Task<PatientChequesDueReport> GetDueChequesAsync(DateOnly date, int page = 1, int pageSize = 50,
-        CancellationToken ct = default)
+        CancellationToken ct = default, DateOnly? toDate = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
-        var query = PatientChequeDueQuery.ForDay(repository.Cheques.AsNoTracking(), date);
+        var query = PatientChequeDueQuery.ForRange(repository.Cheques.AsNoTracking(), date, toDate ?? date);
         var total = await query.CountAsync(ct);
         var amount = await query.SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
         var items = await query.OrderBy(x => x.DueDate).ThenBy(x => x.Id)
@@ -111,7 +128,24 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
                     .OrderByDescending(f => f.CreatedAt).Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                 x.SayadNumber, x.OwnerName, x.Amount, x.DueDate, x.Status, x.IsGuarantee))
             .ToListAsync(ct);
-        return new(date, items, total, amount, page, pageSize);
+        return new(date, items, total, amount, page, pageSize) { ToDate = toDate ?? date };
+    }
+
+    public async Task<PatientChequesDueReport> GetDueNotesAsync(DateOnly date, int page = 1, int pageSize = 50,
+        CancellationToken ct = default, DateOnly? toDate = null)
+    {
+        page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 100);
+        var query = PatientChequeDueQuery.NotesForRange(repository.PromissoryNotes.AsNoTracking(), date, toDate ?? date);
+        var total = await query.CountAsync(ct);
+        var amount = await query.SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
+        var items = await query.OrderBy(x => x.DueDate).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(x => new PatientChequeDueItem(x.Id, x.PatientFinancialCaseId,
+                (x.FinancialCase.Patient.FirstName + " " + x.FinancialCase.Patient.LastName).Trim(),
+                x.FinancialCase.Patient.PhoneNumber,
+                repository.PatientFiles.Where(f => f.PhoneNumber == x.FinancialCase.Patient.PhoneNumber)
+                    .OrderByDescending(f => f.CreatedAt).Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
+                x.SerialNumber, "", x.Amount, x.DueDate, (PatientChequeStatus)(int)x.Status, x.IsGuarantee)).ToListAsync(ct);
+        return new(date, items, total, amount, page, pageSize) { ToDate = toDate ?? date };
     }
 
     public async Task<PatientFinanceAdminReportResult> GetAsync(

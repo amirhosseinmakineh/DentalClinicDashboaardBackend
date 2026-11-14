@@ -21,7 +21,9 @@ public enum PatientPromissoryNoteStatus {
 public enum PatientFinancialTransactionType { Payment = 1 }
 public enum PatientFinancialTransactionSourceType {
   Cheque = 1,
-  PromissoryNote = 2
+  PromissoryNote = 2,
+  Installment = 3,
+  TreatmentPayment = 4
 }
 public enum PatientDebtSourceType { Cheque = 1, PromissoryNote = 2 }
 public enum PatientDebtStatus { Unpaid = 1, Paid = 2, Cancelled = 3 }

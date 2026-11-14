@@ -1,5 +1,6 @@
 using System.Data;
 using System.Security.Claims;
+using System.Text.Json;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.Models;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
@@ -123,6 +124,12 @@ public sealed class PatientFileCompletionController(DentalContext db) : Controll
             .Select(x => x.DentalChartJson).SingleOrDefaultAsync(ct));
         if (PatientChartFinanceRules.ValidateSelection(request.ServiceUnitCounts, units) is { } chartError)
             return Conflict(new { message = chartError });
+        var paperJson = await db.PatientPaperRecords.Where(x => x.PatientFileId == patientFileId)
+            .Select(x => x.TreatmentsJson).SingleOrDefaultAsync(ct);
+        var paperTreatments = JsonSerializer.Deserialize<List<PatientPaperTreatment>>(paperJson ?? "[]") ?? [];
+        var recordedTreatmentPayments = paperTreatments.Sum(x => x.PaidAmount ?? 0m);
+        if (recordedTreatmentPayments > request.CashReceived)
+            return BadRequest(new { message = "پرداخت‌های ثبت‌شده در طرح درمان باید در وجه دریافتی پرونده مالی لحاظ شوند." });
         request = request with { ServiceUnitCounts = units };
         if (PatientCompletionValidation.Validate(request, today) is { } error)
             return BadRequest(new { message = error });

@@ -19,12 +19,14 @@ public sealed record LinkPatientFinanceRequest(Guid FinancialCaseId);
 public sealed record CompletePatientFileRequest(
     Guid PatientId, string PaymentMode, decimal TotalAmount, decimal CashReceived,
     Dictionary<int, int> ServiceUnitCounts, List<CompletionCheque> Cheques, List<CompletionNote> Notes,
-    string? InstallmentDescription = null);
+    string? InstallmentDescription = null, List<InstallmentInput>? Installments = null);
 
 public static class PatientCompletionValidation
 {
     public static string? Validate(CompletePatientFileRequest r, DateOnly today)
     {
+        if (r.Installments is { Count: > 120 } || r.Installments?.Any(x => x.Amount <= 0 || x.DueDate == default || decimal.Round(x.Amount, 2) != x.Amount) == true)
+            return "تاریخ و مبلغ اقساط معتبر نیست.";
         if (r.InstallmentDescription?.Length > 4000) return "توضیحات نحوه پرداخت اقساط حداکثر ۴۰۰۰ کاراکتر است.";
         if (r.PaymentMode is not ("cash" or "installments")) return "روش پرداخت معتبر نیست.";
         if (r.TotalAmount <= 0 || r.TotalAmount > 999_999_999_999m || decimal.Round(r.TotalAmount, 2) != r.TotalAmount ||
@@ -35,9 +37,9 @@ public static class PatientCompletionValidation
         if (r.Cheques is null || r.Notes is null || r.Cheques.Count + r.Notes.Count > 100)
             return "اطلاعات اسناد معتبر نیست.";
         if (r.PaymentMode == "cash")
-            return r.CashReceived != r.TotalAmount || r.Cheques.Count != 0 || r.Notes.Count != 0
+            return r.CashReceived != r.TotalAmount || r.Cheques.Count != 0 || r.Notes.Count != 0 || r.Installments is { Count: > 0 }
                 ? "در پرداخت نقدی باید کل مبلغ درمان دریافت شده باشد و سند اقساط ثبت نشود." : null;
-        if (r.Cheques.Count + r.Notes.Count == 0) return "حداقل یک چک یا سفته تحویل‌گرفته‌شده ثبت کنید.";
+        if (r.Cheques.Count + r.Notes.Count + (r.Installments?.Count ?? 0) == 0) return "حداقل یک چک یا سفته تحویل‌گرفته‌شده ثبت کنید.";
         if (r.Cheques.Any(x => x is null || x.Amount <= 0 || decimal.Round(x.Amount, 2) != x.Amount ||
             string.IsNullOrWhiteSpace(x.Number) || x.Number.Trim().Length > 32 ||
             string.IsNullOrWhiteSpace(x.OwnerName) || x.OwnerName.Trim().Length > 200 ||
@@ -50,7 +52,7 @@ public static class PatientCompletionValidation
             r.Notes.Select(x => x.Number.Trim()).Distinct().Count() != r.Notes.Count)
             return "شماره چک یا سفته تکراری است.";
         return !PatientFinanceCoverage.IsCovered(r.TotalAmount, r.CashReceived,
-            r.Cheques.Where(x => !x.IsGuarantee).Sum(x => x.Amount) + r.Notes.Where(x => !x.IsGuarantee).Sum(x => x.Amount),
+            r.Cheques.Where(x => !x.IsGuarantee).Sum(x => x.Amount) + r.Notes.Where(x => !x.IsGuarantee).Sum(x => x.Amount) + (r.Installments?.Sum(x => x.Amount) ?? 0m),
             r.Cheques.Where(x => x.IsGuarantee).Sum(x => x.Amount) + r.Notes.Where(x => x.IsGuarantee).Sum(x => x.Amount))
             ? "نقد و اسناد پرداخت نباید از هزینه درمان بیشتر شوند؛ مانده باید با اسناد یا سفته ضمانت پوشش داده شود." : null;
     }
@@ -152,6 +154,15 @@ public sealed class PatientFileCompletionController(DentalContext db) : Controll
                 DueDate = IranTimeHelper.GetIranDayRangeAsUtc(note.DueDate!.Value).StartUtc,
                 Status = PatientPromissoryNoteStatus.Pending
             });
+        if (request.Installments is { Count: > 0 })
+            db.PatientInstallments.AddRange(request.Installments.Select(x => new PatientInstallment {
+                FinancialCase = financialCase, Amount = x.Amount, DueDate = x.DueDate
+            }));
+        var numbers = request.Cheques.Select(x => x.Number.Trim()).ToList();
+        var serials = request.Notes.Select(x => x.Number.Trim()).ToList();
+        if (await db.PatientCheques.AnyAsync(x => numbers.Contains(x.SayadNumber), ct) ||
+            await db.PatientPromissoryNotes.AnyAsync(x => serials.Contains(x.SerialNumber), ct))
+            return Conflict(new { message = "شماره صیادی یا شماره سفته قبلاً در دیتابیس ثبت شده است." });
         db.PatientFinancialCases.Add(financialCase);
         workflow.FinancialCase = financialCase;
         workflow.ClearApproval();

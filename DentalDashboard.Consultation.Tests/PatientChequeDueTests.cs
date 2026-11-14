@@ -10,6 +10,26 @@ namespace DentalDashboard.Consultation.Tests;
 
 public sealed class PatientChequeDueTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReportRestoresUtcMarkerSoIranMidnightDoesNotDisplayAsPreviousDay(bool guarantee)
+    {
+        // 2 Azar 1405 is stored as 20:30 UTC on the previous Gregorian day.
+        var day = new DateOnly(2026, 11, 23);
+        var (utc, _) = IranTimeHelper.GetIranDayRangeAsUtc(day);
+        var sqlValue = DateTime.SpecifyKind(utc, DateTimeKind.Unspecified);
+        var item = new PatientChequeDueItem(1, Guid.NewGuid(), "patient", "", "", "123", "owner",
+            100, sqlValue, PatientChequeStatus.Pending, guarantee).WithUtcDueDate();
+        Assert.Equal(sqlValue.Ticks, item.DueDate.Ticks);
+        var json = System.Text.Json.JsonSerializer.SerializeToElement(item,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+        var value = json.GetProperty("dueDate").GetString()!;
+        Assert.EndsWith("Z", value);
+        var parsed = DateTimeOffset.Parse(value);
+        Assert.Equal(day, DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(parsed, IranTimeHelper.ResolveIranTimeZone()).DateTime));
+    }
+
     [Fact]
     public void ChequeAndNoteRangesIncludeBothIranDaysAndExcludeOutsideDocuments()
     {

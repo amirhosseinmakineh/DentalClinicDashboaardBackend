@@ -8,7 +8,13 @@ namespace DentalDashboard.Services;
 
 public sealed record PatientChequeDueItem(long Id, Guid CaseId, string PatientName, string PhoneNumber,
     string FileNumber, string SayadNumber, string OwnerName, decimal Amount, DateTime DueDate,
-    PatientChequeStatus Status, bool IsGuarantee);
+    PatientChequeStatus Status, bool IsGuarantee)
+{
+    // SQL datetime2 retains the UTC clock value but does not retain DateTime.Kind.
+    public PatientChequeDueItem WithUtcDueDate() => this with {
+        DueDate = DateTime.SpecifyKind(DueDate, DateTimeKind.Utc)
+    };
+}
 public sealed record PatientChequesDueReport(DateOnly Date, IReadOnlyList<PatientChequeDueItem> Items,
     int TotalCount, decimal TotalAmount, int PageNumber, int PageSize)
 {
@@ -128,7 +134,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
                     .OrderByDescending(f => f.CreatedAt).Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                 x.SayadNumber, x.OwnerName, x.Amount, x.DueDate, x.Status, x.IsGuarantee))
             .ToListAsync(ct);
-        return new(date, items, total, amount, page, pageSize) { ToDate = toDate ?? date };
+        return new(date, items.Select(x => x.WithUtcDueDate()).ToArray(), total, amount, page, pageSize) { ToDate = toDate ?? date };
     }
 
     public async Task<PatientChequesDueReport> GetDueNotesAsync(DateOnly date, int page = 1, int pageSize = 50,
@@ -145,7 +151,7 @@ public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository r
                 repository.PatientFiles.Where(f => f.PhoneNumber == x.FinancialCase.Patient.PhoneNumber)
                     .OrderByDescending(f => f.CreatedAt).Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
                 x.SerialNumber, "", x.Amount, x.DueDate, (PatientChequeStatus)(int)x.Status, x.IsGuarantee)).ToListAsync(ct);
-        return new(date, items, total, amount, page, pageSize) { ToDate = toDate ?? date };
+        return new(date, items.Select(x => x.WithUtcDueDate()).ToArray(), total, amount, page, pageSize) { ToDate = toDate ?? date };
     }
 
     public async Task<PatientFinanceAdminReportResult> GetAsync(

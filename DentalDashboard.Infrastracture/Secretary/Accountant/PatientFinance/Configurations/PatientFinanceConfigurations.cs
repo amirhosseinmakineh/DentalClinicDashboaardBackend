@@ -34,6 +34,7 @@ public sealed class PatientChequeConfiguration
     b.Property(x => x.Amount).HasPrecision(18, 2);
     b.Property(x => x.SayadNumber).HasMaxLength(32).IsRequired();
     b.Property(x => x.OwnerName).HasMaxLength(200).IsRequired();
+    b.HasIndex(x => x.SayadNumber).IsUnique().HasFilter("[IsDeleted] = 0").HasDatabaseName("UX_PatientCheques_SayadNumber_Active");
     b.HasIndex(x => new { x.PatientFinancialCaseId, x.DueDate, x.Status });
     b.HasOne(x => x.FinancialCase)
         .WithMany(x => x.Cheques)
@@ -48,6 +49,7 @@ public sealed class PatientPromissoryNoteConfiguration
     b.Property(x => x.IsGuarantee).HasDefaultValue(false);
     b.Property(x => x.Amount).HasPrecision(18, 2);
     b.Property(x => x.SerialNumber).HasMaxLength(64).IsRequired();
+    b.HasIndex(x => x.SerialNumber).IsUnique().HasFilter("[IsDeleted] = 0").HasDatabaseName("UX_PatientPromissoryNotes_SerialNumber_Active");
     b.HasIndex(x => new { x.PatientFinancialCaseId, x.DueDate, x.Status });
     b.HasOne(x => x.FinancialCase)
         .WithMany(x => x.PromissoryNotes)

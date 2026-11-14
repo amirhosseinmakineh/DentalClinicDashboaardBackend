@@ -12,7 +12,7 @@ public static class PatientFinanceCoverage
     public static bool CanConfirm(PatientFinancialCase c)
     {
         var paid = c.PrePaymentAmount + c.DepositAmount + c.Transactions.Where(x => !x.IsDeleted).Sum(x => x.Amount);
-        var documents = c.Cheques.Where(x => !x.IsDeleted && !x.IsGuarantee && x.Status == PatientChequeStatus.Pending).Sum(x => x.Amount) +
+        var documents = c.Installments.Where(x => !x.IsDeleted && !x.PaidAtUtc.HasValue).Sum(x => x.Amount) + c.Cheques.Where(x => !x.IsDeleted && !x.IsGuarantee && x.Status == PatientChequeStatus.Pending).Sum(x => x.Amount) +
             c.PromissoryNotes.Where(x => !x.IsDeleted && !x.IsGuarantee && x.Status == PatientPromissoryNoteStatus.Pending).Sum(x => x.Amount);
         var guarantees = c.Cheques.Where(x => !x.IsDeleted && x.IsGuarantee && x.Status == PatientChequeStatus.Pending).Sum(x => x.Amount) + c.PromissoryNotes.Where(x => !x.IsDeleted && x.IsGuarantee && x.Status == PatientPromissoryNoteStatus.Pending).Sum(x => x.Amount);
         return (c.PaymentMethod != "نقدی" || paid == c.TotalAmount) && IsCovered(c.TotalAmount, paid, documents, guarantees) &&

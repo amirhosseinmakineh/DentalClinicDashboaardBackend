@@ -29,6 +29,7 @@ public sealed class PatientFinancialCase : BaseAuditableEntity<Guid> {
   public Guid CreatedByUserId { get; set; }
   public User Patient { get; set; } = default!;
   public User CreatedByUser { get; set; } = default!;
+  public ICollection<PatientInstallment> Installments { get; set; } = [];
   public ICollection<PatientCheque> Cheques { get; set; } = [];
   public ICollection<PatientPromissoryNote> PromissoryNotes { get; set; } = [];
   public ICollection<PatientDebt> Debts { get; set; } = [];

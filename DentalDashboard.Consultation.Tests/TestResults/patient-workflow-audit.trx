@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="bb6c03d2-60d1-4985-ae5a-0c42cc8c0c7b" name="ASUS@DESKTOP-4RI3B8O 2026-11-14 10:09:02" runUser="DESKTOP-4RI3B8O\CodexSandboxOffline" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-11-14T10:09:02.3115106+03:30" queuing="2026-11-14T10:09:02.3115109+03:30" start="2026-11-14T10:08:59.8288465+03:30" finish="2026-11-14T10:09:05.8111327+03:30" />
+  <TestSettings name="default" id="920f67d0-3a44-48c6-8f0c-cb4ea1668b7c">
+    <Deployment runDeploymentRoot="ASUS_DESKTOP-4RI3B8O_2026-11-14_10_09_02" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="e3534298-0542-4267-a339-e1deadf748c5" testId="02764fb1-774e-9159-4f61-87102876acc6" testName="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.DuplicateDocumentsAndMalformedServicesCannotBeSaved" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0008628" startTime="2026-11-14T10:09:02.2949228+03:30" endTime="2026-11-14T10:09:02.2955333+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e3534298-0542-4267-a339-e1deadf748c5" />
+    <UnitTestResult executionId="27247623-be20-4b0f-b41b-60556d684902" testId="39dcc42c-7513-9aab-1237-41a627e5e6ff" testName="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.SqlUnspecifiedUtcDatesKeepTheirOriginalIranDueDay" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0004654" startTime="2026-11-14T10:09:02.3092910+03:30" endTime="2026-11-14T10:09:02.3094224+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="27247623-be20-4b0f-b41b-60556d684902" />
+    <UnitTestResult executionId="f254b2d2-4b2e-4176-a254-084175c340df" testId="369abaf7-0416-c1aa-e2cf-5b036899b73a" testName="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ReferencedFilesMatchTheOriginalPatientEvenAfterPhoneChanges" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0011888" startTime="2026-11-14T10:09:02.2343198+03:30" endTime="2026-11-14T10:09:02.2344179+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f254b2d2-4b2e-4176-a254-084175c340df" />
+    <UnitTestResult executionId="79a090b0-53ed-4a48-a5c3-4df0595809b4" testId="77bee0d8-2244-125d-d33d-27f82349c9ce" testName="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ExistingHandlerPreservesConsultantRewardEligibilityAndRejectsDuplicateResults(received: True, secretaryOwned: False, eligible: True)" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0097089" startTime="2026-11-14T10:09:02.0975114+03:30" endTime="2026-11-14T10:09:02.1070397+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="79a090b0-53ed-4a48-a5c3-4df0595809b4" />
+    <UnitTestResult executionId="68e03db2-557b-4e18-97ba-c061a53da57d" testId="dbbe0172-4986-719f-9f85-bc74a8f91716" testName="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.PendingDocumentsAreUpdatedInPlaceAndRemovedOnesAreSoftDeleted" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0194047" startTime="2026-11-14T10:09:02.2930517+03:30" endTime="2026-11-14T10:09:02.3089168+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="68e03db2-557b-4e18-97ba-c061a53da57d" />
+    <UnitTestResult executionId="89c9cd51-f474-40e5-8066-5e616d97e281" testId="8c2a8351-0545-3f9a-625c-01da86c5ff59" testName="DentalDashboard.Consultation.Tests.PatientChequeDueTests.DueDateUsesIranMidnightAndExcludesNextDay" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0039998" startTime="2026-11-14T10:09:05.6278624+03:30" endTime="2026-11-14T10:09:05.6317044+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="89c9cd51-f474-40e5-8066-5e616d97e281" />
+    <UnitTestResult executionId="4d680040-f537-44f8-b8f9-eb3aa81e335e" testId="cc274bb4-5f21-2990-a3fe-7ee7f7b6368b" testName="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.CashRequiresFullReceiptAndNoInstallmentDocuments" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0006258" startTime="2026-11-14T10:09:02.2873336+03:30" endTime="2026-11-14T10:09:02.2876025+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4d680040-f537-44f8-b8f9-eb3aa81e335e" />
+    <UnitTestResult executionId="0eb1d0db-8360-4902-a241-ffe02fe5d280" testId="c3dac502-6b94-ffe2-1d91-8eb1ce8f7fc8" testName="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ExistingHandlerPreservesConsultantRewardEligibilityAndRejectsDuplicateResults(received: True, secretaryOwned: True, eligible: False)" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0064982" startTime="2026-11-14T10:09:02.1074229+03:30" endTime="2026-11-14T10:09:02.1138707+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0eb1d0db-8360-4902-a241-ffe02fe5d280" />
+    <UnitTestResult executionId="4334b836-3d4e-454c-8d57-d0c7dd719e89" testId="794bac55-2caa-bf47-4ef4-34c0e7c6d904" testName="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.MixedChequesAndNotesAreAcceptedButRequireExactCoverageAndDueDates" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0080950" startTime="2026-11-14T10:09:02.2789967+03:30" endTime="2026-11-14T10:09:02.2868942+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4334b836-3d4e-454c-8d57-d0c7dd719e89" />
+    <UnitTestResult executionId="ae728113-aef8-4a92-94f7-6d4318e0d611" testId="930be421-cc27-2ea7-010c-b57d88cb8968" testName="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.CashCorrectionKeepsSameCaseAndAuditIdentityAndRequiresNewApprovals" computerName="DESKTOP-4RI3B8O" duration="00:00:00.2900469" startTime="2026-11-14T10:09:02.0223457+03:30" endTime="2026-11-14T10:09:02.2824005+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ae728113-aef8-4a92-94f7-6d4318e0d611" />
+    <UnitTestResult executionId="96f42ede-5e79-44ab-9207-930ea341fb8b" testId="5ea1b1b1-e672-c157-f104-398f994c4fbf" testName="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.PermissionRequiresConsultationAndFinanceAndIsRevokedByFinancialChanges" computerName="DESKTOP-4RI3B8O" duration="00:00:00.2167182" startTime="2026-11-14T10:09:02.0423683+03:30" endTime="2026-11-14T10:09:02.2300077+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="96f42ede-5e79-44ab-9207-930ea341fb8b">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.True() Failure&#xD;
+Expected: True&#xD;
+Actual:   False</Message>
+          <StackTrace>   at DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.PermissionRequiresConsultationAndFinanceAndIsRevokedByFinancialChanges() in C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\PatientFileWorkflowTests.cs:line 72&#xD;
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="703d2caf-2e8c-44d5-9559-a76ece3876f6" testId="4a53fd85-b2d2-2e4a-587e-dfadad07d199" testName="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.ProcessedDocumentsAndTransactionsCannotBeRewrittenBySimpleCorrection" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0407459" startTime="2026-11-14T10:09:01.9344952+03:30" endTime="2026-11-14T10:09:01.9906898+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="703d2caf-2e8c-44d5-9559-a76ece3876f6" />
+    <UnitTestResult executionId="9cf529bc-359c-4703-acf1-0efa42d4e1bb" testId="4fe03e01-82a9-fb01-1710-286ac86ccef0" testName="DentalDashboard.Consultation.Tests.PatientChequeDueTests.DueDateFilterTranslatesToSqlWithoutConnectingToDatabase" computerName="DESKTOP-4RI3B8O" duration="00:00:03.5861054" startTime="2026-11-14T10:09:02.0434456+03:30" endTime="2026-11-14T10:09:05.6276054+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9cf529bc-359c-4703-acf1-0efa42d4e1bb" />
+    <UnitTestResult executionId="685d5009-3504-419e-8c7c-c2cbec643eb2" testId="4a6f300b-1f55-d2b9-6d50-af372f17e52e" testName="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.WorkflowHasOneRowPerFileAndAUniqueFinancialCaseLink" computerName="DESKTOP-4RI3B8O" duration="00:00:02.5277618" startTime="2026-11-14T10:09:02.2958977+03:30" endTime="2026-11-14T10:09:04.8235459+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="685d5009-3504-419e-8c7c-c2cbec643eb2" />
+    <UnitTestResult executionId="88e0920d-35f1-48db-bd53-f5d32eb2b3eb" testId="9687de6f-9899-834d-51ea-99a6a4c9e077" testName="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ServiceResultRequiresCurrentApprovalAndFinancialSnapshot" computerName="DESKTOP-4RI3B8O" duration="00:00:00.1189976" startTime="2026-11-14T10:09:02.2179057+03:30" endTime="2026-11-14T10:09:02.2339783+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="88e0920d-35f1-48db-bd53-f5d32eb2b3eb" />
+    <UnitTestResult executionId="77961fc9-c671-487c-a32f-46e4a129fc85" testId="35aa8b44-15de-e5b0-47da-15748c381853" testName="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.ServiceReleaseRequiresFullCoverageWithoutAnUnpaidDebt" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0404557" startTime="2026-11-14T10:09:01.9349691+03:30" endTime="2026-11-14T10:09:02.0240103+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="77961fc9-c671-487c-a32f-46e4a129fc85">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.True() Failure&#xD;
+Expected: True&#xD;
+Actual:   False</Message>
+          <StackTrace>   at DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.ServiceReleaseRequiresFullCoverageWithoutAnUnpaidDebt() in C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\PatientFileWorkflowTests.cs:line 91&#xD;
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="317fa2b9-9425-4ec0-8357-f77a274cc970" testId="36ec36f9-9830-ae3c-74be-dba44550b737" testName="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.MigrationOnlyAddsWorkflowAndNeverRecreatesExistingPaperRecords" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0484884" startTime="2026-11-14T10:09:02.2338269+03:30" endTime="2026-11-14T10:09:02.2786338+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="317fa2b9-9425-4ec0-8357-f77a274cc970" />
+    <UnitTestResult executionId="14e2373e-2ba1-40bb-b68d-aef28fcafdb6" testId="6cd167df-411d-7ca7-1c69-48bcf5c5bcbf" testName="DentalDashboard.Consultation.Tests.PatientChequeDueTests.DeletedAndCancelledRecordsAreExcludedWhilePaidAndGuaranteeAreLabelledByReport" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0997847" startTime="2026-11-14T10:09:01.9347838+03:30" endTime="2026-11-14T10:09:02.0425392+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="14e2373e-2ba1-40bb-b68d-aef28fcafdb6" />
+    <UnitTestResult executionId="887c80f3-60f0-4383-9c42-e65024546b79" testId="f88acab0-1a22-32c5-bda0-5630b18762ce" testName="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.EmptyConsultationFieldsAreAllowed" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0067097" startTime="2026-11-14T10:09:02.2879392+03:30" endTime="2026-11-14T10:09:02.2945429+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="887c80f3-60f0-4383-9c42-e65024546b79" />
+    <UnitTestResult executionId="82bcdbc5-23c3-4f0e-813c-c0a9701f362c" testId="8dc63d6f-abcb-27c2-6a7c-b9b835457152" testName="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.StaleFormsForeignIdsAndPartialCashCannotOverwriteFinance" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0068227" startTime="2026-11-14T10:09:02.2830055+03:30" endTime="2026-11-14T10:09:02.2893532+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="82bcdbc5-23c3-4f0e-813c-c0a9701f362c" />
+    <UnitTestResult executionId="7a27fb64-d3c1-40c3-aa4b-2b52588718af" testId="9138aa47-fcec-f29d-6d25-ffd69cda17e8" testName="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ExistingHandlerPreservesConsultantRewardEligibilityAndRejectsDuplicateResults(received: False, secretaryOwned: False, eligible: False)" computerName="DESKTOP-4RI3B8O" duration="00:00:00.1554641" startTime="2026-11-14T10:09:01.9294120+03:30" endTime="2026-11-14T10:09:02.0970858+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7a27fb64-d3c1-40c3-aa4b-2b52588718af" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.ProcessedDocumentsAndTransactionsCannotBeRewrittenBySimpleCorrection" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="4a53fd85-b2d2-2e4a-587e-dfadad07d199">
+      <Execution id="703d2caf-2e8c-44d5-9559-a76ece3876f6" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests" name="ProcessedDocumentsAndTransactionsCannotBeRewrittenBySimpleCorrection" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientChequeDueTests.DeletedAndCancelledRecordsAreExcludedWhilePaidAndGuaranteeAreLabelledByReport" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="6cd167df-411d-7ca7-1c69-48bcf5c5bcbf">
+      <Execution id="14e2373e-2ba1-40bb-b68d-aef28fcafdb6" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientChequeDueTests" name="DeletedAndCancelledRecordsAreExcludedWhilePaidAndGuaranteeAreLabelledByReport" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientChequeDueTests.DueDateUsesIranMidnightAndExcludesNextDay" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="8c2a8351-0545-3f9a-625c-01da86c5ff59">
+      <Execution id="89c9cd51-f474-40e5-8066-5e616d97e281" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientChequeDueTests" name="DueDateUsesIranMidnightAndExcludesNextDay" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ExistingHandlerPreservesConsultantRewardEligibilityAndRejectsDuplicateResults(received: True, secretaryOwned: False, eligible: True)" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="77bee0d8-2244-125d-d33d-27f82349c9ce">
+      <Execution id="79a090b0-53ed-4a48-a5c3-4df0595809b4" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests" name="ExistingHandlerPreservesConsultantRewardEligibilityAndRejectsDuplicateResults" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientChequeDueTests.DueDateFilterTranslatesToSqlWithoutConnectingToDatabase" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="4fe03e01-82a9-fb01-1710-286ac86ccef0">
+      <Execution id="9cf529bc-359c-4703-acf1-0efa42d4e1bb" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientChequeDueTests" name="DueDateFilterTranslatesToSqlWithoutConnectingToDatabase" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.WorkflowHasOneRowPerFileAndAUniqueFinancialCaseLink" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="4a6f300b-1f55-d2b9-6d50-af372f17e52e">
+      <Execution id="685d5009-3504-419e-8c7c-c2cbec643eb2" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests" name="WorkflowHasOneRowPerFileAndAUniqueFinancialCaseLink" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.PendingDocumentsAreUpdatedInPlaceAndRemovedOnesAreSoftDeleted" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="dbbe0172-4986-719f-9f85-bc74a8f91716">
+      <Execution id="68e03db2-557b-4e18-97ba-c061a53da57d" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests" name="PendingDocumentsAreUpdatedInPlaceAndRemovedOnesAreSoftDeleted" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.CashCorrectionKeepsSameCaseAndAuditIdentityAndRequiresNewApprovals" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="930be421-cc27-2ea7-010c-b57d88cb8968">
+      <Execution id="ae728113-aef8-4a92-94f7-6d4318e0d611" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests" name="CashCorrectionKeepsSameCaseAndAuditIdentityAndRequiresNewApprovals" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ExistingHandlerPreservesConsultantRewardEligibilityAndRejectsDuplicateResults(received: True, secretaryOwned: True, eligible: False)" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="c3dac502-6b94-ffe2-1d91-8eb1ce8f7fc8">
+      <Execution id="0eb1d0db-8360-4902-a241-ffe02fe5d280" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests" name="ExistingHandlerPreservesConsultantRewardEligibilityAndRejectsDuplicateResults" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.StaleFormsForeignIdsAndPartialCashCannotOverwriteFinance" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="8dc63d6f-abcb-27c2-6a7c-b9b835457152">
+      <Execution id="82bcdbc5-23c3-4f0e-813c-c0a9701f362c" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests" name="StaleFormsForeignIdsAndPartialCashCannotOverwriteFinance" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.DuplicateDocumentsAndMalformedServicesCannotBeSaved" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="02764fb1-774e-9159-4f61-87102876acc6">
+      <Execution id="e3534298-0542-4267-a339-e1deadf748c5" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests" name="DuplicateDocumentsAndMalformedServicesCannotBeSaved" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.CashRequiresFullReceiptAndNoInstallmentDocuments" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="cc274bb4-5f21-2990-a3fe-7ee7f7b6368b">
+      <Execution id="4d680040-f537-44f8-b8f9-eb3aa81e335e" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests" name="CashRequiresFullReceiptAndNoInstallmentDocuments" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ServiceResultRequiresCurrentApprovalAndFinancialSnapshot" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="9687de6f-9899-834d-51ea-99a6a4c9e077">
+      <Execution id="88e0920d-35f1-48db-bd53-f5d32eb2b3eb" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests" name="ServiceResultRequiresCurrentApprovalAndFinancialSnapshot" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.EmptyConsultationFieldsAreAllowed" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="f88acab0-1a22-32c5-bda0-5630b18762ce">
+      <Execution id="887c80f3-60f0-4383-9c42-e65024546b79" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests" name="EmptyConsultationFieldsAreAllowed" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ReferencedFilesMatchTheOriginalPatientEvenAfterPhoneChanges" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="369abaf7-0416-c1aa-e2cf-5b036899b73a">
+      <Execution id="f254b2d2-4b2e-4176-a254-084175c340df" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests" name="ReferencedFilesMatchTheOriginalPatientEvenAfterPhoneChanges" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests.SqlUnspecifiedUtcDatesKeepTheirOriginalIranDueDay" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="39dcc42c-7513-9aab-1237-41a627e5e6ff">
+      <Execution id="27247623-be20-4b0f-b41b-60556d684902" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileFinanceEditTests" name="SqlUnspecifiedUtcDatesKeepTheirOriginalIranDueDay" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.ServiceReleaseRequiresFullCoverageWithoutAnUnpaidDebt" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="35aa8b44-15de-e5b0-47da-15748c381853">
+      <Execution id="77961fc9-c671-487c-a32f-46e4a129fc85" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests" name="ServiceReleaseRequiresFullCoverageWithoutAnUnpaidDebt" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.MixedChequesAndNotesAreAcceptedButRequireExactCoverageAndDueDates" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="794bac55-2caa-bf47-4ef4-34c0e7c6d904">
+      <Execution id="4334b836-3d4e-454c-8d57-d0c7dd719e89" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests" name="MixedChequesAndNotesAreAcceptedButRequireExactCoverageAndDueDates" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.MigrationOnlyAddsWorkflowAndNeverRecreatesExistingPaperRecords" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="36ec36f9-9830-ae3c-74be-dba44550b737">
+      <Execution id="317fa2b9-9425-4ec0-8357-f77a274cc970" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests" name="MigrationOnlyAddsWorkflowAndNeverRecreatesExistingPaperRecords" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.PermissionRequiresConsultationAndFinanceAndIsRevokedByFinancialChanges" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="5ea1b1b1-e672-c157-f104-398f994c4fbf">
+      <Execution id="96f42ede-5e79-44ab-9207-930ea341fb8b" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileWorkflowTests" name="PermissionRequiresConsultationAndFinanceAndIsRevokedByFinancialChanges" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests.ExistingHandlerPreservesConsultantRewardEligibilityAndRejectsDuplicateResults(received: False, secretaryOwned: False, eligible: False)" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="9138aa47-fcec-f29d-6d25-ffd69cda17e8">
+      <Execution id="7a27fb64-d3c1-40c3-aa4b-2b52588718af" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.PatientFileServiceResultTests" name="ExistingHandlerPreservesConsultantRewardEligibilityAndRejectsDuplicateResults" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="02764fb1-774e-9159-4f61-87102876acc6" executionId="e3534298-0542-4267-a339-e1deadf748c5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="39dcc42c-7513-9aab-1237-41a627e5e6ff" executionId="27247623-be20-4b0f-b41b-60556d684902" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="369abaf7-0416-c1aa-e2cf-5b036899b73a" executionId="f254b2d2-4b2e-4176-a254-084175c340df" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="77bee0d8-2244-125d-d33d-27f82349c9ce" executionId="79a090b0-53ed-4a48-a5c3-4df0595809b4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="dbbe0172-4986-719f-9f85-bc74a8f91716" executionId="68e03db2-557b-4e18-97ba-c061a53da57d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8c2a8351-0545-3f9a-625c-01da86c5ff59" executionId="89c9cd51-f474-40e5-8066-5e616d97e281" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="cc274bb4-5f21-2990-a3fe-7ee7f7b6368b" executionId="4d680040-f537-44f8-b8f9-eb3aa81e335e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c3dac502-6b94-ffe2-1d91-8eb1ce8f7fc8" executionId="0eb1d0db-8360-4902-a241-ffe02fe5d280" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="794bac55-2caa-bf47-4ef4-34c0e7c6d904" executionId="4334b836-3d4e-454c-8d57-d0c7dd719e89" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="930be421-cc27-2ea7-010c-b57d88cb8968" executionId="ae728113-aef8-4a92-94f7-6d4318e0d611" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="5ea1b1b1-e672-c157-f104-398f994c4fbf" executionId="96f42ede-5e79-44ab-9207-930ea341fb8b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4a53fd85-b2d2-2e4a-587e-dfadad07d199" executionId="703d2caf-2e8c-44d5-9559-a76ece3876f6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4fe03e01-82a9-fb01-1710-286ac86ccef0" executionId="9cf529bc-359c-4703-acf1-0efa42d4e1bb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4a6f300b-1f55-d2b9-6d50-af372f17e52e" executionId="685d5009-3504-419e-8c7c-c2cbec643eb2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9687de6f-9899-834d-51ea-99a6a4c9e077" executionId="88e0920d-35f1-48db-bd53-f5d32eb2b3eb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="35aa8b44-15de-e5b0-47da-15748c381853" executionId="77961fc9-c671-487c-a32f-46e4a129fc85" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="36ec36f9-9830-ae3c-74be-dba44550b737" executionId="317fa2b9-9425-4ec0-8357-f77a274cc970" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6cd167df-411d-7ca7-1c69-48bcf5c5bcbf" executionId="14e2373e-2ba1-40bb-b68d-aef28fcafdb6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f88acab0-1a22-32c5-bda0-5630b18762ce" executionId="887c80f3-60f0-4383-9c42-e65024546b79" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8dc63d6f-abcb-27c2-6a7c-b9b835457152" executionId="82bcdbc5-23c3-4f0e-813c-c0a9701f362c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9138aa47-fcec-f29d-6d25-ffd69cda17e8" executionId="7a27fb64-d3c1-40c3-aa4b-2b52588718af" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="21" executed="21" passed="19" failed="2" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.9)&#xD;
+[xUnit.net 00:00:00.27]   Discovering: DentalDashboard.Consultation.Tests&#xD;
+[xUnit.net 00:00:00.43]   Discovered:  DentalDashboard.Consultation.Tests&#xD;
+[xUnit.net 00:00:00.52]   Starting:    DentalDashboard.Consultation.Tests&#xD;
+[xUnit.net 00:00:00.68]       Assert.True() Failure&#xD;
+[xUnit.net 00:00:00.68]       Expected: True&#xD;
+[xUnit.net 00:00:00.68]       Actual:   False&#xD;
+[xUnit.net 00:00:00.68]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.69]         C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\PatientFileWorkflowTests.cs(91,0): at DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.ServiceReleaseRequiresFullCoverageWithoutAnUnpaidDebt()&#xD;
+[xUnit.net 00:00:00.69]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+[xUnit.net 00:00:00.69]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:00.88]       Assert.True() Failure&#xD;
+[xUnit.net 00:00:00.88]       Expected: True&#xD;
+[xUnit.net 00:00:00.88]       Actual:   False&#xD;
+[xUnit.net 00:00:00.88]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.88]         C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\PatientFileWorkflowTests.cs(72,0): at DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.PermissionRequiresConsultationAndFinanceAndIsRevokedByFinancialChanges()&#xD;
+[xUnit.net 00:00:00.88]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+[xUnit.net 00:00:00.88]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:04.29]   Finished:    DentalDashboard.Consultation.Tests&#xD;
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="DESKTOP-4RI3B8O" outcome="Error" timestamp="2026-11-14T10:09:02.0316655+03:30">
+        <Text>[xUnit.net 00:00:00.68]     DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.ServiceReleaseRequiresFullCoverageWithoutAnUnpaidDebt [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-4RI3B8O" outcome="Error" timestamp="2026-11-14T10:09:02.3254118+03:30">
+        <Text>[xUnit.net 00:00:00.88]     DentalDashboard.Consultation.Tests.PatientFileWorkflowTests.PermissionRequiresConsultationAndFinanceAndIsRevokedByFinancialChanges [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

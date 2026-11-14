@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="988edd11-ada6-4a95-9018-8adeb5e9830f" name="ASUS@DESKTOP-4RI3B8O 2026-11-14 10:11:59" runUser="DESKTOP-4RI3B8O\CodexSandboxOffline" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-11-14T10:11:59.5150279+03:30" queuing="2026-11-14T10:11:59.5150280+03:30" start="2026-11-14T10:11:57.0971300+03:30" finish="2026-11-14T10:11:59.5289958+03:30" />
+  <TestSettings name="default" id="6db6d4f2-3d78-461c-9eaa-c4451dde181a">
+    <Deployment runDeploymentRoot="ASUS_DESKTOP-4RI3B8O_2026-11-14_10_11_59" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="8e49f410-1fba-4d31-b37d-48a2c216b03f" testId="39461344-8abc-8b55-a233-6baf6aa93ad9" testName="DentalDashboard.Consultation.Tests.WorkflowAuditProbes.SqlDueDateIsReadAsThePreviousIranDayByTheSettlementGuard" computerName="DESKTOP-4RI3B8O" duration="00:00:00.0180349" startTime="2026-11-14T10:11:58.9891915+03:30" endTime="2026-11-14T10:11:59.0227200+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8e49f410-1fba-4d31-b37d-48a2c216b03f" />
+    <UnitTestResult executionId="9f3af631-823a-47cf-b0a1-6acbe907aa94" testId="16237ac1-d279-a5c0-2bcf-9273b91d6576" testName="DentalDashboard.Consultation.Tests.WorkflowAuditProbes.SuccessfulCollectionRevokesAnOtherwiseFullyCoveredServicePermission" computerName="DESKTOP-4RI3B8O" duration="00:00:00.1905202" startTime="2026-11-14T10:11:59.0463378+03:30" endTime="2026-11-14T10:11:59.2134761+03:30" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9f3af631-823a-47cf-b0a1-6acbe907aa94" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="DentalDashboard.Consultation.Tests.WorkflowAuditProbes.SqlDueDateIsReadAsThePreviousIranDayByTheSettlementGuard" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="39461344-8abc-8b55-a233-6baf6aa93ad9">
+      <Execution id="8e49f410-1fba-4d31-b37d-48a2c216b03f" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.WorkflowAuditProbes" name="SqlDueDateIsReadAsThePreviousIranDayByTheSettlementGuard" />
+    </UnitTest>
+    <UnitTest name="DentalDashboard.Consultation.Tests.WorkflowAuditProbes.SuccessfulCollectionRevokesAnOtherwiseFullyCoveredServicePermission" storage="c:\users\asus\source\repos\dentalclinicdashboaardbackend\dentaldashboard.consultation.tests\bin\release\net10.0\dentaldashboard.consultation.tests.dll" id="16237ac1-d279-a5c0-2bcf-9273b91d6576">
+      <Execution id="9f3af631-823a-47cf-b0a1-6acbe907aa94" />
+      <TestMethod codeBase="C:\Users\ASUS\source\repos\DentalClinicDashboaardBackend\DentalDashboard.Consultation.Tests\bin\Release\net10.0\DentalDashboard.Consultation.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DentalDashboard.Consultation.Tests.WorkflowAuditProbes" name="SuccessfulCollectionRevokesAnOtherwiseFullyCoveredServicePermission" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="39461344-8abc-8b55-a233-6baf6aa93ad9" executionId="8e49f410-1fba-4d31-b37d-48a2c216b03f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="16237ac1-d279-a5c0-2bcf-9273b91d6576" executionId="9f3af631-823a-47cf-b0a1-6acbe907aa94" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="2" executed="2" passed="2" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.9)&#xD;
+[xUnit.net 00:00:00.29]   Discovering: DentalDashboard.Consultation.Tests&#xD;
+[xUnit.net 00:00:00.43]   Discovered:  DentalDashboard.Consultation.Tests&#xD;
+[xUnit.net 00:00:00.50]   Starting:    DentalDashboard.Consultation.Tests&#xD;
+[xUnit.net 00:00:00.78]   Finished:    DentalDashboard.Consultation.Tests&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

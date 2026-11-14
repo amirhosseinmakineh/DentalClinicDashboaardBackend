@@ -6,6 +6,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Services;
 
+public sealed record PatientChequeDueItem(long Id, Guid CaseId, string PatientName, string PhoneNumber,
+    string FileNumber, string SayadNumber, string OwnerName, decimal Amount, DateTime DueDate,
+    PatientChequeStatus Status, bool IsGuarantee);
+public sealed record PatientChequesDueReport(DateOnly Date, IReadOnlyList<PatientChequeDueItem> Items,
+    int TotalCount, decimal TotalAmount, int PageNumber, int PageSize);
+
+public static class PatientChequeDueQuery
+{
+    public static IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientCheque> ForDay(
+        IQueryable<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientCheque> query, DateOnly date)
+    {
+        var (start, _) = IranTimeHelper.GetIranDayRangeAsUtc(date);
+        var (end, _) = IranTimeHelper.GetIranDayRangeAsUtc(date.AddDays(1));
+        return query.Where(x => !x.IsDeleted && !x.FinancialCase.IsDeleted &&
+            x.Status != PatientChequeStatus.Cancelled && x.FinancialCase.Status != PatientFinancialCaseStatus.Cancelled &&
+            x.DueDate >= start && x.DueDate < end);
+    }
+}
+
 public sealed class PatientFinanceAdminReportFilter
 {
     public string? Search { get; set; }
@@ -75,6 +94,26 @@ public sealed record PatientFinanceAdminReportResult(
 
 public sealed class PatientFinanceAdminReportService(IPatientFinanceRepository repository)
 {
+    public async Task<PatientChequesDueReport> GetDueChequesAsync(DateOnly date, int page = 1, int pageSize = 50,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+        var query = PatientChequeDueQuery.ForDay(repository.Cheques.AsNoTracking(), date);
+        var total = await query.CountAsync(ct);
+        var amount = await query.SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
+        var items = await query.OrderBy(x => x.DueDate).ThenBy(x => x.Id)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(x => new PatientChequeDueItem(x.Id, x.PatientFinancialCaseId,
+                (x.FinancialCase.Patient.FirstName + " " + x.FinancialCase.Patient.LastName).Trim(),
+                x.FinancialCase.Patient.PhoneNumber,
+                repository.PatientFiles.Where(f => f.PhoneNumber == x.FinancialCase.Patient.PhoneNumber)
+                    .OrderByDescending(f => f.CreatedAt).Select(f => f.FileNumber.ToString()).FirstOrDefault() ?? "",
+                x.SayadNumber, x.OwnerName, x.Amount, x.DueDate, x.Status, x.IsGuarantee))
+            .ToListAsync(ct);
+        return new(date, items, total, amount, page, pageSize);
+    }
+
     public async Task<PatientFinanceAdminReportResult> GetAsync(
         PatientFinanceAdminReportFilter filter,
         CancellationToken cancellationToken = default)

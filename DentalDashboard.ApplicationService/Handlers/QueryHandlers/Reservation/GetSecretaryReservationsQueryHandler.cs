@@ -46,6 +46,11 @@ namespace DentalDashboard.ApplicationService.Handlers.QueryHandlers.Reservation
             // Basic filters
             // ------------------------------------------------------------
 
+            if (query.PatientFileLeadAssignmentId.HasValue)
+                reservations = reservations.Where(x => x.LeadAssignmentId == query.PatientFileLeadAssignmentId.Value);
+            else if (!string.IsNullOrWhiteSpace(query.PatientFilePhoneNumber))
+                reservations = reservations.Where(x => x.LeadAssignment.PhoneNumber == query.PatientFilePhoneNumber);
+
             if (!query.IncludeCanceled)
             {
                 reservations = reservations.Where(x => !x.IsCanceled);

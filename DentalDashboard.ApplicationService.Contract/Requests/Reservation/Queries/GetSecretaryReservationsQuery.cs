@@ -8,6 +8,10 @@ public sealed class GetSecretaryReservationsQuery
     : IQuery<PaginatedResult<SecretaryReservationItemResponse>>
 {
     public long? ConsultantProfileId { get; set; }
+    [JsonIgnore]
+    public long? PatientFileLeadAssignmentId { get; set; }
+    [JsonIgnore]
+    public string? PatientFilePhoneNumber { get; set; }
     public string? Search { get; set; }
     public string? ConsultantName { get; set; }
     public DateTime? FromDate { get; set; }

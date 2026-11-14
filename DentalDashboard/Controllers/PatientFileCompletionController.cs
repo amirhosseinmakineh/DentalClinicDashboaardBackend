@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DentalDashboard.Controllers;
 
-public sealed record CompletionCheque(decimal Amount, string Number, string OwnerName, DateOnly? DueDate, bool Installment);
-public sealed record CompletionNote(decimal Amount, string Number, DateOnly? DueDate);
+public sealed record CompletionCheque(decimal Amount, string Number, string OwnerName, DateOnly? DueDate, bool Installment, long? Id = null);
+public sealed record CompletionNote(decimal Amount, string Number, DateOnly? DueDate, long? Id = null);
 public sealed record LinkPatientFinanceRequest(Guid FinancialCaseId);
 public sealed record CompletePatientFileRequest(
     Guid PatientId, string PaymentMode, decimal TotalAmount, decimal CashReceived,

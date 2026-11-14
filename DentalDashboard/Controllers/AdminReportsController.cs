@@ -229,6 +229,16 @@ public class AdminReportsController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpGet("patient-finances/cheques/due")]
+    public async Task<IActionResult> GetPatientChequesDue([FromQuery] DateOnly? date,
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken cancellationToken = default)
+    {
+        var selectedDate = date ?? IranTimeHelper.TodayInIran();
+        if (selectedDate < new DateOnly(1900, 1, 1) || selectedDate == DateOnly.MaxValue)
+            return BadRequest(new { message = "تاریخ سررسید معتبر نیست." });
+        return Ok(await patientFinanceAdminReportService.GetDueChequesAsync(selectedDate, page, pageSize, cancellationToken));
+    }
+
     [HttpGet("patient-finances/export")]
     public async Task<IActionResult> ExportPatientFinances(
         [FromQuery] PatientFinanceAdminReportFilter filter,

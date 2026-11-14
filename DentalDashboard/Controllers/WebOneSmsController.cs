@@ -16,6 +16,8 @@ public sealed class WebOneSmsController(
     IConfiguration configuration,
     ILogger<WebOneSmsController> logger) : ControllerBase
 {
+    private static readonly HashSet<string> AcceptedTexts = ["3", "5", "8"];
+
     [HttpGet("receive")]
     public async Task<IActionResult> Receive(
         [FromQuery(Name = "text")] string? text,
@@ -28,7 +30,7 @@ public sealed class WebOneSmsController(
             !string.Equals(receiver?.Trim(), dedicatedLine.Trim(), StringComparison.Ordinal))
             return Ok(new { success = true, created = false });
 
-        if (NormalizeDigits(text?.Trim()) != "5")
+        if (!AcceptedTexts.Contains(NormalizeDigits(text?.Trim())))
             return Ok(new { success = true, created = false });
 
         var phone = ConsultationRequestsController.NormalizePhone(sender);
@@ -39,7 +41,7 @@ public sealed class WebOneSmsController(
         {
             var lead = new LeadAssignment
             {
-                UserName = "پنل پیامکی(5)",
+                UserName = "پنل پیامکی",
                 PhoneNumber = phone,
                 SourceType = LeadSourceType.SmsPanel,
                 CreatedAt = DateTime.Now,

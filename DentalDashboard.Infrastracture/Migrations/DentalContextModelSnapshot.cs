@@ -1520,7 +1520,7 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.ToTable("PatientDebts");
                 });
 
-            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", b =>
+            modelBuilder.Entity<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase>(b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -2323,7 +2323,7 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("FinancialCase");
                 });
 
-            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", b =>
+            modelBuilder.Entity<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase>(b =>
                 {
                     b.HasOne("DentalDashboard.Domain.Models.User", "CreatedByUser")
                         .WithMany()
@@ -2374,8 +2374,8 @@ namespace DentalDashboard.Infrastracture.Migrations
 
             modelBuilder.Entity<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientInstallment>(b =>
                 {
-                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
-                        .WithMany("Installments")
+                    b.HasOne(x => x.FinancialCase)
+                        .WithMany(x => x.Installments)
                         .HasForeignKey("PatientFinancialCaseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -2506,7 +2506,7 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("FinancialTransactions");
                 });
 
-            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", b =>
+            modelBuilder.Entity<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase>(b =>
                 {
                     b.Navigation("Cheques");
 

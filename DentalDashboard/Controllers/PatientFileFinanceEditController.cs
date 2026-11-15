@@ -144,12 +144,16 @@ public sealed class PatientFileFinanceEditController(DentalContext db, ILogger<P
         if (PatientChartFinanceRules.ValidateSelection(request.Finance.ServiceUnitCounts, units) is { } chartError)
             return Conflict(new { message = chartError });
         if (PatientFileFinanceEditRules.Validate(c, request) is { } error) return Conflict(new { message = error });
-        var chequeNumbers = request.Finance.Cheques.Select(x => x.Number.Trim()).ToList();
-        var noteNumbers = request.Finance.Notes.Select(x => x.Number.Trim()).ToList();
+        var chequeNumbers = request.Finance.Cheques.Select(x => x.Number.Trim()).ToArray();
+        var noteNumbers = request.Finance.Notes.Select(x => x.Number.Trim()).ToArray();
+        var existingChequeIds = request.Finance.Cheques
+            .Where(x => x.Id.HasValue).Select(x => x.Id!.Value).ToArray();
+        var existingNoteIds = request.Finance.Notes
+            .Where(x => x.Id.HasValue).Select(x => x.Id!.Value).ToArray();
         if (await db.PatientCheques.AnyAsync(x => chequeNumbers.Contains(x.SayadNumber) &&
-                !request.Finance.Cheques.Where(y => y.Id.HasValue).Select(y => y.Id!.Value).Contains(x.Id), ct) ||
+                !existingChequeIds.Contains(x.Id), ct) ||
             await db.PatientPromissoryNotes.AnyAsync(x => noteNumbers.Contains(x.SerialNumber) &&
-                !request.Finance.Notes.Where(y => y.Id.HasValue).Select(y => y.Id!.Value).Contains(x.Id), ct))
+                !existingNoteIds.Contains(x.Id), ct))
             return Conflict(new { message = "شماره چک یا سفته قبلاً ثبت شده است." });
         PatientFileFinanceEditRules.Apply(workflow, request.Finance with { ServiceUnitCounts = units }, IranTimeHelper.TodayInIran());
         await db.SaveChangesAsync(ct);

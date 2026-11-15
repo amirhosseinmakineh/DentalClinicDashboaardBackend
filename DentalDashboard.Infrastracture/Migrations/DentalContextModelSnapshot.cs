@@ -1721,7 +1721,7 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasKey("Id");
                     b.HasIndex("PatientFinancialCaseId", "DueDate");
                     b.ToTable("PatientInstallments");
-                    b.HasQueryFilter(e => !EF.Property<bool>(e, "IsDeleted"));
+                    b.HasQueryFilter((System.Linq.Expressions.Expression<System.Func<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientInstallment, bool>>)(e => !e.IsDeleted));
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientPromissoryNote", b =>

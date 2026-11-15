@@ -13,7 +13,7 @@ public sealed class PatientInstallmentConfiguration : IEntityTypeConfiguration<P
         b.Property(x => x.Id).ValueGeneratedOnAdd();
         b.Property(x => x.Amount).HasPrecision(18, 2);
         b.HasIndex(x => new { x.PatientFinancialCaseId, x.DueDate });
-        b.HasOne(x => x.FinancialCase).WithMany()
+        b.HasOne(x => x.FinancialCase).WithMany(x => x.Installments)
             .HasForeignKey(x => x.PatientFinancialCaseId).OnDelete(DeleteBehavior.Restrict);
         b.HasQueryFilter(x => !x.IsDeleted);
     }

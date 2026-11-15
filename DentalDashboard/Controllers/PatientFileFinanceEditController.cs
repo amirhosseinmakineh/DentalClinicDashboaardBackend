@@ -20,6 +20,11 @@ public sealed record EditPatientFileFinanceRequest(string ExpectedFinanceHash, C
 
 public static class PatientFileFinanceEditRules
 {
+    public static string PaymentMode(PatientFinancialCase c) =>
+        c.PaymentMethod == "نقدی" || (c.PaymentMethod is null &&
+            !c.Cheques.Any(x => !x.IsDeleted) && !c.PromissoryNotes.Any(x => !x.IsDeleted) &&
+            !c.Installments.Any(x => !x.IsDeleted)) ? "cash" : "installments";
+
     public static string EditHash(PatientFinancialCase c)
     {
         var snapshot = PatientFileWorkflowRules.FinanceHash(c) + "\n" + c.Notes;
@@ -128,7 +133,7 @@ public sealed class PatientFileFinanceEditController(DentalContext db, ILogger<P
         var units = PatientChartFinanceRules.ReadUnits(await db.PatientPaperRecords.Where(x => x.PatientFileId == patientFileId)
             .Select(x => x.DentalChartJson).SingleOrDefaultAsync(ct));
         var finance = new CompletePatientFileRequest(c.PatientId,
-            c.PaymentMethod == "نقدی" || (c.PaymentMethod is null && !c.Cheques.Any(x => !x.IsDeleted) && !c.PromissoryNotes.Any(x => !x.IsDeleted)) ? "cash" : "installments",
+            PatientFileFinanceEditRules.PaymentMode(c),
             c.TotalAmount, c.PrePaymentAmount + c.DepositAmount, units,
             c.Cheques.Where(x => !x.IsDeleted).Select(x => new CompletionCheque(x.Amount, x.SayadNumber, x.OwnerName,
                 PatientFileFinanceEditRules.DueDay(x.DueDate), true, x.Id, x.IsGuarantee)).ToList(),

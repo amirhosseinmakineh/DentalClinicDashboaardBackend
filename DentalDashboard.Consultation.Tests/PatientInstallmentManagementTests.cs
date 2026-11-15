@@ -75,6 +75,20 @@ public sealed class PatientInstallmentManagementTests
     }
 
     [Fact]
+    public void LegacyInstallmentOnlyCasesReopenAsInstallmentsInsteadOfCash()
+    {
+        var c = new PatientFinancialCase { PaymentMethod = null };
+        Assert.Equal("cash", PatientFileFinanceEditRules.PaymentMode(c));
+        var row = new PatientInstallment { Amount = 150, DueDate = Today.ToDateTime(TimeOnly.MinValue) };
+        c.Installments.Add(row);
+        Assert.Equal("installments", PatientFileFinanceEditRules.PaymentMode(c));
+        row.IsDeleted = true;
+        Assert.Equal("cash", PatientFileFinanceEditRules.PaymentMode(c));
+        c.PaymentMethod = "اقساط";
+        Assert.Equal("installments", PatientFileFinanceEditRules.PaymentMode(c));
+    }
+
+    [Fact]
     public void ChangingInstallmentDatesInvalidatesTheReviewedFinanceSnapshot()
     {
         var c = new PatientFinancialCase { TotalAmount = 150 };

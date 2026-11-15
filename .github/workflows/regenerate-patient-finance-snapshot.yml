@@ -36,6 +36,10 @@ jobs:
           rm DentalDashboard.Infrastracture/Migrations/*_TemporarySnapshotRegeneration.Designer.cs
           git diff --check
           dotnet build DentalDashboard/DentalDashboard.csproj --no-restore
+          dotnet ef migrations has-pending-model-changes \
+            --project DentalDashboard.Infrastracture/DentalDashboard.Infrastracture.csproj \
+            --startup-project DentalDashboard/DentalDashboard.csproj \
+            --context DentalContext
       - name: Commit only generated model snapshot
         shell: bash
         run: |

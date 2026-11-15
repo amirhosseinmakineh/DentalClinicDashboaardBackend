@@ -1526,7 +1526,7 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("AgreementType")
+                    b.Property<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums.PatientFinancialAgreementType>("AgreementType")
                         .HasColumnType("int");
 
                     b.Property<string>("ConsultantName")
@@ -1589,11 +1589,11 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasDefaultValue("{}");
 
-                    b.PrimitiveCollection<string>("Services")
+                    b.PrimitiveCollection<DentalDashboard.Domain.Enums.DentalServiceType>("Services")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Status")
+                    b.Property<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums.PatientFinancialCaseStatus>("Status")
                         .HasColumnType("int");
 
                     b.Property<int?>("ToothUnitCount")

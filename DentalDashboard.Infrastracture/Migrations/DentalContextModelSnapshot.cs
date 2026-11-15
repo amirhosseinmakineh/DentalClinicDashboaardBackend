@@ -1466,6 +1466,8 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.HasIndex("PatientFinancialCaseId", "DueDate", "Status");
 
+                    b.HasIndex("SayadNumber").IsUnique().HasDatabaseName("UX_PatientCheques_SayadNumber_Active").HasFilter("[IsDeleted] = 0");
+
                     b.ToTable("PatientCheques");
                 });
 
@@ -1706,6 +1708,22 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.ToTable("PatientFinancialTransactions");
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientInstallment", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("bigint");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    b.Property<decimal>("Amount").HasPrecision(18, 2).HasColumnType("decimal(18,2)");
+                    b.Property<DateTime>("DueDate").HasColumnType("datetime2");
+                    b.Property<bool>("IsDeleted").HasColumnType("bit");
+                    b.Property<DateTime?>("PaidAtUtc").HasColumnType("datetime2");
+                    b.Property<Guid?>("PaidByUserId").HasColumnType("uniqueidentifier");
+                    b.Property<Guid>("PatientFinancialCaseId").HasColumnType("uniqueidentifier");
+                    b.HasKey("Id");
+                    b.HasIndex("PatientFinancialCaseId", "DueDate");
+                    b.ToTable("PatientInstallments");
+                    b.HasQueryFilter(x => !x.IsDeleted);
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientPromissoryNote", b =>
                 {
                     b.Property<bool>("IsGuarantee")
@@ -1751,6 +1769,8 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PatientFinancialCaseId", "DueDate", "Status");
+
+                    b.HasIndex("SerialNumber").IsUnique().HasDatabaseName("UX_PatientPromissoryNotes_SerialNumber_Active").HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("PatientPromissoryNotes");
                 });
@@ -2349,6 +2369,16 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Navigation("CreatedByUser");
 
+                    b.Navigation("FinancialCase");
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientInstallment", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
+                        .WithMany()
+                        .HasForeignKey("PatientFinancialCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                     b.Navigation("FinancialCase");
                 });
 

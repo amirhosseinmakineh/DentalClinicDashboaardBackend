@@ -2375,7 +2375,7 @@ namespace DentalDashboard.Infrastracture.Migrations
             modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientInstallment", b =>
                 {
                     b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
-                        .WithMany()
+                        .WithMany("Installments")
                         .HasForeignKey("PatientFinancialCaseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();

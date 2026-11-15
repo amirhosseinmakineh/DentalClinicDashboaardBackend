@@ -2512,6 +2512,8 @@ namespace DentalDashboard.Infrastracture.Migrations
 
                     b.Navigation("Debts");
 
+                    b.Navigation("Installments");
+
                     b.Navigation("PromissoryNotes");
 
                     b.Navigation("Transactions");

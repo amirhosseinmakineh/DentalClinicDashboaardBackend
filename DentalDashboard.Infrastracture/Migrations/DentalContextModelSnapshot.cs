@@ -1708,7 +1708,7 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.ToTable("PatientFinancialTransactions");
                 });
 
-            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientInstallment", b =>
+            modelBuilder.Entity<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientInstallment>(b =>
                 {
                     b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("bigint");
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
@@ -2372,7 +2372,7 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("FinancialCase");
                 });
 
-            modelBuilder.Entity("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientInstallment", b =>
+            modelBuilder.Entity<DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientInstallment>(b =>
                 {
                     b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", "FinancialCase")
                         .WithMany("Installments")

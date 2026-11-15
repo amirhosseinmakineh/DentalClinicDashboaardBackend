@@ -1589,7 +1589,7 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasDefaultValue("{}");
 
-                    b.PrimitiveCollection<DentalDashboard.Domain.Enums.DentalServiceType>("Services")
+                    b.PrimitiveCollection<System.Collections.Generic.List<DentalDashboard.Domain.Enums.DentalServiceType>>("Services")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

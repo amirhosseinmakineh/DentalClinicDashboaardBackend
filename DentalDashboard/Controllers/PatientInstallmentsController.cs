@@ -1,4 +1,5 @@
 using System.Data;
+using DentalDashboard.Domain.Models;
 using System.Security.Claims;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities;
 using DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Enums;
@@ -65,11 +66,17 @@ public sealed class PatientInstallmentsController(DentalContext db) : Controller
         var row = await db.PatientInstallments.SingleOrDefaultAsync(x => x.Id == id && x.PatientFinancialCaseId == caseId, ct);
         if (row is null) return NotFound();
         if (row.PaidAtUtc.HasValue) return Conflict(new { message = "این قسط قبلاً پرداخت شده است." });
-        var financialCase = await db.PatientFinancialCases.SingleAsync(x => x.Id == caseId, ct);
+        var financialCase = await db.PatientFinancialCases.SingleOrDefaultAsync(x => x.Id == caseId, ct);
+        if (financialCase is null) return NotFound(new { message = "پرونده مالی یافت نشد." });
         var collected = await db.PatientFinancialTransactions.Where(x => x.PatientFinancialCaseId == caseId)
             .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
-        if (financialCase.PrePaymentAmount + financialCase.DepositAmount + collected + row.Amount > financialCase.TotalAmount)
-            return Conflict(new { message = "ثبت این قسط از مانده واقعی پرونده بیشتر است." });
+        if (PatientInstallmentRules.PaymentError(financialCase, row, collected) is { } paymentError)
+            return Conflict(new { message = paymentError });
+        if (await db.PatientFinancialTransactions.AnyAsync(x => x.PatientFinancialCaseId == caseId &&
+            x.SourceType == PatientFinancialTransactionSourceType.Installment && x.SourceId == row.Id, ct))
+            return Conflict(new { message = "پرداخت این قسط قبلاً در حسابداری ثبت شده است." });
+        if (financialCase.PrePaymentAmount + financialCase.DepositAmount + collected + row.Amount == financialCase.TotalAmount)
+            financialCase.Status = PatientFinancialCaseStatus.Completed;
         row.PaidAtUtc = DateTime.UtcNow;
         row.PaidByUserId = actor;
         db.PatientFinancialTransactions.Add(new PatientFinancialTransaction {

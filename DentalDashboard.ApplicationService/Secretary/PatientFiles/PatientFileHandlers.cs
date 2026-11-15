@@ -157,7 +157,7 @@ internal static class PatientFileFinanceLoader
         // Load workflow and finance collections separately to avoid cartesian row multiplication.
         var workflows = await patientFileRepository.Workflows.AsNoTracking()
             .Where(x => fileIds.Contains(x.PatientFileId))
-            .Include(x => x.FinancialCase)
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.Installments)
             .ToDictionaryAsync(x => x.PatientFileId, cancellationToken);
 
         var workflowCaseIds = workflows.Values

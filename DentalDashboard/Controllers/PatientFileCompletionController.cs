@@ -26,7 +26,7 @@ public static class PatientCompletionValidation
 {
     public static string? Validate(CompletePatientFileRequest r, DateOnly today)
     {
-        if (r.Installments is { Count: > 120 } || r.Installments?.Any(x => x.Amount <= 0 || x.DueDate == default || decimal.Round(x.Amount, 2) != x.Amount) == true)
+        if (r.Installments is { Count: > 120 } || r.Installments?.Any(x => x is null || x.Amount <= 0 || x.Amount > 999_999_999_999m || x.DueDate == default || decimal.Round(x.Amount, 2) != x.Amount) == true)
             return "تاریخ و مبلغ اقساط معتبر نیست.";
         if (r.InstallmentDescription?.Length > 4000) return "توضیحات نحوه پرداخت اقساط حداکثر ۴۰۰۰ کاراکتر است.";
         if (r.PaymentMode is not ("cash" or "installments")) return "روش پرداخت معتبر نیست.";
@@ -40,7 +40,7 @@ public static class PatientCompletionValidation
         if (r.PaymentMode == "cash")
             return r.CashReceived != r.TotalAmount || r.Cheques.Count != 0 || r.Notes.Count != 0 || r.Installments is { Count: > 0 }
                 ? "در پرداخت نقدی باید کل مبلغ درمان دریافت شده باشد و سند اقساط ثبت نشود." : null;
-        if (r.Cheques.Count + r.Notes.Count + (r.Installments?.Count ?? 0) == 0) return "حداقل یک چک یا سفته تحویل‌گرفته‌شده ثبت کنید.";
+        if (r.Cheques.Count + r.Notes.Count + (r.Installments?.Count ?? 0) == 0) return "حداقل یک قسط یا سند پرداخت ثبت کنید؛ دریافت ضمانت الزامی نیست.";
         if (r.Cheques.Any(x => x is null || x.Amount <= 0 || decimal.Round(x.Amount, 2) != x.Amount ||
             string.IsNullOrWhiteSpace(x.Number) || x.Number.Trim().Length > 32 ||
             string.IsNullOrWhiteSpace(x.OwnerName) || x.OwnerName.Trim().Length > 200 ||
@@ -55,7 +55,7 @@ public static class PatientCompletionValidation
         return !PatientFinanceCoverage.IsCovered(r.TotalAmount, r.CashReceived,
             r.Cheques.Where(x => !x.IsGuarantee).Sum(x => x.Amount) + r.Notes.Where(x => !x.IsGuarantee).Sum(x => x.Amount) + (r.Installments?.Sum(x => x.Amount) ?? 0m),
             r.Cheques.Where(x => x.IsGuarantee).Sum(x => x.Amount) + r.Notes.Where(x => x.IsGuarantee).Sum(x => x.Amount))
-            ? "نقد و اسناد پرداخت نباید از هزینه درمان بیشتر شوند؛ مانده باید با اسناد یا سفته ضمانت پوشش داده شود." : null;
+            ? "نقد و اسناد پرداخت نباید از هزینه درمان بیشتر شوند؛ مانده باید با جدول اقساط یا اسناد پوشش داده شود؛ دریافت ضمانت اختیاری است." : null;
     }
 }
 
@@ -238,6 +238,7 @@ public sealed class PatientFileCompletionController(DentalContext db) : Controll
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         if (!await db.PatientFiles.AnyAsync(x => x.Id == patientFileId, ct)) return NotFound();
         var workflow = await db.PatientFileWorkflows
+            .Include(x => x.FinancialCase!).ThenInclude(x => x.Installments)
             .Include(x => x.FinancialCase!).ThenInclude(x => x.Cheques)
             .Include(x => x.FinancialCase!).ThenInclude(x => x.PromissoryNotes)
             .Include(x => x.FinancialCase!).ThenInclude(x => x.Transactions)

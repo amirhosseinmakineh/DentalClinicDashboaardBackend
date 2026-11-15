@@ -20,8 +20,14 @@ public sealed record EditPatientFileFinanceRequest(string ExpectedFinanceHash, C
 
 public static class PatientFileFinanceEditRules
 {
-    public static string EditHash(PatientFinancialCase c) => Convert.ToHexString(SHA256.HashData(
-        Encoding.UTF8.GetBytes(PatientFileWorkflowRules.FinanceHash(c) + "\n" + c.Notes)));
+    public static string EditHash(PatientFinancialCase c)
+    {
+        var snapshot = PatientFileWorkflowRules.FinanceHash(c) + "\n" + c.Notes;
+        var installments = c.Installments.Where(x => !x.IsDeleted).OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.Amount, x.DueDate, x.PaidAtUtc }).ToArray();
+        if (installments.Length > 0) snapshot += "\nInstallments:" + JsonSerializer.Serialize(installments);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot)));
+    }
     // SQL datetime values have Unspecified Kind, but financial due dates are stored as UTC.
     public static DateOnly DueDay(DateTime value) => DateOnly.FromDateTime(
         IranTimeHelper.ToIranLocalTime(DateTime.SpecifyKind(value, DateTimeKind.Utc)));

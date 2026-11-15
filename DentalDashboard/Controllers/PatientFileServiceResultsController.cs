@@ -30,6 +30,7 @@ public sealed class PatientFileServiceResultsController(DentalContext db, IQuery
 
     private Task<PatientFileWorkflow?> Workflow(long id, CancellationToken ct) => db.PatientFileWorkflows
         .AsNoTracking().Include(x => x.PatientFile)
+        .Include(x => x.FinancialCase!).ThenInclude(x => x.Installments)
         .Include(x => x.FinancialCase!).ThenInclude(x => x.Cheques)
         .Include(x => x.FinancialCase!).ThenInclude(x => x.PromissoryNotes)
         .Include(x => x.FinancialCase!).ThenInclude(x => x.Transactions)

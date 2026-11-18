@@ -9,6 +9,7 @@ namespace DentalDashboard.ApplicationService.Contract.Responses.ReservationRespo
         public long LeadAssignmentId { get; set; }
         public long ConsultantProfileId { get; set; }
         public Guid ConsultantUserId { get; set; }
+        public string? RewardConsultantFullName { get; set; }
         public string ConsultantFullName { get; set; } = default!;
         public Guid? PatientUserId { get; set; }
         public bool RequiresPatientProfile { get; set; }

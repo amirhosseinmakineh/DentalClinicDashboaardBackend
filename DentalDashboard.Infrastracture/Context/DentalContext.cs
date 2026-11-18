@@ -27,6 +27,8 @@ namespace DentalDashboard.Infrastracture.Context
         public DbSet<LeadAssignmentSetting> LeadAssignmentSettings => Set<LeadAssignmentSetting>();
         public DbSet<Attendance> Attendances => Set<Attendance>();
         public DbSet<Reservation> Reservations => Set<Reservation>();
+        public DbSet<ConsultantServiceRewardRule> ConsultantServiceRewardRules => Set<ConsultantServiceRewardRule>();
+        public DbSet<ConsultantRewardExecution> ConsultantRewardExecutions => Set<ConsultantRewardExecution>();
         public DbSet<UserPresenceLog> UserPresenceLogs => Set<UserPresenceLog>();
         public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
         public DbSet<SecretaryAccessSchedule> SecretaryAccessSchedules => Set<SecretaryAccessSchedule>();

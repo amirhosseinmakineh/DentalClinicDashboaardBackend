@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DentalDashboard.Controllers;
 
+public sealed record ReviewRewardRejectionRequest(string? Reason);
+
 [ApiController]
 [Route("api/consultant/wallet")]
 [Authorize(Roles = "Consultant")]
@@ -39,13 +41,13 @@ public sealed class AdminConsultantRewardsController(DentalContext context) : Co
         Review(reservationId, true, cancellationToken);
 
     [HttpPost("{reservationId:long}/reject")]
-    public Task<IActionResult> Reject(long reservationId, CancellationToken cancellationToken) =>
-        Review(reservationId, false, cancellationToken);
+    public Task<IActionResult> Reject(long reservationId, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] ReviewRewardRejectionRequest? request, CancellationToken cancellationToken) =>
+        Review(reservationId, false, cancellationToken, request?.Reason);
 
-    private async Task<IActionResult> Review(long reservationId, bool approved, CancellationToken cancellationToken)
+    private async Task<IActionResult> Review(long reservationId, bool approved, CancellationToken cancellationToken, string? rejectionReason = null)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
-        var result = await service.ReviewAsync(reservationId, userId, approved, cancellationToken);
+        var result = await service.ReviewAsync(reservationId, userId, approved, cancellationToken, rejectionReason);
         return result.Success ? Ok(new { isSuccess = true, message = result.Message })
             : Conflict(new { isSuccess = false, message = result.Message });
     }

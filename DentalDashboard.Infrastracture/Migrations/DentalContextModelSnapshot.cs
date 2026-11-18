@@ -230,6 +230,88 @@ namespace DentalDashboard.Infrastracture.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.Models.ConsultantRewardExecution", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ConsultantProfileId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("FinancialCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("PerformedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("ReservationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ToothId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConsultantProfileId");
+
+                    b.HasIndex("ReservationId");
+
+                    b.HasIndex("FinancialCaseId", "ServiceId", "ToothId")
+                        .IsUnique();
+
+                    b.ToTable("ConsultantRewardExecutions", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Models.ConsultantServiceRewardRule", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Basis")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RemainderMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UnitsPerReward")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceId", "Id");
+
+                    b.ToTable("ConsultantServiceRewardRules", (string)null);
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignment", b =>
                 {
                     b.Property<long>("Id")
@@ -751,6 +833,9 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<int>("ReservationType")
                         .HasColumnType("int");
 
+                    b.Property<long?>("RewardConsultantProfileId")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("SecretaryAnnouncement")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -780,12 +865,17 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Property<Guid?>("SecretaryUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ServiceRewardSnapshotJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
                     b.HasIndex("PatientUserId");
+
+                    b.HasIndex("RewardConsultantProfileId");
 
                     b.HasIndex("SecretaryAnnouncementStatus");
 
@@ -2047,6 +2137,27 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.Models.ConsultantRewardExecution", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.ConsultantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("ConsultantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Secretary.Accountant.PatientFinance.Entities.PatientFinancialCase", null)
+                        .WithMany()
+                        .HasForeignKey("FinancialCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalDashboard.Domain.Models.Reservation", null)
+                        .WithMany()
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.LeadAssignment", b =>
                 {
                     b.HasOne("DentalDashboard.Domain.Models.ConsultantProfile", "ConsultantProfile")
@@ -2173,11 +2284,18 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .HasForeignKey("PatientUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("DentalDashboard.Domain.Models.ConsultantProfile", "RewardConsultantProfile")
+                        .WithMany()
+                        .HasForeignKey("RewardConsultantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("ConsultantProfile");
 
                     b.Navigation("LeadAssignment");
 
                     b.Navigation("PatientUser");
+
+                    b.Navigation("RewardConsultantProfile");
                 });
 
             modelBuilder.Entity("DentalDashboard.Domain.Models.SecretaryAccessPermission", b =>

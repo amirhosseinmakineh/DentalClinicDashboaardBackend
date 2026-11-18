@@ -47,7 +47,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
 
             var profile = await consultantProfileRepository.GetAll()
                 .FirstOrDefaultAsync(x => x.Id == reservation.ConsultantProfileId, cancellationToken);
-            if (profile == null || profile.IsDeleted)
+            if (!command.ServiceRewardManaged && (profile == null || profile.IsDeleted))
                 return Result.Failure("پروفایل مشاور یافت نشد");
 
             reservation.SecretaryUserId = command.SecretaryUserId;
@@ -65,7 +65,7 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Reservatio
             reservation.DoctorName = patientReceivedService.Value ? doctorName : null;
             reservation.ConsultantRewardEligibleAt =
                 patientReceivedService.Value &&
-                reservation.OwnerType != ReservationOwnerType.Secretary
+                (command.ServiceRewardManaged || reservation.OwnerType != ReservationOwnerType.Secretary)
                     ? DateTime.UtcNow
                     : null;
 

@@ -50,7 +50,7 @@ public sealed class AdminAccountingReportService(DentalContext context)
         if (until.HasValue) sales = sales.Where(x => x.CreatedAt < until.Value);
 
         var consultantReservations = context.Reservations.AsNoTracking().Where(x =>
-            !x.IsDeleted && !x.IsCanceled && x.OwnerType != ReservationOwnerType.Secretary &&
+            !x.IsDeleted && !x.IsCanceled && (x.OwnerType != ReservationOwnerType.Secretary || x.ServiceRewardSnapshotJson != null) &&
             (x.ConsultantSaysPatientAttended == true || x.SecretaryReviewedAt != null));
         if (from.HasValue) consultantReservations = consultantReservations.Where(x => x.CreatedAt >= from.Value);
         if (until.HasValue) consultantReservations = consultantReservations.Where(x => x.CreatedAt < until.Value);
@@ -76,9 +76,9 @@ public sealed class AdminAccountingReportService(DentalContext context)
         var consultantRows = await consultantReservations
             .GroupBy(x => new
             {
-                x.ConsultantProfile.UserId,
-                x.ConsultantProfile.User.FirstName,
-                x.ConsultantProfile.User.LastName
+                UserId = x.RewardConsultantProfileId.HasValue ? x.RewardConsultantProfile!.UserId : x.ConsultantProfile.UserId,
+                FirstName = x.RewardConsultantProfileId.HasValue ? x.RewardConsultantProfile!.User.FirstName : x.ConsultantProfile.User.FirstName,
+                LastName = x.RewardConsultantProfileId.HasValue ? x.RewardConsultantProfile!.User.LastName : x.ConsultantProfile.User.LastName
             })
             .Select(group => new AdminStaffAccountingRow(
                 group.Key.UserId,

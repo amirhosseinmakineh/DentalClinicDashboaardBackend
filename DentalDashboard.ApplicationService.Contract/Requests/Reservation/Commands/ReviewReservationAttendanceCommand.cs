@@ -17,5 +17,11 @@ namespace DentalDashboard.ApplicationService.Contract.Requests.Reservation.Comma
         public bool? Approved { get; set; }
         public string? Note { get; set; }
         public string? DoctorName { get; set; }
+        public long? RewardConsultantProfileId { get; set; }
+        public List<PerformedServiceInput>? PerformedServices { get; set; }
+        public string? ExpectedRewardHash { get; set; }
+        [JsonIgnore]
+        public bool ServiceRewardManaged { get; set; }
     }
+    public sealed record PerformedServiceInput(int ServiceId, List<int> ToothIds);
 }

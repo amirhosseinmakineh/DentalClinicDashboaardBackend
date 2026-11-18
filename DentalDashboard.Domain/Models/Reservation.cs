@@ -29,6 +29,9 @@ public class Reservation : BaseAuditableEntity<long>
     public DateTime? ConsultantRewardEligibleAt { get; set; }
     public bool? ConsultantRewardApprovedByAdmin { get; set; }
     public decimal? ConsultantRewardAmount { get; set; }
+    public long? RewardConsultantProfileId { get; set; }
+    public ConsultantProfile? RewardConsultantProfile { get; set; }
+    public string? ServiceRewardSnapshotJson { get; set; }
     public Guid? ConsultantRewardReviewedByAdminId { get; set; }
     public DateTime? ConsultantRewardReviewedAt { get; set; }
     public SecretaryAnnouncementStatus? SecretaryAnnouncementStatus { get; set; }

@@ -257,6 +257,8 @@ namespace DentalDashboard.Controllers
             if (!await secretaryAccessService.HasPermissionAsync(userId, DentalDashboard.Domain.Enums.SecretaryPermissionType.ConfirmAttendance) ||
                 !await secretaryAccessService.CanAccessReservationAsync(userId, command.ReservationId)) return Forbid();
 
+            if ((command.PatientReceivedService ?? command.Approved) == true)
+                return BadRequest(new { isSuccess = false, message = "ثبت انجام خدمت و محاسبه پاداش را از بخش پرونده‌های بیمار انجام دهید." });
             var result = await commandDispatcher.DispatchAsync(command);
 
             return Ok(result);

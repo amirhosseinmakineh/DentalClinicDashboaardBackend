@@ -41,7 +41,7 @@ public sealed class WebOneSmsController(
         {
             var lead = new LeadAssignment
             {
-                UserName = "پنل پیامکی",
+                UserName = "",
                 PhoneNumber = phone,
                 SourceType = LeadSourceType.SmsPanel,
                 CreatedAt = DateTime.Now,

@@ -361,6 +361,7 @@ namespace DentalDashboard.ApplicationService.Services
                     {
                         ["leadId"] = lead.Id.ToString(),
                         ["type"] = "RealtimeLead",
+                        ["isSmsPanel"] = lead.SourceType == LeadSourceType.SmsPanel ? "true" : "false",
                         ["leadLimitType"] = sourceType == LeadAssignmentSourceType.BurnedLeads ? "Burnt" : "Realtime",
                         ["userName"] = lead.UserName ?? string.Empty,
                         ["phoneNumber"] = lead.PhoneNumber ?? string.Empty,
@@ -383,7 +384,9 @@ namespace DentalDashboard.ApplicationService.Services
                 : lead.PhoneNumber.Trim();
 
             var leadTitle = sourceType == LeadAssignmentSourceType.BurnedLeads ? "شماره سوخته" : "لید جدید";
-            var title = isReminder ? $"یادآوری {leadTitle}: {name}" : $"{leadTitle}: {name}";
+            var title = lead.SourceType == LeadSourceType.SmsPanel
+                ? "لید جدید پنل پیامکی دارید"
+                : isReminder ? $"یادآوری {leadTitle}: {name}" : $"{leadTitle}: {name}";
             var body = $"شماره تماس: {phone} — جهت دریافت روی اعلان کلیک کنید.";
 
             return (title, body);

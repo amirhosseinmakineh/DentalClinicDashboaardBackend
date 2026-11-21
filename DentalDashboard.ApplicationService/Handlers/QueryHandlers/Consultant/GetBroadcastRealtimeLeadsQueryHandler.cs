@@ -93,6 +93,7 @@ public class GetBroadcastRealtimeLeadsQueryHandler
                 new BroadcastRealtimeLeadItemResponse
                 {
                     LeadAssignmentId = lead.Id,
+                    IsSmsPanel = lead.SourceType == LeadSourceType.SmsPanel,
                     UserName = lead.UserName,
                     PhoneNumber = lead.PhoneNumber,
                     CreatedAt = lead.CreatedAt,

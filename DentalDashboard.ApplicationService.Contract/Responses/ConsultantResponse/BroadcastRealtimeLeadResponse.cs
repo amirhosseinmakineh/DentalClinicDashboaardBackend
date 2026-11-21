@@ -6,6 +6,7 @@ public sealed class BroadcastRealtimeLeadItemResponse
     public string? UserName { get; init; }
     public string? PhoneNumber { get; init; }
     public DateTime CreatedAt { get; init; }
+    public bool IsSmsPanel { get; init; }
     public string LeadLimitType { get; init; } = "Realtime";
 }
 

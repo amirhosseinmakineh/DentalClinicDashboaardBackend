@@ -6,6 +6,7 @@ namespace DentalDashboard.Domain.IRepositories
 {
     public interface ILeadAssignmentRepository : IBaseRepository<long, LeadAssignment>
     {
+        Task SynchronizePatientNameAsync(LeadAssignment lead, LeadPatientName name, CancellationToken cancellationToken = default);
         Task<bool> HasActiveRealTimeLeadAsync(long consultantProfileId);
         Task<int> CountActiveUnreportedRealTimeLeadsAsync(long consultantProfileId);
         Task<int> CountActiveUncalledRealTimeLeadsAsync(long consultantProfileId);

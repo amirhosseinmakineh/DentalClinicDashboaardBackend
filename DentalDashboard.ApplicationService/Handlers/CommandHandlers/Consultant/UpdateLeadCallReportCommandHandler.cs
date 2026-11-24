@@ -3,6 +3,7 @@ using DentalDashboard.ApplicationService.Contract.Responses.LeadResponse;
 using DentalDashboard.Domain.Enums;
 using DentalDashboard.Domain.IDomainService;
 using DentalDashboard.Domain.IRepositories;
+using DentalDashboard.Domain.Models;
 using DentalDashboard.Framwork.Cqrs.Abstraction.Wrire;
 using DentalDashboard.Framwork.Domain;
 
@@ -68,7 +69,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
             }
 
             if (!string.IsNullOrWhiteSpace(command.UserName))
-                lead.UserName = command.UserName.Trim();
+            {
+                if (!LeadPatientName.TryCreate(command.UserName, out var patientName))
+                    return Result<SubmitLeadCallReportResponse>.Failure("نام و نام خانوادگی هرکدام حداکثر ۱۰۰ نویسه مجاز هستند");
+                await leadAssignmentRepository.SynchronizePatientNameAsync(lead, patientName!, cancellationToken);
+            }
 
             lead.CallResult = command.CallResult;
             lead.ReportDescription = command.ReportDescription;

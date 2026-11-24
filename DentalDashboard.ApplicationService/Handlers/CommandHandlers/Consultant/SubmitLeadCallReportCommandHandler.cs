@@ -93,7 +93,11 @@ namespace DentalDashboard.ApplicationService.Handlers.CommandHandlers.Consultant
 
             var now = DateTime.Now;
             if (!string.IsNullOrWhiteSpace(command.UserName))
-                lead.UserName = command.UserName.Trim();
+            {
+                if (!LeadPatientName.TryCreate(command.UserName, out var patientName))
+                    return Result<SubmitLeadCallReportResponse>.Failure("نام و نام خانوادگی هرکدام حداکثر ۱۰۰ نویسه مجاز هستند");
+                await leadAssignmentRepository.SynchronizePatientNameAsync(lead, patientName!, cancellationToken);
+            }
 
             lead.CallResult = command.CallResult;
             lead.ReportDescription = command.ReportDescription;

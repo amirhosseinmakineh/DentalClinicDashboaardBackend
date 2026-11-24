@@ -15,6 +15,37 @@ namespace DentalDashboard.Infrastracture.Repository
         {
         }
 
+        // Stage tracked changes only. The report handler saves all names and the report atomically.
+        public async Task SynchronizePatientNameAsync(LeadAssignment lead, LeadPatientName patientName, CancellationToken cancellationToken = default)
+        {
+            var name = patientName.FullName;
+            var firstName = patientName.FirstName;
+            var lastName = patientName.LastName;
+            var phone = lead.PhoneNumber;
+
+            var leads = await context.LeadAssignments.Where(x => x.PhoneNumber == phone).ToListAsync(cancellationToken);
+            foreach (var item in leads) item.UserName = name;
+            lead.UserName = name;
+
+            var sheets = await context.AdminSheetLeads.Where(x => x.PhoneNumber == phone || x.LeadAssignmentId == lead.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var item in sheets) { item.FirstName = firstName; item.LastName = lastName; }
+
+            var files = await context.PatientFiles.Where(x => x.PhoneNumber == phone || x.PatientReferenceId == lead.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var item in files) { item.FirstName = firstName; item.LastName = lastName; }
+
+            // A lead must not rename an employee account that happens to share its phone number.
+            var users = await context.Users.Where(x => x.PhoneNumber == phone &&
+                (x.PatientProfile != null || x.UserRoles.Any(r => r.Role.RoleName == "Patient")))
+                .ToListAsync(cancellationToken);
+            foreach (var item in users) { item.FirstName = firstName; item.LastName = lastName; }
+
+            var referrals = await context.PatientReferrals.Where(x => x.ReferredPhoneNumber == phone)
+                .ToListAsync(cancellationToken);
+            foreach (var item in referrals) { item.ReferredFirstName = firstName; item.ReferredLastName = lastName; }
+        }
+
         public Task<List<LeadAssignment>> GetUnassignedRealTimeLeadsAsync(int take)
         {
             return GetAll()

@@ -1,3 +1,5 @@
+using DentalDashboard.ApplicationService.Accounting.Services;
+using DentalDashboard.ApplicationService.Contract.Accounting;
 using System.Data;
 using DentalDashboard.Domain.Models;
 using System.Security.Claims;
@@ -16,7 +18,7 @@ public sealed record ReplaceInstallmentsRequest(List<InstallmentInput> Installme
 [ApiController]
 [Authorize(Roles = "Admin,Secretary")]
 [Route("api/secretary/patient-financial-cases/{caseId:guid}/installments")]
-public sealed class PatientInstallmentsController(DentalContext db) : ControllerBase
+public sealed class PatientInstallmentsController(DentalContext db, AccountingSettlementService settlements) : ControllerBase
 {
     private Guid? Actor => Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ??
         User.FindFirstValue("userId") ?? User.FindFirstValue("Id"), out var id) ? id : null;
@@ -62,31 +64,11 @@ public sealed class PatientInstallmentsController(DentalContext db) : Controller
     public async Task<IActionResult> Pay(Guid caseId, long id, CancellationToken ct)
     {
         if (Actor is not { } actor) return Unauthorized();
-        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
-        var row = await db.PatientInstallments.SingleOrDefaultAsync(x => x.Id == id && x.PatientFinancialCaseId == caseId, ct);
-        if (row is null) return NotFound();
-        if (row.PaidAtUtc.HasValue) return Conflict(new { message = "این قسط قبلاً پرداخت شده است." });
-        var financialCase = await db.PatientFinancialCases.SingleOrDefaultAsync(x => x.Id == caseId, ct);
-        if (financialCase is null) return NotFound(new { message = "پرونده مالی یافت نشد." });
-        var collected = await db.PatientFinancialTransactions.Where(x => x.PatientFinancialCaseId == caseId)
-            .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
-        if (PatientInstallmentRules.PaymentError(financialCase, row, collected) is { } paymentError)
-            return Conflict(new { message = paymentError });
-        if (await db.PatientFinancialTransactions.AnyAsync(x => x.PatientFinancialCaseId == caseId &&
-            x.SourceType == PatientFinancialTransactionSourceType.Installment && x.SourceId == row.Id, ct))
-            return Conflict(new { message = "پرداخت این قسط قبلاً در حسابداری ثبت شده است." });
-        if (financialCase.PrePaymentAmount + financialCase.DepositAmount + collected + row.Amount == financialCase.TotalAmount)
-            financialCase.Status = PatientFinancialCaseStatus.Completed;
-        row.PaidAtUtc = DateTime.UtcNow;
-        row.PaidByUserId = actor;
-        db.PatientFinancialTransactions.Add(new PatientFinancialTransaction {
-            PatientFinancialCaseId = caseId, Amount = row.Amount,
-            Type = PatientFinancialTransactionType.Payment,
-            SourceType = PatientFinancialTransactionSourceType.Installment,
-            SourceId = row.Id, CreatedByUserId = actor
-        });
-        await db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-        return Ok(new { row.Id, row.PaidAtUtc, row.PaidByUserId });
+        if (!await db.PatientInstallments.AnyAsync(x => x.Id == id && x.PatientFinancialCaseId == caseId, ct)) return NotFound();
+        try {
+            await settlements.PayInstallmentAsync(id, actor, ct);
+            var row = await db.PatientInstallments.AsNoTracking().SingleAsync(x => x.Id == id, ct);
+            return Ok(new { row.Id, row.PaidAtUtc, row.PaidByUserId });
+        } catch (AccountingValidationException error) { return Conflict(new { message = error.Message }); }
     }
 }

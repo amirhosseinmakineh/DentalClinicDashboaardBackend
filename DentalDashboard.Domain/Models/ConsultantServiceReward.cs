@@ -2,6 +2,7 @@ namespace DentalDashboard.Domain.Models;
 
 public sealed class ConsultantServiceRewardRule
 {
+    public const decimal LegacyRewardPerPatient = 1_000_000m;
     public long Id { get; set; }
     public int ServiceId { get; set; }
     public string Basis { get; set; } = "Unit";

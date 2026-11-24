@@ -14,6 +14,7 @@ using DentalDashboard.Infrastracture.Secretary.Accountant.PatientFinance.Reposit
 using DentalDashboard.Infrastracture.Secretary.Accountant.Repositories;
 using DentalDashboard.Domain.Secretary.Accountant.SecretarySales.IRepositories;
 using DentalDashboard.Infrastracture.Secretary.Accountant.SecretarySales.Repositories;
+using DentalDashboard.Infrastracture.Accounting;
 namespace DentalDashboard.Infrastracture.Registration;
 public static class InfrastructureServiceRegistration
 {
@@ -21,8 +22,10 @@ public static class InfrastructureServiceRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDbContext<DentalContext>(options =>
+        services.AddAccountingInfrastructure();
+        services.AddDbContext<DentalContext>((provider, options) =>
         {
+            options.AddInterceptors(provider.GetRequiredService<DentalDashboard.Infrastracture.Accounting.Auditing.AccountingAuditInterceptor>());
             options.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"));
             options.ConfigureWarnings(warnings =>

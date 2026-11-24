@@ -1,3 +1,5 @@
+using DentalDashboard.ApplicationService.Accounting.Services;
+using DentalDashboard.ApplicationService.Contract.Accounting;
 using System.Data;
 using System.Security.Claims;
 using System.Text;
@@ -30,7 +32,7 @@ public sealed class ReferralFilters
 }
 
 [ApiController]
-public sealed class PatientReferralsController(DentalContext db) : ControllerBase
+public sealed class PatientReferralsController(DentalContext db, AccountingSettlementService settlements) : ControllerBase
 {
     private Guid UserId() => Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("Id") ?? User.FindFirstValue("sub"), out var id) ? id : Guid.Empty;
 
@@ -136,42 +138,16 @@ public sealed class PatientReferralsController(DentalContext db) : ControllerBas
     public async Task<IActionResult> Approve(long id, CancellationToken ct)
     {
         if (!await Valid("Admin", ct)) return Forbid();
-        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
-        var entity = await db.PatientReferrals.SingleOrDefaultAsync(x => x.Id == id, ct);
-        if (entity is null) return NotFound();
-        if (entity.Status != PatientReferralStatus.ReservedPendingAdminApproval || entity.ReservationId is null) return Conflict("این معرفی قابل تأیید نیست.");
-        var attended = await db.Reservations.AnyAsync(x => x.Id == entity.ReservationId && !x.IsDeleted && !x.IsCanceled && x.PatientReceivedService == true && x.SecretaryApprovedConsultantConfirmation == true, ct);
-        if (!attended) return Conflict("تا پیش از تأیید حضور بیمار توسط منشی، پرداخت پاداش مجاز نیست.");
-        if (await db.PatientWalletTransactions.AnyAsync(x => x.PatientReferralId == id && x.TransactionType == PatientWalletTransactionType.ReferralReward, ct)) return Conflict("پاداش این معرفی قبلاً پرداخت شده است.");
-        var wallet = await db.PatientWallets.SingleOrDefaultAsync(x => x.PatientUserId == entity.ReferrerPatientUserId, ct);
-        if (wallet is null) { wallet = new PatientWallet { PatientUserId = entity.ReferrerPatientUserId }; db.Add(wallet); await db.SaveChangesAsync(ct); }
-        var now = DateTime.UtcNow;
-        wallet.Balance += entity.RewardAmount;
-        wallet.UpdatedAt = now;
-        db.Add(new PatientWalletTransaction { WalletId = wallet.Id, PatientUserId = entity.ReferrerPatientUserId, PatientReferralId = entity.Id, Amount = entity.RewardAmount, TransactionType = PatientWalletTransactionType.ReferralReward, Description = $"پاداش معرفی بیمار {entity.ReferredFirstName} {entity.ReferredLastName}" });
-        entity.Status = PatientReferralStatus.ApprovedRewarded;
-        entity.ReviewedByAdminId = UserId();
-        entity.ReviewedAt = entity.UpdatedAt = now;
-        try { await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); }
-        catch (DbUpdateException) { await tx.RollbackAsync(ct); return Conflict("پاداش این معرفی قبلاً پرداخت شده است."); }
-        return Ok(await Item(id, ct));
+        try { await settlements.ReviewReferralAsync(id, UserId(), true, null, ct); return Ok(await Item(id, ct)); }
+        catch (AccountingValidationException error) { return Conflict(new { message = error.Message }); }
     }
 
     [HttpPost("api/admin/patient-referrals/{id:long}/reject"), Authorize(Roles = "Admin")]
     public async Task<IActionResult> Reject(long id, RejectReferralRequest request, CancellationToken ct)
     {
         if (!await Valid("Admin", ct)) return Forbid();
-        var reason = request.Reason?.Trim() ?? "";
-        if (reason.Length is < 1 or > 500) return BadRequest("دلیل رد الزامی و حداکثر ۵۰۰ نویسه است.");
-        var entity = await db.PatientReferrals.SingleOrDefaultAsync(x => x.Id == id, ct);
-        if (entity is null) return NotFound();
-        if (entity.Status != PatientReferralStatus.ReservedPendingAdminApproval) return Conflict("این معرفی قابل رد نیست.");
-        entity.Status = PatientReferralStatus.Rejected;
-        entity.RejectionReason = reason;
-        entity.ReviewedByAdminId = UserId();
-        entity.ReviewedAt = entity.UpdatedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
-        return Ok(await Item(id, ct));
+        try { await settlements.ReviewReferralAsync(id, UserId(), false, request.Reason, ct); return Ok(await Item(id, ct)); }
+        catch (AccountingValidationException error) { return Conflict(new { message = error.Message }); }
     }
 
     [HttpGet("api/patient/referrals/dashboard"), Authorize(Roles = "Patient")]

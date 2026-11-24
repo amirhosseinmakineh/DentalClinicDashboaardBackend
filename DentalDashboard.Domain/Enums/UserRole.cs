@@ -6,6 +6,7 @@
         Consultant = 2, 
         Patient = 3,
         User = 4,
+        Accountant = 6,
         Secretary = 5  
     }
     public enum Gender

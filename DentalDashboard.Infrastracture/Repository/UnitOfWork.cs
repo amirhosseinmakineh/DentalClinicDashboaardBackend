@@ -1,4 +1,5 @@
-﻿using DentalDashboard.Domain.IRepositories;
+using Microsoft.EntityFrameworkCore;
+using DentalDashboard.Domain.IRepositories;
 using DentalDashboard.Infrastracture.Context;
 using System.Data;
 
@@ -20,7 +21,7 @@ public class UnitOfWork : IUnitOfWork
         CancellationToken cancellationToken = default,
         IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
     {
-        _transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        _transaction = await _context.Database.BeginTransactionAsync(isolationLevel, cancellationToken);
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -32,10 +33,15 @@ public class UnitOfWork : IUnitOfWork
     {
         await _context.SaveChangesAsync(cancellationToken);
         await (_transaction ?? throw new InvalidOperationException("No active transaction.")).CommitAsync(cancellationToken);
+        await _transaction.DisposeAsync();
+        _transaction = null;
     }
 
     public async Task RollbackAsync(CancellationToken cancellationToken = default)
     {
-        await (_transaction ?? throw new InvalidOperationException("No active transaction.")).RollbackAsync(cancellationToken);
+        if (_transaction is null) return;
+        await _transaction.RollbackAsync(cancellationToken);
+        await _transaction.DisposeAsync();
+        _transaction = null;
     }
 }

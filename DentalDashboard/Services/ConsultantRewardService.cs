@@ -20,7 +20,7 @@ public sealed record ConsultantWalletReport(
 
 public sealed class ConsultantRewardService(DentalContext context)
 {
-    public const decimal RewardPerPatient = 1_000_000m;
+    public const decimal RewardPerPatient = ConsultantServiceRewardRule.LegacyRewardPerPatient;
 
     public async Task<ConsultantWalletReport> GetConsultantWalletAsync(
         Guid consultantUserId, CancellationToken cancellationToken)

@@ -200,7 +200,7 @@ public sealed class AddPatientPromissoryNoteCommandHandler(
       return Result<PatientFinanceIdResponse>.Failure("پرونده فعال یافت نشد");
     var x = new PatientPromissoryNote {
       PatientFinancialCaseId = c.PatientFinancialCaseId, Amount = c.Amount,
-      SerialNumber = c.SerialNumber.Trim(), DueDate = c.DueDate
+      SerialNumber = c.SerialNumber.Trim(), DueDate = c.DueDate, IsGuarantee = c.IsGuarantee
     };
     await repo.AddPromissoryNoteAsync(x, ct);
     await uow.SaveChangesAsync();
@@ -225,10 +225,10 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
                               transaction.Type == PatientFinancialTransactionType.Payment)
         .SumAsync(transaction => (decimal?)transaction.Amount, ct) ?? 0;
     var commitments = (await repo.Cheques
-        .Where(item => item.PatientFinancialCaseId == c.Id && !item.IsGuarantee)
+        .Where(item => item.PatientFinancialCaseId == c.Id && !item.IsGuarantee && item.Status == PatientChequeStatus.Pending)
         .SumAsync(item => (decimal?)item.Amount, ct) ?? 0) +
         (await repo.PromissoryNotes
-        .Where(item => item.PatientFinancialCaseId == c.Id && !item.IsGuarantee)
+        .Where(item => item.PatientFinancialCaseId == c.Id && !item.IsGuarantee && item.Status == PatientPromissoryNoteStatus.Pending)
         .SumAsync(item => (decimal?)item.Amount, ct) ?? 0);
     if (c.TotalAmount <= 0 || c.TotalAmount < paid)
       return Result<PatientFinancialCaseIdResponse>.Failure(
@@ -238,9 +238,14 @@ public sealed class UpdatePatientFinancialCaseCommandHandler(
         c.PrePaymentAmount + c.DepositAmount + paid > c.TotalAmount)
       return Result<PatientFinancialCaseIdResponse>.Failure(
           "مبلغ پیش‌پرداخت یا ودیعه معتبر نیست");
-    if (commitments > c.TotalAmount)
+    var scheduled = await repo.Installments.Where(item => item.PatientFinancialCaseId == c.Id && !item.IsDeleted && item.PaidAtUtc == null)
+        .SumAsync(item => (decimal?)item.Amount, ct) ?? 0;
+    var debt = await repo.Debts.Where(item => item.PatientFinancialCaseId == c.Id && item.Status == PatientDebtStatus.Unpaid)
+        .SumAsync(item => (decimal?)item.Amount, ct) ?? 0;
+    if (!DentalDashboard.Domain.Accounting.AccountingTreatmentRules.CanSetTotal(c.TotalAmount,
+        c.PrePaymentAmount + c.DepositAmount + paid, commitments + scheduled + debt))
       return Result<PatientFinancialCaseIdResponse>.Failure(
-          "مبلغ کل نمی‌تواند کمتر از مجموع چک‌ها و سفته‌ها باشد");
+          "مبلغ کل نمی‌تواند کمتر از مجموع پرداخت قطعی، اسناد پرداخت، بدهی و اقساط باز باشد");
     var selectedServiceIds = x.Services.Select(service => (int)service).ToList();
     var serviceUnitError = ServiceUnitCountRules.Validate(
         c.ServiceUnitCounts,

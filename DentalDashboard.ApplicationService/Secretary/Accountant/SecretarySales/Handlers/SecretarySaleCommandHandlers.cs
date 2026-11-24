@@ -111,12 +111,12 @@ public sealed class CreateSecretarySaleCommandHandler(ISecretarySalesRepository 
     }
 }
 
-public sealed class ApproveSecretarySaleCommandHandler(ISecretarySalesRepository repository, IUnitOfWork unitOfWork)
+public sealed class ApproveSecretarySaleCommandHandler(ISecretarySalesRepository repository, IUnitOfWork unitOfWork, DentalDashboard.ApplicationService.Contract.Accounting.IAccountingAccess accountingAccess)
     : ICommandHandler<ApproveSecretarySaleCommand>
 {
     public async Task<Result> HandleAsync(ApproveSecretarySaleCommand command, CancellationToken cancellationToken = default)
     {
-        if (!await SecretarySaleValidation.HasRole(repository, command.AdminUserId, "Admin", cancellationToken))
+        if (!await accountingAccess.AllowsAsync(command.AdminUserId, DentalDashboard.Domain.Accounting.AccountingPermissions.ApproveSecretary, cancellationToken))
             return Result.Failure("ادمین معتبر نیست.");
 
         await unitOfWork.BeginTransactionAsync(cancellationToken, IsolationLevel.Serializable);
@@ -181,12 +181,12 @@ public sealed class ApproveSecretarySaleCommandHandler(ISecretarySalesRepository
     }
 }
 
-public sealed class RejectSecretarySaleCommandHandler(ISecretarySalesRepository repository, IUnitOfWork unitOfWork)
+public sealed class RejectSecretarySaleCommandHandler(ISecretarySalesRepository repository, IUnitOfWork unitOfWork, DentalDashboard.ApplicationService.Contract.Accounting.IAccountingAccess accountingAccess)
     : ICommandHandler<RejectSecretarySaleCommand>
 {
     public async Task<Result> HandleAsync(RejectSecretarySaleCommand command, CancellationToken cancellationToken = default)
     {
-        if (!await SecretarySaleValidation.HasRole(repository, command.AdminUserId, "Admin", cancellationToken))
+        if (!await accountingAccess.AllowsAsync(command.AdminUserId, DentalDashboard.Domain.Accounting.AccountingPermissions.ApproveSecretary, cancellationToken))
             return Result.Failure("ادمین معتبر نیست.");
         await unitOfWork.BeginTransactionAsync(cancellationToken, IsolationLevel.Serializable);
         try

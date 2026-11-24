@@ -1,3 +1,4 @@
+using DentalDashboard.ApplicationService.Accounting;
 ﻿using DentalDashboard.ApplicationService.Contract.IServices;
 using DentalDashboard.ApplicationService.Contract.Secretary.Accountant.Services;
 using DentalDashboard.ApplicationService.Secretary.Accountant.Services;
@@ -14,6 +15,7 @@ public static class ApplicationServiceRegistration
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddAccountingServices();
         services.AddScoped<IRoleService, RoleService>();
         services.AddHttpClient<ILeadAssignmentService, LeadAssignmentService>()
             .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(5))

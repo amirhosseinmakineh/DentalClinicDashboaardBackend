@@ -66,7 +66,7 @@ public sealed record AddPatientChequeCommand(Guid PatientFinancialCaseId,
 public sealed
     record AddPatientPromissoryNoteCommand(Guid PatientFinancialCaseId,
                                            string SerialNumber, decimal Amount,
-                                           DateTime DueDate)
+                                           DateTime DueDate, bool IsGuarantee = false)
     : ICommand<PatientFinanceIdResponse>;
 public sealed class UpdatePatientChequeStatusCommand
     : ICommand<PatientFinanceIdResponse> {

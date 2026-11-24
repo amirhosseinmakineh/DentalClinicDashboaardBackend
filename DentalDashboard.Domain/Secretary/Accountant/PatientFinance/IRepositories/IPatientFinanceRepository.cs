@@ -8,6 +8,7 @@ public interface IPatientFinanceRepository {
   IQueryable<PatientFinancialDocument> Documents { get; }
   IQueryable<PatientCheque> Cheques { get; }
   IQueryable<PatientPromissoryNote> PromissoryNotes { get; }
+  IQueryable<PatientInstallment> Installments { get; }
   IQueryable<PatientDebt> Debts { get; }
   IQueryable<PatientFinancialTransaction> Transactions { get; }
   IQueryable<User> Patients { get; }

@@ -133,6 +133,9 @@ builder.Services.AddCors(options =>
     });
 });
 builder.Services.AddApplicationServices();
+builder.Services.AddScoped<DentalDashboard.Controllers.Accounting.AccountingExceptionFilter>();
+builder.Services.AddScoped<DentalDashboard.Services.ConsultantRewardService>();
+builder.Services.AddScoped<DentalDashboard.ApplicationService.Contract.Accounting.IAccountingConsultantRewards, DentalDashboard.Services.Accounting.AccountingConsultantRewardAdapter>();
 
 builder.Services.AddDomainServices();
 

@@ -11,6 +11,7 @@ public sealed class PatientFinanceRepository(DentalContext context)
   public IQueryable<PatientCheque> Cheques => context.PatientCheques;
   public IQueryable<PatientPromissoryNote> PromissoryNotes =>
       context.PatientPromissoryNotes;
+  public IQueryable<PatientInstallment> Installments => context.PatientInstallments.Where(x => !x.IsDeleted);
   public IQueryable<PatientDebt> Debts => context.PatientDebts;
   public IQueryable<PatientFinancialTransaction> Transactions =>
       context.PatientFinancialTransactions;

@@ -84,6 +84,8 @@ public static class AuthResponseFactory
         if (roles.Contains("Admin"))
             return "Admin";
 
+        if (roles.Contains("Accountant")) return "Accountant";
+
         if (roles.Contains("Consultant"))
             return "Consultant";
 
@@ -106,6 +108,7 @@ public static class AuthResponseFactory
     {
         return role switch
         {
+            "Accountant" => "AccountingDashboard",
             "Admin" => "AdminDashboard",
             "Consultant" => "ConsultantDashboard",
             "Secretary" => "SecretaryDashboard",
@@ -120,6 +123,7 @@ public static class AuthResponseFactory
     {
         return role switch
         {
+            "Accountant" => "/dashboard/accountant",
             "Admin" => "/admin/dashboard",
             "Consultant" => "/consultant/dashboard",
             "Secretary" => "/secretary/dashboard",

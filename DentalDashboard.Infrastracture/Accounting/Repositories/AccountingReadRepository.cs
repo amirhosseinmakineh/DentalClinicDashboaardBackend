@@ -29,6 +29,7 @@ public abstract class AccountingReadRepository : IAccountingReadRepository
         if (!string.IsNullOrWhiteSpace(filter.Status)) query = query.Where(x => x.Status == filter.Status);
         if (filter.UserId is { } userId) query = query.Where(x => x.UserId == userId);
         if (filter.CaseId is { } caseId) query = query.Where(x => x.CaseId == caseId);
+        if (!string.IsNullOrWhiteSpace(filter.TargetId)) query = query.Where(x => x.Id == filter.TargetId);
         return query;
     }
     protected virtual void Enrich(IReadOnlyList<AccountingRow> items) { }

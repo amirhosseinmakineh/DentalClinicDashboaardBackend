@@ -15,6 +15,8 @@ public static class AccountingServiceRegistration
         services.AddScoped<AccountingSettlementService>();
         services.AddScoped<AccountingExportService>();
         services.AddScoped<AccountingDocumentService>();
+        services.AddScoped<Reminders.AccountingReminderService>();
+        services.AddScoped<Reminders.AccountingReminderDispatcher>();
         services.AddScoped<IAccountingOperationExecutor, PatientAccountingOperations>();
         services.AddScoped<IAccountingOperationExecutor, ClinicAccountingOperations>();
         services.AddScoped<IAccountingOperationExecutor, RewardAccountingOperations>();

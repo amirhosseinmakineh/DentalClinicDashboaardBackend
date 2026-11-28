@@ -6,6 +6,7 @@ public enum AccountingSection { Patients, Cheques, Notes, Installments, Debts, P
 
 public sealed class AccountingFilter
 {
+    public string? TargetId { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
     public string? Search { get; set; }

@@ -13,6 +13,7 @@ public static class AccountingInfrastructureRegistration
         services.AddScoped<IAccountingAuditScope, AccountingAuditScope>();
         services.AddScoped<AccountingAuditInterceptor>();
         services.AddScoped<IAccountingSettlementRepository, AccountingSettlementRepository>();
+        services.AddScoped<DentalDashboard.Domain.Accounting.Reminders.IAccountingReminderRepository, Reminders.AccountingReminderRepository>();
         services.AddScoped<IAccountingAccessRepository, AccountingAccessRepository>();
         services.AddScoped<IAccountingReadRepository, PatientAccountingRepository>();
         services.AddScoped<IAccountingReadRepository, ClinicAccountingRepository>();

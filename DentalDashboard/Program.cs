@@ -160,6 +160,7 @@ builder.Services.Configure<HostOptions>(options =>
 
 //builder.Services.AddHostedService<LeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<TestConsultantLeadAssignmentBackgroundService>();
+builder.Services.AddHostedService<DentalDashboard.BackgroundServices.Accounting.AccountingReminderBackgroundService>();
 builder.Services.AddHostedService<SellerConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddHostedService<TopSellerConsultantLeadAssignmentBackgroundService>();
 builder.Services.AddLeadManagement(builder.Configuration);

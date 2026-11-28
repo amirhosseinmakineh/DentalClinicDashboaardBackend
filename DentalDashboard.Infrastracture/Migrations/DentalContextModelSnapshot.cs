@@ -98,6 +98,78 @@ namespace DentalDashboard.Infrastracture.Migrations
                     b.ToTable("AccountingAuditEntries", (string)null);
                 });
 
+            modelBuilder.Entity("DentalDashboard.Domain.Accounting.Reminders.AccountingReminder", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<long>("TargetId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Enabled", "Id");
+
+                    b.HasIndex("UserId", "Kind", "TargetId")
+                        .IsUnique();
+
+                    b.ToTable("AccountingReminders", (string)null);
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Accounting.Reminders.AccountingReminderDelivery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("LeaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ReminderDate")
+                        .HasColumnType("date");
+
+                    b.Property<long>("ReminderId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("SentAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaseId");
+
+                    b.HasIndex("ReminderId", "DueDate", "ReminderDate")
+                        .IsUnique();
+
+                    b.ToTable("AccountingReminderDeliveries", (string)null);
+                });
+
             modelBuilder.Entity("DentalDashboard.Domain.Models.AdminLeadSheet", b =>
                 {
                     b.Property<long>("Id")
@@ -2195,6 +2267,24 @@ namespace DentalDashboard.Infrastracture.Migrations
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Accounting.Reminders.AccountingReminder", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("DentalDashboard.Domain.Accounting.Reminders.AccountingReminderDelivery", b =>
+                {
+                    b.HasOne("DentalDashboard.Domain.Accounting.Reminders.AccountingReminder", null)
+                        .WithMany()
+                        .HasForeignKey("ReminderId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
